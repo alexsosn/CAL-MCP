@@ -132,11 +132,12 @@ Run the deterministic development checks:
 
 ```bash
 ruff check .
+ruff format --check .
 mypy
 pytest
 ```
 
-Bootstrap startup and MCP introspection are tested without contacting CAL. Network-backed CAL behavior will be introduced only in the issues that implement the HTTP client and scholarly tools.
+Bootstrap module import, startup, and MCP introspection are tested without contacting CAL. Network-backed CAL behavior will be introduced only in the issues that implement the HTTP client and scholarly tools.
 
 ## Development model
 
