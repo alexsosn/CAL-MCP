@@ -106,6 +106,39 @@ The repository uses documentation as executable project state for humans and cod
 
 User-facing reference documentation under `docs/` will be introduced alongside the corresponding implemented tools so it cannot get ahead of the executable interface. Its planned structure is specified in `wiki/documentation.md`.
 
+## Bootstrap development state
+
+The repository currently has a minimal MCP server shell only; no CAL-backed scholarly tools are implemented yet.
+
+Requirements: Python 3.11+.
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Run the local stdio server:
+
+```bash
+cal-mcp
+```
+
+The equivalent module entry point is:
+
+```bash
+python -m cal_mcp
+```
+
+Run the deterministic development checks:
+
+```bash
+ruff check .
+ruff format --check .
+mypy
+pytest
+```
+
+Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. Network-backed CAL behavior will be introduced only in the issues that implement the HTTP client and scholarly tools.
+
 ## Development model
 
 Development is issue-driven and test-driven:
