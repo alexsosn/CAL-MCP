@@ -31,6 +31,8 @@ Retries are bounded. The current policy retries only:
 
 Other HTTP errors are returned as typed upstream errors without blind retry. In particular, CAL-MCP does not automatically retry HTTP 429; a rate/overload response should reduce request pressure rather than create another immediate request.
 
+HTTP redirects are not followed automatically. A 3xx response is returned as a typed upstream error before parsing or caching. If a later CAL endpoint demonstrably requires redirects, support should be added explicitly with a same-origin, bounded redirect policy rather than enabling arbitrary automatic redirect following.
+
 No retry path creates background work or continues after the caller's operation has ended.
 
 ## Cache behavior
@@ -62,7 +64,7 @@ The cache stores the **successfully parsed typed value and provenance**, not a d
 The following are never cached:
 
 - network failures or timeouts;
-- upstream HTTP errors;
+- redirects or upstream HTTP errors;
 - unexpected content types;
 - probable maintenance pages;
 - parser exceptions/drift failures.
@@ -86,6 +88,8 @@ A cache hit preserves the original CAL retrieval timestamp and source URL. The h
 ## Request boundary
 
 `CalHttpClient` accepts only relative CAL paths and GET/POST requests. Absolute URLs, external hosts, embedded query strings/fragments, and path traversal are rejected before the transport is invoked. Query/form fields must be represented explicitly by `CalRequest.params` and `CalRequest.data` so request identity remains deterministic.
+
+The production transport does not follow redirects. This keeps the validated `cal.huc.edu` origin as the actual network boundary rather than validating only the first URL and allowing a redirect to move the request elsewhere.
 
 ## Example
 
