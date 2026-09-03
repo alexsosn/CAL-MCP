@@ -2,18 +2,19 @@
 
 **Plan date:** 2026-09-03
 
-This plan turns the research findings into a sequence of small, reviewable issues. The implementation is deliberately standalone-first: CAL-MCP must be fully usable as a normal MCP server before Agora registration. Agora integration is a downstream release task.
+This plan turns the research findings into small, reviewable GitHub issues. CAL-MCP is standalone-first: it must be fully usable as a normal MCP server before Agora registration. Agora integration is downstream marketplace/launch metadata over a released package.
 
 ## Delivery principles
 
-1. **Thin adapter.** Query CAL live and return structured CAL results. Do not build a local lexical database.
-2. **Stable public contract, unstable private adapters.** MCP schemas should not expose CAL's HTML layout.
-3. **TDD by upstream surface.** Each parser starts from a minimal dated fixture and failing tests.
+1. **Thin adapter.** Query CAL live for explicit user operations; do not build a local CAL database.
+2. **Stable public contract, unstable private adapters.** MCP schemas must not expose CAL HTML/form layout.
+3. **TDD by upstream surface.** Each parser begins with a minimal dated fixture and failing tests.
 4. **Offline deterministic CI.** Normal CI never depends on CAL availability.
-5. **Low-load live verification.** Live tests are opt-in/scheduled and perform only a few representative queries.
-6. **Provenance everywhere.** Source URL and retrieval timestamp are part of result schemas.
-7. **Standalone before Agora.** Package/entry point and docs must work without Agora. Agora only consumes the released interface.
-8. **Documentation ships with behavior.** No tool is complete until its user-facing reference and examples are committed in the same PR.
+5. **Low-load live verification.** Live checks are opt-in/scheduled and strictly request-capped.
+6. **Provenance everywhere.** CAL source URL and retrieval timestamp are part of CAL-backed results.
+7. **Standalone before Agora.** Package, entry point, tools, docs, and CAL-specific guidance live here.
+8. **Documentation ships with behavior.** A tool is incomplete until its user-facing reference/examples are updated.
+9. **Coverage is audited, not assumed.** Before v0.1 freeze, every current CAL public research function must be implemented, intentionally composed from existing tools, or explicitly deferred with a documented reason.
 
 ## Target component architecture
 
@@ -25,9 +26,9 @@ flowchart TB
     end
 
     subgraph App[Application layer]
-      LS[Lexicon service]
+      LS[Lexicon/search services]
       CS[Concordance service]
-      TS[Text service]
+      TS[Text/token services]
       SS[Specialist services]
     end
 
@@ -45,6 +46,7 @@ flowchart TB
     end
 
     CAL[cal.huc.edu]
+    A[Agora]
 
     TR --> T
     T --> App
@@ -55,26 +57,29 @@ flowchart TB
     CAL --> PA
     PA --> DM
     DM --> App
+    A -. optional discovery/install/launch .-> TR
 ```
 
 ## Dependency graph
 
 ```mermaid
 flowchart LR
-    I1[1 Bootstrap package + CI]
-    I2[2 HTTP client + request policy]
-    I3[3 Normalization]
-    I4[4 Lexicon lookup]
-    I5[5 Gloss + citation search]
-    I6[6 Concordance]
-    I7[7 Text catalogue + passages]
-    I8[8 Token lexical analysis]
-    I9[9 Bibliography]
-    I10[10 Targum module]
-    I11[11 Syriac module]
-    I12[12 Public contract + docs completion]
-    I13[13 Release + live drift smoke]
-    I14[14 Agora registration handoff]
+    I1[#1 Bootstrap package + CI]
+    I2[#2 HTTP policy]
+    I3[#3 Normalization]
+    I4[#4 Lexicon]
+    I5[#5 Gloss/citation-text search]
+    I6[#6 Concordance]
+    I7[#7 Texts/passages]
+    I8[#8 Token analysis]
+    I9[#9 Bibliography]
+    I10[#10 Targum]
+    I11[#11 Syriac]
+    I13[#13 External-text citations]
+    I14[#14 Dictionary collation]
+    I12[#12 Capability audit + contract/docs freeze]
+    I15[#15 Standalone release + live smoke]
+    I16[#16 Agora registration]
 
     I1 --> I2
     I1 --> I3
@@ -84,212 +89,208 @@ flowchart LR
     I4 --> I6
     I2 --> I7
     I3 --> I7
-    I7 --> I8
     I4 --> I8
+    I7 --> I8
     I2 --> I9
     I4 --> I10
     I7 --> I10
     I4 --> I11
     I7 --> I11
+    I2 --> I13
+    I4 --> I13
+    I2 --> I14
+    I3 --> I14
+
     I5 --> I12
     I6 --> I12
     I8 --> I12
     I9 --> I12
     I10 --> I12
     I11 --> I12
-    I12 --> I13
-    I13 --> I14
+    I13 --> I12
+    I14 --> I12
+    I12 --> I15
+    I15 --> I16
 ```
 
-The graph shows logical dependencies. Independent branches such as bibliography and text browsing may proceed in parallel once their prerequisites are merged, but an agent must still check for overlapping active PRs.
+Independent branches may proceed in parallel once prerequisites merge, but agents must check for overlapping active PRs first.
 
 ## Phase 0 — Repository/bootstrap
 
-### Ticket 1 — Bootstrap Python package, MCP server shell, CI, and development tooling
+### #1 — Bootstrap Python package, MCP server shell, CI, and development tooling
 
-Deliverables:
+- `src/cal_mcp/` package and stable stdio entry point;
+- reproducible install/dev commands;
+- formatting/lint/type/test setup;
+- deterministic network-independent CI;
+- server startup/introspection test proving zero CAL requests;
+- version exposure suitable for later pinning.
 
-- `src/cal_mcp/` package with a minimal server entry point;
-- project metadata and reproducible local installation;
-- formatting/lint/type/test commands documented;
-- deterministic CI with network-disabled tests;
-- one MCP introspection/health-style contract test proving the server starts without contacting CAL;
-- version exposure suitable for downstream Agora pinning.
-
-No CAL domain query belongs in this ticket.
+No CAL domain query belongs in #1.
 
 ## Phase 1 — Core adapter infrastructure
 
-### Ticket 2 — Implement CAL HTTP client and conservative request policy
+### #2 — CAL HTTP client and conservative request policy
 
-Deliverables:
-
-- one HTTP client abstraction;
 - finite timeouts;
-- bounded retries for transient failures only;
-- explicit CAL-MCP User-Agent/project identification where appropriate;
-- low default concurrency;
-- bounded optional cache interface with cache-off mode;
-- typed network/upstream error classes;
-- tests proving no accidental retry storms or hidden prefetching.
+- bounded transient retries/backoff;
+- low concurrency;
+- honest project identification where appropriate;
+- bounded optional cache with cache-off mode;
+- typed network/upstream/content errors;
+- tests against retry storms, hidden prefetching, and unbounded behavior.
 
-### Ticket 3 — Implement deterministic CAL input normalization
+### #3 — Deterministic CAL input normalization/query encoding
 
-Deliverables:
+- explicit/deterministic representation handling;
+- CAL transliteration, Hebrew, Syriac, and justified Unicode transliteration support;
+- safe query/form encoding;
+- preserve original + normalized query;
+- explicit lossy/ambiguous/unsupported cases;
+- no LLM normalization.
 
-- representation detection/explicit representation parameter;
-- deterministic conversion needed for CAL queries;
-- CAL ASCII/query encoding utilities;
-- preservation of original and normalized query strings;
-- Unicode/script edge-case tests;
-- no LLM dependency.
-
-The implementation should prefer calling CAL's own accepted representations directly where that is more faithful than transliterating locally.
+Prefer sending representations CAL itself accepts directly instead of gratuitous transliteration.
 
 ## Phase 2 — Core research functionality
 
-### Ticket 4 — Lexicon lookup and complete entry parsing
+### #4 — Lexicon lookup and complete entry parsing
 
-First end-to-end scholarly capability.
+First end-to-end scholarly capability:
 
-Deliverables:
+- root/canonical/full-form lookup where current CAL supports it;
+- typed lemma/entry/sense/dialect/form/derivative/citation structures needed for fidelity;
+- provenance and not-found/upstream-drift distinction;
+- minimal fixtures for current browse/entry surfaces;
+- MCP tool reference and examples.
 
-- lookup by a CAL-supported lemma/root/form input;
-- typed `LexiconEntry`, lemma reference, sense/dialect/form/derivative structures where recoverable;
-- stable provenance object;
-- explicit empty/not-found/upstream-changed behavior;
-- minimal fixtures from `browseSKEYheaders.php`, `cal_entry_web.php`, and/or `oneentry.php` as required;
-- MCP tool schemas and user docs.
-
-### Ticket 5 — English gloss and citation-text search
-
-Deliverables:
+### #5 — English gloss and citation-text search
 
 - reverse English gloss search;
-- citation-text search functions demonstrably supported by CAL;
-- typed result references that can be followed into lexicon entries/citations;
-- pagination/limit semantics that reflect CAL rather than simulating corpus-wide search;
-- tool docs and examples.
+- search combinations/terms in CAL citations as supported upstream;
+- typed bounded result references;
+- explicit page/continuation semantics;
+- no local semantic search/reranking.
 
-### Ticket 6 — Concordance/KWIC queries
+### #6 — Concordance/KWIC
 
-Deliverables:
+- single-text concordance;
+- multi-text/dialect KWIC where currently supported;
+- typed context/source hits;
+- explicit bounded traversal;
+- preserve CAL text/dialect terminology.
 
-- basic concordance for one text where CAL exposes it;
-- multi-text/dialect KWIC where current public forms support it;
-- typed `ConcordanceHit` with context, source reference, and provenance;
-- explicit result limiting/pagination;
-- no automatic expansion into bulk corpus extraction;
-- docs explaining CAL dialect/text constraints rather than inventing a new query language.
+### #7 — Text catalogue/search and passage/context retrieval
 
-### Ticket 7 — Text catalogue, text search, and passage/context retrieval
+- bounded text discovery;
+- requested page/passage/context retrieval;
+- CAL text/file identifiers and coordinates;
+- line/coordinate preservation;
+- navigation needed by token analysis and specialist modules;
+- no full text export/mirror.
 
-Deliverables:
+### #8 — Token-at-coordinate lexical analysis
 
-- enumerate/search CAL's public text catalogue in a bounded manner;
-- retrieve a requested text page/passage/context;
-- model CAL text/file identifiers and coordinates explicitly;
-- preserve line/coordinate metadata;
-- support navigation required by later token analysis and specialist modules;
-- docs with reproducible examples.
-
-### Ticket 8 — Token-at-coordinate lexical analysis
-
-Deliverables:
-
-- typed wrapper around CAL's text-coordinate lexical-analysis workflow (`getlex.php` or current equivalent);
-- explicit token/coordinate parameters;
-- zero heuristic guessing when the coordinate is absent;
-- links to parsed lexical entries when CAL supplies them;
-- tests for ambiguous/multiple analyses and missing coordinates.
+- typed wrapper around CAL's coordinate/token workflow (`getlex.php` or current equivalent);
+- no guessed coordinate or arbitrary-text morphological analyzer;
+- preserve multiple CAL analyses;
+- compose with shared lexicon references.
 
 ## Phase 3 — Additional CAL scholarly surfaces
 
-### Ticket 9 — Bibliographic search
+### #9 — Bibliographic search
 
-Deliverables:
+- document current author/keyword/lemma bibliography query contract;
+- typed results and provenance;
+- explicit bounded continuation;
+- no local bibliography index.
 
-- document the public bibliography query contract;
-- implement author/keyword/lemma searches actually supported upstream;
-- typed bibliographic result with upstream identifiers/links;
-- no bibliographic scraping/indexing beyond the current user query.
+### #10 — Targum Studies module
 
-### Ticket 10 — Targum studies module
+- first inventory the current Targum module in `research.md`;
+- implement the smallest faithful research-oriented MCP surface;
+- preserve version/source distinctions;
+- reuse generic text/lexicon models only where semantics are truly shared.
 
-Deliverables:
+### #11 — Syriac Studies module
 
-- inventory current CAL Targum operations;
-- design the minimum faithful set of specialist MCP tools;
-- implement parallel-verse/comparison and related lexical operations supported by CAL;
-- preserve version/source labels exactly;
-- document limitations and upstream terminology.
-
-Do not generalize Targum-specific semantics into generic passage tools if doing so loses information.
-
-### Ticket 11 — Syriac studies module
-
-Deliverables:
-
-- inventory current CAL Syriac operations;
-- implement the faithful specialist subset necessary for practical CAL feature coverage;
-- support Syriac input without forcing agents through CAL ASCII where avoidable;
+- first inventory current Syriac operations;
+- implement faithful specialist coverage;
+- support Syriac script directly where CAL supports it;
 - keep CAL results distinct from SEDRA or other Syriac services.
 
-## Phase 4 — Contract stabilization, documentation, and release
+### #13 — Citations from texts outside the online CAL corpus
 
-### Ticket 12 — Stabilize the public MCP contract and complete user documentation
+CAL lists this separately from ordinary text browsing/search.
 
-Deliverables:
+- document current form/result contract;
+- model references without pretending the absent source text is retrievable through CAL;
+- preserve source/lemma/bibliographic links where available;
+- bounded search only.
 
-- review all tool names/parameters/result models for composability and redundancy;
-- common pagination/limit conventions where CAL semantics allow them;
-- common `Provenance` and typed error schema;
-- complete `docs/` information architecture described in `wiki/documentation.md`;
-- standalone installation/configuration guides;
-- tool reference generated or mechanically checked against actual MCP schemas where practical;
-- end-to-end examples for lexicon, concordance, text/token, Targum, and Syriac workflows;
-- explicit data-rights/access/load documentation;
-- architecture diagrams kept current.
+### #14 — Dictionary Spelling Collation
+
+- document current collation inputs/source selectors/result structure;
+- preserve dictionary/source distinctions;
+- expose CAL's collation without inventing a fuzzy matcher;
+- no local copies/indexing of third-party dictionaries.
+
+## Phase 4 — Coverage audit, public contract, documentation
+
+### #12 — Stabilize public MCP contract and complete v0.1 documentation
+
+Before freezing v0.1:
+
+1. build a dated capability matrix from CAL's current search page, FAQ/new-user guide, Targum module, and Syriac module;
+2. account for **every current public research function** as implemented, intentionally composed from other tools, or explicitly deferred with a documented decision;
+3. open focused prerequisite issues for any real coverage gap rather than implementing it opportunistically inside #12;
+4. review tool names/parameters/result models for composability and redundancy;
+5. finalize common provenance, errors, and pagination conventions;
+6. complete the versioned `docs/` information architecture;
+7. mechanically check tool docs against executable schemas where practical;
+8. validate examples from tests/fixtures;
+9. re-check architectural diagrams against the implementation.
 
 This is the public-contract freeze gate for `0.1.0`.
 
-### Ticket 13 — Package release and low-load live drift detection
+## Phase 5 — Standalone release and Agora
 
-Deliverables:
+### #15 — Publish v0.1 and add low-load live drift smoke tests
 
-- publish/installable release artifact;
+- clean-build/install release artifact;
 - versioned changelog/release notes;
-- small opt-in/scheduled live smoke suite that performs representative CAL queries with strict request caps;
-- drift alerts distinguish CAL unavailability from parser/schema breakage;
-- standalone stdio launch instructions validated from a clean environment.
+- standalone stdio launch verified from a clean environment;
+- tiny opt-in/scheduled live smoke suite with a strict total request cap;
+- distinguish CAL downtime/network failure from parser drift where practical;
+- document exact package/version/entry point for downstream consumers.
 
-### Ticket 14 — Prepare and submit Agora registration
+### #16 — Register released CAL-MCP with Agora
 
-Prerequisite: a released standalone CAL-MCP version.
+Prerequisite: published standalone release from #15.
 
-Deliverables in CAL-MCP:
+CAL-MCP side:
 
-- document exact package/version/entry point Agora should pin;
-- expose authoritative upstream capability descriptions here;
-- provide a minimal representative smoke query for Agora integration testing;
-- prepare a downstream Agora PR that only adds discovery/install/launch/compatibility metadata and smoke-level integration evidence;
-- no CAL parser, linguistic behavior, or CAL-specific repair logic in Agora.
+- authoritative released capability description;
+- exact package/version/entry point;
+- one representative low-load smoke operation;
+- optional Agora user guide.
 
-Expected Agora shape based on its current registry architecture:
+Downstream Agora side:
 
 - local Python MCP process;
-- remote data mode;
-- pinned released `cal-mcp` package/entry point;
-- stdio launch for clients that support local MCP;
-- software license: CAL-MCP's license;
-- data/service terms: upstream-dependent;
-- capabilities derived from the released MCP surface, not aspirational backlog items.
+- `data_mode: remote`;
+- pin released CAL-MCP rather than vendor/fork it;
+- stdio launch metadata;
+- software license from CAL-MCP;
+- CAL data/service terms remain upstream-dependent;
+- capabilities only for released tools;
+- smoke-level integration evidence only;
+- no CAL parsing, normalization, or semantic bug fixes in Agora.
 
 ## Documentation workstream
 
-Documentation is not deferred to the end. `wiki/documentation.md` defines the information architecture; implementation tickets create the corresponding `docs/` page together with each feature.
+`wiki/documentation.md` is the documentation design source. User pages are added with implemented behavior rather than as empty placeholders.
 
-Planned user-facing tree at v0.1:
+Planned v0.1 tree:
 
 ```text
 docs/
@@ -309,6 +310,7 @@ docs/
 │   ├── texts.md
 │   ├── token-analysis.md
 │   ├── bibliography.md
+│   ├── dictionary-collation.md
 │   ├── targum.md
 │   └── syriac.md
 ├── guides/
@@ -321,19 +323,20 @@ docs/
 └── limitations.md
 ```
 
-The source of truth for tool parameters is executable MCP schema/code. Human reference pages explain semantics, CAL terminology, examples, limitations, provenance, and request behavior. They must not maintain a second manually divergent copy of schemas when generation/checking is practical.
+Executable MCP schemas are the technical source of truth. Human docs explain CAL terminology, tool selection, semantics, examples, provenance, limits, and upstream-dependent failures. They should not maintain a divergent hand-copied schema.
 
 ## v0.1 release gates
 
 `0.1.0` is ready only when:
 
+- the current CAL public-capability matrix is complete and all functions are accounted for;
 - core lexical lookup, search, concordance, text retrieval, and token analysis are functional;
-- specialist Targum/Syriac coverage defined for v0.1 is implemented or explicitly re-scoped with a documented decision;
-- deterministic CI is green with CAL network access disabled;
-- live smoke checks pass within strict request caps;
-- public tool schemas are reviewed and frozen for the release;
-- standalone installation and stdio launch are tested from a clean environment;
-- provenance is present on all CAL-backed results;
-- docs match the released interface;
-- no CAL content/database is bundled;
-- Agora integration can pin the release without importing CAL-specific code into Agora.
+- bibliography, external-text citation lookup, dictionary collation, Targum, and Syriac scope are implemented or explicitly deferred by a reviewed decision;
+- deterministic CI is green with CAL network access unavailable;
+- live smoke passes within strict request caps;
+- public tool schemas are independently reviewed and frozen;
+- standalone install/stdio launch works from a clean environment;
+- provenance is present on every CAL-backed result;
+- docs match the released interface and examples are reproducible;
+- no CAL database/content is bundled or bulk-captured;
+- Agora can pin the release without importing CAL-specific code into Agora.
