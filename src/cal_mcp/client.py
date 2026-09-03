@@ -5,7 +5,7 @@ import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
 from urllib.parse import urlencode, urljoin, urlsplit
 
 import httpx2
@@ -63,8 +63,8 @@ class CalResponse:
 
 
 @dataclass(frozen=True, slots=True)
-class CalFetchResult:
-    value: Any
+class CalFetchResult(Generic[T]):
+    value: T
     source_url: str
     retrieved_at: datetime
     cache_hit: bool
@@ -201,7 +201,7 @@ class CalHttpClient:
         *,
         parser: Callable[[CalResponse], T],
         cache_namespace: str,
-    ) -> CalFetchResult:
+    ) -> CalFetchResult[T]:
         normalized = self._validate_and_normalize_request(request)
         if not cache_namespace.strip():
             raise CalRequestValidationError("cache_namespace must not be empty")
