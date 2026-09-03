@@ -137,7 +137,7 @@ mypy
 pytest
 ```
 
-Bootstrap module import, startup, and MCP introspection are tested without contacting CAL. Network-backed CAL behavior will be introduced only in the issues that implement the HTTP client and scholarly tools.
+Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. Network-backed CAL behavior will be introduced only in the issues that implement the HTTP client and scholarly tools.
 
 ## Development model
 
