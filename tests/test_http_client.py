@@ -204,9 +204,7 @@ async def test_transient_503_retries_with_finite_budget() -> None:
 
 @pytest.mark.anyio
 async def test_non_html_response_is_distinct_and_not_cached() -> None:
-    transport = ScriptedTransport(
-        [html_response(body="not html", content_type="application/json")]
-    )
+    transport = ScriptedTransport([html_response(body="not html", content_type="application/json")])
     client = CalHttpClient(transport=transport)
     request = CalRequest(method="GET", path="entry.php")
 
