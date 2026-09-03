@@ -89,13 +89,25 @@ Consequences:
 
 ## D-008 — Conservative request behavior until CAL publishes explicit machine guidance
 
-**Status:** accepted — 2026-09-03
+**Status:** accepted — 2026-09-03; amended 2026-09-03
 
 No CAL-specific automated-access/API policy was found in the initial research snapshot. CAL-MCP therefore defaults to low concurrency, bounded retries, finite timeouts, bounded caching, and no prefetching.
 
+For v0.1, caching is deliberately **process-local and in-memory only**. Its purpose is duplicate-request suppression during one CAL-MCP process/session, not offline access or accumulation of a CAL dataset.
+
+Consequences:
+
+- use a bounded LRU cache with finite TTL and size limits;
+- cache keys represent the complete normalized upstream request identity;
+- cache only successful, parseable CAL results/responses; optional short negative caching is allowed only for clean semantic not-found results with dedicated tests;
+- never cache network failures, maintenance/error pages, parser failures, or other uncertain upstream states;
+- preserve the original CAL retrieval timestamp across cache hits, with separate adapter cache-hit/age metadata if useful;
+- expose a complete cache-disable mode for reproducibility/debugging;
+- no disk/database persistence, cache warming, background refresh, or prefetch in v0.1.
+
 This decision is operational caution, not a legal interpretation of CAL's terms.
 
-Any material increase in automated request volume requires a new/updated decision citing current CAL guidance or concrete operational evidence.
+Any persistent cache, background refresh, or material increase in automated request volume requires a new/updated decision citing current CAL guidance or concrete operational evidence.
 
 ## D-009 — stdio is the required v0.1 transport
 
