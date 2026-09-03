@@ -245,7 +245,9 @@ class CalHttpClient:
         if parsed.scheme or parsed.netloc:
             raise CalRequestValidationError("CAL request path must be relative to cal.huc.edu")
         if parsed.query or parsed.fragment:
-            raise CalRequestValidationError("query parameters must be supplied via CalRequest.params")
+            raise CalRequestValidationError(
+                "query parameters must be supplied via CalRequest.params"
+            )
 
         path = parsed.path.lstrip("/")
         if not path or path == ".." or path.startswith("../") or "/../" in path:
