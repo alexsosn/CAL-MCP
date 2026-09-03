@@ -5,10 +5,10 @@ import shutil
 import socket
 
 import pytest
+from mcp import Client, StdioServerParameters
 
 from cal_mcp import __version__
 from cal_mcp.server import mcp
-from mcp import Client, StdioServerParameters
 
 
 @pytest.mark.anyio
