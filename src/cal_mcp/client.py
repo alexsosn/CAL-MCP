@@ -126,7 +126,7 @@ class _Httpx2Transport:
             timeout=timeout,
             limits=limits,
             headers={"User-Agent": config.user_agent},
-            follow_redirects=True,
+            follow_redirects=False,
         )
 
     async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
@@ -278,7 +278,7 @@ class CalHttpClient:
                     await self._backoff(attempt)
                     continue
                 raise CalUpstreamError(response.status_code, response.url)
-            if response.status_code >= 400:
+            if response.status_code >= 300:
                 raise CalUpstreamError(response.status_code, response.url)
             return response
 
