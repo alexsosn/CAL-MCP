@@ -1,26 +1,33 @@
 from __future__ import annotations
 
+import importlib
 import importlib.metadata
 import shutil
 import socket
+import sys
 
 import pytest
 from mcp import Client, StdioServerParameters
 
 from cal_mcp import __version__
-from cal_mcp.server import mcp
 
 
 @pytest.mark.anyio
-async def test_server_introspection_does_not_require_network(
+async def test_server_import_and_introspection_do_not_require_network(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def deny_connect(*args: object, **kwargs: object) -> None:
-        raise AssertionError("bootstrap/introspection must not open a network socket")
+        raise AssertionError("bootstrap import/introspection must not open a network socket")
 
     monkeypatch.setattr(socket.socket, "connect", deny_connect)
 
-    async with Client(mcp, raise_exceptions=True) as client:
+    # Force the server module itself to be imported while the network guard is active.
+    # This protects against future import-time CAL client initialization in addition
+    # to requests triggered during MCP startup/introspection.
+    sys.modules.pop("cal_mcp.server", None)
+    server_module = importlib.import_module("cal_mcp.server")
+
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
         assert client.server_info is not None
         assert client.server_info.name == "cal-mcp"
         assert client.server_info.version == __version__
