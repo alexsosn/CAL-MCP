@@ -1,0 +1,71 @@
+name: Implementation ticket
+description: Small, test-driven CAL-MCP implementation unit
+title: ""
+body:
+  - type: textarea
+    id: capability
+    attributes:
+      label: Capability / problem
+      description: What user/research capability or adapter problem does this issue address?
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Current upstream evidence
+      description: Link the relevant research.md section and exact CAL pages/interfaces observed.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Describe the smallest reviewable change.
+    validations:
+      required: true
+  - type: textarea
+    id: non_goals
+    attributes:
+      label: Non-goals
+      description: State what must not be implemented in this ticket.
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: Blocking issues/PRs or "none".
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Use an explicit checklist.
+      value: |
+        - [ ]
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: TDD / tests
+      description: Identify the failing test/fixture to add first and the required error/edge cases.
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Documentation impact
+      description: List user docs, research, architecture, or decisions that must change.
+    validations:
+      required: true
+  - type: textarea
+    id: load
+    attributes:
+      label: CAL access / request-load impact
+      description: State expected live request behavior and bounds. Use "none" for purely local work.
+    validations:
+      required: true
