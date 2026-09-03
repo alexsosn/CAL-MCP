@@ -5,14 +5,16 @@ import shutil
 import socket
 
 import pytest
-from mcp import Client, StdioServerParameters
 
 from cal_mcp import __version__
 from cal_mcp.server import mcp
+from mcp import Client, StdioServerParameters
 
 
 @pytest.mark.anyio
-async def test_server_introspection_does_not_require_network(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_server_introspection_does_not_require_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def deny_connect(*args: object, **kwargs: object) -> None:
         raise AssertionError("bootstrap/introspection must not open a network socket")
 
