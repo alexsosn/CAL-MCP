@@ -6,7 +6,7 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, TypeVar, cast
-from urllib.parse import urljoin, urlsplit
+from urllib.parse import urlencode, urljoin, urlsplit
 
 import httpx2
 
@@ -131,11 +131,14 @@ class _Httpx2Transport:
 
     async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
         url = urljoin(CAL_BASE_URL, request.path.lstrip("/"))
+        form_content = urlencode(request.data).encode("utf-8") if request.data else None
+        headers = {"Content-Type": "application/x-www-form-urlencoded"} if request.data else None
         response = await self._client.request(
             request.method.upper(),
             url,
             params=list(request.params),
-            data=list(request.data) if request.data else None,
+            content=form_content,
+            headers=headers,
         )
         return CalResponse(
             status_code=response.status_code,
