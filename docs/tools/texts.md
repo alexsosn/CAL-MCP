@@ -74,6 +74,8 @@ For a paginated text, the result may contain:
 
 Some short CAL texts are not rendered with a page-count marker. In that case CAL-MCP does not invent pagination metadata: the observed page is returned as page 1 and `page_count`, `total_lines`, `previous_page`, and `next_page` are `null`.
 
+For a successful requested-page operation, the page CAL renders must match the caller's one-based `page`. If CAL returns a different displayed page, or returns an unpaginated page-1 shape for a request after page 1, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
+
 CAL's current browser also exposes a `show all` navigation path. CAL-MCP **does not expose it** because it defeats the bounded-request contract. Moving to another page requires another explicit `cal_text_page` call.
 
 ### Text and line fields
@@ -88,7 +90,7 @@ A found page has a `text` reference plus ordered `lines`. Each line preserves th
 
 CAL-MCP does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; public token-at-coordinate analysis is a separate capability tracked by issue #8.
 
-### Missing text
+### Missing text and parser drift
 
 The current CAL text browser sometimes reports a missing file/subtext selection as an HTTP-success page containing CAL's explicit `NO LINES FOR ... ARE CURRENTLY STORED` message. CAL-MCP represents that as:
 
@@ -97,7 +99,7 @@ status: "not_found"
 page: null
 ```
 
-A recognized page with text returns `status: "found"`. Transport/content failures remain request errors, while an unrecognized successful page raises parser-drift failure. These states are intentionally distinct.
+A recognized page with text returns `status: "found"`. Transport/content failures remain request errors, while an unrecognized successful page raises parser-drift failure. Malformed identifiers found in CAL's returned links are also parser drift (`TextParseError`); invalid caller-supplied identifiers remain local request-validation errors before transport. These states are intentionally distinct.
 
 ## Request bounds
 
