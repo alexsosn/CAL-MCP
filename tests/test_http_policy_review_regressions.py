@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from contextlib import suppress
 from datetime import UTC, datetime
 from urllib.parse import parse_qsl, urlsplit
 
@@ -217,10 +218,8 @@ async def test_cancelled_leader_cannot_retain_completed_single_flight_when_cache
     finally:
         client._inflight_guard.release()
 
-    try:
+    with suppress(asyncio.CancelledError):
         await leader
-    except asyncio.CancelledError:
-        pass
 
     await client.fetch(request, parser=parse_text, cache_namespace="entry")
 
