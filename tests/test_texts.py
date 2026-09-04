@@ -49,13 +49,30 @@ def test_recognizable_empty_text_search_is_not_parser_drift() -> None:
             url="https://cal.huc.edu/newsearchtxts.php",
             body=(
                 b"<html><body><div>CAL search for texts like: no-such-text. "
-                b"Click on the file number to view.</div></body></html>"
+                b"Click on the file number to view.</div>"
+                b"<div>There are no files associated with the search term no-such-text</div>"
+                b"</body></html>"
             ),
             content_type="text/html; charset=UTF-8",
             retrieved_at=datetime(2026, 9, 4, tzinfo=UTC),
         )
     )
     assert page.matches == ()
+
+
+def test_text_search_intro_without_result_or_empty_marker_is_parser_drift() -> None:
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/newsearchtxts.php",
+        body=(
+            b"<html><body><div>CAL search for texts like: no-such-text. "
+            b"Click on the file number to view.</div></body></html>"
+        ),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 9, 4, tzinfo=UTC),
+    )
+    with pytest.raises(TextParseError):
+        parse_text_search_page(response)
 
 
 def test_text_catalogue_is_bounded_and_keeps_subtext_navigation_explicit() -> None:
