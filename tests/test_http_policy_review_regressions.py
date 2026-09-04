@@ -180,12 +180,8 @@ async def test_simultaneous_identical_requests_are_single_flight() -> None:
     client = CalHttpClient(transport=transport)
     request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
 
-    first = asyncio.create_task(
-        client.fetch(request, parser=parse_text, cache_namespace="entry")
-    )
-    second = asyncio.create_task(
-        client.fetch(request, parser=parse_text, cache_namespace="entry")
-    )
+    first = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    second = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
 
     await transport.started.wait()
     await asyncio.sleep(0)
