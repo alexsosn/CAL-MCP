@@ -2,7 +2,7 @@
 
 CAL-MCP's request layer is deliberately conservative because CAL is a live academic service and the project has not found a published CAL-specific machine-access policy. This page documents the request-policy contract implemented by `CalClientConfig`.
 
-The MCP server does not expose CAL-backed tools yet, so these settings are currently programmatic configuration for the adapter layer. CLI/environment wiring should be added only when a later tool ticket needs it; the defaults and safety bounds below remain the baseline.
+The current `cal_lexicon_lookup` tool uses these defaults when it creates its CAL client. CLI/environment wiring is not implemented yet; callers cannot widen the safety bounds through the MCP schema. Programmatic use of `CalHttpClient` may supply an explicit `CalClientConfig` within the enforced limits below.
 
 ## Default request policy
 
@@ -135,4 +135,4 @@ async with CalHttpClient(config=config) as client:
     ...
 ```
 
-Endpoint-specific CAL parsers and scholarly tools are introduced in later tickets; this configuration layer deliberately contains none of them.
+The public MCP tool does not expose these low-level settings as arguments. Endpoint-specific services, beginning with the lexicon adapter, consume this request layer and inherit its bounded defaults. See [Lexicon lookup](tools/lexicon.md) for the current CAL-backed tool behavior.
