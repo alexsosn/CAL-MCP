@@ -636,8 +636,6 @@ def _browse_prefix(value: str) -> str:
     result: list[str] = []
     base_characters = 0
     for char in value:
-        if char == " ":
-            continue
         if unicodedata.category(char).startswith("M"):
             if result:
                 result.append(char)
