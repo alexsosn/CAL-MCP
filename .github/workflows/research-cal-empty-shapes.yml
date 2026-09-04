@@ -1,0 +1,44 @@
+name: Research CAL empty search shapes
+
+on:
+  push:
+    branches: [issue-5-search]
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect bounded empty result shapes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          QUERIES = [
+              ("gloss", "https://cal.huc.edu/newsearchmngs.php", {"English": "qzxvjk#", "secondary": "true"}),
+              ("citation", "https://cal.huc.edu/searchcits.php", {"English": "qzxvjk"}),
+          ]
+
+          class Text(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.parts = []
+              def handle_data(self, data):
+                  self.parts.append(data)
+
+          for label, url, data in QUERIES:
+              req = Request(
+                  url,
+                  data=urlencode(data).encode(),
+                  headers={"User-Agent": "CAL-MCP research empty-shape audit", "Content-Type": "application/x-www-form-urlencoded"},
+                  method="POST",
+              )
+              with urlopen(req, timeout=20) as response:
+                  html = response.read().decode("utf-8", errors="replace")
+                  print("RESULT", label, response.status, response.geturl(), "bytes", len(html.encode()))
+              parser = Text(); parser.feed(html)
+              text = " ".join("".join(parser.parts).split())
+              print("TEXT", text[-800:])
+          PY
