@@ -103,12 +103,13 @@ The repository uses documentation as executable project state for humans and cod
 - [`wiki/decisions.md`](wiki/decisions.md) — durable architecture decisions.
 - [`wiki/backlog.md`](wiki/backlog.md) — issue map and release gates.
 - [`wiki/agentic-dev-loop.md`](wiki/agentic-dev-loop.md) — exact issue → implementation → review → merge loop.
+- [`docs/configuration.md`](docs/configuration.md) — implemented CAL HTTP/request/cache policy and conservative defaults.
 
-User-facing reference documentation under `docs/` will be introduced alongside the corresponding implemented tools so it cannot get ahead of the executable interface. Its planned structure is specified in `wiki/documentation.md`.
+Additional user-facing reference documentation under `docs/` is introduced alongside the corresponding implemented behavior so it cannot get ahead of the executable interface. Its planned structure is specified in `wiki/documentation.md`.
 
 ## Bootstrap development state
 
-The repository currently has a minimal MCP server shell only; no CAL-backed scholarly tools are implemented yet.
+The repository currently has a minimal MCP server shell and the internal bounded CAL HTTP/request-policy layer; no CAL-backed scholarly MCP tools are implemented yet.
 
 Requirements: Python 3.11+.
 
@@ -137,7 +138,7 @@ mypy
 pytest
 ```
 
-Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. Network-backed CAL behavior will be introduced only in the issues that implement the HTTP client and scholarly tools.
+Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. HTTP request-policy tests use injected transports and make no live CAL requests.
 
 ## Development model
 
