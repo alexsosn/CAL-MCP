@@ -587,12 +587,7 @@ def _looks_like_dialect(text: str) -> bool:
     parts = tuple(part.strip() for part in text.split(",") if part.strip())
     if not parts:
         return False
-    return all(
-        part in _KNOWN_DIALECTS
-        or "Aramaic" in part
-        or bool(re.fullmatch(r"[A-Z][A-Za-z0-9^{}.-]{1,12}", part))
-        for part in parts
-    )
+    return all(part in _KNOWN_DIALECTS or "Aramaic" in part for part in parts)
 
 
 def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
