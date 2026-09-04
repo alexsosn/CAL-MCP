@@ -187,6 +187,24 @@ Risk controls:
 - keep normal CI offline;
 - run very small opt-in/scheduled live smoke tests after release to detect drift.
 
+## R-013 — Lexicon entries use recursive outline numbering and multi-link citation rows
+
+**Rechecked:** 2026-09-04.
+
+The current `br N` lexicon entry demonstrates two parser-relevant structures that are not safely representable by a one-level parenthetical model or by splitting a rendered citation line independently for each link.
+
+The sense outline includes a top-level sense followed by repeated parenthetical numbering at several nested levels. In the current entry, the sequence under top-level sense 2 includes `(1)` → `(1)` → `(1)`, followed by sibling `(2)` at the deepest active level. The semantic hierarchy therefore has paths equivalent to `2`, `2.1`, `2.1.1`, `2.1.1.1`, then `2.1.1.2`; repeated `(1)` labels cannot be flattened without losing CAL's distinctions.
+
+The same entry also renders more than one linked citation reference on a single semantic row. Citation text must therefore be segmented between the positions of adjacent citation anchors. Taking the entire suffix after each link causes the first citation to absorb later references and their text.
+
+Source:
+
+- https://cal.huc.edu/cal_entry_web.php?lemma=br+N
+
+A deliberately reduced fixture recording these relationships is kept as `tests/fixtures/cal/entry_br_nested.html`; it is not an archived CAL page.
+
+**Implication:** the lexicon parser maintains recursive sense paths from the observed outline sequence, treats inconsistent parenthetical numbering as parser drift rather than guessing, and partitions multi-link citation rows by ordered anchor boundaries.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
