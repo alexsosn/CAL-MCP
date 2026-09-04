@@ -204,9 +204,7 @@ async def test_cancelled_leader_cannot_retain_completed_single_flight_when_cache
     )
     request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
 
-    leader = asyncio.create_task(
-        client.fetch(request, parser=parse_text, cache_namespace="entry")
-    )
+    leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
     await transport.started.wait()
 
     await client._inflight_guard.acquire()
