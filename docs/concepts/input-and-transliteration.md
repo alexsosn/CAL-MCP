@@ -28,7 +28,7 @@ The upstream evidence was rechecked on 2026-09-04:
 - `representation` — the detected or explicitly selected input representation;
 - `strategy` — whether the value passed through or used the limited CAL-code conversion table.
 
-Surrounding spaces are removed from `normalized`, while `original` remains unchanged. Internal spaces are preserved because CAL uses spaces in compounds and they can be semantically meaningful. Control/surrogate characters are rejected.
+Ordinary ASCII spaces at the start/end are removed from `normalized`, while `original` remains unchanged. Internal ASCII spaces are preserved because CAL uses spaces in compounds and they can be semantically meaningful. Other Unicode whitespace such as NBSP is not silently stripped; unsupported whitespace is rejected. Control/surrogate characters are rejected.
 
 ```python
 from cal_mcp.normalization import normalize_query
@@ -43,11 +43,13 @@ assert query.representation == "roman_shared"
 
 Automatic detection does not pretend that plain Roman input contains information that is not there.
 
-`mlk`, for example, is compatible with both the CAL-code and Unicode-transliteration alphabets because those characters are identical in both. CAL-MCP reports such input as `roman_shared` and leaves it unchanged. Callers that need a particular interpretation can provide an explicit `InputRepresentation` override.
+`mlk`, for example, is compatible with both the CAL-code and Unicode-transliteration alphabets because those characters are identical in both. CAL-MCP reports such input as `roman_shared` and leaves it unchanged. The shared Roman consonant set is the intersection explicitly evidenced by the current CAL browser table: `b g d h w z y k l m n s p q r t`. Callers that need a particular interpretation can provide an explicit `InputRepresentation` override.
 
-Hebrew and Syriac are detected by script. Mixing Hebrew and Syriac in one query is rejected as ambiguous. Unsupported Unicode characters are rejected rather than silently approximated.
+CAL-code-specific characters disambiguate the representation. For example, `x`, `T`, `P`, `c`, `$`, `&`, `)`, `(`, CAL vocalization codes such as `A`, and documented CAL punctuation are classified as CAL code. Arbitrary ASCII letters are not accepted merely because they are ASCII; undocumented examples such as `J`, `B`, and `j` are rejected.
 
-The current automatic Unicode-transliteration alphabet is deliberately limited to plain lowercase Roman letters plus the characters explicitly shown by CAL's current lexicon-browser table: `ˀ ˁ ḥ ṭ ṗ ṣ š ś`, along with documented separators. Broader scholarly transliteration conventions are not inferred merely because CAL may display additional vocalized forms in results.
+Hebrew and Syriac are detected by script. A valid script input must contain at least one Unicode letter in the relevant script; an isolated Hebrew/Syriac combining mark or punctuation code point is not accepted as a query. Marks and punctuation from the same Unicode block may accompany a real script letter. Mixing Hebrew and Syriac in one query is rejected as ambiguous.
+
+The current automatic Unicode-transliteration alphabet is deliberately limited to the shared Roman consonants above plus the characters explicitly shown by CAL's current lexicon-browser table: `ˀ ˁ ḥ ṭ ṗ ṣ š ś`. Space and underscore are the locally supported separators. CAL's `@` connector is CAL code, not Unicode transliteration; the browser explicitly tells Unicode/browser users to enter a space for that case. Broader scholarly transliteration conventions are not inferred merely because CAL may display additional vocalized forms in results.
 
 ## CAL code conversion
 
@@ -90,7 +92,9 @@ br@mwt)   -> br mwtˀ
 w_        -> w_
 ```
 
-CAL documents additional Roman-code punctuation and diacritic conventions. If such syntax is present, CAL-MCP passes the validated CAL-code value through unchanged rather than partially converting the consonants and producing a hybrid representation. For example, `mlk%` remains `mlk%`.
+CAL's Roman-code documentation also defines Jewish Aramaic vocalization codes (`a A e E i u U o O :`), Syriac diacritic/punctuation codes, Mandaic `D H S`, and manuscript/editorial syntax. Those documented characters are accepted as CAL code, but are not partially converted through the simple consonant table. For example, `mlk%` and `mAlk` remain CAL code and pass through unchanged.
+
+The local CAL-code validator uses an explicit whitelist derived from those documented conventions rather than accepting every ASCII letter or punctuation mark.
 
 ## No Hebrew/Syriac cross-conversion
 
@@ -109,7 +113,7 @@ query = normalize_query("$)wl", representation=InputRepresentation.CAL_CODE)
 assert query.normalized == "šˀwl"
 ```
 
-An override validates rather than coerces. Declaring `mlk` to be Hebrew, for example, raises `UnsupportedQueryError`; CAL-MCP will not translate it merely to satisfy the override.
+An override validates rather than coerces. Declaring `mlk` to be Hebrew, for example, raises `UnsupportedQueryError`; CAL-MCP will not translate it merely to satisfy the override. Declaring CAL-only `@` syntax as Unicode transliteration is likewise rejected.
 
 ## Query and form encoding
 
@@ -136,4 +140,4 @@ Normalization does not:
 - invent support for unverified scholarly diacritics;
 - perform network requests.
 
-When future endpoint evidence justifies another deterministic mapping, extend the table and its tests together rather than adding heuristic conversion.
+When future endpoint evidence justifies another deterministic mapping, extend the whitelist/table and its tests together rather than adding heuristic conversion.
