@@ -54,6 +54,12 @@ def test_response_size_configuration_is_finite_and_bounded() -> None:
         CalClientConfig(max_response_bytes=16 * 1024 * 1024 + 1)
 
 
+@pytest.mark.parametrize("value", [True, 1.5, "6"])
+def test_response_size_configuration_rejects_non_integer_values(value: object) -> None:
+    with pytest.raises(ValueError, match="max_response_bytes"):
+        CalClientConfig(max_response_bytes=value)  # type: ignore[arg-type]
+
+
 @pytest.mark.anyio
 async def test_production_transport_accepts_response_exactly_at_limit(
     monkeypatch: pytest.MonkeyPatch,
