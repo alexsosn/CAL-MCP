@@ -400,9 +400,10 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
 
         number_match = _NUMBER_RE.match(text)
         subnumber_match = _SUBNUMBER_RE.match(text)
-        if number_match or subnumber_match:
+        label_match = number_match or subnumber_match
+        if label_match is not None:
             finish_current()
-            value = int((number_match or subnumber_match).group(1))
+            value = int(label_match.group(1))
             path = (value,) if number_match else _subsense_path(previous_path, value)
             current = _SenseBuilder(label_path=path)
             continue
