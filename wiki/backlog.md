@@ -4,6 +4,10 @@
 
 GitHub issues are the execution source of truth. This file records sequencing, critical path, and release scope; it should not duplicate day-to-day issue discussion.
 
+## Current execution state
+
+Foundation and safety work #1, #2, #3, and #20 is merged. Issue #4 delivers the first public CAL-backed scholarly capability and establishes the typed lexical/provenance boundary used by later lexical work. After #4, #5 and #6 can proceed on the lexical lane while #7 can proceed independently on the text lane.
+
 ## Priority model
 
 - **P0 — foundation / critical path:** required before useful CAL tools can be implemented safely.
@@ -59,12 +63,7 @@ P2 specialist work can run in parallel after its prerequisites, but no CAL-backe
 
 ## Parallel work lanes
 
-Once #1 is merged:
-
-- **Infrastructure lane:** #2 → #20
-- **Normalization lane:** #3
-
-Once #2/#3/#20 are merged:
+The completed foundation is #1 → #2/#3 → #20. Current/next implementation lanes are:
 
 - **Lexical lane:** #4 → #5/#6
 - **Text lane:** #7 → #8
@@ -72,7 +71,7 @@ Once #2/#3/#20 are merged:
 - **Dictionary collation lane:** #14
 - **External-citation lane:** #13 (prefer after shared citation models exist)
 
-Once #4/#7 are merged:
+Once #4 and #7 are both available:
 
 - **Targum lane:** #10
 - **Syriac lane:** #11
