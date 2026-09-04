@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import unicodedata
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import urlencode
@@ -207,7 +207,7 @@ def _is_unicode_transliteration(value: str) -> bool:
     )
 
 
-def _contains_script_letter(value: str, in_script: callable[[str], bool]) -> bool:
+def _contains_script_letter(value: str, in_script: Callable[[str], bool]) -> bool:
     return any(in_script(char) and unicodedata.category(char).startswith("L") for char in value)
 
 
