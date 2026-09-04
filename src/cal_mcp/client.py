@@ -17,7 +17,13 @@ T = TypeVar("T")
 
 CAL_BASE_URL = "https://cal.huc.edu/"
 _TRANSIENT_STATUS_CODES = frozenset({500, 502, 503, 504})
+_RETRYABLE_TRANSPORT_EXCEPTIONS = (
+    TimeoutError,
+    httpx2.TimeoutException,
+    httpx2.NetworkError,
+)
 _HTML_CONTENT_TYPES = frozenset({"text/html", "application/xhtml+xml"})
+_MAX_RETRY_BACKOFF_SECONDS = 1.0
 
 
 class CalClientError(RuntimeError):
@@ -29,7 +35,7 @@ class CalRequestValidationError(CalClientError):
 
 
 class CalNetworkError(CalClientError):
-    """Raised when a bounded network/timeout retry budget is exhausted."""
+    """Raised when a CAL transport operation cannot complete safely."""
 
 
 class CalUpstreamError(CalClientError):
@@ -94,8 +100,14 @@ class CalClientConfig:
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be finite and > 0")
 
-        if not math.isfinite(self.retry_backoff_seconds) or self.retry_backoff_seconds < 0:
-            raise ValueError("retry_backoff_seconds must be finite and >= 0")
+        if (
+            not math.isfinite(self.retry_backoff_seconds)
+            or not 0 <= self.retry_backoff_seconds <= _MAX_RETRY_BACKOFF_SECONDS
+        ):
+            raise ValueError(
+                "retry_backoff_seconds must be finite and between 0 and "
+                f"{_MAX_RETRY_BACKOFF_SECONDS:g}"
+            )
         if not 1 <= self.max_concurrency <= 8:
             raise ValueError("max_concurrency must be between 1 and 8")
         if not 0 <= self.max_retries <= 3:
@@ -156,7 +168,8 @@ class CalHttpClient:
     """Single bounded HTTP path for all CAL adapters.
 
     Endpoint parsers are injected into ``fetch``. Only a successful, validated,
-    successfully parsed result is eligible for the process-local cache.
+    successfully parsed result is eligible for the process-local cache. Identical
+    requests already in flight are coalesced without creating background work.
     """
 
     def __init__(
@@ -172,6 +185,8 @@ class CalHttpClient:
             max_entries=cache_entries,
             ttl_seconds=self.config.cache_ttl_seconds,
         )
+        self._inflight_guard = asyncio.Lock()
+        self._inflight: dict[str, asyncio.Future[CalFetchResult[Any]]] = {}
         self._transport_owner: _Httpx2Transport | None = None
         if transport is None:
             self._transport_owner = _Httpx2Transport(self.config)
@@ -207,23 +222,70 @@ class CalHttpClient:
             raise CalRequestValidationError("cache_namespace must not be empty")
         key = self._cache_key(cache_namespace, normalized)
 
-        cached = self._cache.get(key)
+        cached = self._cached_result(key)
         if cached is not None:
-            record = cached.record
-            return CalFetchResult(
-                value=cast(T, record.value),
-                source_url=record.source_url,
-                retrieved_at=record.retrieved_at,
-                cache_hit=True,
-                cache_age_seconds=cached.age_seconds,
-            )
+            return cast(CalFetchResult[T], cached)
 
-        response = await self._request_with_retries(normalized)
+        async with self._inflight_guard:
+            cached = self._cached_result(key)
+            if cached is not None:
+                return cast(CalFetchResult[T], cached)
+
+            future = self._inflight.get(key)
+            if future is None:
+                future = asyncio.get_running_loop().create_future()
+                future.add_done_callback(self._consume_unobserved_future_exception)
+                self._inflight[key] = future
+                leader = True
+            else:
+                leader = False
+
+        if not leader:
+            return cast(CalFetchResult[T], await asyncio.shield(future))
+
+        try:
+            result = await self._fetch_uncached(normalized, parser=parser, cache_key=key)
+        except BaseException as exc:
+            if isinstance(exc, asyncio.CancelledError):
+                future.cancel()
+            elif not future.done():
+                future.set_exception(exc)
+            raise
+        else:
+            if not future.done():
+                future.set_result(cast(CalFetchResult[Any], result))
+            return result
+        finally:
+            async with self._inflight_guard:
+                if self._inflight.get(key) is future:
+                    del self._inflight[key]
+
+    def _cached_result(self, key: str) -> CalFetchResult[Any] | None:
+        cached = self._cache.get(key)
+        if cached is None:
+            return None
+        record = cached.record
+        return CalFetchResult(
+            value=record.value,
+            source_url=record.source_url,
+            retrieved_at=record.retrieved_at,
+            cache_hit=True,
+            cache_age_seconds=cached.age_seconds,
+        )
+
+    async def _fetch_uncached(
+        self,
+        request: CalRequest,
+        *,
+        parser: Callable[[CalResponse], T],
+        cache_key: str,
+    ) -> CalFetchResult[T]:
+        response = await self._request_with_retries(request)
         self._validate_content(response)
         parsed = parser(response)
 
         self._cache.put(
-            key,
+            cache_key,
             CacheRecord(
                 value=parsed,
                 source_url=response.url,
@@ -236,6 +298,11 @@ class CalHttpClient:
             retrieved_at=response.retrieved_at,
             cache_hit=False,
         )
+
+    @staticmethod
+    def _consume_unobserved_future_exception(future: asyncio.Future[CalFetchResult[Any]]) -> None:
+        if not future.cancelled():
+            future.exception()
 
     def _validate_and_normalize_request(self, request: CalRequest) -> CalRequest:
         method = request.method.upper().strip()
@@ -265,13 +332,15 @@ class CalHttpClient:
         for attempt in range(self.config.max_retries + 1):
             try:
                 response = await self._request_once(request)
-            except (TimeoutError, OSError, httpx2.HTTPError) as exc:
+            except _RETRYABLE_TRANSPORT_EXCEPTIONS as exc:
                 if attempt >= self.config.max_retries:
-                    if isinstance(exc, TimeoutError):
+                    if isinstance(exc, (TimeoutError, httpx2.TimeoutException)):
                         raise CalNetworkError("CAL request timeout") from exc
                     raise CalNetworkError("CAL network request failed") from exc
                 await self._backoff(attempt)
                 continue
+            except (httpx2.HTTPError, OSError) as exc:
+                raise CalNetworkError("CAL non-retryable transport request failed") from exc
 
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
@@ -286,11 +355,8 @@ class CalHttpClient:
 
     async def _request_once(self, request: CalRequest) -> CalResponse:
         async with self._semaphore:
-            try:
-                async with asyncio.timeout(self.config.total_timeout_seconds):
-                    return await self._transport(request, self.config)
-            except TimeoutError:
-                raise
+            async with asyncio.timeout(self.config.total_timeout_seconds):
+                return await self._transport(request, self.config)
 
     async def _backoff(self, attempt: int) -> None:
         delay = self.config.retry_backoff_seconds * (2**attempt)
