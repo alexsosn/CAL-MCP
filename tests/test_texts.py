@@ -94,6 +94,7 @@ def test_text_page_preserves_page_metadata_coordinates_and_token_positions() -> 
         requested_subtext_id=None,
     )
 
+    assert page is not None
     assert page.text.file_id == "71026"
     assert page.text.label == "BT AZ"
     assert page.page == 1
@@ -120,6 +121,42 @@ def test_text_page_preserves_page_metadata_coordinates_and_token_positions() -> 
         (0, "m)N"),
         (1, "dtny"),
     ]
+
+
+def test_unpaginated_text_page_does_not_invent_pagination_metadata() -> None:
+    page = parse_text_page(
+        _fixture_response(
+            "text_page_tel_dan.html",
+            "https://cal.huc.edu/get_a_chapter.php?file=13250&page=0",
+        ),
+        requested_file_id="13250",
+        requested_subtext_id=None,
+    )
+
+    assert page is not None
+    assert page.text.file_id == "13250"
+    assert page.text.label == "TDanStel (Tel Dan Stele)"
+    assert page.page == 1
+    assert page.page_count is None
+    assert page.total_lines is None
+    assert page.previous_page is None
+    assert page.next_page is None
+    assert [(line.coordinate, line.display_coordinate) for line in page.lines] == [
+        ("1325000000001", "01"),
+        ("1325000000002", "02"),
+    ]
+
+
+def test_explicit_no_lines_page_is_missing_not_parser_drift() -> None:
+    page = parse_text_page(
+        _fixture_response(
+            "text_page_missing.html",
+            "https://cal.huc.edu/get_a_chapter.php?file=13250&sub=999",
+        ),
+        requested_file_id="13250",
+        requested_subtext_id="999",
+    )
+    assert page is None
 
 
 def test_text_parsers_fail_explicitly_on_unrecognized_success_pages() -> None:
@@ -161,6 +198,11 @@ class RecordingTransport:
                 "https://cal.huc.edu/showsubtexts.php?subtext=3",
             )
         if request.path == "get_a_chapter.php":
+            if ("sub", "999") in request.params:
+                return _fixture_response(
+                    "text_page_missing.html",
+                    "https://cal.huc.edu/get_a_chapter.php?file=13250&sub=999",
+                )
             return _fixture_response(
                 "text_page_bt_az.html",
                 "https://cal.huc.edu/get_a_chapter.php?file=71026&page=0",
@@ -182,6 +224,8 @@ async def test_text_service_uses_one_request_per_explicit_operation() -> None:
     assert search.provenance.submitted_query == "Tel Dan"
     assert len(root.texts) == 1
     assert len(category.texts) == 3
+    assert page.status.value == "found"
+    assert page.page is not None
     assert page.page.page == 1
 
     requests = [
@@ -210,6 +254,20 @@ async def test_text_page_maps_public_page_two_to_upstream_page_one() -> None:
             params=(("file", "71026"), ("sub", "4"), ("page", "1")),
         )
     ]
+
+
+@pytest.mark.anyio
+async def test_text_service_reports_cal_no_lines_as_not_found() -> None:
+    transport = RecordingTransport()
+    service = TextService(CalHttpClient(transport=transport))
+
+    result = await service.page("13250", subtext_id="999", page=1)
+
+    assert result.status.value == "not_found"
+    assert result.page is None
+    assert result.provenance.upstream_id == "13250"
+    assert result.provenance.subtext_id == "999"
+    assert len(transport.requests) == 1
 
 
 @pytest.mark.anyio
