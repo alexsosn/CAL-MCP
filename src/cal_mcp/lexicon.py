@@ -571,11 +571,17 @@ def _lemma_key_from_href(href: str) -> str | None:
 
 
 def _subsense_path(previous: tuple[int, ...] | None, value: int) -> tuple[int, ...]:
+    if value < 1:
+        raise LexiconParseError("CAL lexicon subsense labels must be positive integers")
     if not previous:
         return (value,)
-    if len(previous) == 1:
-        return (*previous, value)
-    return (*previous[:-1], value)
+    if value == 1:
+        return (*previous, 1)
+
+    for index in range(len(previous) - 1, 0, -1):
+        if previous[index] == value - 1:
+            return (*previous[:index], value)
+    raise LexiconParseError("CAL lexicon subsense numbering cannot be placed safely")
 
 
 def _looks_like_grammar(text: str) -> bool:
@@ -591,15 +597,28 @@ def _looks_like_dialect(text: str) -> bool:
 
 
 def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
-    citations: list[Citation] = []
+    locations: list[tuple[_Link, int]] = []
+    cursor = 0
     for link in line.links:
+        start = line.text.find(link.text, cursor)
+        if start < 0:
+            raise LexiconParseError("CAL citation link text is missing from its rendered line")
+        locations.append((link, start))
+        cursor = start + len(link.text)
+
+    citations: list[Citation] = []
+    for index, (link, start) in enumerate(locations):
+        text_start = start + len(link.text)
+        text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
+        citation_text = line.text[text_start:text_end].strip()
+        if citation_text.endswith(";"):
+            citation_text = citation_text[:-1].rstrip()
         reference = link.text.removesuffix("↗").strip()
-        suffix = line.text.split(link.text, 1)[1].strip() if link.text in line.text else ""
         citations.append(
             Citation(
                 reference=reference,
                 url=urljoin(base_url, link.href) if link.href else None,
-                text=suffix,
+                text=citation_text,
             )
         )
     return citations
