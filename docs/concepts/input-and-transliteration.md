@@ -28,7 +28,7 @@ The upstream evidence was rechecked on 2026-09-04:
 - `representation` — the detected or explicitly selected input representation;
 - `strategy` — whether the value passed through or used the limited CAL-code conversion table.
 
-Ordinary ASCII spaces at the start/end are removed from `normalized`, while `original` remains unchanged. Internal ASCII spaces are preserved because CAL uses spaces in compounds and they can be semantically meaningful. Other Unicode whitespace such as NBSP is not silently stripped; unsupported whitespace is rejected. Control/surrogate characters are rejected.
+Ordinary ASCII spaces at the start/end are removed from `normalized`, while `original` remains unchanged. Internal ASCII spaces are preserved because CAL uses spaces in compounds and they can be semantically meaningful. Other Unicode whitespace such as NBSP is not silently stripped; unsupported whitespace is rejected. Control/surrogate characters are rejected. The normalized result is checked again after conversion so a non-empty source string cannot turn into a blank upstream query.
 
 ```python
 from cal_mcp.normalization import normalize_query
@@ -91,6 +91,8 @@ $)wl      -> šˀwl
 br@mwt)   -> br mwtˀ
 w_        -> w_
 ```
+
+Because `@` converts to a space, connector-only values such as `@`, `@@`, or `@ @` are rejected after conversion instead of becoming blank upstream queries. Embedded connectors such as `br@mwt)` remain valid.
 
 CAL's Roman-code documentation also defines Jewish Aramaic vocalization codes (`a A e E i u U o O :`), Syriac diacritic/punctuation codes, Mandaic `D H S`, and manuscript/editorial syntax. Those documented characters are accepted as CAL code, but are not partially converted through the simple consonant table. For example, `mlk%` and `mAlk` remain CAL code and pass through unchanged.
 
