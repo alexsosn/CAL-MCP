@@ -118,6 +118,9 @@ def normalize_query(
         normalized = candidate
         strategy = NormalizationStrategy.PASS_THROUGH
 
+    if not normalized.strip(" "):
+        raise UnsupportedQueryError("CAL query is empty after normalization")
+
     return NormalizedQuery(
         original=value,
         normalized=normalized,
