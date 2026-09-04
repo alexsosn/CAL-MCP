@@ -199,7 +199,17 @@ def parse_text_page(
     page_number, page_count, total_lines = _page_metadata(lines)
     if requested_page is not None and page_number != requested_page:
         raise TextParseError("CAL text page number differs from the requested page")
-    previous_page, next_page = _page_navigation(lines)
+    previous_page, next_page = _page_navigation(
+        lines,
+        requested_file_id=requested_file_id,
+        requested_subtext_id=requested_subtext_id,
+    )
+    _validate_page_navigation(
+        page_number=page_number,
+        page_count=page_count,
+        previous_page=previous_page,
+        next_page=next_page,
+    )
     text_lines = tuple(
         parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
     )
@@ -452,7 +462,12 @@ def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:
     return found
 
 
-def _page_navigation(lines: list[_Line]) -> tuple[int | None, int | None]:
+def _page_navigation(
+    lines: list[_Line],
+    *,
+    requested_file_id: str,
+    requested_subtext_id: str | None,
+) -> tuple[int | None, int | None]:
     previous: int | None = None
     next_page: int | None = None
     for line in lines:
@@ -463,6 +478,21 @@ def _page_navigation(lines: list[_Line]) -> tuple[int | None, int | None]:
             if "previous page" not in label and "next page" not in label:
                 continue
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+            file_id = _single_query_value(query, "file", "page-navigation")
+            _parse_id(file_id, "file_id")
+            if file_id != requested_file_id:
+                raise TextParseError("CAL text page navigation file differs from requested file")
+
+            subtext_id: str | None = None
+            sub_values = query.get("sub")
+            if sub_values is not None:
+                if len(sub_values) != 1:
+                    raise TextParseError("CAL text page navigation has repeated sub identifiers")
+                if sub_values[0]:
+                    subtext_id = _parse_id(sub_values[0], "subtext_id")
+            if subtext_id != requested_subtext_id:
+                raise TextParseError("CAL text page navigation subtext differs from requested subtext")
+
             upstream_page = _single_query_value(query, "page", "page-navigation")
             if not upstream_page.isdigit():
                 raise TextParseError("CAL text page navigation has a nonnumeric page")
@@ -472,6 +502,28 @@ def _page_navigation(lines: list[_Line]) -> tuple[int | None, int | None]:
             if "next page" in label:
                 next_page = _same_or_unset(next_page, public_page, "next")
     return previous, next_page
+
+
+def _validate_page_navigation(
+    *,
+    page_number: int,
+    page_count: int | None,
+    previous_page: int | None,
+    next_page: int | None,
+) -> None:
+    if page_count is None:
+        if previous_page is not None or next_page is not None:
+            raise TextParseError("CAL text page has navigation without pagination metadata")
+        return
+
+    if previous_page is not None and previous_page != page_number - 1:
+        raise TextParseError("CAL text page has inconsistent previous-page navigation")
+    if next_page is not None and next_page != page_number + 1:
+        raise TextParseError("CAL text page has inconsistent next-page navigation")
+    if previous_page is not None and previous_page < 1:
+        raise TextParseError("CAL text page previous-page navigation is out of range")
+    if next_page is not None and next_page > page_count:
+        raise TextParseError("CAL text page next-page navigation is out of range")
 
 
 def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
