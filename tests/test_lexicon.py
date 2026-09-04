@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import quote_plus
 
 import pytest
 
@@ -95,9 +96,9 @@ def test_missing_optional_sections_are_empty_not_parser_drift() -> None:
     entry = parse_lexicon_entry(
         response(
             "entry_bysh_n.html",
-            url="https://cal.huc.edu/cal_entry_web.php?lemma=bysh+N",
+            url="https://cal.huc.edu/cal_entry_web.php?lemma=by%24h+N",
         ),
-        lemma_key="bysh N",
+        lemma_key="by$h N",
     )
 
     assert entry.form_usage == ()
@@ -134,7 +135,7 @@ def test_browse_parser_preserves_aliases_and_homograph_keys() -> None:
         )
     )
 
-    alias_target = next(item for item in browse.entries if item.lemma_key == "bysh N")
+    alias_target = next(item for item in browse.entries if item.lemma_key == "by$h N")
     assert alias_target.aliases == ("bˀyšh", "bˀyštˀ")
     assert alias_target.headwords == ("byšh", "byštˀ")
 
@@ -181,11 +182,11 @@ class FixtureTransport:
             self.entry_calls[lemma_key] = self.entry_calls.get(lemma_key, 0) + 1
             fixture = {
                 "br N": "entry_br_n.html",
-                "bysh N": "entry_bysh_n.html",
+                "by$h N": "entry_bysh_n.html",
             }[lemma_key]
             return response(
                 fixture,
-                url=f"https://cal.huc.edu/cal_entry_web.php?lemma={lemma_key.replace(' ', '+')}",
+                url=f"https://cal.huc.edu/cal_entry_web.php?lemma={quote_plus(lemma_key)}",
             )
 
         raise AssertionError(f"unexpected CAL request: {request}")
@@ -200,13 +201,13 @@ async def test_lookup_uses_bounded_browse_then_exact_entry_and_provenance() -> N
 
     assert result.status is LexiconLookupStatus.FOUND
     assert result.entry is not None
-    assert result.entry.lemma.lemma_key == "bysh N"
+    assert result.entry.lemma.lemma_key == "by$h N"
     assert result.provenance is not None
     assert result.provenance.source == "CAL"
     assert result.provenance.original_query == "bˀyšh"
     assert result.provenance.normalized_query == "bˀyšh"
-    assert result.provenance.upstream_id == "bysh N"
-    assert result.provenance.source_url.endswith("lemma=bysh+N")
+    assert result.provenance.upstream_id == "by$h N"
+    assert result.provenance.source_url.endswith("lemma=by%24h+N")
     assert result.provenance.retrieved_at == datetime(2026, 9, 4, 12, 0, tzinfo=UTC)
 
     assert transport.requests[0] == CalRequest(
@@ -217,7 +218,7 @@ async def test_lookup_uses_bounded_browse_then_exact_entry_and_provenance() -> N
     assert transport.requests[1] == CalRequest(
         method="GET",
         path="cal_entry_web.php",
-        params=(("lemma", "bysh N"),),
+        params=(("lemma", "by$h N"),),
     )
     assert len(transport.requests) == 2
 
