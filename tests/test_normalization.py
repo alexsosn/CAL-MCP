@@ -18,6 +18,8 @@ from cal_mcp.normalization import (
         ("šˀwl", InputRepresentation.UNICODE_TRANSLITERATION),
         ("מלכ", InputRepresentation.HEBREW),
         ("ܡܠܟ", InputRepresentation.SYRIAC),
+        ("מֶלֶךְ", InputRepresentation.HEBREW),
+        ("ܡܲܠܟܵܐ", InputRepresentation.SYRIAC),
     ],
 )
 def test_cal_supported_unicode_representations_pass_through(
@@ -76,6 +78,14 @@ def test_cal_code_with_documented_non_consonantal_punctuation_is_passed_through(
     assert result.strategy is NormalizationStrategy.PASS_THROUGH
 
 
+def test_documented_uppercase_cal_code_is_detected_as_cal_code() -> None:
+    result = normalize_query("mAlk")
+
+    assert result.normalized == "mAlk"
+    assert result.representation is InputRepresentation.CAL_CODE
+    assert result.strategy is NormalizationStrategy.PASS_THROUGH
+
+
 def test_explicit_override_disambiguates_plain_roman_input() -> None:
     cal_code = normalize_query("mlk", representation=InputRepresentation.CAL_CODE)
     unicode_value = normalize_query(
@@ -97,6 +107,31 @@ def test_incompatible_explicit_override_is_rejected() -> None:
 def test_mixed_hebrew_and_syriac_is_explicitly_ambiguous() -> None:
     with pytest.raises(AmbiguousQueryError, match="mixed"):
         normalize_query("מלܟ")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "\u05b0",
+        "\u05be",
+        "\u0730",
+        "\u0700",
+    ],
+)
+def test_script_mark_or_punctuation_without_letter_is_rejected(value: str) -> None:
+    with pytest.raises(UnsupportedQueryError):
+        normalize_query(value)
+
+
+@pytest.mark.parametrize("value", ["J", "B"])
+def test_undocumented_uppercase_is_not_labeled_roman_shared(value: str) -> None:
+    with pytest.raises(UnsupportedQueryError):
+        normalize_query(value)
+
+
+def test_non_ascii_boundary_whitespace_is_not_silently_removed() -> None:
+    with pytest.raises(UnsupportedQueryError):
+        normalize_query("\u00a0mlk\u00a0")
 
 
 @pytest.mark.parametrize(
