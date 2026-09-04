@@ -192,3 +192,36 @@ async def test_simultaneous_identical_requests_are_single_flight() -> None:
 
     assert len(transport.requests) == 1
     assert first_result.value == second_result.value
+
+
+@pytest.mark.anyio
+async def test_cancelled_leader_cannot_retain_completed_single_flight_when_cache_disabled() -> None:
+    transport = BlockingTransport(html_response())
+    client = CalHttpClient(
+        config=CalClientConfig(cache_enabled=False),
+        transport=transport,
+    )
+    request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
+
+    leader = asyncio.create_task(
+        client.fetch(request, parser=parse_text, cache_namespace="entry")
+    )
+    await transport.started.wait()
+
+    await client._inflight_guard.acquire()
+    try:
+        transport.release.set()
+        await asyncio.sleep(0)
+        if not leader.done():
+            leader.cancel()
+    finally:
+        client._inflight_guard.release()
+
+    try:
+        await leader
+    except asyncio.CancelledError:
+        pass
+
+    await client.fetch(request, parser=parse_text, cache_namespace="entry")
+
+    assert len(transport.requests) == 2
