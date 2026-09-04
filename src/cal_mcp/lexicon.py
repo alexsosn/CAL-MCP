@@ -207,7 +207,7 @@ _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
 _STEM_HEADING_RE = re.compile(r"^(?P<heading>.+?)\s+\d+\s+senses?▶$")
 _CITATION_MARKER_RE = re.compile(r"^▶\s*(?P<count>\d+)\s+citations?$", re.IGNORECASE)
-_CITATION_SEPARATOR_RE = re.compile(r"\s+;\s+")
+_CITATION_SEPARATOR_RE = re.compile(r"(?:\s+;\s*|\s*;\s+)")
 _SECTION_FORM = "§Form & Usage▶"
 _SECTION_DERIVATIVES = "☛Derivatives▶"
 _SECTION_NOTES = "✎Notes & Bibliography▶"
@@ -790,7 +790,7 @@ _HEBREW_SIN_DOT = "\u05c2"
 
 
 def _comparison_surface(value: str) -> str:
-    normalized = unicodedata.normalize("NFD", value.strip(" "))
+    normalized = unicodedata.normalize("NFC", value.strip(" "))
     output: list[str] = []
     index = 0
     while index < len(normalized):
