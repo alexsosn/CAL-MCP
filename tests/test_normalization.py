@@ -32,7 +32,7 @@ def test_cal_supported_unicode_representations_pass_through(
     assert result.strategy is NormalizationStrategy.PASS_THROUGH
 
 
-def test_plain_roman_shared_input_is_preserved_without_guessing_between_equivalent_encodings() -> None:
+def test_plain_roman_shared_input_is_preserved_without_guessing() -> None:
     result = normalize_query("  mlk  ")
 
     assert result.original == "  mlk  "
