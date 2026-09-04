@@ -228,20 +228,41 @@ Sources:
 
 **Implication:** the lexicon parser does not use a closed POS whitelist; it recognizes CAL-style abbreviation tokens while preserving their exact text. Dialect matching is based on documented CAL codes/display labels and only after a sense definition has been established. Script comparison preserves the browser's shin/sin and Syriac `ܧ` distinctions. Mixed linked/plain citation rows retain all counted fragments, using nullable adapter `reference`/`url` fields when upstream markup does not supply them.
 
+## R-015 — English gloss and citation-text searches are distinct bounded POST surfaces
+
+**Rechecked:** 2026-09-04.
+
+A bounded form audit confirmed the current request contracts instead of inferring them from result URLs. English gloss search submits `POST /newsearchmngs.php` with the English search string in `English` and CAL's primary/all-glosses radio value in `secondary` (`""` or `"true"`). English citation-text search submits `POST /searchcits.php` with the search string in `English`.
+
+The current gloss result surface renders ordered linked CAL lemma headers followed by gloss text. A bounded `camel#` all-glosses probe produced 10 parsed matches; the production parser identified `bwkty N` / `bactrian camel` as the first result. The current citation-text result surface renders repeated lemma header → lexical context → citation rows, with citation reference, source-language text, and English translation separated in the rendered row. A bounded `camel` probe produced 154 parsed hits; the production parser identified the first as lemma `)w c`, reference `OS MkSin10:25`, with both source text and English translation present.
+
+The same audit established CAL's explicit empty-result messages: `There are no glosses with the word: ...` and `There are no citations with the word: ...`. CAL's citation-search instructions accept one to three English words. They also describe upstream exceptions/behavior for very common short words; that behavior should remain CAL's responsibility rather than becoming an independently maintained CAL-MCP stop-word list.
+
+No page number, next-page link, continuation token, or other stable continuation control was exposed by the representative current gloss or citation result pages inspected in this audit. The citation example was still a single response of roughly 80 KB. Absence from these representative pages is not proof that CAL can never paginate; it is evidence that CAL-MCP must not invent a continuation contract before one is actually observed and tested.
+
+Sources:
+
+- https://cal.huc.edu/searching/englishnew.html
+- https://cal.huc.edu/searching/srchcits.html
+- https://cal.huc.edu/searching/CAL_search_page.html
+
+The form/result inspection and production-parser smoke were deliberately tiny, branch-only live checks. The temporary workflows were deleted after use; normal CI remains offline and fixture-driven.
+
+**Implication:** CAL-MCP exposes gloss search and citation-text search as two typed tools, each performing exactly one bounded CAL POST per call. It preserves CAL order and distinctions, does not fetch returned lexicon entries automatically, does not rerank/deduplicate citation hits, and does not invent pagination. Response size remains bounded by the shared HTTP safety limit. Endpoint/form names remain adapter internals rather than MCP parameters.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
 
-1. What exact request parameters do the current English gloss/citation search forms submit?
-2. What is the canonical endpoint and parameter model for basic and advanced KWIC/concordance?
-3. Which dialect identifiers are stable machine values versus display labels?
-4. How is text pagination represented and how should passage boundaries be modeled?
-5. Which CAL identifiers are stable enough to expose as public adapter identifiers?
-6. Which Targum and Syriac operations compose cleanly into general tools and which deserve specialist tools?
-7. Does the bibliography interface expose stable query parameters suitable for typed search?
-8. What minimal cache policy gives useful duplicate-request suppression without retaining a meaningful CAL dataset?
-9. Does CAL expose `robots.txt` or future machine-access guidance that should alter request policy?
-10. What subset of upstream HTML can be kept as test fixtures while respecting copyright and avoiding unnecessary CAL content retention?
+1. What is the canonical endpoint and parameter model for basic and advanced KWIC/concordance?
+2. Which dialect identifiers are stable machine values versus display labels?
+3. How is text pagination represented and how should passage boundaries be modeled?
+4. Which CAL identifiers are stable enough to expose as public adapter identifiers?
+5. Which Targum and Syriac operations compose cleanly into general tools and which deserve specialist tools?
+6. Does the bibliography interface expose stable query parameters suitable for typed search?
+7. What minimal cache policy gives useful duplicate-request suppression without retaining a meaningful CAL dataset?
+8. Does CAL expose `robots.txt` or future machine-access guidance that should alter request policy?
+9. What subset of upstream HTML can be kept as test fixtures while respecting copyright and avoiding unnecessary CAL content retention?
 
 ## Research update procedure
 

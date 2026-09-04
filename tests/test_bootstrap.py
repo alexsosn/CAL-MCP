@@ -14,14 +14,31 @@ from cal_mcp import __version__
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 
 
-async def _assert_public_lexicon_tool(client: Client) -> None:
-    tools = (await client.list_tools()).tools
-    assert [tool.name for tool in tools] == ["cal_lexicon_lookup"]
-    schema = tools[0].input_schema
-    assert set(schema["properties"]) == {"query", "lemma_key"}
-    assert schema["required"] == ["query"]
-    assert "first3" not in schema["properties"]
-    assert "cits" not in schema["properties"]
+async def _assert_public_tools(client: Client) -> None:
+    tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+    assert set(tools) == {
+        "cal_lexicon_lookup",
+        "cal_gloss_search",
+        "cal_citation_text_search",
+    }
+
+    lexicon_schema = tools["cal_lexicon_lookup"].input_schema
+    assert set(lexicon_schema["properties"]) == {"query", "lemma_key"}
+    assert lexicon_schema["required"] == ["query"]
+
+    gloss_schema = tools["cal_gloss_search"].input_schema
+    assert set(gloss_schema["properties"]) == {"query", "all_glosses"}
+    assert gloss_schema["required"] == ["query"]
+
+    citation_schema = tools["cal_citation_text_search"].input_schema
+    assert set(citation_schema["properties"]) == {"query"}
+    assert citation_schema["required"] == ["query"]
+
+    for schema in (lexicon_schema, gloss_schema, citation_schema):
+        assert "English" not in schema["properties"]
+        assert "secondary" not in schema["properties"]
+        assert "first3" not in schema["properties"]
+        assert "cits" not in schema["properties"]
 
 
 @pytest.mark.anyio
@@ -42,7 +59,7 @@ async def test_server_import_and_introspection_do_not_require_network(
         assert client.server_info is not None
         assert client.server_info.name == "cal-mcp"
         assert client.server_info.version == __version__
-        await _assert_public_lexicon_tool(client)
+        await _assert_public_tools(client)
 
 
 @pytest.mark.anyio
@@ -101,4 +118,4 @@ async def test_installed_entry_point_starts_over_stdio() -> None:
         assert client.server_info is not None
         assert client.server_info.name == "cal-mcp"
         assert client.server_info.version == __version__
-        await _assert_public_lexicon_tool(client)
+        await _assert_public_tools(client)
