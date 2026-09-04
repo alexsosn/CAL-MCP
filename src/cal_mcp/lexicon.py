@@ -194,7 +194,9 @@ class _SemanticHTMLParser(HTMLParser):
     def _flush(self) -> None:
         text = _clean_text("".join(self._parts))
         if text:
-            self.lines.append(_Line(text=text, links=tuple(self._links), list_depth=self._line_depth))
+            self.lines.append(
+                _Line(text=text, links=tuple(self._links), list_depth=self._line_depth)
+            )
         self._parts.clear()
         self._links.clear()
         self._line_depth = max(self._list_depth, 0)
@@ -309,7 +311,9 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
     page_text = " ".join(line.text.lower() for line in lines)
     if any(phrase in page_text for phrase in _NOT_FOUND_PHRASES):
         return BrowsePage(entries=())
-    raise LexiconParseError("CAL lexicon browse page contains neither entries nor explicit no-match")
+    raise LexiconParseError(
+        "CAL lexicon browse page contains neither entries nor explicit no-match"
+    )
 
 
 def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntry:
@@ -399,10 +403,7 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
         if number_match or subnumber_match:
             finish_current()
             value = int((number_match or subnumber_match).group(1))
-            if number_match:
-                path = (value,)
-            else:
-                path = _subsense_path(previous_path, value)
+            path = (value,) if number_match else _subsense_path(previous_path, value)
             current = _SenseBuilder(label_path=path)
             continue
 
@@ -465,7 +466,9 @@ class LexiconLookupService:
         )
 
         matches = tuple(
-            item for item in browse_result.value.entries if _query_matches(normalized.normalized, item)
+            item
+            for item in browse_result.value.entries
+            if _query_matches(normalized.normalized, item)
         )
         if not matches:
             return LexiconLookupResult(
