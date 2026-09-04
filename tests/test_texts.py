@@ -7,8 +7,8 @@ import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.texts import (
-    TextService,
     TextParseError,
+    TextService,
     parse_text_catalogue_page,
     parse_text_page,
     parse_text_search_page,
@@ -37,7 +37,9 @@ def test_text_search_preserves_cal_text_identifier_and_description() -> None:
     assert match.file_id == "13250"
     assert match.subtext_id is None
     assert match.label == "TDanStel (Tel Dan Stele)"
-    assert match.description == "Line 2 Text according to A. Biran and J. Naveh; dated to 9th century"
+    assert match.description == (
+        "Line 2 Text according to A. Biran and J. Naveh; dated to 9th century"
+    )
 
 
 def test_recognizable_empty_text_search_is_not_parser_drift() -> None:
@@ -45,7 +47,10 @@ def test_recognizable_empty_text_search_is_not_parser_drift() -> None:
         CalResponse(
             status_code=200,
             url="https://cal.huc.edu/newsearchtxts.php",
-            body=b"<html><body><div>CAL search for texts like: no-such-text. Click on the file number to view.</div></body></html>",
+            body=(
+                b"<html><body><div>CAL search for texts like: no-such-text. "
+                b"Click on the file number to view.</div></body></html>"
+            ),
             content_type="text/html; charset=UTF-8",
             retrieved_at=datetime(2026, 9, 4, tzinfo=UTC),
         )
@@ -102,13 +107,19 @@ def test_text_page_preserves_page_metadata_coordinates_and_token_positions() -> 
     assert first.coordinate == "7102601002107"
     assert first.display_coordinate == "ms01 pg002 sd1 ln07"
     assert first.comment_url is None
-    assert [(token.word_index, token.text) for token in first.tokens] == [(0, "xd"), (1, "t)ny")]
+    assert [(token.word_index, token.text) for token in first.tokens] == [
+        (0, "xd"),
+        (1, "t)ny"),
+    ]
 
     second = page.lines[1]
     assert second.coordinate == "7102601002203"
     assert second.display_coordinate == "ms01 pg002 sd2 ln03"
     assert second.comment_url == "https://cal.huc.edu/comment.php?coord=7102601002203"
-    assert [(token.word_index, token.text) for token in second.tokens] == [(0, "m)N"), (1, "dtny")]
+    assert [(token.word_index, token.text) for token in second.tokens] == [
+        (0, "m)N"),
+        (1, "dtny"),
+    ]
 
 
 def test_text_parsers_fail_explicitly_on_unrecognized_success_pages() -> None:
@@ -135,9 +146,15 @@ class RecordingTransport:
         del config
         self.requests.append(request)
         if request.path == "newsearchtxts.php":
-            return _fixture_response("text_search_tel_dan.html", "https://cal.huc.edu/newsearchtxts.php")
+            return _fixture_response(
+                "text_search_tel_dan.html",
+                "https://cal.huc.edu/newsearchtxts.php",
+            )
         if request.path == "newtextmenu.html":
-            return _fixture_response("text_catalogue_root.html", "https://cal.huc.edu/newtextmenu.html")
+            return _fixture_response(
+                "text_catalogue_root.html",
+                "https://cal.huc.edu/newtextmenu.html",
+            )
         if request.path == "showsubtexts.php":
             return _fixture_response(
                 "text_catalogue_biblical.html",
@@ -167,7 +184,11 @@ async def test_text_service_uses_one_request_per_explicit_operation() -> None:
     assert len(category.texts) == 3
     assert page.page.page == 1
 
-    assert [(request.method, request.path, request.params, request.data) for request in transport.requests] == [
+    requests = [
+        (request.method, request.path, request.params, request.data)
+        for request in transport.requests
+    ]
+    assert requests == [
         ("POST", "newsearchtxts.php", (), (("search", "Tel Dan"),)),
         ("GET", "newtextmenu.html", (), ()),
         ("GET", "showsubtexts.php", (("subtext", "3"),), ()),
@@ -202,7 +223,10 @@ async def test_text_page_maps_public_page_two_to_upstream_page_one() -> None:
         ("page_subtext", ("71026",)),
     ],
 )
-async def test_invalid_text_requests_fail_before_transport(operation: str, args: tuple[str, ...]) -> None:
+async def test_invalid_text_requests_fail_before_transport(
+    operation: str,
+    args: tuple[str, ...],
+) -> None:
     transport = RecordingTransport()
     service = TextService(CalHttpClient(transport=transport))
 
