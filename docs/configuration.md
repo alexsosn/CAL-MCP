@@ -14,7 +14,7 @@ The MCP server does not expose CAL-backed tools yet, so these settings are curre
 | Maximum concurrency | 2 | 1–8 |
 | Retry count | 1 | 0–3 |
 | Initial retry backoff | 0.25 s | finite, 0–1 s; exponential per retry |
-| Maximum response body | 2 MiB | 1 byte–16 MiB; enforced while streaming decoded response bytes |
+| Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
 | Cache enabled | yes | completed-result retention can be disabled completely |
 | Cache entries | 128 | 0–4096; 0 retains nothing |
 | Cache TTL | 900 s (15 min) | > 0 and <= 86400 s |
@@ -24,7 +24,7 @@ HTTPX2 also receives explicit connection/read timeouts and connection-pool limit
 
 ## Response-size limit
 
-The production HTTPX2 transport streams decoded response bytes instead of using an eager `response.content` read. `max_response_bytes` defaults to 2 MiB and cannot be configured above 16 MiB.
+The production HTTPX2 transport streams decoded response bytes instead of using an eager `response.content` read. `max_response_bytes` defaults to 2 MiB and cannot be configured above 16 MiB. It must be an actual integer value: booleans, floats, strings, and other non-integer values are rejected by `CalClientConfig` construction before a transport is created.
 
 CAL-MCP accumulates only chunks that keep the retained response body at or below the configured limit. The decoded streaming iterator is requested in bounded chunks of at most 64 KiB (or `max_response_bytes + 1` for smaller limits), so the transport needs only one bounded look-ahead chunk to detect an over-limit response. An exactly-at-limit body is accepted; the first chunk that would make the retained body exceed the limit raises `CalResponseTooLargeError`, a `CalContentError` subclass, and the response stream is closed.
 
