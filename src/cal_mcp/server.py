@@ -10,6 +10,7 @@ from mcp.server.mcpserver import Context
 from cal_mcp import __version__
 from cal_mcp.client import CalHttpClient
 from cal_mcp.lexicon import LexiconLookupService
+from cal_mcp.search import EnglishSearchService
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,8 +32,10 @@ mcp = MCPServer(
     description="Read-only MCP adapter for the Comprehensive Aramaic Lexicon.",
     instructions=(
         "Use cal_lexicon_lookup for bounded live CAL lexicon lookup. "
-        "Ambiguous headwords return CAL lemma-key candidates instead of a guessed entry. "
-        "Results include CAL provenance and retrieval time."
+        "Use cal_gloss_search for CAL English-gloss search and cal_citation_text_search "
+        "for English words inside CAL citations. Ambiguous lexicon headwords return CAL "
+        "lemma-key candidates instead of a guessed entry. Results include CAL provenance "
+        "and retrieval time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -57,6 +60,47 @@ async def cal_lexicon_lookup(
 
     client = ctx.request_context.lifespan_context.client
     result = await LexiconLookupService(client).lookup(query, lemma_key=lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_gloss_search",
+    title="Search CAL English glosses",
+    structured_output=True,
+)
+async def cal_gloss_search(
+    query: str,
+    ctx: Context[AppContext],
+    all_glosses: bool = False,
+) -> dict[str, object]:
+    """Search CAL English glosses without reranking or expanding the query.
+
+    Set ``all_glosses`` to include subsidiary CAL glosses as well as primary glosses.
+    One tool call performs one bounded CAL search request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await EnglishSearchService(client).search_gloss(query, all_glosses=all_glosses)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_citation_text_search",
+    title="Search English words in CAL citations",
+    structured_output=True,
+)
+async def cal_citation_text_search(
+    query: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Search one to three English words in CAL lexicon citations.
+
+    Results preserve CAL lemma references, lexical context, citation reference, source text,
+    and English translation. One tool call performs one bounded CAL search request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await EnglishSearchService(client).search_citations(query)
     return result.to_dict()
 
 
