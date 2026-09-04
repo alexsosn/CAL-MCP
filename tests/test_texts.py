@@ -107,15 +107,30 @@ def test_text_page_preserves_page_metadata_coordinates_and_token_positions() -> 
     first = page.lines[0]
     assert first.coordinate == "7102601002107"
     assert first.display_coordinate == "ms01 pg002 sd1 ln07"
+    assert first.text == "xd t)ny"
     assert first.comment_url is None
-    assert [(token.word_index, token.text) for token in first.tokens] == [
-        (0, "xd"),
-        (1, "t)ny"),
+    assert [
+        (token.coordinate, token.word_index, token.text, token.lexical_url)
+        for token in first.tokens
+    ] == [
+        (
+            "7102601002107",
+            0,
+            "xd",
+            "https://cal.huc.edu/bablex.php?coord=7102601002107&word=0",
+        ),
+        (
+            "7102601002107",
+            1,
+            "t)ny",
+            "https://cal.huc.edu/bablex.php?coord=7102601002107&word=1",
+        ),
     ]
 
     second = page.lines[1]
     assert second.coordinate == "7102601002203"
     assert second.display_coordinate == "ms01 pg002 sd2 ln03"
+    assert second.text == "m)N dtny"
     assert second.comment_url == "https://cal.huc.edu/comment.php?coord=7102601002203"
     assert [(token.word_index, token.text) for token in second.tokens] == [
         (0, "m)N"),
@@ -141,9 +156,9 @@ def test_unpaginated_text_page_does_not_invent_pagination_metadata() -> None:
     assert page.total_lines is None
     assert page.previous_page is None
     assert page.next_page is None
-    assert [(line.coordinate, line.display_coordinate) for line in page.lines] == [
-        ("1325000000001", "01"),
-        ("1325000000002", "02"),
+    assert [(line.coordinate, line.display_coordinate, line.text) for line in page.lines] == [
+        ("1325000000001", "01", "[ ... ]"),
+        ("1325000000002", "02", "wmlk yśrˀl"),
     ]
 
 
