@@ -1,0 +1,38 @@
+name: Smoke CAL citation parser review fix
+
+on:
+  push:
+    branches: [issue-5-search]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - name: Exercise review-fixed citation parser with one bounded CAL request
+        shell: bash
+        run: |
+          python - <<'PY'
+          import asyncio
+          from cal_mcp.client import CalHttpClient
+          from cal_mcp.search import EnglishSearchService
+
+          async def main():
+              async with CalHttpClient() as client:
+                  result = await EnglishSearchService(client).search_citations("camel")
+                  print("CITATION_COUNT", len(result.hits))
+                  first = result.hits[0]
+                  print(
+                      "CITATION_FIRST",
+                      first.lemma.lemma_key,
+                      first.reference,
+                      bool(first.source_text),
+                      bool(first.translation),
+                  )
+
+          asyncio.run(main())
+          PY
