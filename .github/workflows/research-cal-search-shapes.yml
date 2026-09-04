@@ -1,0 +1,75 @@
+name: Research CAL search shapes
+
+on:
+  push:
+    branches: [issue-5-search]
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect bounded CAL result shapes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          QUERIES = [
+              ("gloss", "https://cal.huc.edu/newsearchmngs.php", {"English": "camel#", "secondary": "true"}),
+              ("citation", "https://cal.huc.edu/searchcits.php", {"English": "camel"}),
+          ]
+
+          class Semantic(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.parts = []
+                  self.links = []
+                  self.open_href = None
+                  self.open_parts = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      self.open_href = dict(attrs).get("href")
+                      self.open_parts = []
+                  if tag in {"div", "p", "li", "tr", "td", "br", "hr", "h1", "h2", "h3"}:
+                      self.flush()
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.open_href is not None:
+                      text = " ".join("".join(self.open_parts).split())
+                      self.links.append((text[:120], self.open_href))
+                      self.open_href = None
+                      self.open_parts = []
+                  if tag in {"div", "p", "li", "tr", "td", "h1", "h2", "h3"}:
+                      self.flush()
+              def handle_data(self, data):
+                  self.parts.append(data)
+                  if self.open_href is not None:
+                      self.open_parts.append(data)
+              def flush(self):
+                  text = " ".join("".join(self.parts).split())
+                  if text:
+                      print("LINE", text[:240])
+                  self.parts.clear()
+
+          for label, url, data in QUERIES:
+              body = urlencode(data).encode("utf-8")
+              req = Request(
+                  url,
+                  data=body,
+                  headers={
+                      "User-Agent": "CAL-MCP research shape audit",
+                      "Content-Type": "application/x-www-form-urlencoded",
+                  },
+                  method="POST",
+              )
+              with urlopen(req, timeout=20) as response:
+                  html = response.read().decode("utf-8", errors="replace")
+                  print("RESULT", label, response.status, response.geturl(), "bytes", len(html.encode()))
+              parser = Semantic()
+              parser.feed(html)
+              parser.close()
+              parser.flush()
+              for text, href in parser.links[:30]:
+                  print("LINK", text, href)
+          PY
