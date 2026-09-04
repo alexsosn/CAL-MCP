@@ -107,6 +107,12 @@ def test_cal_code_connector_is_not_valid_unicode_transliteration() -> None:
         )
 
 
+@pytest.mark.parametrize("value", ["@", "@@", "@ @", "  @  "])
+def test_cal_code_connector_only_query_cannot_normalize_to_blank(value: str) -> None:
+    with pytest.raises(UnsupportedQueryError, match="empty"):
+        normalize_query(value, representation=InputRepresentation.CAL_CODE)
+
+
 def test_incompatible_explicit_override_is_rejected() -> None:
     with pytest.raises(UnsupportedQueryError, match="hebrew"):
         normalize_query("mlk", representation=InputRepresentation.HEBREW)
