@@ -73,9 +73,7 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
     marker_indices = [
         index for index, line in enumerate(lines) if line.text.lower() == _ANALYSIS_MARKER
     ]
-    has_lemma_path = any(
-        _is_lemma_path(link.href) for line in lines for link in line.links
-    )
+    has_lemma_path = any(_is_lemma_path(link.href) for line in lines for link in line.links)
 
     if _NO_DATA_MARKER in page_text:
         if marker_indices or has_lemma_path:
@@ -97,15 +95,16 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
             break
 
         lemma_line = lines[index + 1]
-        lemma_path_links = tuple(
-            link for link in lemma_line.links if _is_lemma_path(link.href)
-        )
+        lemma_path_links = tuple(link for link in lemma_line.links if _is_lemma_path(link.href))
         if not lemma_path_links:
-            if _parse_lemma_header(
-                lemma_line.text,
-                lemma_key="placeholder",
-                require_gloss=True,
-            ) is not None:
+            if (
+                _parse_lemma_header(
+                    lemma_line.text,
+                    lemma_key="placeholder",
+                    require_gloss=True,
+                )
+                is not None
+            ):
                 raise TokenAnalysisParseError(
                     "CAL token-analysis candidate lemma header is missing its lemma link"
                 )
@@ -174,9 +173,7 @@ class TokenAnalysisService:
             cache_namespace="token-analysis-v1",
         )
         status = (
-            TokenAnalysisStatus.FOUND
-            if result.value.candidates
-            else TokenAnalysisStatus.NOT_FOUND
+            TokenAnalysisStatus.FOUND if result.value.candidates else TokenAnalysisStatus.NOT_FOUND
         )
         provenance = TokenAnalysisProvenance(
             source="CAL",
