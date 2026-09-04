@@ -316,8 +316,10 @@ async def test_text_service_uses_one_request_per_explicit_operation() -> None:
 
 @pytest.mark.anyio
 async def test_text_page_maps_public_page_two_to_upstream_page_one() -> None:
-    body = (FIXTURES / "text_page_bt_az.html").read_bytes().replace(
-        b"Page 1 of 50", b"Page 2 of 50"
+    body = (
+        (FIXTURES / "text_page_bt_az.html")
+        .read_bytes()
+        .replace(b"Page 1 of 50", b"Page 2 of 50")
     )
     transport = StaticPageTransport(
         CalResponse(
