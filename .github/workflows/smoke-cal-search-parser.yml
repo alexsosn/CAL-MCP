@@ -1,0 +1,36 @@
+name: Smoke CAL search parsers
+
+on:
+  push:
+    branches: [issue-5-search]
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - run: python -m pip install -e .
+      - name: Exercise production parsers with two bounded CAL requests
+        shell: bash
+        run: |
+          python - <<'PY'
+          import asyncio
+          from cal_mcp.client import CalHttpClient
+          from cal_mcp.search import EnglishSearchService
+
+          async def main():
+              async with CalHttpClient() as client:
+                  service = EnglishSearchService(client)
+                  gloss = await service.search_gloss("camel#", all_glosses=True)
+                  citations = await service.search_citations("camel")
+                  print("GLOSS_COUNT", len(gloss.matches))
+                  print("GLOSS_FIRST", gloss.matches[0].lemma_key, gloss.matches[0].gloss)
+                  print("CITATION_COUNT", len(citations.hits))
+                  first = citations.hits[0]
+                  print("CITATION_FIRST", first.lemma.lemma_key, first.reference, bool(first.source_text), bool(first.translation))
+
+          asyncio.run(main())
+          PY
