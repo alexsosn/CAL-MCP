@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import string
 import unicodedata
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -79,11 +78,20 @@ _CAL_CODE_TO_UNICODE = {
     " ": " ",
 }
 
+# Roman consonants whose CAL-code and current documented Unicode spellings are identical.
+# Plain input using only these characters is genuinely shared and must not be guessed.
+_SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
-_COMMON_SCRIPT_SEPARATORS = frozenset(" -_'@")
-_CAL_CODE_PUNCTUATION = frozenset("()_@%:~+.',;-=$&[]{}<>/#\\^|?*\"")
-_CAL_CODE_ALLOWED = frozenset(string.ascii_letters) | _CAL_CODE_PUNCTUATION | {" "}
-_CAL_CODE_DISAMBIGUATORS = frozenset("()xTPc$&@_%:~+.',;-=[]{}<>/#\\^|?*\"")
+_UNICODE_SEPARATORS = frozenset(" _")
+_SCRIPT_SEPARATORS = frozenset(" _")
+
+# CAL's broader Roman coding conventions (prova.html, rechecked 2026-09-04) add Jewish
+# Aramaic vowels, Syriac diacritic codes, Mandaic letters, and manuscript/editorial syntax.
+# Keep this whitelist explicit so arbitrary ASCII is never mislabeled as documented CAL code.
+_CAL_CODE_LETTERS = frozenset(")bgdhwzxTyklmns(pPcqr$&taAeEiuUoOFDHS")
+_CAL_CODE_SYNTAX = frozenset(":._~+',;%@\"-={}<>/#\\[]^|?*")
+_CAL_CODE_ALLOWED = _CAL_CODE_LETTERS | _CAL_CODE_SYNTAX | {" "}
+_CAL_CODE_DISAMBIGUATORS = _CAL_CODE_ALLOWED - _SHARED_ROMAN_LETTERS - {" "}
 
 
 def normalize_query(
@@ -94,7 +102,9 @@ def normalize_query(
     """Normalize one CAL query without guessing roots, spellings, or morphology."""
 
     _reject_controls(value)
-    candidate = value.strip()
+    # Only the ordinary ASCII space is a documented query separator. Do not let
+    # str.strip() silently erase NBSP or other Unicode whitespace before validation.
+    candidate = value.strip(" ")
     if not candidate:
         raise UnsupportedQueryError("CAL query is empty after trimming surrounding spaces")
 
@@ -153,15 +163,15 @@ def _detect_representation(value: str) -> InputRepresentation:
 
 def _validate_representation(value: str, representation: InputRepresentation) -> None:
     if representation is InputRepresentation.HEBREW:
-        if not any(_is_hebrew(char) for char in value) or not all(
-            _is_hebrew(char) or char in _COMMON_SCRIPT_SEPARATORS for char in value
+        if not _contains_script_letter(value, _is_hebrew) or not all(
+            _is_hebrew(char) or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid hebrew-script CAL input")
         return
 
     if representation is InputRepresentation.SYRIAC:
-        if not any(_is_syriac(char) for char in value) or not all(
-            _is_syriac(char) or char in _COMMON_SCRIPT_SEPARATORS for char in value
+        if not _contains_script_letter(value, _is_syriac) or not all(
+            _is_syriac(char) or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid syriac-script CAL input")
         return
@@ -177,7 +187,7 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
         return
 
     if representation is InputRepresentation.ROMAN_SHARED:
-        if not all(char in string.ascii_letters or char == " " for char in value):
+        if not all(char in _SHARED_ROMAN_LETTERS or char == " " for char in value):
             raise UnsupportedQueryError("query is not plain shared Roman input")
         return
 
@@ -190,11 +200,15 @@ def _is_simple_convertible_cal_code(value: str) -> bool:
 
 def _is_unicode_transliteration(value: str) -> bool:
     return all(
-        char in string.ascii_lowercase
+        char in _SHARED_ROMAN_LETTERS
         or char in _UNICODE_TRANSLITERATION_SPECIAL
-        or char in _COMMON_SCRIPT_SEPARATORS
+        or char in _UNICODE_SEPARATORS
         for char in value
     )
+
+
+def _contains_script_letter(value: str, in_script: callable[[str], bool]) -> bool:
+    return any(in_script(char) and unicodedata.category(char).startswith("L") for char in value)
 
 
 def _is_hebrew(char: str) -> bool:
