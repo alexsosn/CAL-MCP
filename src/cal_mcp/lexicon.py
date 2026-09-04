@@ -801,10 +801,9 @@ def _comparison_surface(value: str) -> str:
 
         next_index = index + 1
         marks: list[str] = []
-        while (
-            next_index < len(normalized)
-            and unicodedata.category(normalized[next_index]).startswith("M")
-        ):
+        while next_index < len(normalized) and unicodedata.category(
+            normalized[next_index]
+        ).startswith("M"):
             marks.append(normalized[next_index])
             next_index += 1
 
