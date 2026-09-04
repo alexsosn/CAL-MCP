@@ -198,9 +198,7 @@ def parse_text_page(
     page_number, page_count, total_lines = _page_metadata(lines)
     previous_page, next_page = _page_navigation(lines)
     text_lines = tuple(
-        parsed
-        for line in lines
-        if (parsed := _parse_text_line(line, response.url)) is not None
+        parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
     )
     if not text_lines:
         raise TextParseError("CAL text page contains no recognizable coordinate/token rows")
@@ -281,9 +279,7 @@ class TextService:
         page: int = 1,
     ) -> TextPageResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = (
-            None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
-        )
+        normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise ValueError("page must be a positive integer")
 
@@ -470,9 +466,7 @@ def _page_navigation(lines: list[_Line]) -> tuple[int | None, int | None]:
 
 def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     tokens = tuple(
-        token
-        for link in line.links
-        if (token := _token_from_link(link, source_url)) is not None
+        token for link in line.links if (token := _token_from_link(link, source_url)) is not None
     )
     if not tokens:
         return None
