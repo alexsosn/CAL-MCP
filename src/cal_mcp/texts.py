@@ -188,6 +188,7 @@ def parse_text_page(
     *,
     requested_file_id: str,
     requested_subtext_id: str | None,
+    requested_page: int | None = None,
 ) -> TextPage | None:
     lines = _parse_lines(response)
     page_text = " ".join(line.text for line in lines)
@@ -196,6 +197,8 @@ def parse_text_page(
 
     text_ref = _page_text_ref(lines, requested_file_id, requested_subtext_id)
     page_number, page_count, total_lines = _page_metadata(lines)
+    if requested_page is not None and page_number != requested_page:
+        raise TextParseError("CAL text page number differs from the requested page")
     previous_page, next_page = _page_navigation(lines)
     text_lines = tuple(
         parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
@@ -293,6 +296,7 @@ class TextService:
                 response,
                 requested_file_id=normalized_file,
                 requested_subtext_id=normalized_subtext,
+                requested_page=page,
             )
 
         result = await self._client.fetch(
@@ -322,6 +326,12 @@ def _validate_id(value: str, name: str) -> str:
     return value
 
 
+def _parse_id(value: str, name: str) -> str:
+    if _ID_RE.fullmatch(value) is None:
+        raise TextParseError(f"CAL returned a non-decimal {name}")
+    return value
+
+
 def _prepare_text_search_query(value: str) -> str:
     trimmed = value.strip(" ")
     if not trimmed:
@@ -339,7 +349,7 @@ def _category_from_link(link: _Link) -> TextCategoryRef | None:
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     category_id = _single_query_value(query, "subtext", "category")
-    _validate_id(category_id, "category_id")
+    _parse_id(category_id, "category_id")
     label = link.text.strip()
     if not label:
         raise TextParseError("CAL text catalogue category link has no label")
@@ -356,7 +366,7 @@ def _text_ref_from_link(
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     file_id = _single_query_value(query, "file", "text")
-    _validate_id(file_id, "file_id")
+    _parse_id(file_id, "file_id")
 
     subtext_id: str | None = None
     sub_values = query.get("sub")
@@ -364,7 +374,7 @@ def _text_ref_from_link(
         if len(sub_values) != 1:
             raise TextParseError("CAL text link has repeated sub identifiers")
         if sub_values[0]:
-            subtext_id = _validate_id(sub_values[0], "subtext_id")
+            subtext_id = _parse_id(sub_values[0], "subtext_id")
 
     rendered_label = (label if label is not None else link.text).strip()
     if not rendered_label:
@@ -405,7 +415,7 @@ def _page_text_ref(
                 continue
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
             file_id = _single_query_value(query, "coord", "file-info")
-            _validate_id(file_id, "file_id")
+            _parse_id(file_id, "file_id")
             if file_id != requested_file_id:
                 raise TextParseError(
                     "CAL text page file identifier differs from the requested file"
@@ -508,7 +518,7 @@ def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     coordinate = _single_query_value(query, "coord", "token")
     word = _single_query_value(query, "word", "token")
-    _validate_id(coordinate, "coordinate")
+    _parse_id(coordinate, "coordinate")
     if not word.isdigit():
         raise TextParseError("CAL lexical token link has a nonnumeric word index")
     text = link.text.strip()
@@ -529,7 +539,7 @@ def _matching_comment_link(links: tuple[_Link, ...], coordinate: str) -> _Link |
             continue
         query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
         comment_coordinate = _single_query_value(query, "coord", "comment")
-        _validate_id(comment_coordinate, "coordinate")
+        _parse_id(comment_coordinate, "coordinate")
         if comment_coordinate != coordinate:
             raise TextParseError("CAL text row comment coordinate differs from token coordinate")
         if found is not None and found != link:
