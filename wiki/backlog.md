@@ -1,6 +1,6 @@
 # Backlog
 
-**Snapshot:** 2026-09-03
+**Snapshot:** 2026-09-04
 
 GitHub issues are the execution source of truth. This file records sequencing, critical path, and release scope; it should not duplicate day-to-day issue discussion.
 
@@ -18,16 +18,17 @@ GitHub issues are the execution source of truth. This file records sequencing, c
 | P0 | [#1](https://github.com/alexsosn/CAL-MCP/issues/1) | Bootstrap Python package, MCP shell, CI, tooling | — |
 | P0 | [#2](https://github.com/alexsosn/CAL-MCP/issues/2) | CAL HTTP client and conservative request policy | #1 |
 | P0 | [#3](https://github.com/alexsosn/CAL-MCP/issues/3) | Deterministic input normalization/query encoding | #1 |
-| P1 | [#4](https://github.com/alexsosn/CAL-MCP/issues/4) | Lexicon lookup and complete entry parsing | #2, #3 |
+| P0 | [#20](https://github.com/alexsosn/CAL-MCP/issues/20) | Bound streamed CAL response bytes before public tools | #2 |
+| P1 | [#4](https://github.com/alexsosn/CAL-MCP/issues/4) | Lexicon lookup and complete entry parsing | #2, #3; #20 safety gate |
 | P1 | [#5](https://github.com/alexsosn/CAL-MCP/issues/5) | English gloss and citation-text search | #4 |
 | P1 | [#6](https://github.com/alexsosn/CAL-MCP/issues/6) | Concordance/KWIC | #4 |
-| P1 | [#7](https://github.com/alexsosn/CAL-MCP/issues/7) | Text catalogue/search and passage/context retrieval | #2, #3 |
+| P1 | [#7](https://github.com/alexsosn/CAL-MCP/issues/7) | Text catalogue/search and passage/context retrieval | #2, #3; #20 safety gate |
 | P1 | [#8](https://github.com/alexsosn/CAL-MCP/issues/8) | Token-at-coordinate lexical analysis | #4, #7 |
-| P2 | [#9](https://github.com/alexsosn/CAL-MCP/issues/9) | Bibliographic search | #2 |
+| P2 | [#9](https://github.com/alexsosn/CAL-MCP/issues/9) | Bibliographic search | #2; #20 safety gate |
 | P2 | [#10](https://github.com/alexsosn/CAL-MCP/issues/10) | Targum Studies module | #4, #7 |
 | P2 | [#11](https://github.com/alexsosn/CAL-MCP/issues/11) | Syriac Studies module | #4, #7 |
-| P2 | [#13](https://github.com/alexsosn/CAL-MCP/issues/13) | Citations from texts outside online corpus | #2; reuse #4/#5 models |
-| P2 | [#14](https://github.com/alexsosn/CAL-MCP/issues/14) | Dictionary Spelling Collation | #2, #3; reuse #4 models |
+| P2 | [#13](https://github.com/alexsosn/CAL-MCP/issues/13) | Citations from texts outside online corpus | #2; #20 safety gate; reuse #4/#5 models |
+| P2 | [#14](https://github.com/alexsosn/CAL-MCP/issues/14) | Dictionary Spelling Collation | #2, #3; #20 safety gate; reuse #4 models |
 | P3 | [#12](https://github.com/alexsosn/CAL-MCP/issues/12) | CAL capability audit + public contract/docs freeze | #5, #6, #8, #9, #10, #11, #13, #14 |
 | P3 | [#15](https://github.com/alexsosn/CAL-MCP/issues/15) | v0.1 standalone release + low-load live drift smoke | #12 and all included v0.1 surfaces |
 | P3 | [#16](https://github.com/alexsosn/CAL-MCP/issues/16) | Register released CAL-MCP with Agora | #15 |
@@ -38,9 +39,10 @@ GitHub issues are the execution source of truth. This file records sequencing, c
 flowchart LR
     A[#1 package/CI] --> B[#2 HTTP policy]
     A --> C[#3 normalization]
-    B --> D[#4 lexicon]
+    B --> S[#20 response-size bound]
+    S --> D[#4 lexicon]
     C --> D
-    B --> E[#7 texts]
+    S --> E[#7 texts]
     C --> E
     D --> F[#8 token analysis]
     E --> F
@@ -53,16 +55,16 @@ flowchart LR
     R --> AG[#16 Agora]
 ```
 
-P2 specialist work can run in parallel after its prerequisites, but all current CAL public research functions must be accounted for at #12.
+P2 specialist work can run in parallel after its prerequisites, but no CAL-backed public tool may bypass #20's response-size safety gate. All current CAL public research functions must be accounted for at #12.
 
 ## Parallel work lanes
 
 Once #1 is merged:
 
-- **Infrastructure lane:** #2
+- **Infrastructure lane:** #2 → #20
 - **Normalization lane:** #3
 
-Once #2/#3 are merged:
+Once #2/#3/#20 are merged:
 
 - **Lexical lane:** #4 → #5/#6
 - **Text lane:** #7 → #8
@@ -106,7 +108,7 @@ For every item the matrix records one state:
 
 ### Gate A — Core usable MCP
 
-Reached when #4, #6, #7, and #8 provide a coherent lexical/text/concordance workflow with provenance and offline tests.
+Reached when #4, #6, #7, and #8 provide a coherent lexical/text/concordance workflow with provenance and offline tests. #20 must already be merged before those public tools are enabled.
 
 ### Gate B — Public CAL coverage accounted for
 

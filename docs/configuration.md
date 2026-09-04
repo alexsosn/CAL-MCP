@@ -14,12 +14,28 @@ The MCP server does not expose CAL-backed tools yet, so these settings are curre
 | Maximum concurrency | 2 | 1–8 |
 | Retry count | 1 | 0–3 |
 | Initial retry backoff | 0.25 s | finite, 0–1 s; exponential per retry |
+| Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
 | Cache enabled | yes | completed-result retention can be disabled completely |
 | Cache entries | 128 | 0–4096; 0 retains nothing |
 | Cache TTL | 900 s (15 min) | > 0 and <= 86400 s |
 | User-Agent | `CAL-MCP/<version> (+https://github.com/alexsosn/CAL-MCP)` | non-empty |
 
 HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout.
+
+## Response-size limit
+
+The production HTTPX2 transport streams decoded response bytes instead of using an eager `response.content` read. `max_response_bytes` defaults to 2 MiB and cannot be configured above 16 MiB. It must be an actual integer value: booleans, floats, strings, and other non-integer values are rejected by `CalClientConfig` construction before a transport is created.
+
+CAL-MCP accumulates only chunks that keep the retained response body at or below the configured limit. The decoded streaming iterator is requested in bounded chunks of at most 64 KiB (or `max_response_bytes + 1` for smaller limits), so the transport needs only one bounded look-ahead chunk to detect an over-limit response. An exactly-at-limit body is accepted; the first chunk that would make the retained body exceed the limit raises `CalResponseTooLargeError`, a `CalContentError` subclass, and the response stream is closed.
+
+An oversized response:
+
+- is not retried as a transient network failure;
+- never reaches an endpoint parser;
+- is never inserted into the completed-result cache;
+- does not cause later chunks to be consumed after the over-limit condition is known.
+
+The limit applies to decoded bytes delivered by HTTPX2 to CAL-MCP. This is the representation that would otherwise become the HTML parser input. Normal tests use HTTPX2 `MockTransport` and synthetic streams; no live CAL request is needed to verify exact-limit and over-limit behavior.
 
 ## Retry behavior
 
@@ -61,7 +77,7 @@ CAL-MCP does not provide:
 Only a response that has passed all of the following steps is eligible:
 
 1. request validation;
-2. successful bounded HTTP request;
+2. successful bounded HTTP request and response-size check;
 3. successful HTTP status validation;
 4. expected CAL HTML content validation;
 5. successful endpoint parser callback.
@@ -71,6 +87,7 @@ The cache stores the **successfully parsed typed value and provenance**, not a d
 The following are never cached:
 
 - network failures or timeouts;
+- oversized responses;
 - redirects or upstream HTTP errors;
 - unexpected content types;
 - probable maintenance pages;
@@ -100,9 +117,7 @@ An in-flight follower receives the result of the active request rather than a fa
 
 The production transport does not follow redirects. This keeps the validated `cal.huc.edu` origin as the actual network boundary rather than validating only the first URL and allowing a redirect to move the request elsewhere.
 
-Deterministic transport-level tests exercise the actual HTTPX2 request construction with `MockTransport`: repeated query parameters, repeated POST form fields, the CAL-MCP User-Agent, and an external redirect target are checked at the HTTP boundary rather than only against an injected `CalRequest` object.
-
-Response-size bounding is intentionally tracked separately in issue #20 and must be completed before public CAL-backed scholarly tools go live.
+Deterministic transport-level tests exercise the actual HTTPX2 request construction with `MockTransport`: repeated query parameters, repeated POST form fields, the CAL-MCP User-Agent, redirect non-following, and response streaming/size limits are checked at the HTTP boundary rather than only against an injected `CalRequest` object.
 
 ## Example
 
@@ -112,6 +127,7 @@ from cal_mcp.client import CalClientConfig, CalHttpClient
 config = CalClientConfig(
     max_concurrency=1,
     max_retries=0,
+    max_response_bytes=1024 * 1024,
     cache_enabled=False,
 )
 
