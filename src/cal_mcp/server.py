@@ -12,6 +12,7 @@ from cal_mcp.client import CalHttpClient
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
 from cal_mcp.texts import TextService
+from cal_mcp.token_analysis import TokenAnalysisService
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,9 +37,10 @@ mcp = MCPServer(
         "Use cal_gloss_search for CAL English-gloss search and cal_citation_text_search "
         "for English words inside CAL citations. Use cal_text_catalogue to discover CAL "
         "text/category identifiers, cal_text_search to find texts by topic, and cal_text_page "
-        "to retrieve one bounded CAL text page. Ambiguous lexicon headwords return CAL "
-        "lemma-key candidates instead of a guessed entry. Results include CAL provenance "
-        "and retrieval time."
+        "to retrieve one bounded CAL text page. Use cal_token_analysis for every CAL lexical "
+        "analysis attached to one explicit text coordinate and zero-based token index. "
+        "Ambiguous analyses remain ordered CAL alternatives rather than a guessed preferred "
+        "reading. Results include CAL provenance and retrieval time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -166,6 +168,28 @@ async def cal_text_page(
 
     client = ctx.request_context.lifespan_context.client
     result = await TextService(client).page(file_id, subtext_id=subtext_id, page=page)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_token_analysis",
+    title="Analyze one CAL text token",
+    structured_output=True,
+)
+async def cal_token_analysis(
+    coordinate: str,
+    word_index: int,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return every CAL lexical analysis for one explicit text coordinate/token index.
+
+    ``coordinate`` is CAL's opaque decimal machine coordinate and ``word_index`` is
+    zero-based, matching the token metadata returned by ``cal_text_page``. One call performs
+    one bounded CAL request and never expands candidate lexicon entries automatically.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TokenAnalysisService(client).analyze(coordinate, word_index)
     return result.to_dict()
 
 
