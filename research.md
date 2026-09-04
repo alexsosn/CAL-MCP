@@ -250,14 +250,43 @@ The form/result inspection and production-parser smoke were deliberately tiny, b
 
 **Implication:** CAL-MCP exposes gloss search and citation-text search as two typed tools, each performing exactly one bounded CAL POST per call. It preserves CAL order and distinctions, does not fetch returned lexicon entries automatically, does not rerank/deduplicate citation hits, and does not invent pagination. Response size remains bounded by the shared HTTP safety limit. Endpoint/form names remain adapter internals rather than MCP parameters.
 
+## R-016 — Current text discovery and page navigation are explicit bounded surfaces
+
+**Rechecked:** 2026-09-04.
+
+A bounded live audit of CAL's current text interfaces confirmed three distinct operations rather than one implicit corpus browser.
+
+The topic-search form at `searching/searchtopic.html` submits `POST /newsearchtxts.php` with the query in form field `search`. A `Tel Dan` probe returned a text link to `get_a_chapter.php` carrying CAL file identifier `13250`; the rendered row also supplied the text label/description. CAL currently renders the explicit empty-search message `There are no files associated with the search term ...`, so an intro/result page lacking both a text link and that marker is parser drift rather than a safe empty result.
+
+Text browsing uses CAL file identifiers and, where CAL exposes subdivisions, separate subtext/category navigation identifiers. The root text menu and `showsubtexts.php?subtext=...` surface expose those identifiers in links; CAL-MCP should preserve them as opaque strings, not decode their digits into a locally invented taxonomy.
+
+The current `get_a_chapter.php` text browser uses a zero-based internal `page` parameter even though the page displayed to the researcher is one-based. In a bounded check of file `71026`, upstream `page=0` rendered `Page 1 of 50 (2413 lines total)` and upstream `page=1` rendered Page 2. The page also exposed explicit next-page links plus a `page=all` “show all” link. `show all` is unsuitable for the adapter's bounded-request policy and therefore must not become a public MCP option.
+
+CAL text rows expose lexical-analysis links such as `bablex.php?coord=...&word=...`. These provide a machine line coordinate plus a zero-based word position. Some rows additionally expose a `comment.php?coord=...` anchor whose rendered text is a human-readable manuscript/page/side/line locator. Those relationships can be preserved without calling the lexical-analysis endpoint; token analysis remains a separate explicit operation.
+
+Not every valid text is paginated. The current Tel Dan page for file `13250` renders text lines and lexical links without a `Page X of Y` marker. CAL-MCP must therefore leave page-count/total/previous/next metadata nullable instead of fabricating values. Conversely, a nonexistent file/subtext selection currently returns HTTP 200 with the explicit message `NO LINES FOR ... ARE CURRENTLY STORED`; that is a recognizable missing-text state, distinct from network/content failure and from unknown successful markup.
+
+Sources:
+
+- https://cal.huc.edu/newtextmenu.html
+- https://cal.huc.edu/searching/searchtopic.html
+- https://cal.huc.edu/newsearchtxts.php
+- https://cal.huc.edu/showsubtexts.php?subtext=3
+- https://cal.huc.edu/get_a_chapter.php?file=71026
+- https://cal.huc.edu/get_a_chapter.php?file=13250
+
+The form, pagination, missing-text, and empty-search inspections were deliberately tiny branch-only live probes. The temporary workflows were deleted immediately after the evidence was recorded; normal CI remains offline and uses reduced fixtures.
+
+**Implication:** CAL-MCP exposes three text primitives: one explicit catalogue level, one topic-search request, and one normal text page. Each public call performs exactly one CAL request. Category expansion and page traversal are caller-controlled; no recursive catalogue walk, automatic next-page request, `show all`, token lookup, background indexing, or local corpus mirror is introduced. Public pages are one-based, while CAL's current internal page parameter remains adapter-private. CAL file/subtext/category identifiers and machine/display coordinates are preserved with provenance but are not advertised as permanent CAL-MCP identifiers.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
 
 1. What is the canonical endpoint and parameter model for basic and advanced KWIC/concordance?
 2. Which dialect identifiers are stable machine values versus display labels?
-3. How is text pagination represented and how should passage boundaries be modeled?
-4. Which CAL identifiers are stable enough to expose as public adapter identifiers?
+3. Do specialist text/module surfaces use pagination or coordinate shapes that differ materially from the general text browser?
+4. Does CAL document any stronger stability guarantee for file/subtext/category identifiers than is observable from the current public links?
 5. Which Targum and Syriac operations compose cleanly into general tools and which deserve specialist tools?
 6. Does the bibliography interface expose stable query parameters suitable for typed search?
 7. What minimal cache policy gives useful duplicate-request suppression without retaining a meaningful CAL dataset?

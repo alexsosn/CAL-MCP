@@ -11,6 +11,7 @@ from cal_mcp import __version__
 from cal_mcp.client import CalHttpClient
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
+from cal_mcp.texts import TextService
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,7 +34,9 @@ mcp = MCPServer(
     instructions=(
         "Use cal_lexicon_lookup for bounded live CAL lexicon lookup. "
         "Use cal_gloss_search for CAL English-gloss search and cal_citation_text_search "
-        "for English words inside CAL citations. Ambiguous lexicon headwords return CAL "
+        "for English words inside CAL citations. Use cal_text_catalogue to discover CAL "
+        "text/category identifiers, cal_text_search to find texts by topic, and cal_text_page "
+        "to retrieve one bounded CAL text page. Ambiguous lexicon headwords return CAL "
         "lemma-key candidates instead of a guessed entry. Results include CAL provenance "
         "and retrieval time."
     ),
@@ -101,6 +104,68 @@ async def cal_citation_text_search(
 
     client = ctx.request_context.lifespan_context.client
     result = await EnglishSearchService(client).search_citations(query)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_text_catalogue",
+    title="Browse one CAL text catalogue level",
+    structured_output=True,
+)
+async def cal_text_catalogue(
+    ctx: Context[AppContext],
+    category_id: str | None = None,
+) -> dict[str, object]:
+    """List one explicit CAL text catalogue level without recursive traversal.
+
+    Omit ``category_id`` for the root catalogue or pass one CAL category identifier returned
+    by a prior call. Each call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TextService(client).catalogue(category_id=category_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_text_search",
+    title="Search CAL texts by topic",
+    structured_output=True,
+)
+async def cal_text_search(
+    query: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Search CAL's current text/topic index without expanding or reranking the query.
+
+    Each call performs exactly one bounded CAL search request and returns CAL file/subtext
+    identifiers suitable for explicit follow-up retrieval.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TextService(client).search(query)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_text_page",
+    title="Retrieve one CAL text page",
+    structured_output=True,
+)
+async def cal_text_page(
+    file_id: str,
+    ctx: Context[AppContext],
+    subtext_id: str | None = None,
+    page: int = 1,
+) -> dict[str, object]:
+    """Retrieve one normal CAL text page with line/token coordinate metadata.
+
+    Public page numbers are one-based. CAL's unbounded ``show all`` navigation is not
+    exposed; moving to another page requires another explicit tool call.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TextService(client).page(file_id, subtext_id=subtext_id, page=page)
     return result.to_dict()
 
 
