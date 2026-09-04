@@ -76,6 +76,8 @@ Some short CAL texts are not rendered with a page-count marker. In that case CAL
 
 For a successful requested-page operation, the page CAL renders must match the caller's one-based `page`. If CAL returns a different displayed page, or returns an unpaginated page-1 shape for a request after page 1, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
 
+When CAL renders a previous/next link, CAL-MCP also requires that link to address the same `file_id` and `subtext_id` as the requested page and to point to the adjacent in-range page implied by CAL's pagination marker. Navigation without a pagination marker, foreign text/subtext targets, or non-adjacent/out-of-range targets are parser drift. Missing previous/next links are not invented.
+
 CAL's current browser also exposes a `show all` navigation path. CAL-MCP **does not expose it** because it defeats the bounded-request contract. Moving to another page requires another explicit `cal_text_page` call.
 
 ### Text and line fields
