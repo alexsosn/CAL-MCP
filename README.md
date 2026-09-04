@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The repository includes the first CAL-backed scholarly MCP tool, `cal_lexicon_lookup`; no versioned release has been published yet.
+> **Status:** active pre-release development. The repository includes CAL-backed lexicon lookup and bounded English gloss/citation-text search; no versioned release has been published yet.
 
 CAL-MCP makes CAL's existing scholarly interfaces easier to use from agents and MCP clients without copying, mirroring, or redistributing the CAL database. Queries remain live, user-initiated requests to CAL; CAL remains the authority for lexical data, texts, citations, bibliography, and scholarly interpretation.
 
@@ -35,18 +35,18 @@ The public surface is introduced incrementally and stabilized by tests before re
 | --- | --- | --- |
 | Lexicon | **Implemented** | `cal_lexicon_lookup`: root/headword/form lookup, explicit homograph disambiguation, complete entry parsing with provenance |
 | Input handling | **Implemented** | deterministic CAL/Unicode/Hebrew/Syriac normalization and query encoding |
-| English search | Planned | gloss search; citation-text search |
+| English search | **Implemented** | `cal_gloss_search` and `cal_citation_text_search`: bounded live CAL search with typed ordered results and provenance |
 | Concordance | Planned | KWIC/concordance queries with text/dialect constraints supported by CAL |
 | Texts | Planned | text catalogue/search; passage/context retrieval |
 | Token analysis | Planned | CAL lexical analysis for a token at a CAL text coordinate |
-| Citations | Planned | citation lookup, source links, retrieval metadata |
+| Citations | Planned | citation lookup, source links, retrieval metadata beyond English citation-text search |
 | Bibliography | Planned | bibliographic search where the public CAL interface supports it |
 | Targum | Planned | CAL Targum comparison/research operations |
 | Syriac | Planned | CAL Syriac research operations |
 
 The server distinguishes between **CAL data returned by the upstream service** and **adapter metadata produced by CAL-MCP**.
 
-See [`docs/tools/lexicon.md`](docs/tools/lexicon.md) for the implemented lexicon contract.
+See [`docs/tools/lexicon.md`](docs/tools/lexicon.md) for lexicon lookup and [`docs/tools/search.md`](docs/tools/search.md) for English gloss/citation-text search.
 
 ## System boundary
 
@@ -108,6 +108,7 @@ The repository uses documentation as executable project state for humans and cod
 - [`docs/configuration.md`](docs/configuration.md) — implemented CAL HTTP/request/cache policy and conservative defaults.
 - [`docs/concepts/input-and-transliteration.md`](docs/concepts/input-and-transliteration.md) — deterministic input detection, limited CAL-code mapping, and query/form encoding.
 - [`docs/tools/lexicon.md`](docs/tools/lexicon.md) — `cal_lexicon_lookup` semantics, examples, limits, failures, and CAL provenance.
+- [`docs/tools/search.md`](docs/tools/search.md) — English gloss/citation-text search semantics, request bounds, empty results, and provenance.
 
 Additional user-facing reference documentation under `docs/` is introduced alongside the corresponding implemented behavior so it cannot get ahead of the executable interface. Its target structure is specified in `wiki/documentation.md`.
 
@@ -119,6 +120,7 @@ The repository currently has:
 - a bounded CAL HTTP/request-policy layer with strict origin, redirect, retry, concurrency, cache, and response-size controls;
 - deterministic input normalization/query encoding;
 - the live `cal_lexicon_lookup` tool with typed lexicon parsing and provenance;
+- live `cal_gloss_search` and `cal_citation_text_search` tools with one-request bounded CAL search semantics;
 - offline parser fixtures and deterministic MCP/request-policy tests.
 
 Requirements: Python 3.11+.
@@ -148,7 +150,7 @@ mypy
 pytest
 ```
 
-Importing `cal_mcp.server` remains network-free. When the MCP server starts, its lifespan creates one bounded CAL client for that running server without issuing a CAL request; live traffic begins only when a CAL-backed tool is called. Reusing that client preserves the request layer's process/session-local cache and single-flight behavior across tool calls, and the client is closed at server shutdown. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon parser/service, and MCP contract tests make no live CAL requests.
+Importing `cal_mcp.server` remains network-free. When the MCP server starts, its lifespan creates one bounded CAL client for that running server without issuing a CAL request; live traffic begins only when a CAL-backed tool is called. Reusing that client preserves the request layer's process/session-local cache and single-flight behavior across tool calls, and the client is closed at server shutdown. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon/search parser/service, and MCP contract tests make no live CAL requests.
 
 ## Development model
 
