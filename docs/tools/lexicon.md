@@ -53,10 +53,10 @@ The entry preserves, where present:
 
 - CAL lemma key;
 - headword variants and pronunciation;
-- part of speech and entry gloss;
-- numbered and nested sense paths;
+- part of speech and entry gloss, including compound/current CAL abbreviations rather than a small closed local POS vocabulary;
+- numbered and recursively nested sense paths;
 - verb stem/sense headings;
-- dialect labels;
+- dialect labels, including documented CAL dialect subcodes;
 - citation references, source links, and short citation text exposed by the entry;
 - root/grammar information;
 - form and usage notes;
@@ -99,7 +99,7 @@ This is a normal structured result and is distinct from a network failure, CAL m
 
 The test fixtures include CAL's alias arrow for `bˀyšh`, which resolves to the upstream lemma key `by$h N`. The adapter preserves the CAL key rather than rewriting it to a prettier local identifier.
 
-Hebrew and Syriac inputs are compared deterministically against the same candidate surfaces where the shared normalization/lookup mapping establishes equivalence. This comparison exists to match CAL-supported lexical forms; it is not a general Hebrew↔Syriac transliterator.
+Hebrew and Syriac inputs are compared deterministically against the same candidate surfaces where the shared normalization/lookup mapping establishes equivalence. The comparison preserves distinctions exposed by CAL's current lexicon-browser character table, including Hebrew shin/sin and Syriac `ܧ`/`ṗ`. This comparison exists to match CAL-supported lexical forms; it is not a general Hebrew↔Syriac transliterator.
 
 ## Entry structure
 
@@ -115,7 +115,9 @@ A successful `entry` has these top-level fields:
 | `derivatives` | linked derivatives with CAL key when available and hierarchy `depth` |
 | `notes` | CAL notes/bibliography text parsed from the entry section |
 
-A citation has `reference`, optional `url`, and `text`. CAL-MCP preserves Unicode citation text instead of transliterating it.
+A citation has `reference`, `url`, and `text`. For a linked CAL citation, `reference` and `url` preserve the rendered reference and its CAL link. Current CAL entries can also render citation fragments without a link or a safely separable structured reference; in that case CAL-MCP preserves the whole fragment in `text` and returns `reference: null` and `url: null` rather than inventing either field. Unicode citation text is preserved without transliteration.
+
+When CAL renders a citation-count marker, the parsed citation count must agree with it. A mismatch is treated as parser drift so silently dropped citation fragments do not produce an apparently complete entry.
 
 ## Provenance
 
@@ -143,7 +145,7 @@ The tool keeps these cases separate:
 - **invalid `lemma_key`** — caller error because the key is not one of the current matches;
 - **network/timeout/upstream HTTP failure** — typed request-layer failure under the conservative retry policy;
 - **CAL maintenance/error page** — content failure before lexicon parsing;
-- **parser drift** — CAL returned HTML, but required lexicon semantics can no longer be recognized safely.
+- **parser drift** — CAL returned HTML, but required lexicon semantics can no longer be recognized safely, including inconsistent recursive sense numbering or citation-count mismatches.
 
 See [Configuration](../configuration.md) for request, retry, cache, redirect, and response-size policy.
 
