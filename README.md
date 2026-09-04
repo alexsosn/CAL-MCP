@@ -148,7 +148,7 @@ mypy
 pytest
 ```
 
-Importing `cal_mcp.server` and MCP introspection remain network-free; CAL clients are created only when a CAL-backed tool is called. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon parser/service, and MCP contract tests make no live CAL requests.
+Importing `cal_mcp.server` remains network-free. When the MCP server starts, its lifespan creates one bounded CAL client for that running server without issuing a CAL request; live traffic begins only when a CAL-backed tool is called. Reusing that client preserves the request layer's process/session-local cache and single-flight behavior across tool calls, and the client is closed at server shutdown. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon parser/service, and MCP contract tests make no live CAL requests.
 
 ## Development model
 
