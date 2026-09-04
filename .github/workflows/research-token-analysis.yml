@@ -12,61 +12,52 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Probe bounded current CAL token-analysis cases
+      - name: Probe four existing fixture tokens for CAL analysis multiplicity
         run: |
           python - <<'PY'
           from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlsplit
           from urllib.request import Request, urlopen
-          from urllib.error import HTTPError, URLError
 
           cases = [
-              ("valid-word-0", "https://cal.huc.edu/getlex.php?coord=4400137054005&word=0"),
-              ("valid-word-1", "https://cal.huc.edu/getlex.php?coord=4400137054005&word=1"),
-              ("out-of-range-word", "https://cal.huc.edu/getlex.php?coord=4400137054005&word=99"),
-              ("missing-coordinate", "https://cal.huc.edu/getlex.php?coord=9999999999999&word=0"),
-              ("malformed-coordinate", "https://cal.huc.edu/getlex.php?coord=abc&word=0"),
+              ("bt-az-xd", "https://cal.huc.edu/getlex.php?coord=7102601002107&word=0"),
+              ("bt-az-tany", "https://cal.huc.edu/getlex.php?coord=7102601002107&word=1"),
+              ("bt-az-man", "https://cal.huc.edu/getlex.php?coord=7102601002203&word=0"),
+              ("bt-az-dtny", "https://cal.huc.edu/getlex.php?coord=7102601002203&word=1"),
           ]
 
-          class Visible(HTMLParser):
+          class Links(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.text = []
                   self.links = []
                   self.href = None
-                  self.link_text = []
+                  self.parts = []
               def handle_starttag(self, tag, attrs):
                   if tag == "a":
                       self.href = next((v for k, v in attrs if k == "href"), None)
-                      self.link_text = []
+                      self.parts = []
               def handle_endtag(self, tag):
                   if tag == "a" and self.href is not None:
-                      self.links.append((self.href, " ".join("".join(self.link_text).split())))
+                      self.links.append((self.href, " ".join("".join(self.parts).split())))
                       self.href = None
-                      self.link_text = []
+                      self.parts = []
               def handle_data(self, data):
-                  self.text.append(data)
                   if self.href is not None:
-                      self.link_text.append(data)
+                      self.parts.append(data)
 
           for name, url in cases:
               print(f"=== {name} ===")
-              try:
-                  req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
-                  with urlopen(req, timeout=15) as response:
-                      raw = response.read(131072)
-                      print("status", response.status)
-                      print("final", response.geturl())
-                      print("content-type", response.headers.get("content-type"))
-              except HTTPError as exc:
-                  raw = exc.read(131072)
-                  print("status", exc.code)
-                  print("final", exc.geturl())
-              except URLError as exc:
-                  print("network-error", repr(exc.reason))
-                  continue
-              parser = Visible()
+              req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
+              with urlopen(req, timeout=15) as response:
+                  raw = response.read(131072)
+                  print("status", response.status)
+              parser = Links()
               parser.feed(raw.decode("utf-8", errors="replace"))
-              text = " ".join(" ".join(parser.text).split())
-              print("text", text[:1800])
-              print("links", parser.links[:12])
+              lemma_links = []
+              for href, text in parser.links:
+                  parsed = urlsplit(href)
+                  if parsed.path.endswith(("oneentry.php", "cal_entry_web.php")):
+                      lemma = parse_qs(parsed.query, keep_blank_values=True).get("lemma", [None])[0]
+                      lemma_links.append((lemma, text))
+              print("lemma-links", lemma_links)
           PY
