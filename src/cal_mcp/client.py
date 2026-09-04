@@ -256,9 +256,8 @@ class CalHttpClient:
                 future.set_result(cast(CalFetchResult[Any], result))
             return result
         finally:
-            async with self._inflight_guard:
-                if self._inflight.get(key) is future:
-                    del self._inflight[key]
+            if self._inflight.get(key) is future:
+                del self._inflight[key]
 
     def _cached_result(self, key: str) -> CalFetchResult[Any] | None:
         cached = self._cache.get(key)
