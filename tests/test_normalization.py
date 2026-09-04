@@ -99,6 +99,14 @@ def test_explicit_override_disambiguates_plain_roman_input() -> None:
     assert unicode_value.strategy is NormalizationStrategy.PASS_THROUGH
 
 
+def test_cal_code_connector_is_not_valid_unicode_transliteration() -> None:
+    with pytest.raises(UnsupportedQueryError, match="unicode_transliteration"):
+        normalize_query(
+            "br@mwt",
+            representation=InputRepresentation.UNICODE_TRANSLITERATION,
+        )
+
+
 def test_incompatible_explicit_override_is_rejected() -> None:
     with pytest.raises(UnsupportedQueryError, match="hebrew"):
         normalize_query("mlk", representation=InputRepresentation.HEBREW)
@@ -123,8 +131,8 @@ def test_script_mark_or_punctuation_without_letter_is_rejected(value: str) -> No
         normalize_query(value)
 
 
-@pytest.mark.parametrize("value", ["J", "B"])
-def test_undocumented_uppercase_is_not_labeled_roman_shared(value: str) -> None:
+@pytest.mark.parametrize("value", ["J", "B", "j"])
+def test_undocumented_roman_letters_are_rejected(value: str) -> None:
     with pytest.raises(UnsupportedQueryError):
         normalize_query(value)
 
