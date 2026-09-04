@@ -24,6 +24,9 @@ _RETRYABLE_TRANSPORT_EXCEPTIONS = (
 )
 _HTML_CONTENT_TYPES = frozenset({"text/html", "application/xhtml+xml"})
 _MAX_RETRY_BACKOFF_SECONDS = 1.0
+_DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
+_MAX_RESPONSE_BYTES = 16 * 1024 * 1024
+_MAX_STREAM_CHUNK_BYTES = 64 * 1024
 
 
 class CalClientError(RuntimeError):
@@ -49,6 +52,17 @@ class CalUpstreamError(CalClientError):
 
 class CalContentError(CalClientError):
     """Raised when a successful HTTP response is unsafe to parse as CAL HTML."""
+
+
+class CalResponseTooLargeError(CalContentError):
+    """Raised while streaming when a CAL response exceeds the configured byte limit."""
+
+    def __init__(self, url: str, max_response_bytes: int) -> None:
+        self.url = url
+        self.max_response_bytes = max_response_bytes
+        super().__init__(
+            f"CAL response exceeded configured {max_response_bytes}-byte limit for {url}"
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +99,7 @@ class CalClientConfig:
     max_concurrency: int = 2
     max_retries: int = 1
     retry_backoff_seconds: float = 0.25
+    max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
     cache_enabled: bool = True
     cache_max_entries: int = 128
     cache_ttl_seconds: float = 900.0
@@ -112,6 +127,10 @@ class CalClientConfig:
             raise ValueError("max_concurrency must be between 1 and 8")
         if not 0 <= self.max_retries <= 3:
             raise ValueError("max_retries must be between 0 and 3")
+        if not 1 <= self.max_response_bytes <= _MAX_RESPONSE_BYTES:
+            raise ValueError(
+                f"max_response_bytes must be between 1 and {_MAX_RESPONSE_BYTES}"
+            )
         if not 0 <= self.cache_max_entries <= 4096:
             raise ValueError("cache_max_entries must be between 0 and 4096")
         if self.cache_ttl_seconds > 86400:
@@ -145,20 +164,28 @@ class _Httpx2Transport:
         url = urljoin(CAL_BASE_URL, request.path.lstrip("/"))
         form_content = urlencode(request.data).encode("utf-8") if request.data else None
         headers = {"Content-Type": "application/x-www-form-urlencoded"} if request.data else None
-        response = await self._client.request(
+        chunk_size = min(_MAX_STREAM_CHUNK_BYTES, config.max_response_bytes + 1)
+
+        async with self._client.stream(
             request.method.upper(),
             url,
             params=list(request.params),
             content=form_content,
             headers=headers,
-        )
-        return CalResponse(
-            status_code=response.status_code,
-            url=str(response.url),
-            body=response.content,
-            content_type=response.headers.get("content-type"),
-            retrieved_at=datetime.now(UTC),
-        )
+        ) as response:
+            body = bytearray()
+            async for chunk in response.aiter_bytes(chunk_size=chunk_size):
+                if len(body) + len(chunk) > config.max_response_bytes:
+                    raise CalResponseTooLargeError(str(response.url), config.max_response_bytes)
+                body.extend(chunk)
+
+            return CalResponse(
+                status_code=response.status_code,
+                url=str(response.url),
+                body=bytes(body),
+                content_type=response.headers.get("content-type"),
+                retrieved_at=datetime.now(UTC),
+            )
 
     async def aclose(self) -> None:
         await self._client.aclose()
