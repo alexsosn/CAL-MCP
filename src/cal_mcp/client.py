@@ -127,6 +127,8 @@ class CalClientConfig:
             raise ValueError("max_concurrency must be between 1 and 8")
         if not 0 <= self.max_retries <= 3:
             raise ValueError("max_retries must be between 0 and 3")
+        if isinstance(self.max_response_bytes, bool) or not isinstance(self.max_response_bytes, int):
+            raise ValueError("max_response_bytes must be an integer")
         if not 1 <= self.max_response_bytes <= _MAX_RESPONSE_BYTES:
             raise ValueError(f"max_response_bytes must be between 1 and {_MAX_RESPONSE_BYTES}")
         if not 0 <= self.cache_max_entries <= 4096:
