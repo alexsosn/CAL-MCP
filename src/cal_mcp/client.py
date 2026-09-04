@@ -128,9 +128,7 @@ class CalClientConfig:
         if not 0 <= self.max_retries <= 3:
             raise ValueError("max_retries must be between 0 and 3")
         if not 1 <= self.max_response_bytes <= _MAX_RESPONSE_BYTES:
-            raise ValueError(
-                f"max_response_bytes must be between 1 and {_MAX_RESPONSE_BYTES}"
-            )
+            raise ValueError(f"max_response_bytes must be between 1 and {_MAX_RESPONSE_BYTES}")
         if not 0 <= self.cache_max_entries <= 4096:
             raise ValueError("cache_max_entries must be between 0 and 4096")
         if self.cache_ttl_seconds > 86400:
