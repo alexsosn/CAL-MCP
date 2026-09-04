@@ -6,8 +6,9 @@ Capture/recheck date: **2026-09-04**.
 
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
-| `browse_br.html` | `https://cal.huc.edu/browseSKEYheaders.php?first3=%22br%22` (flow confirmed from `searching/fullbrowser.html` and current browse pages) | direct headwords, homographs, alias-arrow resolution |
+| `browse_b.html` | `https://cal.huc.edu/browseSKEYheaders.php?first3=%22b%22` | direct headwords, homographs, alias-arrow resolution |
 | `entry_br_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | numbered/nested senses, dialects, Unicode citation text, form/usage, derivative depth, notes |
+| `entry_bysh_n.html` | current entry linked by the `bˀyšh, bˀyštˀ` alias on the `b` browser page | full-form alias resolution and optional-section absence |
 | `entry_nmy_x.html` | `https://cal.huc.edu/oneentry.php?cits=all&lemma=nmy+X` | unnumbered primary sense, nested sense, notes |
 | `not_found.html` | CAL lexicon surface | explicit no-match semantic page |
 
