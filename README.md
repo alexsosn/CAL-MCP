@@ -12,7 +12,7 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 - Provide a small, stable, typed MCP interface over CAL's existing public research functions.
 - Preserve CAL semantics rather than reinterpret or repair CAL data.
-- Accept practical Aramaic inputs (CAL transliteration, Unicode transliteration, Hebrew square script, and Syriac where CAL supports them) and convert them deterministically for CAL queries.
+- Accept practical Aramaic inputs (CAL transliteration, Unicode transliteration, Hebrew square script, and Syriac where CAL supports them) and handle them deterministically for CAL queries.
 - Return source URLs, retrieval timestamps, CAL identifiers/coordinates when available, and enough provenance for reproducible scholarly use.
 - Work as a standalone MCP server with no dependency on Agora.
 - Be easy for [Agora](https://github.com/alexsosn/Agora) to discover, install, launch, and describe as a thin third-party plugin.
@@ -104,12 +104,13 @@ The repository uses documentation as executable project state for humans and cod
 - [`wiki/backlog.md`](wiki/backlog.md) — issue map and release gates.
 - [`wiki/agentic-dev-loop.md`](wiki/agentic-dev-loop.md) — exact issue → implementation → review → merge loop.
 - [`docs/configuration.md`](docs/configuration.md) — implemented CAL HTTP/request/cache policy and conservative defaults.
+- [`docs/concepts/input-and-transliteration.md`](docs/concepts/input-and-transliteration.md) — implemented deterministic input detection, limited CAL-code mapping, and query/form encoding.
 
 Additional user-facing reference documentation under `docs/` is introduced alongside the corresponding implemented behavior so it cannot get ahead of the executable interface. Its planned structure is specified in `wiki/documentation.md`.
 
 ## Bootstrap development state
 
-The repository currently has a minimal MCP server shell and the internal bounded CAL HTTP/request-policy layer; no CAL-backed scholarly MCP tools are implemented yet.
+The repository currently has a minimal MCP server shell, the internal bounded CAL HTTP/request-policy layer, and deterministic input normalization/query encoding; no CAL-backed scholarly MCP tools are implemented yet.
 
 Requirements: Python 3.11+.
 
@@ -138,7 +139,7 @@ mypy
 pytest
 ```
 
-Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. HTTP request-policy tests use injected transports and make no live CAL requests.
+Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. HTTP request-policy and normalization tests are deterministic and make no live CAL requests.
 
 ## Development model
 
