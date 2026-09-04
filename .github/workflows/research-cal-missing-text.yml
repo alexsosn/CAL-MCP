@@ -1,0 +1,39 @@
+name: Research CAL missing text responses
+
+on:
+  push:
+    branches: [issue-7-texts]
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Inspect bounded CAL missing text responses
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import re
+          from html import unescape
+          from urllib.request import Request, urlopen
+
+          UA = "CAL-MCP-research/0 (+https://github.com/alexsosn/CAL-MCP)"
+          urls = [
+              "https://cal.huc.edu/get_a_chapter.php?file=999999",
+              "https://cal.huc.edu/get_a_chapter.php?file=13250&sub=999",
+          ]
+          for url in urls:
+              req = Request(url, headers={"User-Agent": UA})
+              try:
+                  with urlopen(req, timeout=15) as response:
+                      body = response.read().decode("utf-8", "replace")
+                      text = " ".join(unescape(re.sub(r"<[^>]+>", " ", body)).split())
+                      print("URL", url)
+                      print("STATUS", response.status)
+                      print("FINAL", response.geturl())
+                      print("TEXT", text[:1000])
+              except Exception as exc:
+                  print("URL", url)
+                  print("ERROR", type(exc).__name__, str(exc))
+          PY
