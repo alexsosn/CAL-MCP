@@ -20,6 +20,9 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_lexicon_lookup",
         "cal_gloss_search",
         "cal_citation_text_search",
+        "cal_text_catalogue",
+        "cal_text_search",
+        "cal_text_page",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -34,11 +37,28 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(citation_schema["properties"]) == {"query"}
     assert citation_schema["required"] == ["query"]
 
-    for schema in (lexicon_schema, gloss_schema, citation_schema):
-        assert "English" not in schema["properties"]
-        assert "secondary" not in schema["properties"]
-        assert "first3" not in schema["properties"]
-        assert "cits" not in schema["properties"]
+    catalogue_schema = tools["cal_text_catalogue"].input_schema
+    assert set(catalogue_schema["properties"]) == {"category_id"}
+    assert "required" not in catalogue_schema or catalogue_schema["required"] == []
+
+    text_search_schema = tools["cal_text_search"].input_schema
+    assert set(text_search_schema["properties"]) == {"query"}
+    assert text_search_schema["required"] == ["query"]
+
+    text_page_schema = tools["cal_text_page"].input_schema
+    assert set(text_page_schema["properties"]) == {"file_id", "subtext_id", "page"}
+    assert text_page_schema["required"] == ["file_id"]
+
+    for schema in (
+        lexicon_schema,
+        gloss_schema,
+        citation_schema,
+        catalogue_schema,
+        text_search_schema,
+        text_page_schema,
+    ):
+        for private_parameter in ("English", "secondary", "first3", "cits", "cset", "sub", "clen"):
+            assert private_parameter not in schema["properties"]
 
 
 @pytest.mark.anyio
