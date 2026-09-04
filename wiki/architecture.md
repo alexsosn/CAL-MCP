@@ -164,6 +164,7 @@ Responsibilities:
 - declare tool names, descriptions, arguments, output schemas;
 - validate caller input before network access;
 - map typed service results/errors into MCP responses;
+- own the lifespan of one bounded `CalHttpClient` for the running server so cache and single-flight state are shared across tool calls; client construction performs no CAL request and shutdown closes it;
 - remain unaware of selectors, table layout, HTML nesting, or CAL-specific request retry details.
 
 ### 4.2 Application services
@@ -332,6 +333,8 @@ flowchart TB
     RETRY -->|no| ERR[Return typed upstream error]
     OK -->|semantic / parser failure| ERR
 ```
+
+The cache and in-flight single-flight map belong to the lifespan-managed client shared by one running MCP server. They suppress duplicate requests across tool calls in that process/session and disappear when the server stops.
 
 ### Constraints
 

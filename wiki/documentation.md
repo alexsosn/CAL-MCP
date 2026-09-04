@@ -41,7 +41,7 @@ flowchart TB
 - 5-minute orientation;
 - status, goals, non-goals;
 - minimal architecture diagrams;
-- links to installation/docs once implementation exists;
+- links to implemented user docs and release installation once available;
 - CAL/Agora relationship and disclaimer;
 - must stay short enough to remain a landing page.
 
@@ -165,13 +165,13 @@ When CAL changes an answer, update the live example only after confirming the ad
 
 ## 6. Documentation build strategy
 
-### Stage A — bootstrap (current)
+### Stage A — bootstrap (completed)
 
 Version-control Markdown only. Mermaid diagrams render directly on GitHub. Avoid introducing a documentation framework before user-facing pages exist.
 
-### Stage B — first implemented tools
+### Stage B — first implemented tools (current)
 
-Add `docs/` with navigation-ready Markdown. Establish a lightweight docs check in CI:
+Add `docs/` with navigation-ready Markdown as capabilities land. `docs/tools/lexicon.md` is the first tool-reference page. Establish a lightweight docs check in CI as the user-facing tree grows:
 
 - internal-link validation;
 - Markdown lint/format rules with limited, documented exceptions;

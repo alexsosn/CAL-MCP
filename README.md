@@ -2,9 +2,9 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** architecture and implementation planning. No production MCP server has been released yet.
+> **Status:** active pre-release development. The repository includes the first CAL-backed scholarly MCP tool, `cal_lexicon_lookup`; no versioned release has been published yet.
 
-CAL-MCP is intended to make CAL's existing scholarly interfaces easier to use from agents and MCP clients without copying, mirroring, or redistributing the CAL database. Queries remain live, user-initiated requests to CAL; CAL remains the authority for lexical data, texts, citations, bibliography, and scholarly interpretation.
+CAL-MCP makes CAL's existing scholarly interfaces easier to use from agents and MCP clients without copying, mirroring, or redistributing the CAL database. Queries remain live, user-initiated requests to CAL; CAL remains the authority for lexical data, texts, citations, bibliography, and scholarly interpretation.
 
 This project is not affiliated with or endorsed by the Comprehensive Aramaic Lexicon Project or Hebrew Union College.
 
@@ -27,24 +27,26 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 - Making Agora responsible for CAL-specific behavior.
 - Depending on Agora at runtime.
 
-## Planned MCP surface
+## MCP surface
 
-The exact tool schemas will be stabilized by tests before the first release. The target research surface is:
+The public surface is introduced incrementally and stabilized by tests before release.
 
-| Area | Planned capability |
-| --- | --- |
-| Lexicon | lemma/root/form lookup; complete entry retrieval; lexicon browse |
-| English search | gloss search; citation-text search |
-| Concordance | KWIC/concordance queries with text/dialect constraints supported by CAL |
-| Texts | text catalogue/search; passage/context retrieval |
-| Token analysis | CAL lexical analysis for a token at a CAL text coordinate |
-| Citations | citation lookup, source links, retrieval metadata |
-| Bibliography | bibliographic search where the public CAL interface supports it |
-| Targum | CAL Targum comparison/research operations |
-| Syriac | CAL Syriac research operations |
-| Input handling | deterministic CAL/Unicode/Hebrew/Syriac normalization and query encoding |
+| Area | Status | Capability |
+| --- | --- | --- |
+| Lexicon | **Implemented** | `cal_lexicon_lookup`: root/headword/form lookup, explicit homograph disambiguation, complete entry parsing with provenance |
+| Input handling | **Implemented** | deterministic CAL/Unicode/Hebrew/Syriac normalization and query encoding |
+| English search | Planned | gloss search; citation-text search |
+| Concordance | Planned | KWIC/concordance queries with text/dialect constraints supported by CAL |
+| Texts | Planned | text catalogue/search; passage/context retrieval |
+| Token analysis | Planned | CAL lexical analysis for a token at a CAL text coordinate |
+| Citations | Planned | citation lookup, source links, retrieval metadata |
+| Bibliography | Planned | bibliographic search where the public CAL interface supports it |
+| Targum | Planned | CAL Targum comparison/research operations |
+| Syriac | Planned | CAL Syriac research operations |
 
-The server must distinguish between **CAL data returned by the upstream service** and **adapter metadata produced by CAL-MCP**.
+The server distinguishes between **CAL data returned by the upstream service** and **adapter metadata produced by CAL-MCP**.
+
+See [`docs/tools/lexicon.md`](docs/tools/lexicon.md) for the implemented lexicon contract.
 
 ## System boundary
 
@@ -87,7 +89,7 @@ flowchart TB
     SVC --> MCP
 ```
 
-The MCP tool layer must not parse CAL HTML directly. Endpoint-specific parsing stays behind typed services so CAL markup changes can be handled without changing public MCP contracts unnecessarily.
+The MCP tool layer does not parse CAL HTML directly. Endpoint-specific parsing stays behind typed services so CAL markup changes can be handled without changing public MCP contracts unnecessarily.
 
 ## Documentation map
 
@@ -104,13 +106,20 @@ The repository uses documentation as executable project state for humans and cod
 - [`wiki/backlog.md`](wiki/backlog.md) — issue map and release gates.
 - [`wiki/agentic-dev-loop.md`](wiki/agentic-dev-loop.md) — exact issue → implementation → review → merge loop.
 - [`docs/configuration.md`](docs/configuration.md) — implemented CAL HTTP/request/cache policy and conservative defaults.
-- [`docs/concepts/input-and-transliteration.md`](docs/concepts/input-and-transliteration.md) — implemented deterministic input detection, limited CAL-code mapping, and query/form encoding.
+- [`docs/concepts/input-and-transliteration.md`](docs/concepts/input-and-transliteration.md) — deterministic input detection, limited CAL-code mapping, and query/form encoding.
+- [`docs/tools/lexicon.md`](docs/tools/lexicon.md) — `cal_lexicon_lookup` semantics, examples, limits, failures, and CAL provenance.
 
-Additional user-facing reference documentation under `docs/` is introduced alongside the corresponding implemented behavior so it cannot get ahead of the executable interface. Its planned structure is specified in `wiki/documentation.md`.
+Additional user-facing reference documentation under `docs/` is introduced alongside the corresponding implemented behavior so it cannot get ahead of the executable interface. Its target structure is specified in `wiki/documentation.md`.
 
-## Bootstrap development state
+## Current development state
 
-The repository currently has a minimal MCP server shell, the internal bounded CAL HTTP/request-policy layer, and deterministic input normalization/query encoding; no CAL-backed scholarly MCP tools are implemented yet.
+The repository currently has:
+
+- a standalone stdio MCP server;
+- a bounded CAL HTTP/request-policy layer with strict origin, redirect, retry, concurrency, cache, and response-size controls;
+- deterministic input normalization/query encoding;
+- the live `cal_lexicon_lookup` tool with typed lexicon parsing and provenance;
+- offline parser fixtures and deterministic MCP/request-policy tests.
 
 Requirements: Python 3.11+.
 
@@ -139,7 +148,7 @@ mypy
 pytest
 ```
 
-Bootstrap tests guard the import of `cal_mcp.server` itself and subsequent MCP introspection against outbound socket connections, so import-time client initialization cannot silently contact CAL. The installed stdio entry point is tested separately. HTTP request-policy and normalization tests are deterministic and make no live CAL requests.
+Importing `cal_mcp.server` remains network-free. When the MCP server starts, its lifespan creates one bounded CAL client for that running server without issuing a CAL request; live traffic begins only when a CAL-backed tool is called. Reusing that client preserves the request layer's process/session-local cache and single-flight behavior across tool calls, and the client is closed at server shutdown. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon parser/service, and MCP contract tests make no live CAL requests.
 
 ## Development model
 
@@ -161,7 +170,7 @@ See [`AGENTS.md`](AGENTS.md) and [`wiki/agentic-dev-loop.md`](wiki/agentic-dev-l
 
 CAL describes itself as a live work in progress and asks scholarly users to cite the retrieval date. CAL exposes public research forms and server-side query endpoints, but as of the research snapshot documented in this repository we have not found a published CAL API contract or a CAL-specific automated-access policy.
 
-CAL-MCP therefore starts from a deliberately narrow operational rule: perform only bounded requests required to answer the user's current MCP call; do not crawl, mirror, prefetch the corpus, or redistribute CAL content. If CAL publishes a machine API or explicit automation policy, `research.md` and the relevant architecture decision must be updated before changing behavior.
+CAL-MCP therefore uses a deliberately narrow operational rule: perform only bounded requests required to answer the user's current MCP call; do not crawl, mirror, prefetch the corpus, or redistribute CAL content. If CAL publishes a machine API or explicit automation policy, `research.md` and the relevant architecture decision must be updated before changing behavior.
 
 ## License
 

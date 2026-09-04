@@ -187,6 +187,47 @@ Risk controls:
 - keep normal CI offline;
 - run very small opt-in/scheduled live smoke tests after release to detect drift.
 
+## R-013 — Lexicon entries use recursive outline numbering and multi-link citation rows
+
+**Rechecked:** 2026-09-04.
+
+The current `br N` lexicon entry demonstrates two parser-relevant structures that are not safely representable by a one-level parenthetical model or by splitting a rendered citation line independently for each link.
+
+The sense outline includes a top-level sense followed by repeated parenthetical numbering at several nested levels. In the current entry, the sequence under top-level sense 2 includes `(1)` → `(1)` → `(1)`, followed by sibling `(2)` at the deepest active level. The semantic hierarchy therefore has paths equivalent to `2`, `2.1`, `2.1.1`, `2.1.1.1`, then `2.1.1.2`; repeated `(1)` labels cannot be flattened without losing CAL's distinctions.
+
+The same entry also renders more than one linked citation reference on a single semantic row. Citation text must therefore be segmented between the positions of adjacent citation anchors. Taking the entire suffix after each link causes the first citation to absorb later references and their text.
+
+Source:
+
+- https://cal.huc.edu/cal_entry_web.php?lemma=br+N
+
+A deliberately reduced fixture recording these relationships is kept as `tests/fixtures/cal/entry_br_nested.html`; it is not an archived CAL page.
+
+**Implication:** the lexicon parser maintains recursive sense paths from the observed outline sequence, treats inconsistent parenthetical numbering as parser drift rather than guessing, and partitions multi-link citation rows by ordered anchor boundaries.
+
+## R-014 — Current lexicon display shapes are broader than the first fixtures
+
+**Rechecked:** 2026-09-04.
+
+A second review against current CAL pages found several structures that a faithful lexicon adapter cannot reduce to the narrow vocabulary present in the initial `br`/`nmy` fixtures.
+
+CAL's full lexicon browser explicitly accepts CAL code, Unicode transliteration, Unicode Hebrew, and Unicode Syriac. Its character table distinguishes Hebrew shin/sin (`ש` / `שׂ`) and maps Syriac `ܧ` to transliterated `ṗ`; it also documents the space-bar equivalent of CAL `@` in combinations.
+
+CAL's lexical display uses an open set of part-of-speech abbreviations. Current pages/search results include forms such as `interj.`, `adv./conj.`, `nom.ag.`, `v.n.`, and stem-qualified variants rather than only the noun/verb/adverb labels present in the first fixtures. Treating POS as a small closed local enum would reject valid current entries.
+
+CAL publishes dialect codes including subcodes such as `BA-Da`, `BA-Ez`, `OfA-Egypt`, `OfA-Pers`, and `OfA-West`; current entry pages also render human-readable names such as `Common Aramaic`, `Nabatean`, `Palmyrene`, and `Qumran`. Dialect recognition therefore must preserve documented codes/display labels without using capitalization as a generic dialect heuristic.
+
+Finally, current `br N` citation rows can mix plain, unlinked citation fragments with linked citation anchors. The rendered citation-count marker counts both forms. When CAL does not provide a link or a safely separable structured reference for a fragment, the adapter can preserve the rendered fragment as citation text but must not invent a reference or URL. The count marker provides a fail-safe check against silently losing such fragments.
+
+Sources:
+
+- https://cal.huc.edu/searching/fullbrowser.html
+- https://cal.huc.edu/Cal_dialect_codes.html
+- https://cal.huc.edu/lexical.help.html
+- https://cal.huc.edu/cal_entry_web.php?lemma=br+N
+
+**Implication:** the lexicon parser does not use a closed POS whitelist; it recognizes CAL-style abbreviation tokens while preserving their exact text. Dialect matching is based on documented CAL codes/display labels and only after a sense definition has been established. Script comparison preserves the browser's shin/sin and Syriac `ܧ` distinctions. Mixed linked/plain citation rows retain all counted fragments, using nullable adapter `reference`/`url` fields when upstream markup does not supply them.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
