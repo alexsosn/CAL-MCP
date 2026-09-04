@@ -101,6 +101,19 @@ def test_text_catalogue_is_bounded_and_keeps_subtext_navigation_explicit() -> No
     ]
 
 
+def test_malformed_upstream_text_identifier_is_parser_drift() -> None:
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/newtextmenu.html",
+        body=b'<html><body><a href="get_a_chapter.php?file=abc">broken</a></body></html>',
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 9, 4, tzinfo=UTC),
+    )
+
+    with pytest.raises(TextParseError):
+        parse_text_catalogue_page(response)
+
+
 def test_text_page_preserves_page_metadata_coordinates_and_token_positions() -> None:
     page = parse_text_page(
         _fixture_response(
@@ -153,6 +166,23 @@ def test_text_page_preserves_page_metadata_coordinates_and_token_positions() -> 
         (0, "m)N"),
         (1, "dtny"),
     ]
+
+
+def test_malformed_upstream_token_coordinate_is_parser_drift() -> None:
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/get_a_chapter.php?file=71026&page=0",
+        body=(
+            b'<html><body><a href="get_file_info.php?coord=71026">71026: BT AZ</a>'
+            b'<div><a href="bablex.php?coord=abc&amp;word=0">xd</a></div>'
+            b"</body></html>"
+        ),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 9, 4, tzinfo=UTC),
+    )
+
+    with pytest.raises(TextParseError):
+        parse_text_page(response, requested_file_id="71026", requested_subtext_id=None)
 
 
 def test_unpaginated_text_page_does_not_invent_pagination_metadata() -> None:
@@ -242,6 +272,18 @@ class RecordingTransport:
         raise AssertionError(f"unexpected request: {request}")
 
 
+class StaticPageTransport:
+    def __init__(self, response: CalResponse) -> None:
+        self.response = response
+        self.requests: list[CalRequest] = []
+
+    async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        self.requests.append(request)
+        assert request.path == "get_a_chapter.php"
+        return self.response
+
+
 @pytest.mark.anyio
 async def test_text_service_uses_one_request_per_explicit_operation() -> None:
     transport = RecordingTransport()
@@ -274,11 +316,24 @@ async def test_text_service_uses_one_request_per_explicit_operation() -> None:
 
 @pytest.mark.anyio
 async def test_text_page_maps_public_page_two_to_upstream_page_one() -> None:
-    transport = RecordingTransport()
+    body = (FIXTURES / "text_page_bt_az.html").read_bytes().replace(
+        b"Page 1 of 50", b"Page 2 of 50"
+    )
+    transport = StaticPageTransport(
+        CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/get_a_chapter.php?file=71026&sub=4&page=1",
+            body=body,
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 4, tzinfo=UTC),
+        )
+    )
     service = TextService(CalHttpClient(transport=transport))
 
-    await service.page("71026", subtext_id="4", page=2)
+    result = await service.page("71026", subtext_id="4", page=2)
 
+    assert result.page is not None
+    assert result.page.page == 2
     assert transport.requests == [
         CalRequest(
             method="GET",
@@ -286,6 +341,38 @@ async def test_text_page_maps_public_page_two_to_upstream_page_one() -> None:
             params=(("file", "71026"), ("sub", "4"), ("page", "1")),
         )
     ]
+
+
+@pytest.mark.anyio
+async def test_text_service_rejects_response_for_different_requested_page() -> None:
+    transport = StaticPageTransport(
+        _fixture_response(
+            "text_page_bt_az.html",
+            "https://cal.huc.edu/get_a_chapter.php?file=71026&page=1",
+        )
+    )
+    service = TextService(CalHttpClient(transport=transport))
+
+    with pytest.raises(TextParseError):
+        await service.page("71026", page=2)
+
+    assert len(transport.requests) == 1
+
+
+@pytest.mark.anyio
+async def test_text_service_rejects_unpaginated_page_for_requested_page_after_one() -> None:
+    transport = StaticPageTransport(
+        _fixture_response(
+            "text_page_tel_dan.html",
+            "https://cal.huc.edu/get_a_chapter.php?file=13250&page=1",
+        )
+    )
+    service = TextService(CalHttpClient(transport=transport))
+
+    with pytest.raises(TextParseError):
+        await service.page("13250", page=2)
+
+    assert len(transport.requests) == 1
 
 
 @pytest.mark.anyio
