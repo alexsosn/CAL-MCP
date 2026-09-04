@@ -491,7 +491,9 @@ def _page_navigation(
                 if sub_values[0]:
                     subtext_id = _parse_id(sub_values[0], "subtext_id")
             if subtext_id != requested_subtext_id:
-                raise TextParseError("CAL text page navigation subtext differs from requested subtext")
+                raise TextParseError(
+                    "CAL text page navigation subtext differs from requested subtext"
+                )
 
             upstream_page = _single_query_value(query, "page", "page-navigation")
             if not upstream_page.isdigit():
