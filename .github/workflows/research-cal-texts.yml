@@ -9,11 +9,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Inspect bounded CAL text forms and links
+      - name: Inspect bounded CAL text result and page shapes
         shell: bash
         run: |
           set -euo pipefail
           python - <<'PY'
+          import re
+          from html import unescape
           from html.parser import HTMLParser
           from urllib.parse import urlencode, urljoin
           from urllib.request import Request, urlopen
@@ -26,43 +28,51 @@ jobs:
               with urlopen(req, timeout=15) as response:
                   return response.geturl(), response.read().decode("utf-8", "replace")
 
-          class Inspector(HTMLParser):
+          def compact(fragment):
+              fragment = re.sub(r"<[^>]+>", " ", fragment)
+              return " ".join(unescape(fragment).split())
+
+          class LinkInspector(HTMLParser):
               def __init__(self):
                   super().__init__()
-                  self.forms = []
-                  self.inputs = []
                   self.links = []
+                  self._href = None
+                  self._parts = []
               def handle_starttag(self, tag, attrs):
-                  d = dict(attrs)
-                  if tag == "form":
-                      self.forms.append((d.get("method"), d.get("action")))
-                  elif tag == "input":
-                      self.inputs.append((d.get("name"), d.get("value"), d.get("type")))
-                  elif tag == "a" and d.get("href"):
-                      self.links.append(d["href"])
+                  if tag == "a":
+                      self._href = dict(attrs).get("href")
+                      self._parts = []
+              def handle_data(self, data):
+                  if self._href is not None:
+                      self._parts.append(data)
+              def handle_endtag(self, tag):
+                  if tag == "a" and self._href is not None:
+                      self.links.append((self._href, " ".join("".join(self._parts).split())))
+                      self._href = None
+                      self._parts = []
 
-          _, topic_html = fetch(urljoin(BASE, "searching/searchtopic.html"))
-          p = Inspector(); p.feed(topic_html)
-          print("TOPIC_FORMS", p.forms)
-          print("TOPIC_INPUTS", p.inputs)
+          result_url, result_html = fetch(
+              urljoin(BASE, "newsearchtxts.php"),
+              urlencode({"search": "Tel Dan"}).encode(),
+          )
+          q = LinkInspector(); q.feed(result_html)
+          print("TOPIC_RESULT_URL", result_url)
+          print("TOPIC_LINKS", [item for item in q.links if "get_a_chapter.php" in item[0]][:10])
+          pos = result_html.find("get_a_chapter.php")
+          print("TOPIC_RESULT_CONTEXT", compact(result_html[max(0, pos-500):pos+800]))
 
-          if p.forms and p.inputs:
-              method, action = p.forms[0]
-              field = next((name for name, _, typ in p.inputs if name and typ not in {"submit", "reset"}), None)
-              if action and field:
-                  data = urlencode({field: "Tel Dan"}).encode()
-                  result_url, result_html = fetch(
-                      urljoin("https://cal.huc.edu/searching/", action),
-                      data=data if (method or "").lower() == "post" else None,
-                  )
-                  q = Inspector(); q.feed(result_html)
-                  text_links = [href for href in q.links if "get_a_chapter.php" in href or "showsubtexts.php" in href]
-                  print("TOPIC_RESULT_URL", result_url)
-                  print("TOPIC_TEXT_LINKS", text_links[:10])
-
-          page_url, page_html = fetch(urljoin(BASE, "get_a_chapter.php?file=71026"))
-          r = Inspector(); r.feed(page_html)
-          interesting = [href for href in r.links if any(key in href for key in ("get_a_chapter.php", "getlex.php", "coord", "translation", "comment"))]
-          print("PAGE_URL", page_url)
-          print("PAGE_LINKS", interesting[:30])
+          _, page0 = fetch(urljoin(BASE, "get_a_chapter.php?file=71026&page=0"))
+          _, page1 = fetch(urljoin(BASE, "get_a_chapter.php?file=71026&page=1"))
+          for label, html in (("PAGE0", page0), ("PAGE1", page1)):
+              m = re.search(r"Page\s+\d+\s+of\s+\d+\s*\([^)]*lines total\)", compact(html))
+              print(label, m.group(0) if m else "NO_PAGE_MARKER")
+          p = LinkInspector(); p.feed(page0)
+          print("PAGE0_NAV", [item for item in p.links if "get_a_chapter.php" in item[0]][:8])
+          token = next((item for item in p.links if "bablex.php?coord=" in item[0]), None)
+          print("FIRST_TOKEN_LINK", token)
+          if token:
+              pos = page0.find(token[0])
+              print("FIRST_TOKEN_CONTEXT", compact(page0[max(0, pos-800):pos+1200]))
+          coordish = [item for item in p.links if "coord=" in item[0] and "bablex.php" not in item[0]]
+          print("NON_TOKEN_COORD_LINKS", coordish[:12])
           PY
