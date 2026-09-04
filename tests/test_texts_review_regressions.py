@@ -22,8 +22,10 @@ def _response(body: bytes) -> CalResponse:
 
 
 def test_navigation_without_pagination_marker_is_parser_drift() -> None:
-    body = (FIXTURES / "text_page_bt_az.html").read_bytes().replace(
-        b"<div>Page 1 of 50 (2413 lines total)</div>", b""
+    body = (
+        (FIXTURES / "text_page_bt_az.html")
+        .read_bytes()
+        .replace(b"<div>Page 1 of 50 (2413 lines total)</div>", b"")
     )
 
     with pytest.raises(TextParseError):
