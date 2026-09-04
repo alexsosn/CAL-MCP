@@ -119,7 +119,9 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
             raise TokenAnalysisParseError("CAL token-analysis label unexpectedly contains links")
         analysis_label = label_line.text.strip()
         if not analysis_label:
-            raise TokenAnalysisParseError("CAL token-analysis candidate has an empty analysis label")
+            raise TokenAnalysisParseError(
+                "CAL token-analysis candidate has an empty analysis label"
+            )
         if len(lemma_path_links) != 1:
             raise TokenAnalysisParseError(
                 "CAL token-analysis candidate has multiple lemma-entry links"
