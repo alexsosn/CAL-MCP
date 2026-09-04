@@ -17,5 +17,11 @@ Capture/recheck date: **2026-09-04**.
 | `search_gloss_empty.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=qzxvjk#`, `secondary=true`) | exact current empty-gloss marker |
 | `search_citations_camel.html` | `POST https://cal.huc.edu/searchcits.php` (`English=camel`) | repeated lemma/context/citation rows with Hebrew and Syriac source text |
 | `search_citations_empty.html` | `POST https://cal.huc.edu/searchcits.php` (`English=qzxvjk`) | exact current empty-citation marker |
+| `text_catalogue_root.html` | `https://cal.huc.edu/newtextmenu.html` | root category links plus a directly linked text |
+| `text_catalogue_biblical.html` | `https://cal.huc.edu/showsubtexts.php?subtext=3` | explicit subtext/file navigation identifiers |
+| `text_search_tel_dan.html` | `POST https://cal.huc.edu/newsearchtxts.php` (`search=Tel Dan`) | topic-search text reference, label, and rendered description |
+| `text_page_bt_az.html` | `https://cal.huc.edu/get_a_chapter.php?file=71026&page=0` | paginated text metadata, line/display coordinates, token links, comments, and next-page navigation |
+| `text_page_tel_dan.html` | `https://cal.huc.edu/get_a_chapter.php?file=13250&page=0` | valid short text with line/token coordinates but no page-count marker |
+| `text_page_missing.html` | `https://cal.huc.edu/get_a_chapter.php?file=13250&sub=999` | current explicit `NO LINES FOR ... ARE CURRENTLY STORED` missing-text marker |
 
-The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
+The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
