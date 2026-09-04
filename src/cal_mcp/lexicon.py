@@ -24,7 +24,7 @@ class LexiconLookupStatus(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class Citation:
-    reference: str
+    reference: str | None
     url: str | None
     text: str
 
@@ -202,15 +202,12 @@ class _SemanticHTMLParser(HTMLParser):
         self._line_depth = max(self._list_depth, 0)
 
 
-_POS_RE = re.compile(
-    r"^(?P<label>.+?)\s+(?P<pos>"
-    r"n\.(?:m|f|mf|m/f)\.|vb\.|adv\.|adj\.|prep\.|conj\.|pron\.|part\.|num\.|sym\."
-    r")(?:\s+(?P<gloss>.*))?$"
-)
+_TOKEN_RE = re.compile(r"\S+")
 _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
 _STEM_HEADING_RE = re.compile(r"^(?P<heading>.+?)\s+\d+\s+senses?▶$")
-_CITATION_MARKER_RE = re.compile(r"^▶\s*\d+\s+citations?$", re.IGNORECASE)
+_CITATION_MARKER_RE = re.compile(r"^▶\s*(?P<count>\d+)\s+citations?$", re.IGNORECASE)
+_CITATION_SEPARATOR_RE = re.compile(r"\s+;\s+")
 _SECTION_FORM = "§Form & Usage▶"
 _SECTION_DERIVATIVES = "☛Derivatives▶"
 _SECTION_NOTES = "✎Notes & Bibliography▶"
@@ -221,28 +218,45 @@ _NOT_FOUND_PHRASES = (
     "no matching entries were found",
     "no matches were found",
 )
-_KNOWN_DIALECTS = frozenset(
+_DIALECT_EXACT = frozenset(
     {
-        "Syr",
+        "BA",
+        "BA-Da",
+        "BA-Ez",
+        "CPA",
+        "Com",
+        "Com.",
+        "Common Aramaic",
+        "Gal",
+        "Hat",
+        "Hatran",
         "JBA",
         "JBAg",
-        "LJLA",
-        "OfA",
-        "Qumran",
         "JLAtg",
-        "Gal",
-        "PTA",
-        "CPA",
-        "Sam",
+        "JPA",
+        "Jud",
+        "LJLA",
         "Man",
-        "Hat",
+        "Mandaic",
         "Nab",
-        "Pal",
+        "Nabatean",
+        "OA",
+        "OfA",
+        "OfAGen",
+        "PTA",
         "Palm",
+        "Palmyrene",
+        "Qum",
+        "Qumran",
+        "Sam",
+        "Samaritan",
+        "Syr",
+        "Syriac",
         "Targum",
-        "Common Aramaic",
     }
 )
+_DIALECT_PREFIXES = ("BA-", "JBA", "JPA", "OA-", "OfA-", "Qum", "Syr")
+_NOUN_POS_QUALIFIERS = frozenset({"c.", "coll.", "du.", "f.", "m.", "pl.", "sg.", "t."})
 _STEM_TOKENS = frozenset({"G", "D", "C", "N", "Gt", "Dt", "Ct", "Et", "It", "Š", "Št"})
 
 
@@ -253,11 +267,16 @@ class _SenseBuilder:
     definition: str = ""
     dialects: tuple[str, ...] = ()
     citations: list[Citation] = field(default_factory=list)
+    expected_citations: int | None = None
     citation_mode: bool = False
 
     def freeze(self) -> Sense:
         if not self.definition:
             raise LexiconParseError("CAL lexicon sense is missing its definition")
+        if self.expected_citations is not None and len(self.citations) != self.expected_citations:
+            raise LexiconParseError(
+                "CAL lexicon citation count does not match the rendered citation marker"
+            )
         return Sense(
             label_path=self.label_path,
             definition=self.definition,
@@ -411,21 +430,21 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
         if current is None:
             current = _SenseBuilder(label_path=())
 
-        if _CITATION_MARKER_RE.match(text):
+        citation_marker = _CITATION_MARKER_RE.match(text)
+        if citation_marker is not None:
+            current.expected_citations = int(citation_marker.group("count"))
             current.citation_mode = True
             continue
-        if current.citation_mode and line.links:
+        if current.citation_mode:
             current.citations.extend(_parse_citations(line, response.url))
-            continue
-        if _looks_like_dialect(text):
-            current.dialects = tuple(part.strip() for part in text.split(",") if part.strip())
-            current.citation_mode = False
             continue
         if not current.definition:
             current.definition = text
-            current.citation_mode = False
-        else:
-            current.definition = f"{current.definition} {text}"
+            continue
+        if _looks_like_dialect(text):
+            current.dialects = tuple(part.strip() for part in text.split(",") if part.strip())
+            continue
+        current.definition = f"{current.definition} {text}"
 
     finish_current()
     if not senses:
@@ -530,14 +549,34 @@ def _parse_lemma_header(
     lemma_key: str,
     require_gloss: bool,
 ) -> LemmaRef | None:
-    match = _POS_RE.match(text)
-    if match is None:
+    tokens = list(_TOKEN_RE.finditer(text))
+    pos_index = next(
+        (index for index, token in enumerate(tokens) if _looks_like_pos_token(token.group(0))),
+        None,
+    )
+    if pos_index is None:
         return None
-    label = match.group("label").strip()
-    gloss = (match.group("gloss") or "").strip()
+
+    pos_start = tokens[pos_index].start()
+    pos_end = tokens[pos_index].end()
+    first_pos_token = tokens[pos_index].group(0)
+    if first_pos_token == "n.":
+        qualifier_index = pos_index + 1
+        while (
+            qualifier_index < len(tokens)
+            and tokens[qualifier_index].group(0) in _NOUN_POS_QUALIFIERS
+        ):
+            pos_end = tokens[qualifier_index].end()
+            qualifier_index += 1
+
+    label = text[:pos_start].strip()
+    part_of_speech = text[pos_start:pos_end].strip()
+    gloss = text[pos_end:].strip()
     if gloss.startswith("#") and gloss[1:].isdigit():
         gloss = ""
     if require_gloss and not gloss:
+        return None
+    if not label or not part_of_speech:
         return None
 
     pronunciation: str | None = None
@@ -553,9 +592,15 @@ def _parse_lemma_header(
         lemma_key=lemma_key,
         headwords=headwords,
         pronunciation=pronunciation,
-        part_of_speech=match.group("pos"),
+        part_of_speech=part_of_speech,
         gloss=gloss,
     )
+
+
+def _looks_like_pos_token(value: str) -> bool:
+    if not value or not value[0].isascii() or not value[0].isalpha() or "." not in value:
+        return False
+    return all(char.isascii() and (char.isalnum() or char in "./-") for char in value)
 
 
 def _lemma_key_from_href(href: str) -> str | None:
@@ -593,7 +638,11 @@ def _looks_like_dialect(text: str) -> bool:
     parts = tuple(part.strip() for part in text.split(",") if part.strip())
     if not parts:
         return False
-    return all(part in _KNOWN_DIALECTS or "Aramaic" in part for part in parts)
+    return all(_is_dialect_label(part) for part in parts)
+
+
+def _is_dialect_label(value: str) -> bool:
+    return value in _DIALECT_EXACT or value.startswith(_DIALECT_PREFIXES)
 
 
 def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
@@ -606,22 +655,36 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
         locations.append((link, start))
         cursor = start + len(link.text)
 
+    if not locations:
+        return [_raw_citation(part) for part in _split_citation_segments(line.text)]
+
     citations: list[Citation] = []
+    prefix = line.text[: locations[0][1]]
+    citations.extend(_raw_citation(part) for part in _split_citation_segments(prefix))
+
     for index, (link, start) in enumerate(locations):
         text_start = start + len(link.text)
         text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
-        citation_text = line.text[text_start:text_end].strip()
-        if citation_text.endswith(";"):
-            citation_text = citation_text[:-1].rstrip()
+        segments = _split_citation_segments(line.text[text_start:text_end])
+        linked_text = segments[0] if segments else ""
         reference = link.text.removesuffix("↗").strip()
         citations.append(
             Citation(
                 reference=reference,
                 url=urljoin(base_url, link.href) if link.href else None,
-                text=citation_text,
+                text=linked_text,
             )
         )
+        citations.extend(_raw_citation(part) for part in segments[1:])
     return citations
+
+
+def _split_citation_segments(value: str) -> list[str]:
+    return [part.strip() for part in _CITATION_SEPARATOR_RE.split(value.strip()) if part.strip()]
+
+
+def _raw_citation(text: str) -> Citation:
+    return Citation(reference=None, url=None, text=text)
 
 
 def _parse_derivative(line: _Line) -> Derivative | None:
@@ -716,21 +779,40 @@ _SYRIAC_TO_ROMAN = {
     "ܣ": "s",
     "ܥ": "ˁ",
     "ܦ": "p",
+    "ܧ": "ṗ",
     "ܨ": "ṣ",
     "ܩ": "q",
     "ܪ": "r",
     "ܫ": "š",
     "ܬ": "t",
 }
+_HEBREW_SIN_DOT = "\u05c2"
 
 
 def _comparison_surface(value: str) -> str:
     normalized = unicodedata.normalize("NFD", value.strip(" "))
     output: list[str] = []
-    for char in normalized:
+    index = 0
+    while index < len(normalized):
+        char = normalized[index]
         if unicodedata.category(char).startswith("M"):
+            index += 1
             continue
-        output.append(_HEBREW_TO_ROMAN.get(char, _SYRIAC_TO_ROMAN.get(char, char)))
+
+        next_index = index + 1
+        marks: list[str] = []
+        while (
+            next_index < len(normalized)
+            and unicodedata.category(normalized[next_index]).startswith("M")
+        ):
+            marks.append(normalized[next_index])
+            next_index += 1
+
+        if char == "ש" and _HEBREW_SIN_DOT in marks:
+            output.append("ś")
+        else:
+            output.append(_HEBREW_TO_ROMAN.get(char, _SYRIAC_TO_ROMAN.get(char, char)))
+        index = next_index
     return unicodedata.normalize("NFC", "".join(output))
 
 
