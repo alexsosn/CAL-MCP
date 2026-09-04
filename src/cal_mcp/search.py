@@ -106,21 +106,18 @@ def parse_citation_search_page(response: CalResponse) -> CitationSearchPage:
             index += 1
             continue
 
-        lexical_context: str | None = None
-        citation_text: str | None = None
-        cursor = index + 1
-        while cursor < len(lines) and _lemma_from_line(lines[cursor]) is None:
-            candidate = lines[cursor].text
-            if lexical_context is None:
-                lexical_context = candidate
-            elif citation_text is None:
-                citation_text = candidate
-                break
-            cursor += 1
+        next_lemma_index = index + 1
+        while next_lemma_index < len(lines) and _lemma_from_line(lines[next_lemma_index]) is None:
+            next_lemma_index += 1
 
-        if lexical_context is None or citation_text is None:
-            raise SearchParseError("CAL citation search result is missing context or citation text")
+        payload = lines[index + 1 : next_lemma_index]
+        if len(payload) != 2:
+            raise SearchParseError(
+                "CAL citation search result must contain exactly context and citation text"
+            )
 
+        lexical_context = payload[0].text
+        citation_text = payload[1].text
         reference, source_text, translation = _parse_citation_text(citation_text)
         hits.append(
             CitationSearchHit(
@@ -131,7 +128,7 @@ def parse_citation_search_page(response: CalResponse) -> CitationSearchPage:
                 translation=translation,
             )
         )
-        index = cursor + 1
+        index = next_lemma_index
 
     if not hits:
         raise SearchParseError("CAL citation search page has no recognizable results")
