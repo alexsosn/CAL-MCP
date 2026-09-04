@@ -221,7 +221,9 @@ class TextService:
         self._client = client
 
     async def catalogue(self, *, category_id: str | None = None) -> TextCatalogueResult:
-        normalized_category = None if category_id is None else _validate_id(category_id, "category_id")
+        normalized_category = (
+            None if category_id is None else _validate_id(category_id, "category_id")
+        )
         if normalized_category is None:
             request = CalRequest(method="GET", path="newtextmenu.html")
         else:
@@ -409,7 +411,9 @@ def _page_text_ref(
             file_id = _single_query_value(query, "coord", "file-info")
             _validate_id(file_id, "file_id")
             if file_id != requested_file_id:
-                raise TextParseError("CAL text page file identifier differs from the requested file")
+                raise TextParseError(
+                    "CAL text page file identifier differs from the requested file"
+                )
             prefix, separator, label = link.text.partition(":")
             if not separator or prefix.strip() != file_id or not label.strip():
                 raise TextParseError("CAL text page file-info label is malformed")
