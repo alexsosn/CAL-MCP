@@ -154,6 +154,7 @@ Normal CI uses reduced semantic fixtures based on the CAL shape rechecked on **2
 - local input bounds;
 - source/page identity mismatch;
 - malformed, contradictory, cross-origin, and changed markup;
+- nested or duplicated result summary cards failing closed rather than duplicating rows;
 - exact one-request POST mapping and provenance;
 - MCP schema exposure without raw CAL form controls.
 
