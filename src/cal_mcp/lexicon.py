@@ -145,6 +145,7 @@ _BLOCK_TAGS = frozenset(
         "tr",
     }
 )
+_NON_CONTENT_TAGS = frozenset({"script", "style"})
 
 
 class _SemanticHTMLParser(HTMLParser):
@@ -156,8 +157,15 @@ class _SemanticHTMLParser(HTMLParser):
         self._open_link: _OpenLink | None = None
         self._list_depth = -1
         self._line_depth = 0
+        self._non_content_tag: str | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _NON_CONTENT_TAGS:
+            self._flush()
+            self._non_content_tag = tag
+            return
+        if self._non_content_tag is not None:
+            return
         if tag in {"ul", "ol"}:
             self._flush()
             self._list_depth += 1
@@ -172,6 +180,11 @@ class _SemanticHTMLParser(HTMLParser):
             self._open_link = _OpenLink(href=href)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == self._non_content_tag:
+            self._non_content_tag = None
+            return
+        if self._non_content_tag is not None:
+            return
         if tag == "a" and self._open_link is not None:
             text = _clean_text("".join(self._open_link.parts))
             self._links.append(_Link(href=self._open_link.href, text=text))
@@ -183,6 +196,8 @@ class _SemanticHTMLParser(HTMLParser):
             self._list_depth -= 1
 
     def handle_data(self, data: str) -> None:
+        if self._non_content_tag is not None:
+            return
         self._parts.append(data)
         if self._open_link is not None:
             self._open_link.parts.append(data)
