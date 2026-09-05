@@ -279,6 +279,30 @@ The form, pagination, missing-text, and empty-search inspections were deliberate
 
 **Implication:** CAL-MCP exposes three text primitives: one explicit catalogue level, one topic-search request, and one normal text page. Each public call performs exactly one CAL request. Category expansion and page traversal are caller-controlled; no recursive catalogue walk, automatic next-page request, `show all`, token lookup, background indexing, or local corpus mirror is introduced. Public pages are one-based, while CAL's current internal page parameter remains adapter-private. CAL file/subtext/category identifiers and machine/display coordinates are preserved with provenance but are not advertised as permanent CAL-MCP identifiers.
 
+## R-017 — Current Targum Studies surface mixes specialist comparison with existing text/KWIC primitives
+
+**Rechecked:** 2026-09-05.
+
+A bounded live audit of CAL's Targum Studies module established three specialist result families plus one navigation path that already composes with CAL-MCP's general text browser.
+
+The parallel verse form submits one biblical book/chapter/verse to `showtargum.php`, with optional Peshitta and Samaritan checkboxes. The current selector contains 36 exact CAL book labels/values. A Gen 1:1 request returned MT plus ordered CAL-labelled readings including Onqelos, Pseudo Jonathan, Neofiti, Fragment Targum material, and optional Peshitta. Source-name links lead directly to CAL's ordinary `get_a_chapter.php` text pages, so a separate single-Targum MCP browser would duplicate the already implemented text interface. A nonexistent coordinate such as Gen 1:99 returns HTTP 200 with CAL's explicit `error in coordinate` marker; this is a passage-not-found state.
+
+The Targum concordance submits one CAL lemma/POS to `showtargumKWIC.php`. `klb N` returned an ordered source/count table totaling 59 examples across named Targum groups. A nonexistent structurally valid lemma returned the same complete table with every count zero and `total examples: 0`, establishing a valid empty-result shape rather than an error page. Source rows link to the existing CAL KWIC family and should remain explicit navigation metadata rather than trigger hidden follow-up requests.
+
+The Hebrew-reflex module studies which Aramaic lemmas translate a selected MT Hebrew lemma. CAL currently exposes usable Onqelos and Neofiti workflows while Pseudo-Jonathan is explicitly marked `(under development)`. The source-specific letter pages expose vocalized Hebrew lemma labels plus opaque numeric `R1` identifiers. MT ID `1751` (`מַעֲקֶה`) returned Onqelos `תיק #2 N` with frequency 2 and Neofiti `גיפוף N` / `סייג N` with frequency 1 each. A deliberately invalid MT ID returned a broad frequency list under an empty `Onkelos correspondences to` heading, so a faithful adapter must validate the semantic heading instead of trusting apparently well-formed rows.
+
+Sources:
+
+- https://cal.huc.edu/searching/targumsearch.html
+- https://cal.huc.edu/searching/targum_concordance.html
+- https://cal.huc.edu/targumicpairsearch.htm
+- https://cal.huc.edu/Olemmaselect.htm
+- https://cal.huc.edu/Omtlemmas/memMTlemma.html
+- https://cal.huc.edu/mtlemmas/memMTlemma.html
+- bounded branch-only form/result/edge-case probes recorded in `docs/research/issue-10-targum.md`
+
+**Implication:** issue #10 should add specialist one-request operations for parallel verse comparison, Targum-specific concordance counts, MT Hebrew lemma discovery, and Onqelos/Neofiti reflex lookup. Full source browsing and detailed KWIC remain compositions through existing tools. Version labels/order, Unicode text, opaque MT IDs, zero-count results, and explicit coordinate errors must be preserved without harmonization or hidden traversal.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
@@ -287,7 +311,7 @@ These should be answered by implementation tickets rather than guessed globally:
 2. Which dialect identifiers are stable machine values versus display labels?
 3. Do specialist text/module surfaces use pagination or coordinate shapes that differ materially from the general text browser?
 4. Does CAL document any stronger stability guarantee for file/subtext/category identifiers than is observable from the current public links?
-5. Which Targum and Syriac operations compose cleanly into general tools and which deserve specialist tools?
+5. Which Syriac operations compose cleanly into general tools and which deserve specialist tools?
 6. Does the bibliography interface expose stable query parameters suitable for typed search?
 7. What minimal cache policy gives useful duplicate-request suppression without retaining a meaningful CAL dataset?
 8. Does CAL expose `robots.txt` or future machine-access guidance that should alter request policy?
