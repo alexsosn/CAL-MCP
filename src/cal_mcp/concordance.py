@@ -617,7 +617,7 @@ def _parse_kwic_hits(response: CalResponse) -> tuple[KwicHit, ...]:
 
 
 def _parse_kwic_total(
-    lines: list[object],
+    lines: Sequence[object],
     lemma_key: str,
     scope_kind: KwicScopeKind,
     scope_ids: tuple[str, ...],
@@ -645,7 +645,9 @@ def _parse_kwic_total(
     raise ConcordanceParseError("CAL dialect KWIC lacks one unique total")
 
 
-def _parse_empty_scopes(lines: list[object], scope_ids: tuple[str, ...]) -> tuple[str, ...]:
+def _parse_empty_scopes(
+    lines: Sequence[object], scope_ids: tuple[str, ...]
+) -> tuple[str, ...]:
     requested = set(scope_ids)
     empty: list[str] = []
     for line in lines:
