@@ -115,7 +115,9 @@ def test_concordance_rejects_unclosed_ignored_content_subtree() -> None:
             <tr><th>Torah</th></tr>
             <tr>
               <td>
-                <a href="/show1dialectKWIC.php?lemma=zzzzzz&amp;pos=N&amp;texts=51001&amp;charset=H">
+                <a
+                  href="/show1dialectKWIC.php?lemma=zzzzzz&amp;pos=N&amp;texts=51001&amp;charset=H"
+                >
                   Onqelos
                 </a>
               </td>
