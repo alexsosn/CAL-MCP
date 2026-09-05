@@ -42,6 +42,26 @@ def test_inline_style_and_script_are_excluded_from_entry_text() -> None:
         assert forbidden not in rendered
 
 
+def test_ignored_noncontent_does_not_split_visible_semantic_line() -> None:
+    entry = parse_lexicon_entry(
+        _response(
+            (
+                b"<html><body><header>b "
+                b"<script>script.js executable content</script>"
+                b"<style>fullentry.css { display: none; }</style>"
+                b"sym. second letter of alphabet</header>"
+                b"<div>1</div><div>letter sense</div></body></html>"
+            ),
+            url="https://cal.huc.edu/cal_entry_web.php?lemma=b+s",
+        ),
+        lemma_key="b s",
+    )
+
+    assert entry.lemma.headwords == ("b",)
+    assert entry.lemma.part_of_speech == "sym."
+    assert entry.lemma.gloss == "second letter of alphabet"
+
+
 def test_full_entry_lemma_agrees_with_matching_browse_candidate() -> None:
     browse = parse_browse_page(
         _response(
