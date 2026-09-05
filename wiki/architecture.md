@@ -102,59 +102,48 @@ CAL parsing, linguistic behavior, and CAL-specific usage guidance must not migra
 
 ## 4. Component architecture
 
+The v0.1 implementation intentionally remains a small flat Python package. Each coherent CAL research surface owns its typed models, parsing, validation, and service behavior in one focused module; common transport/request policy and normalization are shared. This is simpler than the earlier planned `models/` / `parsers/` / `services/` directory split and has proven sufficient at the current scale.
+
 ```mermaid
 flowchart TB
     subgraph MCP[MCP boundary]
-      SERVER[Server / transport]
-      TOOLREG[Tool registry]
-      SCHEMA[Public schemas]
+      SERVER[server.py\n26 public tools + stdio lifecycle]
+      SCHEMA[Executable MCP schemas]
     end
 
-    subgraph Services[Application services]
-      LEX[LexiconService]
-      SEARCH[SearchService]
-      CONC[ConcordanceService]
-      TEXT[TextService]
-      BIB[BibliographyService]
-      TARG[TargumService]
-      SYR[SyriacService]
+    subgraph Surfaces[Task-level CAL adapters]
+      LEX[lexicon.py]
+      SEARCH[search.py]
+      TEXT[texts.py]
+      TOKEN[token_analysis.py]
+      CONC[concordance.py]
+      BIB[bibliography.py]
+      DICT[dictionary_collation.py]
+      EXT[external_citations.py]
+      TARG[targum.py]
+      SYR[syriac.py]
     end
 
-    subgraph Core[Core domain]
-      NORM[Normalizer]
-      MODELS[Typed models]
-      ERR[Typed errors]
-      PROV[Provenance builder]
-      LIMIT[Result/page limits]
-    end
-
-    subgraph Adapter[CAL web adapter]
-      HTTP[CalHttpClient]
-      POLICY[RequestPolicy]
-      ROUTES[Endpoint definitions]
-      PARSERS[Endpoint parsers]
-      CACHE[Bounded cache]
+    subgraph Shared[Shared adapter/core]
+      NORM[normalization.py]
+      LKEY[lemma_key.py]
+      BIBLE[biblical.py]
+      HTTP[client.py\nCalHttpClient]
+      POLICY[request_policy.py\nbounded cache policy]
     end
 
     CAL[cal.huc.edu]
 
-    SERVER --> TOOLREG
-    TOOLREG --> Services
-    Services --> NORM
-    Services --> HTTP
-    Services --> MODELS
-    Services --> LIMIT
+    SERVER --> SCHEMA
+    SERVER --> Surfaces
+    Surfaces --> NORM
+    Surfaces --> LKEY
+    TARG --> BIBLE
+    SYR --> BIBLE
+    Surfaces --> HTTP
     HTTP --> POLICY
-    POLICY --> CACHE
-    POLICY --> ROUTES
-    ROUTES --> CAL
-    CAL --> PARSERS
-    PARSERS --> MODELS
-    PARSERS --> ERR
-    PROV --> MODELS
-    MODELS --> Services
-    Services --> SCHEMA
-    SCHEMA --> SERVER
+    HTTP --> CAL
+    CAL --> Surfaces
 ```
 
 ### 4.1 MCP boundary
@@ -162,63 +151,58 @@ flowchart TB
 Responsibilities:
 
 - declare tool names, descriptions, arguments, output schemas;
-- validate caller input before network access;
-- map typed service results/errors into MCP responses;
+- validate caller input before network access where the public tool type/schema can do so;
+- dispatch each tool to one coherent task-level adapter/service;
 - own the lifespan of one bounded `CalHttpClient` for the running server so cache and single-flight state are shared across tool calls; client construction performs no CAL request and shutdown closes it;
-- remain unaware of selectors, table layout, HTML nesting, or CAL-specific request retry details.
+- remain unaware of CAL selectors, table layout, HTML nesting, or endpoint-specific parsing details.
 
-### 4.2 Application services
+The executable MCP schemas and contract tests are the technical source of truth for the 26-tool v0.1 surface.
 
-Services correspond to coherent CAL research tasks, not individual PHP pages. A service may combine a small number of upstream requests when that is required to perform a single explicit user operation, but it must not use hidden expansion/prefetch to simulate a local database.
+### 4.2 Task-level adapter modules
 
-Examples:
+Modules correspond to coherent CAL research tasks, not individual PHP pages. A module may contain its own small parser, typed result/provenance classes, local validation, and service class when keeping those pieces together makes the upstream contract easier to review.
 
-- `LexiconService.lookup()` may normalize a query and retrieve the matching entry.
-- `TextService.passage()` may retrieve a requested CAL text page/context.
-- `ConcordanceService.kwic()` may submit CAL's current concordance form parameters and parse bounded results.
+Current task modules cover:
 
-### 4.3 Core domain
+- lexicon lookup;
+- English gloss/citation-text search;
+- online text discovery/page reading;
+- token-at-coordinate lexical analysis;
+- concordance/KWIC;
+- bibliography;
+- dictionary spelling collation;
+- cited-but-not-online external citations;
+- Targum Studies;
+- Syriac Studies.
 
-The core contains no networking and no MCP framework dependency. Models should be reusable from tests and alternate transports.
+Composition across modules is explicit. For example, reading a text and analysing a token is two caller-controlled tool calls; Targum single-source browsing reuses the general text surface instead of adding another hidden browser.
 
-Candidate core types:
+### 4.3 Shared domain/validation code
 
-```text
-Provenance
-LemmaRef
-LexiconEntry
-Sense
-Form
-DerivativeRef
-Citation
-TextRef
-Passage
-Token
-TokenAnalysis
-ConcordanceHit
-BibliographyRef
-NormalizedQuery
-ResultPage[T]
-```
+Shared modules contain behavior that truly spans research surfaces:
 
-The exact schema is established incrementally by tickets and tests; this list is architectural guidance rather than a frozen API.
+- `normalization.py` — deterministic representation detection/conversion for supported inputs;
+- `lemma_key.py` — reusable structural CAL lemma-key validation;
+- `biblical.py` — bounded shared biblical coordinate validation/helpers used by specialist comparison surfaces;
+- `client.py` — CAL request validation, transport, bounded retry/content policy, provenance-bearing fetch results, single-flight coordination;
+- `request_policy.py` — bounded process-local completed-result cache primitives.
 
-### 4.4 CAL web adapter
+The shared layer contains no CAL scholarly reinterpretation and does not invent a universal result model when different CAL tasks expose different semantics.
 
-This is the anti-corruption layer around undocumented upstream web interfaces.
+### 4.4 CAL web anti-corruption boundary
 
-It owns:
+The task modules plus `CalHttpClient` form the anti-corruption layer around undocumented upstream web interfaces. Together they own:
 
 - URL/form parameter construction;
 - percent encoding and script-safe requests;
-- response content-type/status validation;
+- response content-type/status/size validation;
 - maintenance/error-page detection;
-- endpoint-specific parsers;
-- conversion to typed models;
-- parser-specific warnings when representation is partial;
+- endpoint/surface-specific parsers;
+- conversion to typed task models;
+- fail-closed parser drift handling;
 - conservative request policy.
 
-No caller outside this layer should know that a capability currently comes from `cal_entry_web.php`, `getlex.php`, or another specific handler.
+No public MCP caller should need to know that a capability currently comes from `cal_entry_web.php`, `getlex.php`, or another specific CAL handler.
 
 ## 5. Request flow
 
@@ -226,35 +210,37 @@ No caller outside this layer should know that a capability currently comes from 
 sequenceDiagram
     participant A as Agent/MCP client
     participant M as MCP tool
-    participant S as Service
-    participant N as Normalizer
+    participant S as Task adapter/service
+    participant N as Shared validator/normalizer
     participant H as CAL HTTP client
     participant C as CAL
-    participant P as Parser
+    participant P as Surface parser
 
-    A->>M: lookup_lexicon(query)
+    A->>M: explicit tool call
     M->>M: validate MCP arguments
-    M->>S: typed request
-    S->>N: normalize/detect representation
-    N-->>S: original + normalized query
-    S->>H: bounded upstream request
-    H->>C: HTTP request
+    M->>S: task request
+    S->>N: validate/normalize if applicable
+    N-->>S: canonical public/upstream values
+    S->>H: bounded CalRequest
+    H->>C: one explicit HTTP request
     C-->>H: upstream response
-    H->>P: validated response + source URL
-    P-->>S: LexiconEntry + provenance inputs
-    S-->>M: typed result
+    H->>P: validated response + source URL/time
+    P-->>S: typed CAL result
+    S-->>M: result + task provenance
     M-->>A: structured MCP response
 ```
+
+Some user workflows require a second explicit tool call using an identifier returned by the first. The server does not turn those compositions into hidden traversals.
 
 Failure at any layer remains distinguishable:
 
 - invalid caller input;
 - unsupported/local normalization;
-- network timeout;
+- network timeout/failure;
 - upstream HTTP failure;
-- CAL not-found/empty result;
-- parser schema mismatch/upstream drift;
-- result-limit/pagination condition.
+- unsafe/oversized content;
+- CAL explicit not-found/empty result;
+- parser schema mismatch/upstream drift.
 
 Do not collapse these into a generic “no result.”
 
@@ -286,34 +272,28 @@ Rules:
 - never ask an LLM to normalize/query CAL;
 - do not silently choose among multiple linguistic analyses.
 
-## 7. Response model and provenance
+Not every public tool uses the lexical normalization pipeline; opaque CAL IDs, source abbreviations, dictionary selectors, and biblical coordinates have their own narrow structural validators.
 
-All CAL-backed top-level results should carry a common provenance structure. A likely shape is:
+## 7. Response models and provenance
 
-```json
-{
-  "source": "CAL",
-  "source_url": "https://cal.huc.edu/...",
-  "retrieved_at": "2026-09-03T20:00:00Z",
-  "upstream_id": "...",
-  "query": {
-    "original": "...",
-    "normalized": "...",
-    "strategy": "..."
-  }
-}
-```
+Different CAL tasks expose different semantic fields, so v0.1 does **not** force every result through one universal provenance dataclass. The stable cross-surface guarantee is semantic:
 
-Fields are optional when the upstream surface does not provide them, except `source`, `source_url`, and `retrieved_at` for a successful CAL-backed network result.
+- successful CAL-backed network results identify `source` as CAL;
+- `source_url` records the actual upstream result URL;
+- `retrieved_at` records the timezone-aware actual CAL retrieval time;
+- relevant original/submitted query or CAL identifiers are preserved when useful for reproducibility;
+- cache reuse preserves the original CAL retrieval timestamp rather than fabricating a new one.
+
+Task modules add provenance fields appropriate to their operation (for example dictionary source/page, bibliography mode, text identifiers, or biblical coordinates). Those task-specific fields need not be identical merely for aesthetic uniformity.
 
 ### Loss-awareness
 
-If CAL exposes information the typed model does not yet represent, the parser must not silently discard material semantic fields. The correct behavior depends on scope:
+If CAL exposes information the typed model does not yet represent, the parser must not silently discard material semantic fields. The correct response depends on scope:
 
-- extend the model when the field is part of the ticket's required semantics;
+- extend the task model when the field is necessary for faithful semantics;
 - preserve a bounded raw label/value field where appropriate;
-- emit a parser warning for non-critical presentation-only information;
-- fail the parser when dropping the field would make the result misleading.
+- keep nullable fields when CAL genuinely omits optional material;
+- fail the parser when dropping or guessing the field would make the result misleading.
 
 ## 8. Request policy
 
@@ -321,17 +301,17 @@ Default behavior until an explicit CAL machine-access policy exists:
 
 ```mermaid
 flowchart TB
-    REQ[Explicit MCP operation] --> LIMIT[Validate scope / result limit]
+    REQ[Explicit MCP operation] --> LIMIT[Validate scope / bounds]
     LIMIT --> CACHE{Fresh bounded cache hit?}
-    CACHE -->|yes| HIT[Return cached parsed result + cache metadata]
+    CACHE -->|yes| HIT[Return cached parsed result\noriginal retrieval provenance]
     CACHE -->|no| SEM[Acquire low-concurrency permit]
-    SEM --> HTTP[Single CAL request]
+    SEM --> HTTP[CAL request]
     HTTP --> OK{Result}
-    OK -->|success| SAVE[Store bounded cache entry]
+    OK -->|success + parse| SAVE[Store bounded parsed result]
     OK -->|transient failure| RETRY{Retry budget available?}
     RETRY -->|yes| BACKOFF[Bounded backoff] --> HTTP
-    RETRY -->|no| ERR[Return typed upstream error]
-    OK -->|semantic / parser failure| ERR
+    RETRY -->|no| ERR[Typed upstream/network error]
+    OK -->|content / semantic / parser failure| ERR
 ```
 
 The cache and in-flight single-flight map belong to the lifespan-managed client shared by one running MCP server. They suppress duplicate requests across tool calls in that process/session and disappear when the server stops.
@@ -340,51 +320,42 @@ The cache and in-flight single-flight map belong to the lifespan-managed client 
 
 - no corpus-wide queues;
 - no “warm the cache” operation;
-- no automatic enumeration of all lemmas/texts;
-- no unbounded pagination;
+- no automatic enumeration of all lemmas/texts/sources;
+- no unbounded pagination or CAL `show all` exposure;
 - no high parallelism across CAL requests;
-- retries only for clearly transient failures;
-- cache has size/TTL bounds and a disable option.
+- retries only for explicitly classified transient failures;
+- cache has size/TTL bounds and a complete disable mode;
+- no persistent cache/background refresh in v0.1.
 
-## 9. Parser architecture
+## 9. Current source layout
 
-Do not create one giant general-purpose HTML parser. Use small endpoint/surface parsers with shared primitives.
-
-Planned shape:
+The current implementation is intentionally flat and reviewable:
 
 ```text
 src/cal_mcp/
+├── __init__.py
+├── __main__.py
+├── biblical.py
+├── bibliography.py
 ├── client.py
-├── request_policy.py
+├── concordance.py
+├── dictionary_collation.py
+├── external_citations.py
+├── lemma_key.py
+├── lexicon.py
 ├── normalization.py
-├── models/
-│   ├── common.py
-│   ├── lexicon.py
-│   ├── texts.py
-│   ├── concordance.py
-│   └── bibliography.py
-├── parsers/
-│   ├── common.py
-│   ├── lexicon_browse.py
-│   ├── lexicon_entry.py
-│   ├── text_browser.py
-│   ├── token_analysis.py
-│   ├── concordance.py
-│   ├── bibliography.py
-│   ├── targum.py
-│   └── syriac.py
-├── services/
-│   ├── lexicon.py
-│   ├── search.py
-│   ├── texts.py
-│   ├── concordance.py
-│   ├── bibliography.py
-│   ├── targum.py
-│   └── syriac.py
-└── server.py
+├── request_policy.py
+├── search.py
+├── server.py
+├── syriac.py
+├── targum.py
+├── texts.py
+└── token_analysis.py
 ```
 
-This is a target map, not permission to create empty modules before the relevant ticket.
+`py.typed` marks the installed package as typed.
+
+The earlier design considered separate `models/`, `parsers/`, and `services/` subpackages. The v0.1 implementation did not need that split: focused surface modules keep parser/model/service contracts together, while genuinely shared policy remains in small shared modules. A future structural split should be driven by demonstrated maintenance pressure, not by the old aspirational tree.
 
 ## 10. Testing architecture
 
@@ -393,7 +364,7 @@ flowchart TB
     U[Unit tests\nnormalization / models / policy]
     F[Fixture parser tests\nminimal CAL responses]
     S[Service tests\nHTTP mocked]
-    M[MCP contract tests\nserver in-process / stdio]
+    M[MCP + docs contract tests\nserver in-process / stdio / docs]
     L[Opt-in live smoke\nstrict request cap]
 
     U --> CI[Normal offline CI]
@@ -403,7 +374,7 @@ flowchart TB
     L --> DRIFT[Scheduled/release drift detection]
 ```
 
-Normal CI must be deterministic and offline. Live smoke verifies compatibility/drift, not scholarly correctness.
+Normal CI is deterministic and offline. Reduced fixtures preserve only the CAL semantics needed by parser regressions. Live smoke belongs to release/drift detection and has a separate strict request budget.
 
 See `testing.md`.
 
@@ -411,7 +382,7 @@ See `testing.md`.
 
 ### Standalone
 
-The released package must provide a stable command/entry point such as `cal-mcp` and support local stdio launch without Agora. Installation documentation belongs in CAL-MCP.
+The package already declares `cal-mcp = "cal_mcp.server:main"` and supports `python -m cal_mcp` as equivalent local stdio entry points. Issue #15 owns publication/clean-install validation for the versioned v0.1 release; standalone source/development operation exists before that release.
 
 ### Agora
 
@@ -425,9 +396,11 @@ flowchart LR
     PROC --> CAL[CAL]
 ```
 
-Agora should not vendor CAL-MCP source or contain CAL-specific parsers. Its test should be a representative smoke operation proving the integration can launch and reach the upstream service.
+Agora should not vendor CAL-MCP source or contain CAL-specific parsers. Its test should be a representative smoke operation proving the integration can launch and reach the upstream service. Issue #16 owns that downstream registration.
 
 ## 12. Evolution rules
+
+The 26-tool public surface audited for issue #12 is frozen for v0.1 except release-blocking fixes proven by regression tests.
 
 A public tool/schema change requires:
 
@@ -436,5 +409,7 @@ A public tool/schema change requires:
 3. user-facing documentation update;
 4. architecture/decision update when semantics or boundaries change;
 5. release-note entry once releases exist.
+
+A newly discovered CAL convenience surface does not automatically expand the release contract; for example, CAL's recent-bibliography snapshot is tracked separately in issue #39.
 
 An upstream CAL markup change that can be absorbed inside a parser should not force an MCP contract change.
