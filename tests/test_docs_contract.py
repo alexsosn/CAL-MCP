@@ -55,9 +55,7 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
     index = DOCS_INDEX.read_text(encoding="utf-8")
 
     missing_links = [
-        path.name
-        for path in sorted(TOOLS_DIR.glob("*.md"))
-        if f"tools/{path.name}" not in index
+        path.name for path in sorted(TOOLS_DIR.glob("*.md")) if f"tools/{path.name}" not in index
     ]
     assert missing_links == []
     assert "#39" in index
