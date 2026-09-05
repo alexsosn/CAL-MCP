@@ -103,7 +103,9 @@ Contradictory markup, such as the no-data marker together with result rows, also
 
 Current result rows are read only from CAL's result summary card. A recognized entry row must contain exactly one same-origin `oneentry.php` link with one `lemma` value. The only additional entry-link query control currently accepted is CAL's observed `cits=no` value.
 
-Cross-origin links, unexpected entry endpoints, duplicate/missing lemma values, extra query controls, missing glosses, duplicated result cards, or missing page identity are treated as parser drift.
+The decoded `lemma` value must also satisfy CAL-MCP's shared structural CAL lemma-key contract. A nonempty link value that is not a reusable CAL lemma key is treated as upstream/parser drift rather than being surfaced as `target_lemma_key`.
+
+Cross-origin links, unexpected entry endpoints, duplicate/missing or structurally invalid lemma values, extra query controls, missing glosses, duplicated result cards, or missing page identity are treated as parser drift.
 
 Navigation links outside the result rows are ignored and never mistaken for lexical entries.
 
@@ -148,6 +150,7 @@ Normal CI uses reduced semantic fixtures based on the CAL shape rechecked on **2
 
 - Jastrow page 705 with ordered direct and redirect-style entries;
 - punctuation-bearing CAL lemma keys;
+- malformed returned lemma keys failing closed before they can become public reusable identifiers;
 - explicit empty page behavior;
 - all current public source mappings, including the case-sensitive CAL `J` / `j` distinction behind the adapter boundary;
 - decimal and volume-qualified page normalization;
