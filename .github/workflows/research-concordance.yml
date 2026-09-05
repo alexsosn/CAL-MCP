@@ -1,4 +1,4 @@
-name: Research concordance final shapes
+name: Research KWIC context length
 
 on:
   push:
@@ -12,93 +12,39 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Probe bounded CAL concordance results
+      - name: Compare bounded one-hit KWIC context lengths
         run: |
           python - <<'PY'
           from html.parser import HTMLParser
           from urllib.parse import urlencode
           from urllib.request import Request, urlopen
 
-          class Shape(HTMLParser):
+          class TextOnly(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.forms = []
-                  self.current = None
-                  self.links = []
-                  self.href = None
-                  self.link_parts = []
                   self.text = []
-              def handle_starttag(self, tag, attrs):
-                  attrs = dict(attrs)
-                  if tag == "form":
-                      self.current = {"attrs": attrs, "controls": []}
-                      self.forms.append(self.current)
-                  elif self.current is not None and tag in {"input", "select", "option", "button"}:
-                      self.current["controls"].append((tag, attrs))
-                  if tag == "a":
-                      self.href = attrs.get("href", "")
-                      self.link_parts = []
-              def handle_endtag(self, tag):
-                  if tag == "form":
-                      self.current = None
-                  if tag == "a" and self.href is not None:
-                      self.links.append((self.href, " ".join("".join(self.link_parts).split())))
-                      self.href = None
-                      self.link_parts = []
               def handle_data(self, data):
                   text = " ".join(data.split())
                   if text:
                       self.text.append(text)
-                  if self.href is not None:
-                      self.link_parts.append(data)
 
-          cases = [
-              (
-                  "tel-dan-single-text-concordance",
-                  Request(
-                      "https://cal.huc.edu/newconcord.php?text=13250&cset=S",
-                      headers={"User-Agent": "CAL-MCP bounded research probe"},
-                  ),
-              ),
-              (
-                  "two-small-texts-advanced-kwic",
-                  Request(
-                      "https://cal.huc.edu/showdialectKWIC.php",
-                      data=urlencode({
-                          "lemma": "mlk",
-                          "pos": "N",
-                          "texts": "12250 13250",
-                          "charset": "R",
-                          "lth": "2",
-                      }).encode(),
-                      headers={"User-Agent": "CAL-MCP bounded research probe"},
-                  ),
-              ),
-              (
-                  "advanced-kwic-empty",
-                  Request(
-                      "https://cal.huc.edu/showdialectKWIC.php",
-                      data=urlencode({
-                          "lemma": "qzxvjk",
-                          "pos": "N",
-                          "texts": "13250",
-                          "charset": "R",
-                          "lth": "2",
-                      }).encode(),
-                      headers={"User-Agent": "CAL-MCP bounded research probe"},
-                  ),
-              ),
-          ]
-
-          for name, request in cases:
-              print("===", name, "===")
+          for lth in ("1", "20"):
+              request = Request(
+                  "https://cal.huc.edu/showdialectKWIC.php",
+                  data=urlencode({
+                      "lemma": ")ryk#2",
+                      "pos": "A",
+                      "texts": "31000",
+                      "charset": "R",
+                      "lth": lth,
+                  }).encode(),
+                  headers={"User-Agent": "CAL-MCP bounded research probe"},
+              )
               with urlopen(request, timeout=20) as response:
-                  raw = response.read(262144)
-                  print("status", response.status, "final", response.geturl(), "bytes", len(raw))
-              parser = Shape()
+                  raw = response.read(65536)
+                  print("lth", lth, "status", response.status, "bytes", len(raw))
+              parser = TextOnly()
               parser.feed(raw.decode("utf-8", errors="replace"))
-              for i, form in enumerate(parser.forms[:5]):
-                  print("form", i, form)
-              print("links", parser.links[:80])
-              print("text", " | ".join(parser.text[:220]))
+              semantic = [part for part in parser.text if not part.startswith(("@font-face", ".rom", ".heb", ".calsyr", ".syr", ".psyr", ".grk", ".mono", ".red", ".uni", "td {", "a{"))]
+              print("semantic", " | ".join(semantic[-40:]))
           PY
