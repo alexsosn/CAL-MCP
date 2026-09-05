@@ -1,0 +1,43 @@
+name: Patch Targum core
+
+on:
+  push:
+    branches:
+      - feat/issue-10-targum
+    paths:
+      - .github/workflows/patch-targum-core.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-10-targum
+      - name: Apply exact type-safe parser edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/cal_mcp/targum.py')
+          text = path.read_text()
+          old = 'attributes.get("type", "").lower()'
+          new = '(attributes.get("type") or "").lower()'
+          if text.count(old) != 1:
+              raise SystemExit(f'expected exactly one target, found {text.count(old)}')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit exact edit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/targum.py
+          git commit -m "fix: make Targum chooser input type handling typed"
+          git push origin HEAD:feat/issue-10-targum
