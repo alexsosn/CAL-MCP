@@ -1,0 +1,47 @@
+name: Apply Syriac review GREEN
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/syriac-review-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-11-syriac
+      - name: Apply minimal production fixes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/syriac.py")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              "from cal_mcp.concordance import _validate_lemma_key": "from cal_mcp.lemma_key import validate_lemma_key",
+              "_validate_lemma_key(lemma_key)": "validate_lemma_key(lemma_key)",
+              '"ot-peshitta": _TextCategoryConfig("OT Peshitta", "ot_peshitta.html")': '"ot-peshitta": _TextCategoryConfig("OT Peshiṭta", "ot_peshitta.html")',
+              '"nt-peshitta": _TextCategoryConfig("NT Peshitta", "nt_peshitta.html")': '"nt-peshitta": _TextCategoryConfig("NT Peshiṭta", "nt_peshitta.html")',
+              '        "Apocryphal/Pseudepigraphal",': '        "Apocryphal/Pseudepigraphal Texts",',
+          }
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one occurrence of {old!r}, found {count}")
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/cal_mcp/syriac.py
+          git commit -m "fix: align Syriac parser with current CAL"
+          git push origin HEAD:feat/issue-11-syriac
