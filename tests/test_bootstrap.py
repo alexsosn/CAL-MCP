@@ -32,6 +32,10 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_bibliography_author",
         "cal_bibliography_keyword",
         "cal_bibliography_lemma",
+        "cal_targum_parallel",
+        "cal_targum_concordance",
+        "cal_targum_hebrew_lemmas",
+        "cal_targum_hebrew_reflexes",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -94,6 +98,28 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}
     assert bibliography_lemma_schema["required"] == ["lemma_key"]
 
+    targum_parallel_schema = tools["cal_targum_parallel"].input_schema
+    assert set(targum_parallel_schema["properties"]) == {
+        "book",
+        "chapter",
+        "verse",
+        "include_peshitta",
+        "include_samaritan",
+    }
+    assert targum_parallel_schema["required"] == ["book", "chapter", "verse"]
+
+    targum_concordance_schema = tools["cal_targum_concordance"].input_schema
+    assert set(targum_concordance_schema["properties"]) == {"lemma_key"}
+    assert targum_concordance_schema["required"] == ["lemma_key"]
+
+    targum_hebrew_lemmas_schema = tools["cal_targum_hebrew_lemmas"].input_schema
+    assert set(targum_hebrew_lemmas_schema["properties"]) == {"initial", "targum"}
+    assert targum_hebrew_lemmas_schema["required"] == ["initial", "targum"]
+
+    targum_hebrew_reflexes_schema = tools["cal_targum_hebrew_reflexes"].input_schema
+    assert set(targum_hebrew_reflexes_schema["properties"]) == {"targum", "mt_lemma_id"}
+    assert targum_hebrew_reflexes_schema["required"] == ["targum", "mt_lemma_id"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -110,6 +136,10 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        targum_parallel_schema,
+        targum_concordance_schema,
+        targum_hebrew_lemmas_schema,
+        targum_hebrew_reflexes_schema,
     ):
         for private_parameter in (
             "English",
@@ -128,6 +158,9 @@ async def _assert_public_tools(client: Client) -> None:
             "lemma",
             "pos",
             "lth",
+            "bookname",
+            "Peshitta",
+            "Sam",
         ):
             assert private_parameter not in schema["properties"]
 
