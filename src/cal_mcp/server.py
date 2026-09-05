@@ -11,6 +11,7 @@ from cal_mcp import __version__
 from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
+from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
 from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
@@ -50,7 +51,9 @@ mcp = MCPServer(
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
-        "CAL lemma key. Use cal_targum_parallel for one biblical verse across current CAL "
+        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma "
+        "correspondences for one explicit dictionary page reference. Use "
+        "cal_targum_parallel for one biblical verse across current CAL "
         "Targum readings, cal_targum_concordance for Targum-specific lemma counts, and the "
         "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "
         "Use cal_syriac_texts for one explicit CAL Syriac text category, "
@@ -65,7 +68,8 @@ mcp = MCPServer(
         "cal_citation_text_search. "
         "Follow-ups are always explicit tool calls; there is no "
         "hidden text, dialect, "
-        "bibliography-tag, Targum-version, or full-context traversal. Ambiguous analyses and "
+        "bibliography-tag, dictionary-page, Targum-version, or full-context traversal. "
+        "Ambiguous analyses and "
         "author prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
         "Results include CAL provenance and retrieval time."
     ),
@@ -607,6 +611,28 @@ async def cal_external_citations(
 
     client = ctx.request_context.lifespan_context.client
     result = await ExternalCitationService(client).citations(source_abbrev)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_dictionary_collation",
+    title="Collate one CAL dictionary page",
+    structured_output=True,
+)
+async def cal_dictionary_collation(
+    source: DictionarySource,
+    page: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's stored lemma correspondences for one dictionary page reference.
+
+    ``source`` is a readable CAL-MCP dictionary identifier. ``page`` accepts CAL's documented
+    decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. One call
+    performs exactly one bounded CAL request and never follows returned lemma links.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await DictionaryCollationService(client).collate(source, page)
     return result.to_dict()
 
 

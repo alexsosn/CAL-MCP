@@ -32,6 +32,7 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_bibliography_author",
         "cal_bibliography_keyword",
         "cal_bibliography_lemma",
+        "cal_dictionary_collation",
         "cal_targum_parallel",
         "cal_targum_concordance",
         "cal_targum_hebrew_lemmas",
@@ -104,6 +105,10 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}
     assert bibliography_lemma_schema["required"] == ["lemma_key"]
 
+    dictionary_collation_schema = tools["cal_dictionary_collation"].input_schema
+    assert set(dictionary_collation_schema["properties"]) == {"source", "page"}
+    assert dictionary_collation_schema["required"] == ["source", "page"]
+
     targum_parallel_schema = tools["cal_targum_parallel"].input_schema
     assert set(targum_parallel_schema["properties"]) == {
         "book",
@@ -166,6 +171,7 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        dictionary_collation_schema,
         targum_parallel_schema,
         targum_concordance_schema,
         targum_hebrew_lemmas_schema,
@@ -182,6 +188,7 @@ async def _assert_public_tools(client: Client) -> None:
             "secondary",
             "first3",
             "myauthor",
+            "dict",
             "cits",
             "cset",
             "sub",
@@ -208,6 +215,9 @@ async def _assert_public_tools(client: Client) -> None:
     ):
         for unsupported_bound in ("page", "offset", "limit"):
             assert unsupported_bound not in schema["properties"]
+
+    for unsupported_bound in ("offset", "limit"):
+        assert unsupported_bound not in dictionary_collation_schema["properties"]
 
     for schema in (syriac_texts_schema, syriac_missing_words_schema, syriac_peshitta_schema):
         for private_syriac_parameter in (
