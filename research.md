@@ -312,3 +312,13 @@ Bounded live evidence recorded in issue #32 shows that `cal_entry_web.php?lemma=
 Source: https://cal.huc.edu/cal_entry_web.php?lemma=b+s and issue #32, captured 2026-09-05. The reduced regression fixture `tests/fixtures/cal/entry_b_s_inline_style.html` preserves only the semantic shape needed to reproduce this drift.
 
 **Implication:** semantic HTML extraction excludes non-rendered `style` and `script` subtrees before lexicon parsing. Public lexicon models, request behavior, and lemma-header heuristics remain unchanged.
+
+## R-018 — CAL entries may begin with parenthetical senses at depth 1
+
+**Rechecked:** 2026-09-05.
+
+Issue #31 records a bounded live check of `oneentry.php?lemma=)lh N`: the current CAL entry begins its sense outline `(1) (2) (3) (4)` without a preceding plain-numbered enclosing sense. The same parser failure class was observed for `)r( N`. CAL-MCP previously excluded path index 0 when placing parenthetical siblings, so the first `(1)` produced `(1,)` but `(2)` then raised instead of becoming sibling path `(2,)`.
+
+Source: https://cal.huc.edu/oneentry.php?lemma=)lh%20N and issue #31, captured 2026-09-05. Offline regression coverage uses a reduced semantic fixture rather than an archived full CAL page.
+
+**Implication:** parenthetical numbering is placed using the deepest matching predecessor across every existing path depth, including depth 1. Non-consecutive/unplaceable jumps still fail closed; no enclosing level is invented when CAL omits one. Trailing plain-number tokens observed on the live page remain a separate unresolved parsing question and are outside this correction.
