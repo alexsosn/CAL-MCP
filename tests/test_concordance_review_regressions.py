@@ -24,12 +24,16 @@ def _response(body: str, url: str) -> CalResponse:
 
 
 def test_text_concordance_rejects_foreign_origin_kwic_link() -> None:
+    href = (
+        "https://other.example/showKWIC.php?"
+        "lemma=mlk+N&amp;charset=S&amp;texts=13250"
+    )
     response = _response(
-        """<html><body>
+        f"""<html><body>
 <div>Frequencies of lemmas in text 13250</div>
 <table><tr>
 <td>1:</td>
-<td><a href="https://other.example/showKWIC.php?lemma=mlk+N&amp;charset=S&amp;texts=13250">mlk N</a></td>
+<td><a href="{href}">mlk N</a></td>
 <td>: king</td>
 </tr></table>
 </body></html>""",
@@ -45,13 +49,17 @@ def test_text_concordance_rejects_foreign_origin_kwic_link() -> None:
 
 
 def test_kwic_rejects_foreign_origin_full_context_link() -> None:
+    href = (
+        "https://other.example/get_a_kwicchapter.php?"
+        "file=13250&amp;sub=&amp;cset=R&amp;target=1325003"
+    )
     response = _response(
-        """<html><body>
+        f"""<html><body>
 <div>Looking for mlk N in dialect 13250</div>
 <div>13250:</div>
 <table><tr>
 <td>left context</td>
-<td><a href="https://other.example/get_a_kwicchapter.php?file=13250&amp;sub=&amp;cset=R&amp;target=1325003">1325003</a></td>
+<td><a href="{href}">1325003</a></td>
 <td>right context</td>
 </tr></table>
 <div>total examples: 1</div>
