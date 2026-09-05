@@ -8,6 +8,7 @@ from mcp.server import MCPServer
 from mcp.server.mcpserver import Context
 
 from cal_mcp import __version__
+from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
 from cal_mcp.lexicon import LexiconLookupService
@@ -42,10 +43,14 @@ mcp = MCPServer(
         "analysis attached to one explicit text coordinate and zero-based token index. "
         "Use cal_text_concordance for one text's ordered lemma-frequency index, cal_kwic_texts "
         "for one lemma in 1-8 explicit texts, cal_kwic_dialects to discover CAL's current "
-        "dialect identifiers, and cal_kwic_dialect for one explicit dialect. Concordance/KWIC "
-        "follow-ups are always explicit tool calls; there is no hidden text, dialect, or full-"
-        "context traversal. Ambiguous analyses remain ordered CAL alternatives rather than a "
-        "guessed preferred reading. Results include CAL provenance and retrieval time."
+        "dialect identifiers, and cal_kwic_dialect for one explicit dialect. Use "
+        "cal_bibliography_authors to discover exact author choices, then "
+        "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
+        "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
+        "CAL lemma key. Follow-ups are always explicit tool calls; there is no hidden text, "
+        "dialect, bibliography-tag, or full-context traversal. Ambiguous analyses and author "
+        "prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
+        "Results include CAL provenance and retrieval time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -283,6 +288,89 @@ async def cal_kwic_dialect(
 
     client = ctx.request_context.lifespan_context.client
     result = await ConcordanceService(client).kwic_dialect(lemma_key, dialect_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_bibliography_authors",
+    title="Find exact CAL bibliography authors",
+    structured_output=True,
+)
+async def cal_bibliography_authors(
+    prefix: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's ordered exact author choices for a 1-6 character prefix.
+
+    Ambiguous prefixes remain explicit choices. Use a returned author value in a separate
+    ``cal_bibliography_author`` call. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await BibliographyService(client).authors(prefix)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_bibliography_author",
+    title="Search CAL bibliography by exact author",
+    structured_output=True,
+)
+async def cal_bibliography_author(
+    author: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL bibliography records for one exact author value.
+
+    Reuse an exact value returned by ``cal_bibliography_authors`` rather than guessing among
+    prefix matches. Citation text, Unicode, and CAL record links are preserved. One call
+    performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await BibliographyService(client).author(author)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_bibliography_keyword",
+    title="Search CAL bibliography by exact text or subject tag",
+    structured_output=True,
+)
+async def cal_bibliography_keyword(
+    keyword: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return records for one exact CAL text/subject bibliography tag.
+
+    ``keyword`` follows CAL's bibliography tag vocabulary; it is not fuzzy or full-text
+    search. Returned record tags can be reused in later explicit calls. One call performs
+    exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await BibliographyService(client).keyword(keyword)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_bibliography_lemma",
+    title="Search CAL bibliography by exact lemma",
+    structured_output=True,
+)
+async def cal_bibliography_lemma(
+    lemma_key: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return bibliography records for one exact canonical CAL lemma key.
+
+    Reuse canonical lemma keys returned by CAL-MCP where possible. Linked lemma keys and CAL
+    tags are preserved for explicit follow-up calls. One call performs exactly one bounded
+    CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await BibliographyService(client).lemma(lemma_key)
     return result.to_dict()
 
 
