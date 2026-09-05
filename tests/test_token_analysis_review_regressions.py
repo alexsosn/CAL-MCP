@@ -15,7 +15,7 @@ def test_truncated_second_analysis_is_parser_drift() -> None:
         body=b"""<html><body>
 <div>Click on a headword to see a complete lexicon entry</div>
 <div>w_ c</div>
-<div><a href="oneentry.php?lemma=w_+c&amp;cits=all">w_ (wə_) conj. and, also</a></div>
+<div><a href="oneentry.php?lemma=w_+c&amp;cits=all">w_ conj. and, also</a></div>
 <div>my c</div>
 </body></html>""",
         content_type="text/html; charset=UTF-8",
