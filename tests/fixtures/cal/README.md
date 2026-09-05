@@ -30,10 +30,16 @@ Capture/recheck dates: **2026-09-04–2026-09-05**.
 | `token_analysis_hebrew.html` | reduced current token-analysis shape | Hebrew rendered headword preservation |
 | `token_analysis_marker_only.html` | synthetic drift from current token-analysis marker | analysis shell with no candidate must fail closed |
 | `token_analysis_missing_lemma.html` | synthetic drift from current token-analysis shape | rendered lemma-like header without the required CAL lemma link must fail closed |
+| `bibliography_authors_kau.html` | `POST https://cal.huc.edu/browsenames.php` (`first3=Kau`) | ordered exact-author selector values and labels |
+| `bibliography_authors_empty.html` | `POST https://cal.huc.edu/browsenames.php` (`first3=Qqqqqq`) | current explicit no-author marker |
+| `bibliography_author_kaufman.html` | `https://cal.huc.edu/getbibauthor.php?myauthor=Kaufman%2C+Stephen+A.` | ordered author records, Unicode title text, subject and lemma links |
+| `bibliography_keyword_tada.html` | `https://cal.huc.edu/getbibsigla.php?myauthor=TADA` | exact CAL text/subject tag results with ordered record links |
+| `bibliography_lemma_cly_v.html` | `https://cal.huc.edu/getbiblemma.php?myauthor=cly+V` | exact CAL lemma bibliography and linked lemma keys |
+| `bibliography_empty.html` | bounded nonexistent queries against CAL bibliography result endpoints | current explicit shared bibliography no-data marker |
 | `concordance_text_13250.html` | `https://cal.huc.edu/newconcord.php?text=13250&cset=S` | one-text lemma-frequency rows with CAL lemma keys, glosses, and explicit KWIC links |
 | `kwic_texts_mlk.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (`mlk N`, texts `12250 13250`, charset `R`) | multi-text result with one empty scope and ordered duplicate target coordinates |
 | `kwic_texts_empty.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (bounded no-hit text scope) | explicit per-text no-example marker plus `total examples: 0` |
 | `kwic_dialects_aryk2_a.html` | `https://cal.huc.edu/dKWIC.php?lemma=%29ryk%232+A` | ordered CAL-owned dialect IDs/labels plus hidden lemma/POS contract |
 | `kwic_dialect_aryk2_a_biblical.html` | `https://cal.huc.edu/show1dialectKWIC.php?lemma=%29ryk%232&pos=A&texts=3` | one Biblical-Aramaic target hit with file/subtext/charset/coordinate and Hebrew context |
 
-The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
+The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance/bibliography fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
