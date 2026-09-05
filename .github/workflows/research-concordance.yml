@@ -1,4 +1,4 @@
-name: Research concordance forms
+name: Research concordance shapes
 
 on:
   push:
@@ -12,23 +12,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Inspect current CAL concordance form contracts
+      - name: Probe bounded CAL concordance branches
         run: |
           python - <<'PY'
           from html.parser import HTMLParser
+          from urllib.parse import urlencode
           from urllib.request import Request, urlopen
 
-          urls = [
-              "https://cal.huc.edu/searching/basic_concordance.html",
-              "https://cal.huc.edu/searching/concordance_search.html",
-              "https://cal.huc.edu/dKWIC.php?lemma=nqr+V",
-          ]
-
-          class Forms(HTMLParser):
+          class Shape(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
                   self.forms = []
                   self.current = None
+                  self.links = []
+                  self.href = None
+                  self.link_parts = []
                   self.text = []
               def handle_starttag(self, tag, attrs):
                   attrs = dict(attrs)
@@ -37,23 +35,50 @@ jobs:
                       self.forms.append(self.current)
                   elif self.current is not None and tag in {"input", "select", "option", "button"}:
                       self.current["controls"].append((tag, attrs))
+                  if tag == "a":
+                      self.href = attrs.get("href", "")
+                      self.link_parts = []
               def handle_endtag(self, tag):
                   if tag == "form":
                       self.current = None
+                  if tag == "a" and self.href is not None:
+                      self.links.append((self.href, " ".join("".join(self.link_parts).split())))
+                      self.href = None
+                      self.link_parts = []
               def handle_data(self, data):
                   text = " ".join(data.split())
                   if text:
                       self.text.append(text)
+                  if self.href is not None:
+                      self.link_parts.append(data)
 
-          for url in urls:
-              print("===", url, "===")
-              req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
-              with urlopen(req, timeout=15) as response:
-                  raw = response.read(196608)
+          cases = [
+              (
+                  "old-aramaic-file-list",
+                  Request(
+                      "https://cal.huc.edu/show_files_for_KWIC.php",
+                      data=urlencode({"R1": "1"}).encode(),
+                      headers={"User-Agent": "CAL-MCP bounded research probe"},
+                  ),
+              ),
+              (
+                  "biblical-rare-lemma-kwic",
+                  Request(
+                      "https://cal.huc.edu/show1dialectKWIC.php?lemma=%29ryk%232&pos=A&texts=3",
+                      headers={"User-Agent": "CAL-MCP bounded research probe"},
+                  ),
+              ),
+          ]
+
+          for name, request in cases:
+              print("===", name, "===")
+              with urlopen(request, timeout=20) as response:
+                  raw = response.read(262144)
                   print("status", response.status, "final", response.geturl(), "bytes", len(raw))
-              parser = Forms()
+              parser = Shape()
               parser.feed(raw.decode("utf-8", errors="replace"))
-              for i, form in enumerate(parser.forms):
+              for i, form in enumerate(parser.forms[:5]):
                   print("form", i, form)
-              print("text", " | ".join(parser.text[:120]))
+              print("links", parser.links[:50])
+              print("text", " | ".join(parser.text[:180]))
           PY
