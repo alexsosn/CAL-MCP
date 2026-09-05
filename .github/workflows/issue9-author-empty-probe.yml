@@ -1,0 +1,40 @@
+name: Issue 9 author empty probe
+
+on:
+  push:
+    branches: [research/issue-9-live-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect one empty author-prefix response
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            --user-agent 'CAL-MCP research probe' \
+            --data-urlencode 'first3=Qqqqqq' \
+            https://cal.huc.edu/browsenames.php > /tmp/empty-authors.html
+          python - <<'PY'
+          from html.parser import HTMLParser
+
+          class Probe(HTMLParser):
+              def __init__(self):
+                  super().__init__(); self.parts=[]
+              def handle_data(self, data):
+                  value=' '.join(data.split())
+                  if value and not value.startswith(':root'):
+                      self.parts.append(value)
+              def handle_starttag(self, tag, attrs):
+                  attrs=dict(attrs)
+                  if tag == 'form': print('FORM', attrs.get('action'), attrs.get('method'))
+                  if tag == 'select': print('SELECT', attrs.get('name'))
+                  if tag == 'option': print('OPTION', attrs.get('value'))
+
+          p=Probe(); p.feed(open('/tmp/empty-authors.html', encoding='utf-8', errors='replace').read())
+          for part in p.parts[:30]: print(part)
+          PY
