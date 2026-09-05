@@ -209,3 +209,20 @@ Merge only when:
 ## CAL access / load impact
 
 Implementation and CI are offline. No new live CAL result probes are planned for the documentation work. If a review discovers a current-source ambiguity that cannot be resolved from public index/module pages and existing focused research, use at most a tiny fixed probe and record it explicitly; never enumerate a result family.
+
+## Execution evidence before adversarial review
+
+The first test-only RED commit failed `ruff format --check` before behavioral tests and is **not** counted as a valid RED. Production and user documentation were untouched.
+
+The corrected test-only RED at `b4140007e3ca21492e5e98869a24ad9136841e0f` ran in CI `33993681632` with install, Ruff lint, Ruff format, and strict mypy green. Pytest reported **371 passed / exactly 3 failed**, all limited to issue #12's intended documentation gaps: the ten missing v0.1 entry pages, five public tool names not explicitly named in tool reference, and the missing user index/capability matrix. Relative-link validation already passed.
+
+The first complete implementation checkpoint `c205ad17c29568faee26166ebab5922cd16ef40f` ran CI `33994137806` fully green: **374/374 pytest tests** plus install, Ruff lint/format, and strict mypy.
+
+The pre-review contract audit then found documentation-only quality/staleness issues rather than public behavior defects:
+
+- workflow snippets using schematic `"..."` identifiers were replaced with existing fixture-backed examples (`7102601002203`, dialect `6` / source `1CorH`, bibliography lemma `cly V`);
+- `docs/tools/texts.md` no longer describes already-implemented token analysis as future issue #8 work;
+- `docs/tools/syriac.md` no longer describes already-implemented external citations as merely tracked by issue #13;
+- `docs/tools/bibliography.md` now sends the recent-years snapshot to explicit deferred follow-up #39 instead of the already-completed broader audit.
+
+A one-shot branch-only workflow made the three exact large-file string replacements and deleted itself in the same commit. The PR changed-file set after that cleanup contains no helper workflow. The bot-authored cleanup commit caused the immediate PR CI run to be marked `action_required` without jobs; this human-authored evidence checkpoint exists to trigger the authoritative exact-head CI run before review.
