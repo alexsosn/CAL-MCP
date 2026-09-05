@@ -1,0 +1,40 @@
+name: Append R18
+
+on:
+  push:
+    branches:
+      - fix/issue-31-depth-one-subsenses
+    paths:
+      - .github/workflows/append-r18.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-31-depth-one-subsenses
+      - name: Append research record
+        shell: bash
+        run: |
+          cat >> research.md <<'EOF'
+
+          ## R-018 — CAL entries may begin with parenthetical senses at depth 1
+
+          **Rechecked:** 2026-09-05.
+
+          Issue #31 records a bounded live check of `oneentry.php?lemma=)lh N`: the current CAL entry begins its sense outline `(1) (2) (3) (4)` without a preceding plain-numbered enclosing sense. The same parser failure class was observed for `)r( N`. CAL-MCP previously excluded path index 0 when placing parenthetical siblings, so the first `(1)` produced `(1,)` but `(2)` then raised instead of becoming sibling path `(2,)`.
+
+          Source: https://cal.huc.edu/oneentry.php?lemma=)lh%20N and issue #31, captured 2026-09-05. Offline regression coverage uses a reduced semantic fixture rather than an archived full CAL page.
+
+          **Implication:** parenthetical numbering is placed using the deepest matching predecessor across every existing path depth, including depth 1. Non-consecutive/unplaceable jumps still fail closed; no enclosing level is invented when CAL omits one. Trailing plain-number tokens observed on the live page remain a separate unresolved parsing question and are outside this correction.
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research.md
+          git commit -m "research: record depth-one CAL sense numbering"
+          git push origin HEAD:fix/issue-31-depth-one-subsenses
