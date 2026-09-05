@@ -1,0 +1,54 @@
+name: Issue 41 record root research
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-drift
+    paths:
+      - .github/workflows/issue41-record-root-research.yml
+
+permissions:
+  contents: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-drift
+          fetch-depth: 0
+      - name: Append dated research record
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("research.md")
+          text = path.read_text(encoding="utf-8")
+          heading = "## R-021 — Linked citation anchors, not internal semicolons, define current CAL citation records"
+          if heading in text:
+              raise SystemExit("R-021 already present")
+          addition = '''
+
+## R-021 — Linked citation anchors, not internal semicolons, define current CAL citation records
+
+**Rechecked:** 2026-09-06.
+
+A bounded release smoke exposed a current `br N` full-entry failure: one CAL sense rendered `▶ 3 citations` with exactly three citation links, while CAL-MCP produced six `Citation` records and failed its count-integrity check. Two one-entry follow-up probes showed that the three links are the semantic record starts. The first two linked chunks end with a presentation semicolon immediately before the next citation link, while the third linked citation contains a semicolon inside its own transliteration/translation content. Re-splitting linked chunks on semicolons therefore creates false citation records.
+
+Existing reduced fixture evidence still requires semicolon splitting for unlinked citation fragments before the first link. The safe distinction is structural: unlinked raw prefix/wholly unlinked rows may use semicolon record separation, but each citation anchor starts one linked record whose rendered text extends to the next anchor/end of line. The rendered `▶ N citations` equality check remains the fail-closed integrity guard.
+
+Source: https://cal.huc.edu/cal_entry_web.php?lemma=br+N; release smoke run `33995822616`; bounded shape runs `33995948350` and `33996085475`; detailed evidence in `docs/research/issue-41-lexicon-citation-drift.md`.
+
+**Implication:** `_parse_citations()` must stop semicolon-splitting text already bounded by citation anchors, while preserving raw-prefix splitting and exact rendered-count validation. No public schema or request behavior changes.
+'''
+          path.write_text(text.rstrip() + addition + "\n", encoding="utf-8")
+          PY
+      - name: Commit research and remove helper
+        run: |
+          rm .github/workflows/issue41-record-root-research.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research.md .github/workflows/issue41-record-root-research.yml
+          git commit -m "research: record linked citation boundary evidence"
+          git push origin HEAD:fix/issue-41-lexicon-citation-drift
