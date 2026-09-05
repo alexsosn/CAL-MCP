@@ -7,7 +7,12 @@ import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lexicon import LexiconLookupService, LexiconLookupStatus
-from cal_mcp.syriac import parse_syriac_text_category_page
+from cal_mcp.syriac import (
+    SyriacParseError,
+    SyriacService,
+    parse_syriac_missing_words_page,
+    parse_syriac_text_category_page,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 RETRIEVED_AT = datetime(2026, 9, 5, 16, 30, tzinfo=UTC)
@@ -56,6 +61,51 @@ def test_static_syriac_category_headings_match_current_cal(
 def test_syriac_module_does_not_import_private_concordance_implementation() -> None:
     source = Path("src/cal_mcp/syriac.py").read_text(encoding="utf-8")
     assert "from cal_mcp.concordance import _validate_lemma_key" not in source
+
+
+def test_invalid_upstream_missing_word_lemma_is_parser_drift() -> None:
+    body = (
+        "<h1>The following verbs not found in A Syriac Lexicon have citations in the "
+        "database.</h1><ul><li>"
+        '<a href="/oneentry.php?cits=all&amp;lemma=invalid">invalid vb.</a>'
+        " malformed upstream key</li></ul>"
+    )
+
+    with pytest.raises(SyriacParseError):
+        parse_syriac_missing_words_page(
+            _inline_response(body, "https://cal.huc.edu/display_missing_verbs.php"),
+            category="verbs",
+        )
+
+
+def test_biblical_book_mapping_is_shared_not_copied_by_specialists() -> None:
+    for relative_path in ("src/cal_mcp/syriac.py", "src/cal_mcp/targum.py"):
+        source = Path(relative_path).read_text(encoding="utf-8")
+        assert "_BOOK_IDS = {" not in source
+
+
+@pytest.mark.anyio
+async def test_missing_word_provenance_does_not_mislabel_endpoint_as_category() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        assert request == CalRequest(method="GET", path="display_missing_verbs.php")
+        return CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/display_missing_verbs.php",
+            body=(FIXTURES / "syriac_missing_verbs.html").read_bytes(),
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=RETRIEVED_AT,
+        )
+
+    result = await SyriacService(CalHttpClient(transport=transport)).missing_words("verbs")
+
+    assert result.provenance.category == "verbs"
+    assert result.provenance.upstream_category is None
+    assert result.provenance.source_url == "https://cal.huc.edu/display_missing_verbs.php"
+    assert requests == [CalRequest(method="GET", path="display_missing_verbs.php")]
 
 
 @pytest.mark.anyio
