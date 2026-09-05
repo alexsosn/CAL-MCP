@@ -204,6 +204,8 @@ class _SemanticHTMLParser(HTMLParser):
 
     def close(self) -> None:
         super().close()
+        if self._ignored_depth:
+            raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")
         self._flush()
 
     def _flush(self) -> None:
