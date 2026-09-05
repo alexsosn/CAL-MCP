@@ -17,7 +17,7 @@ _ENTRY_PATH = "/oneentry.php"
 _DIALECT_RE = re.compile(r"^[0-9]{1,6}$")
 _RESULT_COUNT_RE = re.compile(r"^([0-9]+)\s+citations?$", re.IGNORECASE)
 _EMPTY_CITATIONS_RE = re.compile(
-    r'^No\s+citations\s+for\s+"(.+?)"\s+are\s+currently\s+stored\.$',
+    r'\bNo\s+citations\s+for\s+"(.+?)"\s+are\s+currently\s+stored\.',
     re.IGNORECASE,
 )
 _DIALECT_MARKER = "Choose a Dialect"
