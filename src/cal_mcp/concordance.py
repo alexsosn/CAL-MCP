@@ -685,7 +685,19 @@ def _validate_lemma_key(value: str) -> tuple[str, str, str]:
     lemma, suffix = candidate.rsplit(" ", 1)
     if not lemma or " " in lemma or _SUFFIX_RE.fullmatch(suffix) is None:
         raise ValueError("lemma_key has an invalid CAL lemma/key-suffix structure")
-    normalize_query(lemma, representation=InputRepresentation.CAL_CODE)
+
+    base_lemma = lemma
+    if "#" in lemma:
+        base_lemma, homograph = lemma.rsplit("#", 1)
+        if (
+            not base_lemma
+            or "#" in base_lemma
+            or not homograph.isascii()
+            or not homograph.isdecimal()
+            or homograph.startswith("0")
+        ):
+            raise ValueError("lemma_key has an invalid CAL homograph suffix")
+    normalize_query(base_lemma, representation=InputRepresentation.CAL_CODE)
     return lemma, suffix, f"{lemma} {suffix}"
 
 
