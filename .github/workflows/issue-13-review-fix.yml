@@ -19,29 +19,7 @@ jobs:
           ref: feat/issue-13-external-citations
       - name: Reject source format controls and self-clean
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('src/cal_mcp/external_citations.py')
-          s = p.read_text(encoding='utf-8')
-          old = '''    if any(
-              (char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cs"}
-              for char in candidate
-          ):
-              raise ValueError("source_abbrev may contain only ordinary spaces, not controls")
-'''
-          new = '''    if any(
-              (char.isspace() and char != " ")
-              or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
-              for char in candidate
-          ):
-              raise ValueError(
-                  "source_abbrev may contain only ordinary spaces, not controls or formatting"
-              )
-'''
-          if old not in s:
-              raise SystemExit('source validation target not found')
-          p.write_text(s.replace(old, new, 1), encoding='utf-8')
-          PY
+          python -c 'from pathlib import Path; p=Path("src/cal_mcp/external_citations.py"); s=p.read_text(encoding="utf-8"); old="unicodedata.category(char) in {\"Cc\", \"Cs\"}"; new="unicodedata.category(char) in {\"Cc\", \"Cf\", \"Cs\"}"; assert old in s; p.write_text(s.replace(old,new,1),encoding="utf-8")'
           rm .github/workflows/issue-13-review-fix.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
