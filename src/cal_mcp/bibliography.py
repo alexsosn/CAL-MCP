@@ -300,7 +300,11 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
     if parser._record is not None or parser._heading_parts is not None:
         raise BibliographyParseError("CAL bibliography page contains incomplete semantic markup")
 
-    headings = [heading for heading in parser.headings if heading.startswith("CAL Bibliography for ")]
+    headings = [
+        heading
+        for heading in parser.headings
+        if heading.startswith("CAL Bibliography for ")
+    ]
     if len(headings) != 1:
         raise BibliographyParseError("CAL bibliography page lacks one recognizable result heading")
 
