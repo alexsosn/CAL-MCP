@@ -57,6 +57,14 @@ Each tool call performs exactly one bounded CAL request. There is no hidden dial
 
 Following a returned CAL lemma into `cal_lexicon_lookup` is a separate explicit caller action.
 
+## Failure semantics
+
+Caller input is validated before transport. Invalid dialect identifiers or source abbreviations therefore do not consume a CAL request.
+
+CAL's explicit no-sources and no-citations messages are valid empty results. Upstream HTTP failures remain request-layer failures. A successful response whose semantic structure no longer matches the documented CAL shapes raises a content/parser error instead of returning a guessed partial result.
+
+Cross-origin or wrong-endpoint source/lemma links, duplicate ambiguous query parameters, malformed returned lemma keys, contradictory empty markers, and reported-count mismatches are treated as parser drift. CAL-MCP exposes no `page`, `offset`, or `limit` parameter for this workflow because current CAL surfaces do not provide a faithful bounded pagination contract here.
+
 ## Validation and provenance
 
 `dialect_id` is an opaque decimal CAL identifier returned by dialect discovery. `source_abbrev` is an exact CAL abbreviation returned by source discovery; punctuation and case are preserved.
