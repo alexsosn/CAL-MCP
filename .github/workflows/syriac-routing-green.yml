@@ -1,0 +1,52 @@
+name: Apply Syriac routing GREEN
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/syriac-routing-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-11-syriac
+      - name: Add Syriac routing guidance and self-clean
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/server.py")
+          text = path.read_text(encoding="utf-8")
+          old = (
+              '        "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "\n'
+              '        "Follow-ups are always explicit tool calls; there is no hidden text, dialect, "\n'
+          )
+          new = (
+              '        "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "\n'
+              '        "Use cal_syriac_texts for one explicit CAL Syriac text category, "\n'
+              '        "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon "\n'
+              '        "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac "\n'
+              '        "text and lexicon follow-ups compose through cal_text_page and "\n'
+              '        "cal_lexicon_lookup; external/non-online-text citations remain a separate "\n'
+              '        "generic capability. Follow-ups are always explicit tool calls; there is no "\n'
+              '        "hidden text, dialect, "\n'
+          )
+          if text.count(old) != 1:
+              raise SystemExit("server instructions anchor mismatch")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          rm .github/workflows/syriac-routing-green.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/cal_mcp/server.py .github/workflows/syriac-routing-green.yml
+          git commit -m "fix: route Syriac tools in MCP instructions"
+          git push origin HEAD:feat/issue-11-syriac
