@@ -239,9 +239,7 @@ def test_onqelos_reflex_parser_preserves_mt_lemma_cal_key_display_and_frequency(
     assert page.reflexes[0].lemma_key == "tyq#2 N"
     assert page.reflexes[0].label == "תיק #2 N"
     assert page.reflexes[0].frequency == 2
-    assert page.reflexes[0].example_url == (
-        "https://cal.huc.edu/getOMT.php?MT=1751&cal=tyq%232+N"
-    )
+    assert page.reflexes[0].example_url == ("https://cal.huc.edu/getOMT.php?MT=1751&cal=tyq%232+N")
 
 
 def test_neofiti_reflex_parser_preserves_multiple_ordered_correspondences() -> None:
