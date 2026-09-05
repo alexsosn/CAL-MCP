@@ -364,7 +364,7 @@ class _HebrewLemmaChooserParser(HTMLParser):
             return
         if tag != "input" or not self._in_target_form:
             return
-        if attributes.get("type", "").lower() != "radio" or attributes.get("name") != "R1":
+        if (attributes.get("type") or "").lower() != "radio" or attributes.get("name") != "R1":
             return
         self._finish_candidate()
         value = attributes.get("value")
