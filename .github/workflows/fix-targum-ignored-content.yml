@@ -1,0 +1,219 @@
+name: Apply reviewed Targum ignored-content fix
+
+on:
+  push:
+    branches:
+      - feat/issue-10-targum
+    paths:
+      - .github/workflows/fix-targum-ignored-content.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-10-targum
+      - name: Apply parser state fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/targum.py")
+          text = path.read_text()
+
+          def replace_once(old: str, new: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one match, found {count}: {old[:80]!r}")
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "class _ParallelParser(HTMLParser):\n",
+              "_IGNORED_CONTENT_TAGS = frozenset({\"script\", \"style\"})\n\n\n"
+              "class _ParallelParser(HTMLParser):\n",
+          )
+          replace_once(
+              "        self._heading_parts: list[str] | None = None\n"
+              "        self._block: _ParallelBlock | None = None\n\n"
+              "    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:\n"
+              "        attributes = dict(attrs)\n",
+              "        self._heading_parts: list[str] | None = None\n"
+              "        self._block: _ParallelBlock | None = None\n"
+              "        self._ignored_depth = 0\n\n"
+              "    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:\n"
+              "        if tag in _IGNORED_CONTENT_TAGS:\n"
+              "            self._ignored_depth += 1\n"
+              "            return\n"
+              "        if self._ignored_depth:\n"
+              "            return\n"
+              "        attributes = dict(attrs)\n",
+          )
+          replace_once(
+              "    def handle_endtag(self, tag: str) -> None:\n"
+              "        if tag == \"h1\" and self._heading_parts is not None:\n",
+              "    def handle_endtag(self, tag: str) -> None:\n"
+              "        if self._ignored_depth:\n"
+              "            if tag in _IGNORED_CONTENT_TAGS:\n"
+              "                self._ignored_depth -= 1\n"
+              "            return\n"
+              "        if tag == \"h1\" and self._heading_parts is not None:\n",
+          )
+          replace_once(
+              "    def handle_data(self, data: str) -> None:\n"
+              "        self.all_parts.append(data)\n"
+              "        if self._heading_parts is not None:\n"
+              "            self._heading_parts.append(data)\n"
+              "        if self._block is None:\n"
+              "            return\n"
+              "        if self._block.script_depth:\n"
+              "            self._block.text_parts.append(data)\n"
+              "        else:\n"
+              "            self._block.label_parts.append(data)\n\n\n"
+              "@dataclass(slots=True)\n"
+              "class _TableCell:\n",
+              "    def handle_data(self, data: str) -> None:\n"
+              "        if self._ignored_depth:\n"
+              "            return\n"
+              "        self.all_parts.append(data)\n"
+              "        if self._heading_parts is not None:\n"
+              "            self._heading_parts.append(data)\n"
+              "        if self._block is None:\n"
+              "            return\n"
+              "        if self._block.script_depth:\n"
+              "            self._block.text_parts.append(data)\n"
+              "        else:\n"
+              "            self._block.label_parts.append(data)\n\n"
+              "    def close(self) -> None:\n"
+              "        super().close()\n"
+              "        if self._ignored_depth:\n"
+              "            raise TargumParseError(\"CAL Targum page has an unclosed ignored content subtree\")\n\n\n"
+              "@dataclass(slots=True)\n"
+              "class _TableCell:\n",
+          )
+
+          table_init = (
+              "        self._in_table = False\n"
+              "        self._row: list[_TableCell] | None = None\n"
+              "        self._cell: _TableCell | None = None\n\n"
+              "    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:\n"
+              "        attributes = dict(attrs)\n"
+          )
+          table_new = (
+              "        self._in_table = False\n"
+              "        self._row: list[_TableCell] | None = None\n"
+              "        self._cell: _TableCell | None = None\n"
+              "        self._ignored_depth = 0\n\n"
+              "    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:\n"
+              "        if tag in _IGNORED_CONTENT_TAGS:\n"
+              "            self._ignored_depth += 1\n"
+              "            return\n"
+              "        if self._ignored_depth:\n"
+              "            return\n"
+              "        attributes = dict(attrs)\n"
+          )
+          replace_once(table_init, table_new)
+
+          # The first handle_endtag occurrence was replaced above; replace the table one now.
+          replace_once(
+              "    def handle_endtag(self, tag: str) -> None:\n"
+              "        if tag == \"h1\" and self._heading_parts is not None:\n",
+              "    def handle_endtag(self, tag: str) -> None:\n"
+              "        if self._ignored_depth:\n"
+              "            if tag in _IGNORED_CONTENT_TAGS:\n"
+              "                self._ignored_depth -= 1\n"
+              "            return\n"
+              "        if tag == \"h1\" and self._heading_parts is not None:\n",
+          )
+          replace_once(
+              "    def handle_data(self, data: str) -> None:\n"
+              "        self.all_parts.append(data)\n"
+              "        if self._heading_parts is not None:\n"
+              "            self._heading_parts.append(data)\n"
+              "        if self._cell is not None:\n"
+              "            self._cell.parts.append(data)\n\n\n"
+              "@dataclass(slots=True)\n"
+              "class _OpenCandidate:\n",
+              "    def handle_data(self, data: str) -> None:\n"
+              "        if self._ignored_depth:\n"
+              "            return\n"
+              "        self.all_parts.append(data)\n"
+              "        if self._heading_parts is not None:\n"
+              "            self._heading_parts.append(data)\n"
+              "        if self._cell is not None:\n"
+              "            self._cell.parts.append(data)\n\n"
+              "    def close(self) -> None:\n"
+              "        super().close()\n"
+              "        if self._ignored_depth:\n"
+              "            raise TargumParseError(\"CAL Targum result has an unclosed ignored content subtree\")\n\n\n"
+              "@dataclass(slots=True)\n"
+              "class _OpenCandidate:\n",
+          )
+
+          replace_once(
+              "        self.target_forms = 0\n"
+              "        self._in_target_form = False\n"
+              "        self._open_candidate: _OpenCandidate | None = None\n\n"
+              "    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:\n"
+              "        attributes = dict(attrs)\n",
+              "        self.target_forms = 0\n"
+              "        self._in_target_form = False\n"
+              "        self._open_candidate: _OpenCandidate | None = None\n"
+              "        self._ignored_depth = 0\n\n"
+              "    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:\n"
+              "        if tag in _IGNORED_CONTENT_TAGS:\n"
+              "            self._ignored_depth += 1\n"
+              "            return\n"
+              "        if self._ignored_depth:\n"
+              "            return\n"
+              "        attributes = dict(attrs)\n",
+          )
+          replace_once(
+              "    def handle_endtag(self, tag: str) -> None:\n"
+              "        if tag == \"form\" and self._in_target_form:\n",
+              "    def handle_endtag(self, tag: str) -> None:\n"
+              "        if self._ignored_depth:\n"
+              "            if tag in _IGNORED_CONTENT_TAGS:\n"
+              "                self._ignored_depth -= 1\n"
+              "            return\n"
+              "        if tag == \"form\" and self._in_target_form:\n",
+          )
+          replace_once(
+              "    def handle_data(self, data: str) -> None:\n"
+              "        self.all_parts.append(data)\n"
+              "        if self._open_candidate is not None:\n"
+              "            self._open_candidate.parts.append(data)\n\n"
+              "    def close(self) -> None:\n"
+              "        super().close()\n"
+              "        if self._in_target_form:\n",
+              "    def handle_data(self, data: str) -> None:\n"
+              "        if self._ignored_depth:\n"
+              "            return\n"
+              "        self.all_parts.append(data)\n"
+              "        if self._open_candidate is not None:\n"
+              "            self._open_candidate.parts.append(data)\n\n"
+              "    def close(self) -> None:\n"
+              "        super().close()\n"
+              "        if self._ignored_depth:\n"
+              "            raise TargumParseError(\"CAL MT lemma chooser has an unclosed ignored content subtree\")\n"
+              "        if self._in_target_form:\n",
+          )
+
+          path.write_text(text)
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/targum.py
+          git commit -m "fix: ignore non-rendered Targum content"
+          git push origin HEAD:feat/issue-10-targum
