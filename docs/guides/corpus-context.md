@@ -4,7 +4,7 @@ CAL-MCP separates text discovery, page reading, token analysis, and lexical/conc
 
 ## Discover a text
 
-Use `cal_text_search` when you have a topic/name:
+Use `cal_text_search` when you have a topic/name. Current reduced fixtures include `Tel Dan` returning CAL file `13250`:
 
 ```text
 cal_text_search(query="Tel Dan")
@@ -30,13 +30,13 @@ Some valid CAL texts are not paginated; page metadata can therefore be absent ra
 
 ## Inspect one token
 
-Text rows may contain machine lexical-analysis coordinates and token positions. Use them in a separate explicit call:
+Text rows may contain machine lexical-analysis coordinates and token positions. Use them in a separate explicit call. A current fixture-backed ambiguous-token example is:
 
 ```text
-cal_token_analysis(coordinate="...", word_index=0)
+cal_token_analysis(coordinate="7102601002203", word_index=0)
 ```
 
-`word_index` is the zero-based token position expected by the current CAL lexical-analysis surface. The result preserves all CAL analyses in returned order when a token is ambiguous.
+That fixture returns two ordered analyses. `word_index` is the zero-based token position expected by the current CAL lexical-analysis surface. The result preserves all CAL analyses in returned order when a token is ambiguous.
 
 CAL-MCP does not automatically analyse every token on a page or choose a preferred analysis.
 
