@@ -70,3 +70,5 @@ Cross-origin or wrong-endpoint source/lemma links, duplicate ambiguous query par
 `dialect_id` is an opaque decimal CAL identifier returned by dialect discovery. `source_abbrev` is an exact CAL abbreviation returned by source discovery; punctuation and case are preserved.
 
 Results include the CAL source URL, retrieval time, operation name, and the submitted dialect/source identifier where applicable. CAL-private form names and endpoint parameters are adapter internals and are not exposed in the MCP schema.
+
+Normal automated tests use reduced offline fixtures derived from the bounded research probes; they do not contact CAL.
