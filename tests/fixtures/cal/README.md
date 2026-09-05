@@ -2,7 +2,7 @@
 
 These fixtures are deliberately reduced semantic excerpts, not archived CAL pages. They retain only the minimum current markup/text relationships needed by offline parser tests.
 
-Capture/recheck date: **2026-09-04**.
+Capture/recheck dates: **2026-09-04–2026-09-05**.
 
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
@@ -30,5 +30,10 @@ Capture/recheck date: **2026-09-04**.
 | `token_analysis_hebrew.html` | reduced current token-analysis shape | Hebrew rendered headword preservation |
 | `token_analysis_marker_only.html` | synthetic drift from current token-analysis marker | analysis shell with no candidate must fail closed |
 | `token_analysis_missing_lemma.html` | synthetic drift from current token-analysis shape | rendered lemma-like header without the required CAL lemma link must fail closed |
+| `concordance_text_13250.html` | `https://cal.huc.edu/newconcord.php?text=13250&cset=S` | one-text lemma-frequency rows with CAL lemma keys, glosses, and explicit KWIC links |
+| `kwic_texts_mlk.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (`mlk N`, texts `12250 13250`, charset `R`) | multi-text result with one empty scope and ordered duplicate target coordinates |
+| `kwic_texts_empty.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (bounded no-hit text scope) | explicit per-text no-example marker plus `total examples: 0` |
+| `kwic_dialects_aryk2_a.html` | `https://cal.huc.edu/dKWIC.php?lemma=%29ryk%232+A` | ordered CAL-owned dialect IDs/labels plus hidden lemma/POS contract |
+| `kwic_dialect_aryk2_a_biblical.html` | `https://cal.huc.edu/show1dialectKWIC.php?lemma=%29ryk%232&pos=A&texts=3` | one Biblical-Aramaic target hit with file/subtext/charset/coordinate and Hebrew context |
 
-The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
+The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
