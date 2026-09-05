@@ -32,16 +32,16 @@ jobs:
               raise SystemExit("dictionary collation import target not found")
           text = text.replace(old_import, new_import, 1)
 
-          old = '''    target_lemma_key = _returned_single_line(lemma_values[0], "entry lemma key")
-'''
-          new = '''    returned_lemma_key = _returned_single_line(lemma_values[0], "entry lemma key")
-    try:
-        _, _, target_lemma_key = validate_lemma_key(returned_lemma_key)
-    except ValueError as exc:
-        raise DictionaryCollationParseError(
-            "CAL dictionary collation entry link has an invalid lemma key"
-        ) from exc
-'''
+          old = "    target_lemma_key = _returned_single_line(lemma_values[0], \"entry lemma key\")\n"
+          new = (
+              "    returned_lemma_key = _returned_single_line(lemma_values[0], \"entry lemma key\")\n"
+              "    try:\n"
+              "        _, _, target_lemma_key = validate_lemma_key(returned_lemma_key)\n"
+              "    except ValueError as exc:\n"
+              "        raise DictionaryCollationParseError(\n"
+              "            \"CAL dictionary collation entry link has an invalid lemma key\"\n"
+              "        ) from exc\n"
+          )
           if old not in text:
               raise SystemExit("dictionary collation lemma target not found")
           path.write_text(text.replace(old, new, 1), encoding="utf-8")
