@@ -508,7 +508,9 @@ def parse_targum_parallel_page(
         raise TargumParseError("CAL parallel Targum page contains incomplete semantic markup")
 
     expected_heading = f"{_PARALLEL_HEADING_PREFIX}{book} {chapter}:{verse}"
-    headings = [heading for heading in parser.headings if heading.startswith(_PARALLEL_HEADING_PREFIX)]
+    headings = [
+        heading for heading in parser.headings if heading.startswith(_PARALLEL_HEADING_PREFIX)
+    ]
     if headings != [expected_heading]:
         raise TargumParseError("CAL parallel Targum heading does not match the requested verse")
 
@@ -568,7 +570,9 @@ def parse_targum_concordance_page(
     _require_complete_table_parser(parser)
 
     expected_heading = f"{_CONCORDANCE_HEADING_PREFIX}{lemma_key}"
-    headings = [heading for heading in parser.headings if heading.startswith(_CONCORDANCE_HEADING_PREFIX)]
+    headings = [
+        heading for heading in parser.headings if heading.startswith(_CONCORDANCE_HEADING_PREFIX)
+    ]
     if headings != [expected_heading]:
         raise TargumParseError("CAL Targum concordance heading does not match the submitted lemma")
     if parser.table_count != 1:
@@ -645,7 +649,9 @@ def parse_targum_reflex_page(
     _require_complete_table_parser(parser)
 
     heading_prefix = f"{config['heading_source']} correspondences to "
-    headings = [heading for heading in parser.headings if heading.startswith(heading_prefix.rstrip())]
+    headings = [
+        heading for heading in parser.headings if heading.startswith(heading_prefix.rstrip())
+    ]
     if len(headings) != 1 or not headings[0].startswith(heading_prefix):
         raise TargumParseError("CAL Targum reflex page lacks a complete source/result heading")
     mt_hebrew_lemma = _clean_text(headings[0][len(heading_prefix) :])
