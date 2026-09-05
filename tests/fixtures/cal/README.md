@@ -50,5 +50,10 @@ Capture/recheck dates: **2026-09-04–2026-09-05**.
 | `targum_reflex_onqelos_1751.html` | `POST https://cal.huc.edu/getOmtlemma.php` (`R1=1751`) | selected MT Hebrew lemma plus Onqelos CAL lemma correspondence, frequency, and example URL |
 | `targum_reflex_neofiti_1751.html` | `POST https://cal.huc.edu/getNmtlemma.php` (`R1=1751`) | selected MT Hebrew lemma plus multiple ordered Neofiti CAL lemma correspondences |
 | `targum_reflex_invalid_id.html` | bounded invalid Onqelos selector probe (`R1=999999`) | current broad invalid-ID fallback with missing selected Hebrew lemma, which must fail closed |
+| `syriac_category_metrical.html` | `https://cal.huc.edu/show_Syriac_categories.php?category=6` | dynamic Syriac category with ordered direct/group navigation and file-information links |
+| `syriac_category_ot_peshitta.html` | `https://cal.huc.edu/ot_peshitta.html` | static OT Peshitta category using the same typed text-item contract |
+| `syriac_missing_verbs.html` | `https://cal.huc.edu/display_missing_verbs.php` | CAL-curated verbs absent from *A Syriac Lexicon*, with canonical lemma links and notes |
+| `syriac_peshitta_gen_1_1.html` | `POST https://cal.huc.edu/showpesh.php` (`bookname=01`, `chapter=01`, `verse=01`) | Gen 1:1 MT/Peshitta Unicode text and Peshitta chapter navigation |
+| `syriac_peshitta_not_found.html` | bounded invalid-coordinate `showpesh.php` probe | current explicit `error in coord` not-found semantics |
 
-The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance/bibliography/Targum fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
+The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance/bibliography/Targum/Syriac fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
