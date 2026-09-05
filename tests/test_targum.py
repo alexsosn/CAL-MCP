@@ -168,7 +168,8 @@ def test_targum_concordance_complete_zero_table_is_valid_empty_result() -> None:
     [
         (
             "<h1>CAL: Targum KWIC counts for klb N</h1><table>"
-            '<tr><td><a href="/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=1">Onqelos</a></td><td>3</td></tr>'
+            '<tr><td><a href="/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;'
+            'texts=1">Onqelos</a></td><td>3</td></tr>'
             "</table><p>total examples: 4</p>"
         ),
         (
@@ -263,18 +264,18 @@ def test_neofiti_reflex_parser_preserves_multiple_ordered_correspondences() -> N
     [
         (
             "<h1>Onkelos correspondences to</h1><table>"
-            '<tr><td><a href="/getOMT.php?MT=999999&amp;cal=br+N">בר N</a></td><td>1634</td></tr>'
-            "</table>"
+            '<tr><td><a href="/getOMT.php?MT=999999&amp;cal=br+N">בר N</a></td>'
+            "<td>1634</td></tr></table>"
         ),
         (
             "<h1>Onkelos correspondences to מַעֲקֶה</h1><table>"
-            '<tr><td><a href="/getOMT.php?MT=1752&amp;cal=tyq%232+N">תיק #2 N</a></td><td>2</td></tr>'
-            "</table>"
+            '<tr><td><a href="/getOMT.php?MT=1752&amp;cal=tyq%232+N">תיק #2 N</a>'
+            "</td><td>2</td></tr></table>"
         ),
         (
             "<h1>Onkelos correspondences to מַעֲקֶה</h1><table>"
-            '<tr><td><a href="https://example.org/getOMT.php?MT=1751&amp;cal=tyq%232+N">תיק #2 N</a></td><td>2</td></tr>'
-            "</table>"
+            '<tr><td><a href="https://example.org/getOMT.php?MT=1751&amp;'
+            'cal=tyq%232+N">תיק #2 N</a></td><td>2</td></tr></table>'
         ),
     ],
 )
@@ -323,7 +324,7 @@ def _service() -> tuple[TargumService, RecordingTransport]:
 
 
 @pytest.mark.anyio
-async def test_services_use_exactly_one_request_per_public_operation_and_preserve_provenance() -> None:
+async def test_services_use_one_request_per_operation_and_preserve_provenance() -> None:
     service, transport = _service()
 
     parallel = await service.parallel(
@@ -413,7 +414,13 @@ async def test_mcp_exposes_task_level_targum_tools_without_private_cal_parameter
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
 
     expected = {
-        "cal_targum_parallel": {"book", "chapter", "verse", "include_peshitta", "include_samaritan"},
+        "cal_targum_parallel": {
+            "book",
+            "chapter",
+            "verse",
+            "include_peshitta",
+            "include_samaritan",
+        },
         "cal_targum_concordance": {"lemma_key"},
         "cal_targum_hebrew_lemmas": {"initial", "targum"},
         "cal_targum_hebrew_reflexes": {"targum", "mt_lemma_id"},
@@ -421,5 +428,14 @@ async def test_mcp_exposes_task_level_targum_tools_without_private_cal_parameter
     for name, properties in expected.items():
         assert name in tools
         assert set(tools[name].input_schema["properties"]) == properties
-        for private in ("bookname", "Peshitta", "Sam", "R1", "lemma", "pos", "texts", "charset"):
+        for private in (
+            "bookname",
+            "Peshitta",
+            "Sam",
+            "R1",
+            "lemma",
+            "pos",
+            "texts",
+            "charset",
+        ):
             assert private not in tools[name].input_schema["properties"]
