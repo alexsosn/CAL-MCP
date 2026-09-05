@@ -30,7 +30,7 @@ The public `source` parameter uses readable CAL-MCP identifiers. CAL's current o
 | `schulthess` | Schulthess Lexicon Syropalaestinum |
 | `dcpa` | A Dictionary of Christian Palestinian Aramaic |
 | `judean_aramaic` | A Dictionary of Judean Aramaic |
-| `qumran_aramaic` | Dictionary of Qumran Aramaic Page |
+| `qumran_aramaic` | Dictionary of Qumran Aramaic |
 
 These labels and their current CAL selector mapping were rechecked on **2026-09-05**. CAL-MCP validates the dictionary label echoed by the result page. If CAL changes or reassigns a selector value, the adapter fails as parser/upstream drift rather than silently returning a result for another dictionary.
 

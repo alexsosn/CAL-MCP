@@ -58,7 +58,7 @@ _SOURCE_SPECS: dict[DictionarySource, _SourceSpec] = {
     DictionarySource.SCHULTHESS: _SourceSpec("S", "Schulthess Lexicon Syropalaestinum"),
     DictionarySource.DCPA: _SourceSpec("C", "A Dictionary of Christian Palestinian Aramaic"),
     DictionarySource.JUDEAN_ARAMAIC: _SourceSpec("D", "A Dictionary of Judean Aramaic"),
-    DictionarySource.QUMRAN_ARAMAIC: _SourceSpec("Q", "Dictionary of Qumran Aramaic Page"),
+    DictionarySource.QUMRAN_ARAMAIC: _SourceSpec("Q", "Dictionary of Qumran Aramaic"),
 }
 
 

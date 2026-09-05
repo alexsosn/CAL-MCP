@@ -28,7 +28,7 @@ EXPECTED_SOURCES: tuple[tuple[str, str, str], ...] = (
     ("schulthess", "S", "Schulthess Lexicon Syropalaestinum"),
     ("dcpa", "C", "A Dictionary of Christian Palestinian Aramaic"),
     ("judean_aramaic", "D", "A Dictionary of Judean Aramaic"),
-    ("qumran_aramaic", "Q", "Dictionary of Qumran Aramaic Page"),
+    ("qumran_aramaic", "Q", "Dictionary of Qumran Aramaic"),
 )
 
 

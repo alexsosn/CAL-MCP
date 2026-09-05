@@ -47,7 +47,7 @@ The current ordered selector values and labels are:
 | `S` | Schulthess Lexicon Syropalaestinum |
 | `C` | A Dictionary of Christian Palestinian Aramaic |
 | `D` | A Dictionary of Judean Aramaic |
-| `Q` | Dictionary of Qumran Aramaic Page |
+| `Q` | Dictionary of Qumran Aramaic |
 
 The selector values are case-sensitive (`J` and `j` are distinct) and are implementation details of the current CAL form. CAL-MCP should not require agents to memorize them. The public adapter contract should use readable stable source names and map them internally to these current form values.
 
@@ -145,7 +145,7 @@ Proposed public values:
 | `schulthess` | `S` | Schulthess Lexicon Syropalaestinum |
 | `dcpa` | `C` | A Dictionary of Christian Palestinian Aramaic |
 | `judean_aramaic` | `D` | A Dictionary of Judean Aramaic |
-| `qumran_aramaic` | `Q` | Dictionary of Qumran Aramaic Page |
+| `qumran_aramaic` | `Q` | Dictionary of Qumran Aramaic |
 
 The internal mapping is dated upstream knowledge. A later CAL selector change should be reviewed as upstream drift rather than changing public names opportunistically.
 
