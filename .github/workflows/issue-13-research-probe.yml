@@ -1,0 +1,51 @@
+name: Issue 13 bounded CAL research probe
+on:
+  push:
+    branches: [feat/issue-13-external-citations]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fetch three bounded CAL pages and print structural evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --max-filesize 262144 \
+            -A 'CAL-MCP bounded issue-13 research probe (+https://github.com/alexsosn/CAL-MCP)' \
+            'https://cal.huc.edu/citfinder.html' -o /tmp/citfinder.html
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --max-filesize 524288 \
+            -A 'CAL-MCP bounded issue-13 research probe (+https://github.com/alexsosn/CAL-MCP)' \
+            'https://cal.huc.edu/display.notext.abbrevs.php?dial=6&dial1=6' -o /tmp/sources.html
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --max-filesize 262144 \
+            -A 'CAL-MCP bounded issue-13 research probe (+https://github.com/alexsosn/CAL-MCP)' \
+            'https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH' -o /tmp/citations.html
+          python - <<'PY'
+          import html
+          import re
+          from pathlib import Path
+
+          def report(path: str, href_pattern: str, label: str) -> None:
+              raw = Path(path).read_text(encoding='utf-8', errors='replace')
+              print(f'=== {label} bytes={len(raw.encode("utf-8"))} ===')
+              hrefs = re.findall(r'href=["\']([^"\']+)["\']', raw, flags=re.I)
+              matched = [html.unescape(h) for h in hrefs if re.search(href_pattern, h, flags=re.I)]
+              print(f'matched_links={len(matched)}')
+              for href in matched[:8]:
+                  print('HREF', href)
+              for marker in ('Choose a Dialect', 'The following texts have citations in the database', 'Select the lexical link', 'Show Translations'):
+                  if marker.lower() in raw.lower():
+                      print('MARKER', marker)
+              compact = re.sub(r'\s+', ' ', raw)
+              for needle in ('display.notext.abbrevs.php', 'displaycits.abbrev.php', 'oneentry.php'):
+                  i = compact.find(needle)
+                  if i >= 0:
+                      print('SNIP', html.unescape(compact[max(0, i-180):i+360]))
+
+          report('/tmp/citfinder.html', r'display\.notext\.abbrevs\.php', 'dialects')
+          report('/tmp/sources.html', r'displaycits\.abbrev\.php', 'sources')
+          report('/tmp/citations.html', r'oneentry\.php', 'citations')
+          PY
