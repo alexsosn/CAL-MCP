@@ -15,6 +15,7 @@ _DIALECT_PATH = "/display.notext.abbrevs.php"
 _CITATIONS_PATH = "/displaycits.abbrev.php"
 _ENTRY_PATH = "/oneentry.php"
 _DIALECT_RE = re.compile(r"^[0-9]{1,6}$")
+_MAX_SOURCE_ABBREV_CHARS = 128
 _RESULT_COUNT_RE = re.compile(r"^([0-9]+)\s+citations?$", re.IGNORECASE)
 _EMPTY_CITATIONS_RE = re.compile(
     r'\bNo\s+citations\s+for\s+"(.+?)"\s+are\s+currently\s+stored\.',
@@ -715,6 +716,8 @@ def _parse_source_target(source_url: str, href: str) -> tuple[str, str]:
             "CAL external-source abbreviation has ambiguous query semantics"
         )
     abbreviation = _returned_single_line(query["abbrev"][0], "source abbreviation")
+    if len(abbreviation) > _MAX_SOURCE_ABBREV_CHARS:
+        raise ExternalCitationParseError("CAL returned an invalid source abbreviation")
     return abbreviation, target
 
 
@@ -766,8 +769,8 @@ def _prepare_source_abbrev(value: str) -> str:
     candidate = value.strip(" ")
     if not candidate:
         raise ValueError("source_abbrev must not be empty")
-    if len(candidate) > 128:
-        raise ValueError("source_abbrev must be at most 128 characters")
+    if len(candidate) > _MAX_SOURCE_ABBREV_CHARS:
+        raise ValueError(f"source_abbrev must be at most {_MAX_SOURCE_ABBREV_CHARS} characters")
     if any(
         (char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
         for char in candidate
