@@ -1,0 +1,63 @@
+name: Issue 14 Qumran label probe
+
+on:
+  push:
+    branches:
+      - feat/issue-14-dictionary-collation
+    paths:
+      - .github/workflows/issue-14-qumran-label-probe.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-14-dictionary-collation
+      - name: Make one bounded CAL request
+        run: |
+          set -euo pipefail
+          curl --silent --show-error --fail --max-time 15 \
+            --request POST \
+            --data-urlencode 'dict=Q' \
+            --data-urlencode 'page=99999' \
+            https://cal.huc.edu/searchdicts.php > /tmp/cal-response.html
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class TitleParser(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.in_title = False
+                  self.parts = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == 'title':
+                      self.in_title = True
+              def handle_endtag(self, tag):
+                  if tag == 'title':
+                      self.in_title = False
+              def handle_data(self, data):
+                  if self.in_title:
+                      self.parts.append(data)
+
+          body = Path('/tmp/cal-response.html').read_text(encoding='utf-8', errors='replace')
+          parser = TitleParser()
+          parser.feed(body)
+          title = ' '.join(''.join(parser.parts).split())
+          print(f'TITLE={title}')
+          print(f'EXPLICIT_EMPTY={"No data available for that page." in body}')
+          PY
+      - name: Remove temporary probe
+        if: always()
+        run: |
+          set -euo pipefail
+          rm .github/workflows/issue-14-qumran-label-probe.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/issue-14-qumran-label-probe.yml
+          git commit -m "chore: remove Qumran label probe"
+          git push origin HEAD:feat/issue-14-dictionary-collation
