@@ -36,6 +36,9 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_targum_concordance",
         "cal_targum_hebrew_lemmas",
         "cal_targum_hebrew_reflexes",
+        "cal_external_citation_dialects",
+        "cal_external_citation_sources",
+        "cal_external_citations",
         "cal_syriac_texts",
         "cal_syriac_missing_words",
         "cal_syriac_peshitta_parallel",
@@ -123,6 +126,18 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(targum_hebrew_reflexes_schema["properties"]) == {"targum", "mt_lemma_id"}
     assert targum_hebrew_reflexes_schema["required"] == ["targum", "mt_lemma_id"]
 
+    external_dialects_schema = tools["cal_external_citation_dialects"].input_schema
+    assert set(external_dialects_schema["properties"]) == set()
+    assert "required" not in external_dialects_schema or external_dialects_schema["required"] == []
+
+    external_sources_schema = tools["cal_external_citation_sources"].input_schema
+    assert set(external_sources_schema["properties"]) == {"dialect_id"}
+    assert external_sources_schema["required"] == ["dialect_id"]
+
+    external_citations_schema = tools["cal_external_citations"].input_schema
+    assert set(external_citations_schema["properties"]) == {"source_abbrev"}
+    assert external_citations_schema["required"] == ["source_abbrev"]
+
     syriac_texts_schema = tools["cal_syriac_texts"].input_schema
     assert set(syriac_texts_schema["properties"]) == {"category"}
     assert syriac_texts_schema["required"] == ["category"]
@@ -155,6 +170,9 @@ async def _assert_public_tools(client: Client) -> None:
         targum_concordance_schema,
         targum_hebrew_lemmas_schema,
         targum_hebrew_reflexes_schema,
+        external_dialects_schema,
+        external_sources_schema,
+        external_citations_schema,
         syriac_texts_schema,
         syriac_missing_words_schema,
         syriac_peshitta_schema,
@@ -195,6 +213,8 @@ async def _assert_public_tools(client: Client) -> None:
         for private_syriac_parameter in (
             "bookname",
             "dial",
+            "dial1",
+            "abbrev",
             "cset",
             "file",
             "keyword",
