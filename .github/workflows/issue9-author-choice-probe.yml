@@ -1,0 +1,21 @@
+name: Issue 9 author choice probe
+
+on:
+  push:
+    branches: [research/issue-9-live-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect one author-prefix response
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 20 \
+            --user-agent 'CAL-MCP research probe' \
+            --data-urlencode 'first3=Kau' \
+            https://cal.huc.edu/browsenames.php > /tmp/authors.html
+          grep -Eoi 'href="[^"]+"|action="[^"]+"|name="[^"]+"|value="[^"]+"' /tmp/authors.html | head -100
