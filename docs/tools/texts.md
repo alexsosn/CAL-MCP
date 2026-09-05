@@ -90,7 +90,7 @@ A found page has a `text` reference plus ordered `lines`. Each line preserves th
 - `tokens`: ordered linked tokens, each with the CAL machine coordinate, zero-based CAL `word_index`, rendered token text, and absolute `lexical_url`;
 - `comment_url`: CAL's line-comment URL when CAL renders one.
 
-CAL-MCP does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; public token-at-coordinate analysis is a separate capability tracked by issue #8.
+CAL-MCP does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
 
 ### Missing text and parser drift
 

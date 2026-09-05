@@ -2,6 +2,8 @@
 
 CAL-MCP exposes four bounded task-level operations over CAL's current Targum Studies interfaces. Each public tool call performs exactly **one** user-initiated CAL request. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, fetch examples, or build a local Targum corpus.
 
+Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, and `cal_targum_hebrew_reflexes`.
+
 ## Which tool to use
 
 | Goal | Tool |

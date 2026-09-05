@@ -10,7 +10,7 @@ CAL-MCP exposes three bounded task-level operations over CAL's current Syriac St
 | List one CAL-curated class of Syriac headwords absent from *A Syriac Lexicon* | `cal_syriac_missing_words(category)` |
 | Compare one biblical verse in MT and CAL's Peshitta view | `cal_syriac_peshitta_parallel(book, chapter, verse)` |
 
-The CAL Syriac Studies page also links to citations from texts that are not in the online text database. That is the same generic external-citation family tracked by issue #13, so issue #11 deliberately does **not** duplicate it as a Syriac-only tool.
+The CAL Syriac Studies page also links to citations from texts that are not in the online text database. That is the same generic external-citation family exposed by `cal_external_citation_dialects`, `cal_external_citation_sources`, and `cal_external_citations`, so CAL-MCP deliberately does **not** duplicate it as a Syriac-only tool.
 
 Ordinary Syriac lexicon lookup, text retrieval, token analysis, concordance, and KWIC likewise stay on the existing general CAL-MCP tools rather than being reimplemented behind specialist names.
 

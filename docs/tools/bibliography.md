@@ -124,7 +124,7 @@ Every bibliography operation has an exact one-request upper bound:
 - one exact text/subject-tag result request;
 - one exact lemma result request.
 
-There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The separate CAL recent-five-years bibliography view is outside issue #9's search contract and remains for the broader public-surface audit.
+There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The separate CAL recent-five-years bibliography view is explicitly deferred from the v0.1 contract to issue #39, where its moving year window and result-size/continuation semantics can be researched independently.
 
 ## Provenance
 

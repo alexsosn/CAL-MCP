@@ -19,11 +19,12 @@ flowchart TB
     ROOT --> DOCS[docs/\nuser-facing versioned docs]
     ROOT --> WIKI[wiki/\nmaintainer architecture/state]
 
+    DOCS --> INDEX[index.md\nuser navigation + capability matrix]
     DOCS --> START[Getting started]
     DOCS --> CONCEPTS[Concepts]
     DOCS --> TOOLS[Tool reference]
     DOCS --> GUIDES[Research workflows]
-    DOCS --> INTEGRATIONS[Standalone / Agora]
+    DOCS --> INTEGRATIONS[Standalone / downstream integrations]
     DOCS --> LIMITS[Limitations]
 
     WIKI --> ARCH[Architecture]
@@ -41,9 +42,9 @@ flowchart TB
 - 5-minute orientation;
 - status, goals, non-goals;
 - minimal architecture diagrams;
-- links to implemented user docs and release installation once available;
+- prominent link into `docs/index.md` for user documentation;
 - CAL/Agora relationship and disclaimer;
-- must stay short enough to remain a landing page.
+- must stay short enough to remain a landing page rather than becoming a second documentation site.
 
 **`research.md`**
 
@@ -54,12 +55,16 @@ flowchart TB
 - open research questions;
 - append/amend when evidence changes.
 
+Focused issue research may live in `docs/research/` when the evidence set is large enough to deserve its own reviewable artifact.
+
 **`plan.md`**
 
 - staged work and dependency graph;
 - release gates;
 - explicit documentation workstream;
 - updated when sequencing or release scope changes, not for every implementation detail.
+
+Focused issue plans may live in `docs/plans/` when a ticket needs a frozen execution contract before TDD begins.
 
 **`AGENTS.md`**
 
@@ -68,9 +73,9 @@ flowchart TB
 - definition of done;
 - no broad design exposition that belongs in the wiki.
 
-## 2. User-facing `docs/` target tree
+## 2. User-facing `docs/` v0.1 tree
 
-The `docs/` tree is introduced incrementally with implemented behavior. At v0.1 it should be:
+The user tree is introduced only when behavior exists. The v0.1 contract is:
 
 ```text
 docs/
@@ -90,6 +95,8 @@ docs/
 │   ├── texts.md
 │   ├── token-analysis.md
 │   ├── bibliography.md
+│   ├── dictionary-collation.md
+│   ├── external-citations.md
 │   ├── targum.md
 │   └── syriac.md
 ├── guides/
@@ -97,44 +104,49 @@ docs/
 │   ├── corpus-context.md
 │   └── reproducible-citations.md
 ├── integrations/
-│   ├── standalone-mcp.md
-│   └── agora.md
+│   └── standalone-mcp.md
 └── limitations.md
 ```
 
-Do not create empty placeholder pages merely to satisfy this tree. A page is added in the PR that implements the capability it documents.
+`docs/integrations/agora.md` is **not** part of the pre-registration v0.1 documentation contract. Issue #16 adds it only after a released CAL-MCP version has actually been registered downstream. User docs must never claim an integration merely because it is planned.
+
+Do not create empty placeholder pages merely to satisfy a desired tree. A page is added only when the behavior or integration it documents exists.
 
 ## 3. Documentation ownership by layer
 
 | Information | Owner/source of truth | Human presentation |
 | --- | --- | --- |
-| Tool names/arguments/output schema | executable MCP code/schema | `docs/tools/*` |
+| Tool names/arguments/output schema | executable MCP code/schema | `docs/tools/*` + `docs/index.md` navigation |
 | CAL semantics/content | CAL | links + faithful explanation in relevant docs |
-| CAL endpoint/form details | adapter implementation + `research.md` | normally hidden from user docs |
+| CAL endpoint/form details | adapter implementation + research evidence | normally hidden from user docs |
 | Input normalization behavior | normalization code/tests | `docs/concepts/input-and-transliteration.md` |
-| Provenance fields | typed schema/tests | `docs/concepts/provenance-and-citation.md` |
-| Installation command | package metadata/release | `docs/installation.md` |
+| Common provenance guarantees | typed results/tests | `docs/concepts/provenance-and-citation.md` |
+| Error/empty/drift semantics | client + surface parser tests | `docs/concepts/errors-and-upstream-drift.md` |
+| Installation command | package metadata/release state | `docs/installation.md` |
 | Runtime config | config schema/code | `docs/configuration.md` |
 | Architecture | `wiki/architecture.md` | README summary only |
 | Durable project decisions | `wiki/decisions.md` | linked where relevant |
-| Agora launch metadata | Agora registry after release | `docs/integrations/agora.md` explains expected integration |
-| Upstream evidence | `research.md` | synthesized, not copied, into user docs |
+| Agora launch metadata | Agora registry after release | `docs/integrations/agora.md` only after downstream registration |
+| Upstream evidence | `research.md` / focused issue research | synthesized, not copied, into user docs |
 
 ## 4. Tool-reference architecture
 
-Tool reference should not become a second hand-maintained schema.
+Tool reference must not become a second hand-maintained schema.
 
-Preferred model:
+Current model:
 
 ```mermaid
 flowchart LR
     CODE[Typed MCP tool definitions] --> SCHEMA[Machine-readable schemas]
-    SCHEMA --> CHECK[Doc/schema consistency check]
-    CODE --> TESTS[Contract tests]
+    SCHEMA --> BOOT[Executable contract tests]
+    SCHEMA --> CHECK[Docs contract check]
     DOC[docs/tools/*.md\nsemantics + examples + limits] --> CHECK
-    TESTS --> EX[Verified examples/fixtures]
+    INDEX[docs/index.md\nnavigation + capability matrix] --> CHECK
+    BOOT --> EX[Fixture-backed examples]
     EX --> DOC
 ```
+
+The offline docs-contract test checks that every executable public tool is explicitly named in tool reference, every tool page is reachable from the user index, required v0.1 entry points exist, and relative README/docs links resolve.
 
 For each tool page, document:
 
@@ -144,43 +156,48 @@ For each tool page, document:
 - CAL terminology preserved by the result;
 - result semantics and provenance;
 - limits/pagination;
-- representative examples verified by tests or live smoke fixtures;
+- representative examples verified by tests or bounded research fixtures;
 - upstream-dependent failure modes;
 - explicit non-capabilities.
 
-Do not paste generated JSON schema verbatim if it can be linked/rendered mechanically. Human docs should add semantics, not duplicate syntax.
+Do not paste generated JSON schema verbatim if it can be inspected mechanically. Human docs should add semantics, selection guidance, and composition rules rather than duplicate syntax.
 
 ## 5. Example policy
 
 Examples are part of testing.
 
-Every user-visible example should be one of:
+Every user-visible CAL-data example should be one of:
 
-1. a deterministic example backed by a test fixture; or
-2. a live example captured by an opt-in smoke test and clearly identified as upstream-live/subject to CAL updates.
+1. a deterministic example backed by a reduced test fixture; or
+2. a live example captured by an opt-in smoke/research check and clearly identified as upstream-live/subject to CAL updates.
 
 Examples must not imply that CAL data are bundled locally. They should expose retrieval/provenance behavior where relevant.
 
 When CAL changes an answer, update the live example only after confirming the adapter remains semantically correct.
 
+Generic command/process examples such as `cal-mcp` are grounded in package metadata and launch tests rather than CAL fixtures.
+
 ## 6. Documentation build strategy
 
 ### Stage A — bootstrap (completed)
 
-Version-control Markdown only. Mermaid diagrams render directly on GitHub. Avoid introducing a documentation framework before user-facing pages exist.
+Version-control Markdown only. Mermaid diagrams render directly on GitHub. No documentation framework was introduced before user-facing pages existed.
 
-### Stage B — first implemented tools (current)
+### Stage B — implemented v0.1 user documentation (current)
 
-Add `docs/` with navigation-ready Markdown as capabilities land. `docs/tools/lexicon.md` is the first tool-reference page. Establish a lightweight docs check in CI as the user-facing tree grows:
+Maintain navigation-ready Markdown with an offline executable docs contract:
 
-- internal-link validation;
-- Markdown lint/format rules with limited, documented exceptions;
-- tool-name/schema consistency check;
-- code snippets/examples exercised by tests where practical.
+- required user entry points;
+- relative-link validation;
+- public-tool-name coverage;
+- tool-page navigation from `docs/index.md`;
+- examples tied to existing fixtures/tests where practical.
 
-### Stage C — v0.1 documentation site
+This is sufficient for the pre-release v0.1 contract and keeps documentation reviewable directly on GitHub.
 
-Choose a static documentation renderer only when the `docs/` tree is substantial enough to benefit. Selection criteria:
+### Stage C — optional documentation site
+
+Choose a static documentation renderer only when publication/versioning needs justify another dependency. Selection criteria:
 
 - builds from the same Markdown files viewed on GitHub;
 - supports Mermaid without bespoke diagram duplication;
@@ -189,18 +206,22 @@ Choose a static documentation renderer only when the `docs/` tree is substantial
 - easy deterministic CI build;
 - no dependency on Agora.
 
-The implementation ticket should evaluate the current Python-doc ecosystem before choosing/pinning a generator rather than locking one in during planning.
+A future implementation ticket should evaluate the then-current documentation ecosystem rather than retroactively locking v0.1 to a framework.
 
-### Stage D — release integration
+### Stage D — release and downstream integration
 
-Published release docs should contain:
+Issue #15 updates published-release documentation with:
 
 - clean-install instructions;
 - exact package/version/entry point;
-- standalone client configuration;
+- release notes/changelog;
+- low-load live-smoke contributor guidance.
+
+Issue #16, only after release, adds:
+
 - optional Agora discovery/install path;
-- support/limitations and upstream dependency notes;
-- changelog/release notes.
+- downstream registry/version pin details;
+- client/platform constraints learned from actual integration.
 
 ## 7. Architecture-diagram policy
 
@@ -210,20 +231,20 @@ Rules:
 
 - keep diagrams near the prose they explain;
 - do not commit raster exports as the source of truth;
-- update the diagram in the same PR as a boundary/data-flow change;
+- update a diagram in the same PR as a boundary/data-flow change;
 - prefer several focused diagrams over one unreadable global graph;
-- user docs show interaction diagrams; maintainer wiki shows internal component diagrams.
+- user docs show interaction/workflow guidance; maintainer wiki shows internal component diagrams.
 
-Required diagrams at v0.1:
+Required architecture views at the v0.1 release boundary:
 
 - system context / CAL / CAL-MCP / Agora boundary;
-- internal component architecture;
+- actual internal component architecture;
 - request sequence;
 - normalization flow;
 - request-policy flow;
 - test architecture;
 - documentation architecture;
-- Agora integration flow.
+- downstream Agora integration flow once issue #16 exists.
 
 ## 8. Update triggers
 
@@ -234,35 +255,38 @@ A PR must update docs when it changes any of the following:
 | new MCP tool | tool page + index/navigation + example |
 | tool argument/result change | tool page + compatibility/release note |
 | normalization rule | input/transliteration page + tests |
-| provenance schema | provenance/citation page |
+| provenance schema/guarantee | provenance/citation page |
 | error semantics | errors/upstream-drift page |
 | package/launch command | installation/standalone docs |
 | configuration option | configuration docs |
-| architecture boundary | `wiki/architecture.md` + decision if durable |
-| CAL behavior assumption | `research.md`; decision if architecture changes |
-| Agora integration | `docs/integrations/agora.md` after downstream registration |
+| architecture boundary/layout | `wiki/architecture.md` + decision if durable |
+| CAL behavior assumption | research evidence; decision if architecture changes |
+| Agora integration | `docs/integrations/agora.md` only after downstream registration |
 
 ## 9. Documentation acceptance criteria for feature tickets
 
 A feature ticket is not done until:
 
 - its public behavior is documented;
-- examples correspond to tested behavior;
+- examples correspond to tested/researched behavior;
 - CAL terminology/limitations are stated accurately;
 - source/provenance behavior is shown when meaningful;
 - adjacent-tool guidance prevents agents from choosing a broader/more expensive tool unnecessarily;
+- the user index/navigation includes the new page/tool;
 - no aspirational/unimplemented capability is presented as available.
 
 ## 10. Documentation review checklist
 
-Independent review asks:
+A logically independent review asks:
 
-- Does the page describe what the released code does now?
-- Could an agent select the correct tool from the description alone?
+- Does the page describe what the executable code does now?
+- Could an agent select the correct/narrowest tool from the description alone?
 - Are CAL facts distinguished from CAL-MCP adapter behavior?
 - Are input representations and ambiguities explicit?
 - Are result limits and network/upstream dependencies explicit?
-- Can the example be reproduced?
+- Are multi-stage workflows caller-controlled rather than disguised hidden traversal?
+- Can the example be traced to a test fixture/research observation or package metadata?
 - Are cross-links valid?
 - Did a diagram become stale?
-- Did the PR accidentally move CAL-specific documentation into Agora instead of keeping it upstream here?
+- Does installation text distinguish source/pre-release state from a published package?
+- Does the PR accidentally claim an Agora integration before #16 or move CAL-specific documentation into Agora?
