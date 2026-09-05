@@ -1,0 +1,48 @@
+name: Temporary bibliography research
+
+on:
+  push:
+    branches: [issue-9-bibliography]
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Inspect current CAL bibliography forms
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.request import Request, urlopen
+
+          BASE = "https://cal.huc.edu/"
+          PAGES = ["namesearch.html", "bibliography/allsigs.html", "lemmas_list.html"]
+
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.forms = []
+                  self.current = None
+                  self.links = []
+              def handle_starttag(self, tag, attrs):
+                  a = dict(attrs)
+                  if tag == "form":
+                      self.current = {"action": a.get("action"), "method": a.get("method"), "fields": []}
+                      self.forms.append(self.current)
+                  elif tag in {"input", "select", "button"} and self.current is not None:
+                      self.current["fields"].append((tag, a.get("name"), a.get("value"), a.get("type")))
+                  elif tag == "a" and a.get("href"):
+                      self.links.append(a["href"])
+              def handle_endtag(self, tag):
+                  if tag == "form":
+                      self.current = None
+
+          for path in PAGES:
+              req = Request(BASE + path, headers={"User-Agent": "CAL-MCP bounded research probe"})
+              with urlopen(req, timeout=15) as response:
+                  body = response.read().decode("utf-8", "replace")
+                  print("PAGE", path, "STATUS", response.status, "FINAL", response.geturl(), "BYTES", len(body))
+              parser = P(); parser.feed(body)
+              print("FORMS", parser.forms)
+              print("LINK_SAMPLE", parser.links[:20])
+          PY
