@@ -44,8 +44,7 @@ def test_full_entry_can_begin_with_four_depth_one_subsenses() -> None:
 
     entry = parse_lexicon_entry(response, lemma_key=")lh N")
 
-    assert entry.lemma.headwords == (")lh",
-    )
+    assert entry.lemma.headwords == (")lh",)
     assert entry.lemma.part_of_speech == "N"
     assert entry.lemma.gloss == "god"
     assert [sense.label_path for sense in entry.senses] == [(1,), (2,), (3,), (4,)]
