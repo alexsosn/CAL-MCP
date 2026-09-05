@@ -71,7 +71,7 @@ def test_static_syriac_category_uses_same_typed_item_model() -> None:
         category="ot-peshitta",
     )
 
-    assert page.label == "OT Peshitta"
+    assert page.label == "OT Peshiṭta"
     assert [(item.upstream_id, item.label) for item in page.items] == [
         ("62001", "P Gn"),
         ("62002", "P Ex"),
@@ -139,12 +139,12 @@ def test_missing_words_preserve_cal_lemma_keys_labels_notes_and_entry_urls() -> 
     )
 
     assert page.dictionary_label == "A Syriac Lexicon"
-    assert [item.lemma_key for item in page.items] == [")br V", "gbl V", ")t) V"]
-    assert [item.label for item in page.items] == ["ˀbr vb.", "gbl vb.", "ˀtˀ vb."]
+    assert [item.lemma_key for item in page.items] == [")br V", ")d$#2 V", ")yl V"]
+    assert [item.label for item in page.items] == ["ˀbr vb.", "ˀdš vb.", "ˀyl vb."]
     assert [item.note for item in page.items] == [
         "D to make a son",
-        "to form, fashion",
-        "to come",
+        "Dt to be differentiated into species",
+        "D to come to one's aid",
     ]
     assert page.items[0].entry_url == ("https://cal.huc.edu/oneentry.php?cits=all&lemma=%29br+V")
 
@@ -199,7 +199,7 @@ def test_peshitta_parallel_preserves_unicode_label_and_chapter_link() -> None:
     assert page.status is SyriacPeshittaStatus.FOUND
     assert page.mt_text is not None and "בְּרֵאשִׁית" in page.mt_text
     assert page.peshitta_label == "Peshitta:"
-    assert page.peshitta_text == "ܒܪܫܝܬ ܒܪܐ ܐܠܗܐܲ ܝܬ ܫܡܝܐ ܘܝܬ ܐܪܥܐܲ"
+    assert page.peshitta_text == "ܒܪܫܝܬ ܒܪܐ ܐܠܗܐ܂ ܝܬ ܫܡܝܐ ܘܝܬ ܐܪܥܐ܂"
     assert page.peshitta_url == ("https://cal.huc.edu/get_a_chapter.php?file=62001&sub=01&cset=U")
 
 
