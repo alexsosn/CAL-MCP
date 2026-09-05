@@ -9,6 +9,7 @@ from mcp.server.mcpserver import Context
 
 from cal_mcp import __version__
 from cal_mcp.client import CalHttpClient
+from cal_mcp.concordance import ConcordanceService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
 from cal_mcp.texts import TextService
@@ -39,8 +40,12 @@ mcp = MCPServer(
         "text/category identifiers, cal_text_search to find texts by topic, and cal_text_page "
         "to retrieve one bounded CAL text page. Use cal_token_analysis for every CAL lexical "
         "analysis attached to one explicit text coordinate and zero-based token index. "
-        "Ambiguous analyses remain ordered CAL alternatives rather than a guessed preferred "
-        "reading. Results include CAL provenance and retrieval time."
+        "Use cal_text_concordance for one text's ordered lemma-frequency index, cal_kwic_texts "
+        "for one lemma in 1-8 explicit texts, cal_kwic_dialects to discover CAL's current "
+        "dialect identifiers, and cal_kwic_dialect for one explicit dialect. Concordance/KWIC "
+        "follow-ups are always explicit tool calls; there is no hidden text, dialect, or full-"
+        "context traversal. Ambiguous analyses remain ordered CAL alternatives rather than a "
+        "guessed preferred reading. Results include CAL provenance and retrieval time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -190,6 +195,94 @@ async def cal_token_analysis(
 
     client = ctx.request_context.lifespan_context.client
     result = await TokenAnalysisService(client).analyze(coordinate, word_index)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_text_concordance",
+    title="List one CAL text concordance",
+    structured_output=True,
+)
+async def cal_text_concordance(
+    text_id: str,
+    ctx: Context[AppContext],
+    script: str = "semitic",
+) -> dict[str, object]:
+    """Return CAL's ordered lemma-frequency index for one explicit text.
+
+    ``script`` is ``semitic`` (default) or ``transliteration``. One call performs exactly
+    one bounded CAL request. Following a lemma into KWIC requires another explicit tool call.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ConcordanceService(client).text_concordance(text_id, script=script)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_kwic_texts",
+    title="Find CAL KWIC hits in explicit texts",
+    structured_output=True,
+)
+async def cal_kwic_texts(
+    lemma_key: str,
+    text_ids: list[str],
+    ctx: Context[AppContext],
+    script: str = "roman",
+) -> dict[str, object]:
+    """Return ordered CAL KWIC hits for one lemma key in 1-8 explicit texts.
+
+    Duplicate CAL hits remain duplicated and ordered. ``script`` is ``roman``, ``hebrew``,
+    or ``syriac``. One call performs one bounded CAL request and never fetches full context.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ConcordanceService(client).kwic_texts(
+        lemma_key,
+        text_ids,
+        script=script,
+    )
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_kwic_dialects",
+    title="List CAL KWIC dialect choices",
+    structured_output=True,
+)
+async def cal_kwic_dialects(
+    lemma_key: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's current ordered dialect ID/label choices for one lemma key.
+
+    Dialect identifiers are read live from CAL rather than hard-coded. Use a returned
+    ``dialect_id`` in a separate ``cal_kwic_dialect`` call.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ConcordanceService(client).kwic_dialects(lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_kwic_dialect",
+    title="Find CAL KWIC hits in one dialect",
+    structured_output=True,
+)
+async def cal_kwic_dialect(
+    lemma_key: str,
+    dialect_id: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return ordered CAL KWIC hits for one lemma key and one explicit dialect.
+
+    One call performs exactly one CAL request and never expands to other dialects or fetches
+    full-context pages automatically.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ConcordanceService(client).kwic_dialect(lemma_key, dialect_id)
     return result.to_dict()
 
 
