@@ -313,8 +313,11 @@ def parse_text_concordance_page(
         if cell_index == 0 or cell_index + 1 >= len(row.cells):
             raise ConcordanceParseError("CAL concordance row is missing frequency or gloss")
 
-        query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
-        lemma_key = _single_query_value(query, "lemma", "KWIC lemma")
+        kwic_url = _resolve_same_origin_link(response.url, link.href, "showKWIC.php")
+        query = parse_qs(urlsplit(kwic_url).query, keep_blank_values=True)
+        lemma_key = _parse_returned_lemma_key(
+            _single_query_value(query, "lemma", "KWIC lemma")
+        )
         text_id = _single_query_value(query, "texts", "KWIC text")
         charset = _single_query_value(query, "charset", "KWIC charset")
         if text_id != requested_text_id or charset != requested_charset:
@@ -331,7 +334,7 @@ def parse_text_concordance_page(
                 frequency=int(frequency_match.group(1)),
                 lemma_key=lemma_key,
                 gloss=gloss,
-                kwic_url=urljoin(response.url, link.href),
+                kwic_url=kwic_url,
             )
         )
 
@@ -580,7 +583,12 @@ def _parse_kwic_hits(response: CalResponse) -> tuple[KwicHit, ...]:
         if len(links) != 1:
             raise ConcordanceParseError("CAL KWIC target row has multiple full-context links")
         link = links[0]
-        query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+        full_context_url = _resolve_same_origin_link(
+            response.url,
+            link.href,
+            "get_a_kwicchapter.php",
+        )
+        query = parse_qs(urlsplit(full_context_url).query, keep_blank_values=True)
         file_id = _parse_decimal_id(
             _single_query_value(query, "file", "KWIC file"),
             "file_id",
@@ -609,7 +617,7 @@ def _parse_kwic_hits(response: CalResponse) -> tuple[KwicHit, ...]:
                 subtext_id=subtext_id,
                 target_coordinate=target,
                 context=_clean_text(" ".join(context_parts)),
-                full_context_url=urljoin(response.url, link.href),
+                full_context_url=full_context_url,
                 charset=charset,
             )
         )
@@ -701,6 +709,13 @@ def _validate_lemma_key(value: str) -> tuple[str, str, str]:
     return lemma, suffix, f"{lemma} {suffix}"
 
 
+def _parse_returned_lemma_key(value: str) -> str:
+    try:
+        return _validate_lemma_key(value)[2]
+    except ValueError as exc:
+        raise ConcordanceParseError("CAL returned a malformed lemma key") from exc
+
+
 def _validate_decimal_id(value: str, name: str) -> str:
     if not isinstance(value, str) or _ID_RE.fullmatch(value) is None:
         raise ValueError(f"{name} must be a CAL decimal identifier")
@@ -762,6 +777,19 @@ def _single_form_value(inputs: dict[str, list[str]], name: str) -> str:
     if values is None or len(values) != 1 or not values[0]:
         raise ConcordanceParseError(f"CAL dialect selector lacks one {name} value")
     return values[0]
+
+
+def _resolve_same_origin_link(source_url: str, href: str, filename: str) -> str:
+    resolved = urljoin(source_url, href)
+    source = urlsplit(source_url)
+    target = urlsplit(resolved)
+    if (
+        source.scheme.lower() != target.scheme.lower()
+        or source.netloc.lower() != target.netloc.lower()
+        or not target.path.endswith(filename)
+    ):
+        raise ConcordanceParseError("CAL navigation link leaves the response origin")
+    return resolved
 
 
 def _is_path(href: str, filename: str) -> bool:
