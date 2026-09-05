@@ -2,9 +2,9 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The repository includes CAL-backed lexicon lookup, bounded English gloss/citation-text search, bounded text catalogue/search/page retrieval, bounded token-at-coordinate lexical analysis, bounded concordance/KWIC research operations, and bounded bibliography search; no versioned release has been published yet.
+> **Status:** active pre-release development. The repository includes CAL-backed lexicon lookup, bounded English gloss/citation-text search, bounded text catalogue/search/page retrieval, bounded token-at-coordinate lexical analysis, bounded concordance/KWIC research operations, bounded bibliography search, and bounded dictionary spelling collation; no versioned release has been published yet.
 
-CAL-MCP makes CAL's existing scholarly interfaces easier to use from agents and MCP clients without copying, mirroring, or redistributing the CAL database. Queries remain live, user-initiated requests to CAL; CAL remains the authority for lexical data, texts, citations, bibliography, and scholarly interpretation.
+CAL-MCP makes CAL's existing scholarly interfaces easier to use from agents and MCP clients without copying, mirroring, or redistributing the CAL database. Queries remain live, user-initiated requests to CAL; CAL remains the authority for lexical data, texts, citations, bibliography, dictionary collation, and scholarly interpretation.
 
 This project is not affiliated with or endorsed by the Comprehensive Aramaic Lexicon Project or Hebrew Union College.
 
@@ -40,13 +40,14 @@ The public surface is introduced incrementally and stabilized by tests before re
 | Texts | **Implemented** | `cal_text_catalogue`, `cal_text_search`, and `cal_text_page`: explicit one-request discovery/navigation and line/token coordinate preservation |
 | Token analysis | **Implemented** | `cal_token_analysis`: every CAL lexical analysis for one explicit machine coordinate + zero-based token index, with ambiguity preserved |
 | Bibliography | **Implemented** | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, and `cal_bibliography_lemma`: one-request author discovery/exact-author, exact CAL text/subject-tag, and exact lemma bibliography operations with record links and provenance |
+| Dictionary collation | **Implemented** | `cal_dictionary_collation`: one explicit dictionary/page lookup with readable source identifiers, ordered CAL lemma correspondences, and provenance |
 | Citations | Planned | citation lookup, source links, retrieval metadata beyond English citation-text search |
 | Targum | Planned | CAL Targum comparison/research operations |
 | Syriac | Planned | CAL Syriac research operations |
 
 The server distinguishes between **CAL data returned by the upstream service** and **adapter metadata produced by CAL-MCP**.
 
-See [`docs/tools/lexicon.md`](docs/tools/lexicon.md) for lexicon lookup, [`docs/tools/search.md`](docs/tools/search.md) for English gloss/citation-text search, [`docs/tools/texts.md`](docs/tools/texts.md) for bounded CAL text discovery/page retrieval, [`docs/tools/token-analysis.md`](docs/tools/token-analysis.md) for token-at-coordinate lexical analysis, [`docs/tools/concordance.md`](docs/tools/concordance.md) for bounded frequency/KWIC operations, and [`docs/tools/bibliography.md`](docs/tools/bibliography.md) for bounded CAL bibliography search. CAL-owned identifier semantics are documented in [`docs/concepts/cal-identifiers.md`](docs/concepts/cal-identifiers.md).
+See [`docs/tools/lexicon.md`](docs/tools/lexicon.md) for lexicon lookup, [`docs/tools/search.md`](docs/tools/search.md) for English gloss/citation-text search, [`docs/tools/texts.md`](docs/tools/texts.md) for bounded CAL text discovery/page retrieval, [`docs/tools/token-analysis.md`](docs/tools/token-analysis.md) for token-at-coordinate lexical analysis, [`docs/tools/concordance.md`](docs/tools/concordance.md) for bounded frequency/KWIC operations, [`docs/tools/bibliography.md`](docs/tools/bibliography.md) for bounded CAL bibliography search, and [`docs/tools/dictionary-collation.md`](docs/tools/dictionary-collation.md) for bounded dictionary-page collation. CAL-owned identifier semantics are documented in [`docs/concepts/cal-identifiers.md`](docs/concepts/cal-identifiers.md).
 
 ## System boundary
 
@@ -114,6 +115,7 @@ The repository uses documentation as executable project state for humans and cod
 - [`docs/tools/token-analysis.md`](docs/tools/token-analysis.md) — explicit token coordinates/indexes, ordered ambiguity, no-data/drift semantics, and one-request bounds.
 - [`docs/tools/concordance.md`](docs/tools/concordance.md) — one-text frequency indexes, explicit text/dialect KWIC, duplicate-hit preservation, bounds, failures, and provenance.
 - [`docs/tools/bibliography.md`](docs/tools/bibliography.md) — author discovery/exact-author retrieval, exact text/subject-tag and lemma bibliography search, result links, bounds, failures, and provenance.
+- [`docs/tools/dictionary-collation.md`](docs/tools/dictionary-collation.md) — supported dictionaries/page syntax, ordered CAL lemma correspondences, alias-target preservation, bounds, failures, and provenance.
 
 Additional user-facing reference documentation under `docs/` is introduced alongside the corresponding implemented behavior so it cannot get ahead of the executable interface. Its target structure is specified in `wiki/documentation.md`.
 
@@ -130,6 +132,7 @@ The repository currently has:
 - live `cal_token_analysis` with one-request token-at-coordinate analysis, ordered CAL ambiguity, shared lexicon references, and no hidden entry expansion;
 - live `cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, and `cal_kwic_dialect` tools with explicit text/dialect scope, one-request bounds, duplicate-hit preservation, and no hidden full-context traversal;
 - live `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, and `cal_bibliography_lemma` tools with explicit two-step author selection, exact CAL tag/lemma semantics, ordered records/links, and no hidden archive traversal;
+- live `cal_dictionary_collation` with one-request dictionary/page lookup, readable source selection, ordered CAL lemma correspondences, and no hidden lemma expansion;
 - offline parser fixtures and deterministic MCP/request-policy tests.
 
 Requirements: Python 3.11+.
@@ -159,7 +162,7 @@ mypy
 pytest
 ```
 
-Importing `cal_mcp.server` remains network-free. When the MCP server starts, its lifespan creates one bounded CAL client for that running server without issuing a CAL request; live traffic begins only when a CAL-backed tool is called. Reusing that client preserves the request layer's process/session-local cache and single-flight behavior across tool calls, and the client is closed at server shutdown. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon/search/text/token-analysis/concordance/bibliography parser/service, and MCP contract tests make no live CAL requests.
+Importing `cal_mcp.server` remains network-free. When the MCP server starts, its lifespan creates one bounded CAL client for that running server without issuing a CAL request; live traffic begins only when a CAL-backed tool is called. Reusing that client preserves the request layer's process/session-local cache and single-flight behavior across tool calls, and the client is closed at server shutdown. The installed stdio entry point is tested separately. Normal HTTP, normalization, lexicon/search/text/token-analysis/concordance/bibliography/dictionary-collation parser/service, and MCP contract tests make no live CAL requests.
 
 ## Development model
 
