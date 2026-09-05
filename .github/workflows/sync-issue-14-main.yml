@@ -1,0 +1,31 @@
+name: Sync issue 14 with main
+
+on:
+  push:
+    branches:
+      - feat/issue-14-dictionary-collation
+    paths:
+      - .github/workflows/sync-issue-14-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-14-dictionary-collation
+          fetch-depth: 0
+      - name: Merge current main
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge origin/main --no-edit
+          rm .github/workflows/sync-issue-14-main.yml
+          git add .github/workflows/sync-issue-14-main.yml
+          git commit --amend --no-edit
+          git push origin HEAD:feat/issue-14-dictionary-collation
