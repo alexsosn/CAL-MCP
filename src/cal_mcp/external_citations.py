@@ -778,7 +778,7 @@ def _prepare_source_abbrev(value: str) -> str:
 
 def _returned_single_line(value: str, field_name: str) -> str:
     candidate = value.strip(" ")
-    if not candidate or any(char.isspace() and char != " " for char in candidate):
+    if not candidate or any((char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cf", "Cs"} for char in candidate):
         raise ExternalCitationParseError(f"CAL returned an invalid {field_name}")
     return candidate
 
