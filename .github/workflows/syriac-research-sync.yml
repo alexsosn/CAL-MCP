@@ -1,0 +1,53 @@
+name: Sync Syriac research evidence
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/syriac-research-sync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-11-syriac
+      - name: Synchronize current CAL headings
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("docs/research/issue-11-syriac.md")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              "- `ot-peshitta` — OT Peshitta": "- `ot-peshitta` — OT Peshiṭta",
+              "- `nt-peshitta` — NT Peshitta": "- `nt-peshitta` — NT Peshiṭta",
+              "- `apocryphal-pseudepigraphal` — Apocryphal/Pseudepigraphal texts": "- `apocryphal-pseudepigraphal` — Apocryphal/Pseudepigraphal Texts",
+          }
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected one occurrence of {old!r}, found {count}")
+              text = text.replace(old, new, 1)
+          anchor = "The dynamic categories map to CAL's current numeric category values 5–20."
+          note = (
+              "A review-stage bounded recheck on 2026-09-05 confirmed the exact current static "
+              "headings `OT Peshiṭta`, `NT Peshiṭta`, and `Apocryphal/Pseudepigraphal Texts`; "
+              "the reduced fixtures and parser contract use those upstream spellings.\n\n"
+          )
+          if note not in text:
+              text = text.replace(anchor, note + anchor, 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add docs/research/issue-11-syriac.md
+          git commit -m "docs: sync Syriac live research evidence"
+          git push origin HEAD:feat/issue-11-syriac
