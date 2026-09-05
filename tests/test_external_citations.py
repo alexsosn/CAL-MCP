@@ -367,6 +367,7 @@ async def test_wrong_source_result_heading_is_parser_drift_not_silent_success() 
         ("citations", "   "),
         ("citations", "A\tB"),
         ("citations", "A\nB"),
+        ("citations", "1CorH\u202e"),
         ("citations", "x" * 129),
     ],
 )
