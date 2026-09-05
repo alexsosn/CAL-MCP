@@ -2,7 +2,7 @@
 
 **Rechecked:** 2026-09-05
 
-This note records the bounded upstream evidence used before implementing issue #14. Normal CI remains offline.
+This note records the bounded upstream evidence used before implementing issue #14 plus one source-label correction established during independent review. Normal CI remains offline.
 
 ## Research task and CAL semantics
 
@@ -172,6 +172,12 @@ The shared HTTP client already provides the required response-size limit, bounde
 
 CAL's public page notes that the database is a work in progress and that coverage varies by reference work. CAL-MCP documentation should therefore describe results as the CAL correspondences currently stored for that dictionary/page, not as an exhaustive equivalence table between dictionaries.
 
+## Review-time source-label correction
+
+The first form extraction accidentally concatenated the generic `Page` field label after the final dictionary selector, producing `Dictionary of Qumran Aramaic Page`. During independent review, the current public form was re-read directly and clearly rendered the final selector as `Dictionary of Qumran Aramaic`, followed separately by `Page` and its input. The source mapping, tests, and user documentation were corrected to the exact selector label while preserving private selector code `Q`.
+
+One bounded review request attempted to verify the Qumran result title directly with `dict=Q&page=99999`. CAL returned HTTP 405 to that probe client, so no result-page identity was obtained; the request was not retried. The temporary workflow self-deleted. This failed request is recorded as evidence, not treated as evidence for a different method, because the earlier bounded form/result research had already confirmed successful POST behavior for the implemented endpoint.
+
 ## Sources and research load
 
 Sources:
@@ -179,5 +185,6 @@ Sources:
 - https://cal.huc.edu/searchdicts.html
 - `POST https://cal.huc.edu/searchdicts.php`, `dict=J&page=705`, bounded probe on 2026-09-05
 - `POST https://cal.huc.edu/searchdicts.php`, `dict=J&page=99999`, bounded probe on 2026-09-05
+- `POST https://cal.huc.edu/searchdicts.php`, `dict=Q&page=99999`, one review-time attempt on 2026-09-05 that returned HTTP 405 and was not retried
 
-Two temporary branch-only research workflows used four CAL requests total: one form GET plus one representative result in the first run, followed by one repeated representative result and one explicit empty result in the second run. The temporary workflow was deleted before the TDD stage. No dictionary pages, lemma entries, result links, or source lists were traversed automatically.
+Two temporary branch-only research workflows used four CAL requests total: one form GET plus one representative result in the first run, followed by one repeated representative result and one explicit empty result in the second run. Independent review added one bounded Qumran POST attempt. All temporary workflows were deleted. No dictionary pages, lemma entries, result links, or source lists were traversed automatically.
