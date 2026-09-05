@@ -279,6 +279,23 @@ The form, pagination, missing-text, and empty-search inspections were deliberate
 
 **Implication:** CAL-MCP exposes three text primitives: one explicit catalogue level, one topic-search request, and one normal text page. Each public call performs exactly one CAL request. Category expansion and page traversal are caller-controlled; no recursive catalogue walk, automatic next-page request, `show all`, token lookup, background indexing, or local corpus mirror is introduced. Public pages are one-based, while CAL's current internal page parameter remains adapter-private. CAL file/subtext/category identifiers and machine/display coordinates are preserved with provenance but are not advertised as permanent CAL-MCP identifiers.
 
+## R-017 — Full lexicon entries can inline non-content stylesheet data
+
+**Observed:** 2026-09-05 in bug report #32.
+
+A bounded 2026-09-05 `cal_entry_web.php` retrieval recorded in issue #32 showed a valid `b s` entry whose document head now contains the lexical display stylesheet inline in a `<style>` element. The first stylesheet comment identifies `fullentry.css`. The shared semantic HTML parser previously appended every `HTMLParser.handle_data()` callback to rendered text, so the title and stylesheet tokens could form a false lemma header: `fullentry.css` satisfies the parser's intentionally open part-of-speech token syntax.
+
+The report also reproduced the same contamination on unrelated lemmas, while browse candidates and sense parsing remained correct. This is therefore an HTML content-boundary drift rather than a change to CAL lexical semantics.
+
+Sources:
+
+- https://cal.huc.edu/cal_entry_web.php?lemma=b+s
+- https://github.com/alexsosn/CAL-MCP/issues/32
+
+A deliberately reduced fixture, `tests/fixtures/cal/entry_b_inline_style.html`, preserves the document-head relationship plus parser-significant style/script tokens and eight minimal senses. It is not an archived CAL entry.
+
+**Implication:** semantic HTML extraction excludes `<style>` and `<script>` bodies before any endpoint-specific parser sees rendered text. The lexicon sense/citation parser, public MCP schema, provenance model, and CAL request count do not change.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
