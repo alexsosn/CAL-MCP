@@ -11,6 +11,7 @@ from cal_mcp import __version__
 from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
+from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
 from cal_mcp.syriac import SyriacService
@@ -56,8 +57,13 @@ mcp = MCPServer(
         "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon "
         "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac "
         "text and lexicon follow-ups compose through cal_text_page and "
-        "cal_lexicon_lookup; external/non-online-text citations remain a separate "
-        "generic capability. Follow-ups are always explicit tool calls; there is no "
+        "cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL "
+        "dialect identifiers for citations from texts not in the online corpus, "
+        "cal_external_citation_sources for one returned dialect, and "
+        "cal_external_citations for one exact returned source abbreviation. "
+        "The external/non-online-text citations workflow is distinct from "
+        "cal_citation_text_search. "
+        "Follow-ups are always explicit tool calls; there is no "
         "hidden text, dialect, "
         "bibliography-tag, Targum-version, or full-context traversal. Ambiguous analyses and "
         "author prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
@@ -540,6 +546,67 @@ async def cal_syriac_peshitta_parallel(
 
     client = ctx.request_context.lifespan_context.client
     result = await SyriacService(client).peshitta_parallel(book, chapter, verse)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citation_dialects",
+    title="Discover CAL dialects with external citations",
+    structured_output=True,
+)
+async def cal_external_citation_dialects(
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's current dialect choices for citations from non-online texts.
+
+    Use one returned ``dialect_id`` in a separate ``cal_external_citation_sources`` call.
+    One call performs exactly one bounded CAL request and does not enumerate sources.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).dialects()
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citation_sources",
+    title="List cited non-online CAL sources in one dialect",
+    structured_output=True,
+)
+async def cal_external_citation_sources(
+    dialect_id: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL source abbreviations/descriptions for one explicit dialect.
+
+    ``dialect_id`` must come from ``cal_external_citation_dialects``. The returned sources
+    have citations in CAL but no full online text; no source or citation is followed
+    automatically. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).sources(dialect_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citations",
+    title="Retrieve CAL citations for one non-online source",
+    structured_output=True,
+)
+async def cal_external_citations(
+    source_abbrev: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's ordered lexical citations for one exact external source abbreviation.
+
+    ``source_abbrev`` should come from ``cal_external_citation_sources``. Lexical-entry links
+    are preserved as metadata but are never followed automatically, and the source is not
+    represented as an online CAL passage. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).citations(source_abbrev)
     return result.to_dict()
 
 
