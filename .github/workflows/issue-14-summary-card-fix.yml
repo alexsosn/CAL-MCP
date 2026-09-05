@@ -1,0 +1,58 @@
+name: Issue 14 summary card fix
+
+on:
+  push:
+    branches:
+      - feat/issue-14-dictionary-collation
+    paths:
+      - .github/workflows/issue-14-summary-card-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-14-dictionary-collation
+      - name: Reject nested result summary cards
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/dictionary_collation.py")
+          text = path.read_text(encoding="utf-8")
+          old = '''        if tag == "div":
+              classes = set((attributes.get("class") or "").split())
+              if self._card_depth:
+                  self._card_depth += 1
+              elif "summary-card" in classes:
+                  self.summary_cards += 1
+                  self._card_depth = 1
+              return
+'''
+          new = '''        if tag == "div":
+              classes = set((attributes.get("class") or "").split())
+              if self._card_depth:
+                  if "summary-card" in classes:
+                      raise DictionaryCollationParseError(
+                          "CAL dictionary collation contains a nested summary card"
+                      )
+                  self._card_depth += 1
+              elif "summary-card" in classes:
+                  self.summary_cards += 1
+                  self._card_depth = 1
+              return
+'''
+          if old not in text:
+              raise SystemExit("summary-card parser target not found")
+          path.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+          rm .github/workflows/issue-14-summary-card-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/dictionary_collation.py .github/workflows/issue-14-summary-card-fix.yml
+          git commit -m "fix: reject nested dictionary summary cards"
+          git push origin HEAD:feat/issue-14-dictionary-collation
