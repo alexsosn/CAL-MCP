@@ -11,6 +11,7 @@ from cal_mcp import __version__
 from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
+from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
 from cal_mcp.texts import TextService
@@ -47,10 +48,12 @@ mcp = MCPServer(
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
-        "CAL lemma key. Follow-ups are always explicit tool calls; there is no hidden text, "
-        "dialect, bibliography-tag, or full-context traversal. Ambiguous analyses and author "
-        "prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
-        "Results include CAL provenance and retrieval time."
+        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma correspondences "
+        "for one explicit dictionary page reference. Follow-ups are always explicit tool "
+        "calls; there is no hidden text, dialect, bibliography-tag, dictionary-page, or "
+        "full-context traversal. Ambiguous analyses and author prefixes remain ordered CAL "
+        "alternatives rather than guessed preferred readings. Results include CAL provenance "
+        "and retrieval time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -371,6 +374,28 @@ async def cal_bibliography_lemma(
 
     client = ctx.request_context.lifespan_context.client
     result = await BibliographyService(client).lemma(lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_dictionary_collation",
+    title="Collate one CAL dictionary page",
+    structured_output=True,
+)
+async def cal_dictionary_collation(
+    source: DictionarySource,
+    page: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's stored lemma correspondences for one dictionary page reference.
+
+    ``source`` is a readable CAL-MCP dictionary identifier. ``page`` accepts CAL's documented
+    decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. One call
+    performs exactly one bounded CAL request and never follows returned lemma links.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await DictionaryCollationService(client).collate(source, page)
     return result.to_dict()
 
 
