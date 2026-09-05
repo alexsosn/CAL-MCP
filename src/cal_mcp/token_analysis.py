@@ -92,7 +92,9 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
         if _is_return_to_text_browser(label_line):
             break
         if index + 1 >= len(lines):
-            break
+            raise TokenAnalysisParseError(
+                "CAL token-analysis page ends with an incomplete candidate"
+            )
 
         lemma_line = lines[index + 1]
         lemma_path_links = tuple(link for link in lemma_line.links if _is_lemma_path(link.href))
