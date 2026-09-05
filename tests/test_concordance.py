@@ -71,9 +71,7 @@ def test_multi_text_kwic_preserves_order_duplicates_context_and_empty_scope() ->
     assert page.hits[0].charset == "R"
     assert "wy$kb" in page.hits[0].context
     assert page.hits[1].context != page.hits[2].context
-    assert page.hits[0].full_context_url.startswith(
-        "https://cal.huc.edu/get_a_kwicchapter.php?"
-    )
+    assert page.hits[0].full_context_url.startswith("https://cal.huc.edu/get_a_kwicchapter.php?")
 
 
 def test_explicit_zero_total_kwic_is_empty_not_parser_drift() -> None:
@@ -133,8 +131,10 @@ def test_one_dialect_kwic_preserves_subtext_charset_context_and_target() -> None
 
 
 def test_positive_total_must_equal_number_of_parsed_target_links() -> None:
-    body = (FIXTURES / "kwic_texts_mlk.html").read_text().replace(
-        "total examples: 3", "total examples: 4"
+    body = (
+        (FIXTURES / "kwic_texts_mlk.html")
+        .read_text()
+        .replace("total examples: 3", "total examples: 4")
     )
     response = CalResponse(
         status_code=200,
@@ -160,15 +160,12 @@ def _broken_kwic(
     left: str = "left",
     right: str = "right",
 ) -> str:
-    href = (
-        "/get_a_kwicchapter.php?"
-        f"file={file_id}&amp;sub=&amp;cset=R&amp;target=1325003"
-    )
+    href = f"/get_a_kwicchapter.php?file={file_id}&amp;sub=&amp;cset=R&amp;target=1325003"
     return (
         "<html><body>"
         "<div>Looking for mlk N in dialect 13250</div>"
         "<div>13250:</div>"
-        f"<table><tr><td>{left}</td><td><a href=\"{href}\">"
+        f'<table><tr><td>{left}</td><td><a href="{href}">'
         f"{link_text}</a></td><td>{right}</td></tr></table>"
         "<div>total examples: 1</div>"
         "</body></html>"
@@ -241,9 +238,7 @@ async def test_services_map_each_public_operation_to_exactly_one_cal_request() -
     service, transport = _service()
 
     concordance = await service.text_concordance("13250", script="semitic")
-    text_kwic = await service.kwic_texts(
-        "mlk N", ["12250", "13250"], script="roman"
-    )
+    text_kwic = await service.kwic_texts("mlk N", ["12250", "13250"], script="roman")
     dialects = await service.kwic_dialects(")ryk#2 A")
     dialect_kwic = await service.kwic_dialect(")ryk#2 A", "3")
 
@@ -281,10 +276,7 @@ async def test_services_map_each_public_operation_to_exactly_one_cal_request() -
             params=(("lemma", ")ryk#2"), ("pos", "A"), ("texts", "3")),
         ),
     ]
-    assert all(
-        "lth" not in dict(request.params + request.data)
-        for request in transport.requests
-    )
+    assert all("lth" not in dict(request.params + request.data) for request in transport.requests)
 
 
 @pytest.mark.anyio
