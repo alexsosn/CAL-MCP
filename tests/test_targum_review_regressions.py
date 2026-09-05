@@ -56,7 +56,11 @@ def test_concordance_requires_rendered_total_not_css_counterfeit() -> None:
             <tr><th>Targum</th><th>Occurrences</th></tr>
             <tr><th>Torah</th></tr>
             <tr>
-              <td><a href="/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=51001&amp;charset=H">Onqelos</a></td>
+              <td>
+                <a href="/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=51001&amp;charset=H">
+                  Onqelos
+                </a>
+              </td>
               <td>3</td>
             </tr>
           </table>
