@@ -32,6 +32,7 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_bibliography_author",
         "cal_bibliography_keyword",
         "cal_bibliography_lemma",
+        "cal_dictionary_collation",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -94,6 +95,10 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}
     assert bibliography_lemma_schema["required"] == ["lemma_key"]
 
+    dictionary_collation_schema = tools["cal_dictionary_collation"].input_schema
+    assert set(dictionary_collation_schema["properties"]) == {"source", "page"}
+    assert dictionary_collation_schema["required"] == ["source", "page"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -110,12 +115,14 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        dictionary_collation_schema,
     ):
         for private_parameter in (
             "English",
             "secondary",
             "first3",
             "myauthor",
+            "dict",
             "cits",
             "cset",
             "sub",
@@ -139,6 +146,9 @@ async def _assert_public_tools(client: Client) -> None:
     ):
         for unsupported_bound in ("page", "offset", "limit"):
             assert unsupported_bound not in schema["properties"]
+
+    for unsupported_bound in ("offset", "limit"):
+        assert unsupported_bound not in dictionary_collation_schema["properties"]
 
 
 @pytest.mark.anyio
