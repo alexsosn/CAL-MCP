@@ -45,31 +45,19 @@ _SOURCE_SPECS: dict[DictionarySource, _SourceSpec] = {
     DictionarySource.COMPENDIOUS_SYRIAC_DICTIONARY: _SourceSpec(
         "j", "A Compendious Syriac Dictionary"
     ),
-    DictionarySource.DJBA: _SourceSpec(
-        "B", "A Dictionary of Jewish Babylonian Aramaic"
-    ),
-    DictionarySource.DJPA: _SourceSpec(
-        "P", "A Dictionary of Jewish Palestinian Aramaic"
-    ),
+    DictionarySource.DJBA: _SourceSpec("B", "A Dictionary of Jewish Babylonian Aramaic"),
+    DictionarySource.DJPA: _SourceSpec("P", "A Dictionary of Jewish Palestinian Aramaic"),
     DictionarySource.LEVY_TARGUMIM: _SourceSpec(
         "V", "Levy, Chaldäisches Wörterbuch ü.die Targumim"
     ),
     DictionarySource.MANDAIC_DICTIONARY: _SourceSpec("M", "A Mandaic Dictionary"),
-    DictionarySource.DNSI: _SourceSpec(
-        "W", "Dictionary of the Northwest Semitic Inscriptions"
-    ),
+    DictionarySource.DNSI: _SourceSpec("W", "Dictionary of the Northwest Semitic Inscriptions"),
     DictionarySource.THESAURUS_SYRIACUS: _SourceSpec("T", "Thesaurus Syriacus"),
-    DictionarySource.SAMARITAN_ARAMAIC: _SourceSpec(
-        "R", "Dictionary of Samaritan Aramaic"
-    ),
+    DictionarySource.SAMARITAN_ARAMAIC: _SourceSpec("R", "Dictionary of Samaritan Aramaic"),
     DictionarySource.SCHULTHESS: _SourceSpec("S", "Schulthess Lexicon Syropalaestinum"),
-    DictionarySource.DCPA: _SourceSpec(
-        "C", "A Dictionary of Christian Palestinian Aramaic"
-    ),
+    DictionarySource.DCPA: _SourceSpec("C", "A Dictionary of Christian Palestinian Aramaic"),
     DictionarySource.JUDEAN_ARAMAIC: _SourceSpec("D", "A Dictionary of Judean Aramaic"),
-    DictionarySource.QUMRAN_ARAMAIC: _SourceSpec(
-        "Q", "Dictionary of Qumran Aramaic Page"
-    ),
+    DictionarySource.QUMRAN_ARAMAIC: _SourceSpec("Q", "Dictionary of Qumran Aramaic Page"),
 }
 
 
@@ -160,9 +148,7 @@ class _DictionaryCollationHTMLParser(HTMLParser):
         attributes = dict(attrs)
         if tag == "title":
             if self._title_parts is not None:
-                raise DictionaryCollationParseError(
-                    "CAL dictionary collation has nested titles"
-                )
+                raise DictionaryCollationParseError("CAL dictionary collation has nested titles")
             self._title_parts = []
             return
 
@@ -183,9 +169,7 @@ class _DictionaryCollationHTMLParser(HTMLParser):
                 raise DictionaryCollationParseError(
                     "CAL dictionary collation contains nested result paragraphs"
                 )
-            self._paragraph = _Paragraph(
-                classes=frozenset((attributes.get("class") or "").split())
-            )
+            self._paragraph = _Paragraph(classes=frozenset((attributes.get("class") or "").split()))
             return
 
         if tag == "a" and self._paragraph is not None:
@@ -211,19 +195,13 @@ class _DictionaryCollationHTMLParser(HTMLParser):
         if not self._card_depth:
             return
 
-        if (
-            tag == "a"
-            and self._paragraph is not None
-            and self._paragraph.open_link is not None
-        ):
+        if tag == "a" and self._paragraph is not None and self._paragraph.open_link is not None:
             label = _clean_text("".join(self._paragraph.open_link.parts))
             if not label:
                 raise DictionaryCollationParseError(
                     "CAL dictionary collation result link has no rendered label"
                 )
-            self._paragraph.links.append(
-                _Link(href=self._paragraph.open_link.href, label=label)
-            )
+            self._paragraph.links.append(_Link(href=self._paragraph.open_link.href, label=label))
             self._paragraph.open_link = None
             return
 
@@ -254,9 +232,7 @@ class _DictionaryCollationHTMLParser(HTMLParser):
     def close(self) -> None:
         super().close()
         if self._title_parts is not None:
-            raise DictionaryCollationParseError(
-                "CAL dictionary collation title is incomplete"
-            )
+            raise DictionaryCollationParseError("CAL dictionary collation title is incomplete")
         if self._paragraph is not None:
             raise DictionaryCollationParseError(
                 "CAL dictionary collation result paragraph is incomplete"
@@ -318,9 +294,7 @@ def parse_dictionary_collation_page(response: CalResponse) -> DictionaryCollatio
         entries.append(_parse_entry_paragraph(response.url, paragraph))
 
     if empty_markers > 1:
-        raise DictionaryCollationParseError(
-            "CAL dictionary collation repeats its no-data marker"
-        )
+        raise DictionaryCollationParseError("CAL dictionary collation repeats its no-data marker")
     if empty_markers and entries:
         raise DictionaryCollationParseError(
             "CAL dictionary collation contradicts its no-data marker"
@@ -389,9 +363,7 @@ def _parse_entry_paragraph(
         )
     gloss = rendered_after[1:].strip()
     if not gloss:
-        raise DictionaryCollationParseError(
-            "CAL dictionary collation result row has no gloss"
-        )
+        raise DictionaryCollationParseError("CAL dictionary collation result row has no gloss")
 
     return DictionaryCollationEntry(
         display_lemma=link.label,
@@ -420,9 +392,7 @@ def _normalize_page_reference(value: str) -> str:
     for part in parts:
         page_ref = part.strip(" ")
         if _PAGE_REF_RE.fullmatch(page_ref) is None:
-            raise ValueError(
-                "page must contain only decimal page or volume:page references"
-            )
+            raise ValueError("page must contain only decimal page or volume:page references")
         normalized.append(page_ref)
     return ", ".join(normalized)
 
@@ -438,8 +408,7 @@ def _returned_single_line(value: str, name: str) -> str:
 
 def _contains_forbidden_control(value: str) -> bool:
     return any(
-        (char.isspace() and char != " ") or ord(char) < 32 or ord(char) == 127
-        for char in value
+        (char.isspace() and char != " ") or ord(char) < 32 or ord(char) == 127 for char in value
     )
 
 
