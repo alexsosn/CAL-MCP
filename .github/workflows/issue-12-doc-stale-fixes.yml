@@ -1,0 +1,52 @@
+name: Issue 12 stale documentation fixes
+
+on:
+  push:
+    branches:
+      - feat/issue-12-v0.1-contract-docs
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-12-v0.1-contract-docs
+      - name: Replace stale completed-issue references
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("docs/tools/texts.md"): (
+                  "The `lexical_url` is provenance/navigation information; public token-at-coordinate analysis is a separate capability tracked by issue #8.",
+                  "The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.",
+              ),
+              Path("docs/tools/syriac.md"): (
+                  "The CAL Syriac Studies page also links to citations from texts that are not in the online text database. That is the same generic external-citation family tracked by issue #13, so issue #11 deliberately does **not** duplicate it as a Syriac-only tool.",
+                  "The CAL Syriac Studies page also links to citations from texts that are not in the online text database. That is the same generic external-citation family exposed by `cal_external_citation_dialects`, `cal_external_citation_sources`, and `cal_external_citations`, so CAL-MCP deliberately does **not** duplicate it as a Syriac-only tool.",
+              ),
+              Path("docs/tools/bibliography.md"): (
+                  "The separate CAL recent-five-years bibliography view is outside issue #9's search contract and remains for the broader public-surface audit.",
+                  "The separate CAL recent-five-years bibliography view is explicitly deferred from the v0.1 contract to issue #39, where its moving year window and result-size/continuation semantics can be researched independently.",
+              ),
+          }
+
+          for path, (old, new) in replacements.items():
+              text = path.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected exactly one match in {path}, found {count}")
+              path.write_text(text.replace(old, new), encoding="utf-8")
+          PY
+      - name: Commit fixes and remove helper workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/issue-12-doc-stale-fixes.yml
+          git add docs/tools/texts.md docs/tools/syriac.md docs/tools/bibliography.md
+          git commit -m "docs: remove stale completed-issue references"
+          git push origin HEAD:feat/issue-12-v0.1-contract-docs
