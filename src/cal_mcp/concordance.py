@@ -725,7 +725,7 @@ def _cal_navigation_url(source_url: str, href: str, filename: str) -> str:
     target = urlsplit(resolved)
     if (target.scheme, target.netloc) != (source.scheme, source.netloc):
         raise ConcordanceParseError("CAL navigation link points outside the CAL origin")
-    if not target.path.endswith(filename):
+    if not _is_path(resolved, filename):
         raise ConcordanceParseError("CAL navigation link has an unexpected target path")
     return resolved
 
@@ -794,7 +794,7 @@ def _single_form_value(inputs: dict[str, list[str]], name: str) -> str:
 
 
 def _is_path(href: str, filename: str) -> bool:
-    return urlsplit(href).path.endswith(filename)
+    return urlsplit(href).path.rsplit("/", 1)[-1] == filename
 
 
 def _clean_text(value: str) -> str:
