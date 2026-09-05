@@ -2,7 +2,7 @@
 
 CAL-MCP's request layer is deliberately conservative because CAL is a live academic service and the project has not found a published CAL-specific machine-access policy. This page documents the request-policy contract implemented by `CalClientConfig`.
 
-The current MCP server creates one `CalHttpClient` with these defaults for its running server lifespan and reuses it across `cal_lexicon_lookup` calls. Starting the client does not itself contact CAL; a request is made only for a CAL-backed tool operation. The shared lifecycle preserves the process/session-local cache and single-flight guarantees described below, and the client is closed when the server shuts down. CLI/environment wiring is not implemented yet; callers cannot widen the safety bounds through the MCP schema. Programmatic use of `CalHttpClient` may supply an explicit `CalClientConfig` within the enforced limits below.
+The current MCP server creates one `CalHttpClient` with these defaults for its running server lifespan and reuses it across all CAL-backed tool calls. Starting the client does not itself contact CAL; a request is made only for a CAL-backed tool operation. The shared lifecycle preserves the process/session-local cache and single-flight guarantees described below, and the client is closed when the server shuts down. CLI/environment wiring is not implemented yet; callers cannot widen the safety bounds through the MCP schema. Programmatic use of `CalHttpClient` may supply an explicit `CalClientConfig` within the enforced limits below.
 
 ## Default request policy
 
@@ -135,4 +135,4 @@ async with CalHttpClient(config=config) as client:
     ...
 ```
 
-The public MCP tool does not expose these low-level settings as arguments. Endpoint-specific services, beginning with the lexicon adapter, consume the server's shared request layer and inherit its bounded defaults. See [Lexicon lookup](tools/lexicon.md) for the current CAL-backed tool behavior.
+The public MCP tools do not expose these low-level settings as arguments. Endpoint-specific services consume the server's shared request layer and inherit its bounded defaults. See [Lexicon lookup](tools/lexicon.md) and [Concordance and KWIC](tools/concordance.md) for representative CAL-backed tool behavior.

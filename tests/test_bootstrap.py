@@ -24,6 +24,10 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_text_search",
         "cal_text_page",
         "cal_token_analysis",
+        "cal_text_concordance",
+        "cal_kwic_texts",
+        "cal_kwic_dialects",
+        "cal_kwic_dialect",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -54,6 +58,22 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(token_schema["properties"]) == {"coordinate", "word_index"}
     assert token_schema["required"] == ["coordinate", "word_index"]
 
+    concordance_schema = tools["cal_text_concordance"].input_schema
+    assert set(concordance_schema["properties"]) == {"text_id", "script"}
+    assert concordance_schema["required"] == ["text_id"]
+
+    kwic_texts_schema = tools["cal_kwic_texts"].input_schema
+    assert set(kwic_texts_schema["properties"]) == {"lemma_key", "text_ids", "script"}
+    assert kwic_texts_schema["required"] == ["lemma_key", "text_ids"]
+
+    kwic_dialects_schema = tools["cal_kwic_dialects"].input_schema
+    assert set(kwic_dialects_schema["properties"]) == {"lemma_key"}
+    assert kwic_dialects_schema["required"] == ["lemma_key"]
+
+    kwic_dialect_schema = tools["cal_kwic_dialect"].input_schema
+    assert set(kwic_dialect_schema["properties"]) == {"lemma_key", "dialect_id"}
+    assert kwic_dialect_schema["required"] == ["lemma_key", "dialect_id"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -62,6 +82,10 @@ async def _assert_public_tools(client: Client) -> None:
         text_search_schema,
         text_page_schema,
         token_schema,
+        concordance_schema,
+        kwic_texts_schema,
+        kwic_dialects_schema,
+        kwic_dialect_schema,
     ):
         for private_parameter in (
             "English",
@@ -73,6 +97,12 @@ async def _assert_public_tools(client: Client) -> None:
             "clen",
             "coord",
             "word",
+            "R1",
+            "texts",
+            "charset",
+            "lemma",
+            "pos",
+            "lth",
         ):
             assert private_parameter not in schema["properties"]
 
