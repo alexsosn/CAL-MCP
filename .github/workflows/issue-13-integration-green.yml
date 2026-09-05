@@ -1,0 +1,186 @@
+name: Issue 13 integration green
+
+on:
+  push:
+    branches:
+      - feat/issue-13-external-citations
+    paths:
+      - .github/workflows/issue-13-integration-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Wire external citation MCP tools and self-clean
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          server = Path('src/cal_mcp/server.py')
+          text = server.read_text(encoding='utf-8')
+          old = 'from cal_mcp.concordance import ConcordanceService\n'
+          new = old + 'from cal_mcp.external_citations import ExternalCitationService\n'
+          if old not in text or 'from cal_mcp.external_citations import ExternalCitationService\n' in text:
+              raise SystemExit('unexpected server import state')
+          text = text.replace(old, new, 1)
+
+          old = (
+              '        "text and lexicon follow-ups compose through cal_text_page and "\n'
+              '        "cal_lexicon_lookup; external/non-online-text citations remain a separate "\n'
+              '        "generic capability. Follow-ups are always explicit tool calls; there is no "\n'
+          )
+          new = (
+              '        "text and lexicon follow-ups compose through cal_text_page and "\n'
+              '        "cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL "\n'
+              '        "dialect identifiers for citations from texts not in the online corpus, "\n'
+              '        "cal_external_citation_sources for one returned dialect, and "\n'
+              '        "cal_external_citations for one exact returned source abbreviation. "\n'
+              '        "This non-online citation workflow is distinct from cal_citation_text_search. "\n'
+              '        "Follow-ups are always explicit tool calls; there is no "\n'
+          )
+          if old not in text:
+              raise SystemExit('unexpected server instruction state')
+          text = text.replace(old, new, 1)
+
+          marker = '\n\ndef main() -> None:\n'
+          if marker not in text:
+              raise SystemExit('server main marker missing')
+          tools = r'''
+
+@mcp.tool(
+    name="cal_external_citation_dialects",
+    title="Discover CAL dialects with external citations",
+    structured_output=True,
+)
+async def cal_external_citation_dialects(
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's current dialect choices for citations from non-online texts.
+
+    Use one returned ``dialect_id`` in a separate ``cal_external_citation_sources`` call.
+    One call performs exactly one bounded CAL request and does not enumerate sources.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).dialects()
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citation_sources",
+    title="List cited non-online CAL sources in one dialect",
+    structured_output=True,
+)
+async def cal_external_citation_sources(
+    dialect_id: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL source abbreviations/descriptions for one explicit dialect.
+
+    ``dialect_id`` must come from ``cal_external_citation_dialects``. The returned sources
+    have citations in CAL but no full online text; no source or citation is followed
+    automatically. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).sources(dialect_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citations",
+    title="Retrieve CAL citations for one non-online source",
+    structured_output=True,
+)
+async def cal_external_citations(
+    source_abbrev: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's ordered lexical citations for one exact external source abbreviation.
+
+    ``source_abbrev`` should come from ``cal_external_citation_sources``. Lexical-entry links
+    are preserved as metadata but are never followed automatically, and the source is not
+    represented as an online CAL passage. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).citations(source_abbrev)
+    return result.to_dict()
+'''
+          text = text.replace(marker, tools + marker, 1)
+          server.write_text(text, encoding='utf-8')
+
+          bootstrap = Path('tests/test_bootstrap.py')
+          text = bootstrap.read_text(encoding='utf-8')
+          old = '        "cal_syriac_texts",\n'
+          new = (
+              '        "cal_external_citation_dialects",\n'
+              '        "cal_external_citation_sources",\n'
+              '        "cal_external_citations",\n'
+              + old
+          )
+          if old not in text or '        "cal_external_citation_dialects",\n' in text:
+              raise SystemExit('unexpected bootstrap toolset state')
+          text = text.replace(old, new, 1)
+
+          old = (
+              '    syriac_texts_schema = tools["cal_syriac_texts"].input_schema\n'
+          )
+          new = (
+              '    external_dialects_schema = tools["cal_external_citation_dialects"].input_schema\n'
+              '    assert set(external_dialects_schema["properties"]) == set()\n'
+              '    assert (\n'
+              '        "required" not in external_dialects_schema\n'
+              '        or external_dialects_schema["required"] == []\n'
+              '    )\n\n'
+              '    external_sources_schema = tools["cal_external_citation_sources"].input_schema\n'
+              '    assert set(external_sources_schema["properties"]) == {"dialect_id"}\n'
+              '    assert external_sources_schema["required"] == ["dialect_id"]\n\n'
+              '    external_citations_schema = tools["cal_external_citations"].input_schema\n'
+              '    assert set(external_citations_schema["properties"]) == {"source_abbrev"}\n'
+              '    assert external_citations_schema["required"] == ["source_abbrev"]\n\n'
+              + old
+          )
+          if old not in text:
+              raise SystemExit('unexpected bootstrap schema insertion state')
+          text = text.replace(old, new, 1)
+
+          old = (
+              '        targum_hebrew_reflexes_schema,\n'
+              '        syriac_texts_schema,\n'
+          )
+          new = (
+              '        targum_hebrew_reflexes_schema,\n'
+              '        external_dialects_schema,\n'
+              '        external_sources_schema,\n'
+              '        external_citations_schema,\n'
+              '        syriac_texts_schema,\n'
+          )
+          if old not in text:
+              raise SystemExit('unexpected bootstrap schema tuple state')
+          text = text.replace(old, new, 1)
+
+          old = '            "dial",\n            "cset",\n'
+          new = '            "dial",\n            "dial1",\n            "abbrev",\n            "cset",\n'
+          if old not in text:
+              raise SystemExit('unexpected bootstrap private parameter state')
+          text = text.replace(old, new, 1)
+          bootstrap.write_text(text, encoding='utf-8')
+          PY
+          python -m pip install 'ruff==0.16.6'
+          ruff format src/cal_mcp/server.py tests/test_bootstrap.py
+          rm .github/workflows/issue-13-integration-green.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/server.py tests/test_bootstrap.py .github/workflows/issue-13-integration-green.yml
+          git commit -m 'feat: register external citation MCP tools'
+          git push origin HEAD:feat/issue-13-external-citations
