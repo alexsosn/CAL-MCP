@@ -1,0 +1,33 @@
+name: Issue 13 parser format fix
+
+on:
+  push:
+    branches:
+      - feat/issue-13-external-citations
+    paths:
+      - .github/workflows/issue-13-format-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "ruff<1,>=0.12"
+      - run: ruff format src/cal_mcp/external_citations.py
+      - name: Commit formatted parser and self-clean
+        run: |
+          set -euo pipefail
+          rm .github/workflows/issue-13-format-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/external_citations.py .github/workflows/issue-13-format-fix.yml
+          git commit -m "style: format returned identifier validation"
+          git push origin HEAD:feat/issue-13-external-citations
