@@ -19,37 +19,7 @@ jobs:
           ref: feat/issue-14-dictionary-collation
       - name: Reject nested result summary cards
         run: |
-          python - <<'PY'
-          from pathlib import Path
-
-          path = Path("src/cal_mcp/dictionary_collation.py")
-          text = path.read_text(encoding="utf-8")
-          old = '''        if tag == "div":
-              classes = set((attributes.get("class") or "").split())
-              if self._card_depth:
-                  self._card_depth += 1
-              elif "summary-card" in classes:
-                  self.summary_cards += 1
-                  self._card_depth = 1
-              return
-'''
-          new = '''        if tag == "div":
-              classes = set((attributes.get("class") or "").split())
-              if self._card_depth:
-                  if "summary-card" in classes:
-                      raise DictionaryCollationParseError(
-                          "CAL dictionary collation contains a nested summary card"
-                      )
-                  self._card_depth += 1
-              elif "summary-card" in classes:
-                  self.summary_cards += 1
-                  self._card_depth = 1
-              return
-'''
-          if old not in text:
-              raise SystemExit("summary-card parser target not found")
-          path.write_text(text.replace(old, new, 1), encoding="utf-8")
-          PY
+          python -c 'from pathlib import Path; p=Path("src/cal_mcp/dictionary_collation.py"); s=p.read_text(encoding="utf-8"); old="            if self._card_depth:\n                self._card_depth += 1\n            elif \"summary-card\" in classes:"; new="            if self._card_depth:\n                if \"summary-card\" in classes:\n                    raise DictionaryCollationParseError(\n                        \"CAL dictionary collation contains a nested summary card\"\n                    )\n                self._card_depth += 1\n            elif \"summary-card\" in classes:"; assert old in s; p.write_text(s.replace(old,new,1),encoding="utf-8")'
           rm .github/workflows/issue-14-summary-card-fix.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
