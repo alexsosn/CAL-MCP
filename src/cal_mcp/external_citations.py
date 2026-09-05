@@ -769,7 +769,7 @@ def _prepare_source_abbrev(value: str) -> str:
     if len(candidate) > 128:
         raise ValueError("source_abbrev must be at most 128 characters")
     if any(
-        (char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cs"}
+        (char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
         for char in candidate
     ):
         raise ValueError("source_abbrev may contain only ordinary spaces, not controls")
