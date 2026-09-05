@@ -135,10 +135,7 @@ def test_text_concordance_rejects_same_origin_endpoint_name_lookalike() -> None:
 
 
 def test_kwic_rejects_same_origin_endpoint_name_lookalike() -> None:
-    href = (
-        "/evilget_a_kwicchapter.php?"
-        "file=13250&amp;sub=&amp;cset=R&amp;target=1325003"
-    )
+    href = "/evilget_a_kwicchapter.php?file=13250&amp;sub=&amp;cset=R&amp;target=1325003"
     response = _response(
         f"""<html><body>
 <div>Looking for mlk N in dialect 13250</div>
