@@ -1,0 +1,93 @@
+name: Research issue 11 Syriac contracts
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/research-issue-11-syriac.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Probe bounded current CAL Syriac surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import urljoin
+          from urllib.request import Request, urlopen
+          from urllib.parse import urlencode
+
+          BASE = "https://cal.huc.edu/"
+          UA = "CAL-MCP issue-11 bounded research probe (4 requests max)"
+          requests_made = 0
+
+          def fetch(path, data=None):
+              global requests_made
+              requests_made += 1
+              if requests_made > 4:
+                  raise SystemExit("request budget exceeded")
+              body = None if data is None else urlencode(data).encode()
+              req = Request(urljoin(BASE, path), data=body, headers={"User-Agent": UA})
+              with urlopen(req, timeout=15) as r:
+                  raw = r.read(300_000)
+                  print("FETCH", requests_made, r.status, r.geturl(), len(raw), r.headers.get("Content-Type"))
+                  return raw.decode("utf-8", errors="replace")
+
+          class FormProbe(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.forms=[]; self.current=None
+              def handle_starttag(self, tag, attrs):
+                  a=dict(attrs)
+                  if tag=="form":
+                      self.current={"action":a.get("action"),"method":a.get("method"),"controls":[]}
+                      self.forms.append(self.current)
+                  elif self.current is not None and tag in {"input","select","option"}:
+                      self.current["controls"].append((tag,a.get("name"),a.get("value"),a.get("type"),a.get("selected")))
+              def handle_endtag(self, tag):
+                  if tag=="form": self.current=None
+
+          html = fetch("searching/peshsearch.html")
+          p=FormProbe(); p.feed(html)
+          print("PESH_FORMS", p.forms)
+          if not p.forms:
+              raise SystemExit("no Peshitta form")
+          form=p.forms[0]
+          action=form["action"] or ""
+          names=[c[1] for c in form["controls"] if c[1]]
+          print("PESH_ACTION", action, "METHOD", form["method"], "NAMES", names)
+
+          # Current form has book/chapter/verse controls; send one representative verse only.
+          post_data={}
+          for tag,name,value,typ,selected in form["controls"]:
+              if not name: continue
+              lname=name.lower()
+              if "book" in lname:
+                  post_data[name] = value or "01"
+              elif "chapter" in lname:
+                  post_data[name] = "01"
+              elif "verse" in lname:
+                  post_data[name] = "01"
+          print("PESH_POST", post_data)
+          result=fetch(urljoin("searching/peshsearch.html", action), post_data)
+          # Emit only bounded semantic lines/tags, not the whole page.
+          for needle in ["MT", "Peshitta", "Gen", "1:1", "targum-block", "pesh"]:
+              idx=result.lower().find(needle.lower())
+              if idx >= 0:
+                  print("RESULT_NEEDLE", needle, repr(result[max(0,idx-180):idx+420]))
+
+          cat=fetch("show_Syriac_categories.php?category=6")
+          print("CATEGORY_HEAD", repr(cat[:1600]))
+
+          miss=fetch("display_missing_verbs.php")
+          print("MISSING_HEAD", repr(miss[:1600]))
+          print("REQUESTS", requests_made)
+          PY
