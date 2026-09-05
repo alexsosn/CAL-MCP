@@ -1,0 +1,31 @@
+name: Issue 13 bounded CAL empty-state probe
+on:
+  push:
+    branches: [feat/issue-13-external-citations]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+      - name: Fetch two bounded negative CAL pages
+        shell: bash
+        run: |
+          set -euo pipefail
+          UA='CAL-MCP bounded issue-13 research probe (+https://github.com/alexsosn/CAL-MCP)'
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --max-filesize 131072 -A "$UA" \
+            'https://cal.huc.edu/displaycits.abbrev.php?abbrev=Qqqqqq' -o /tmp/unknown-source.html
+          curl --fail --silent --show-error --connect-timeout 5 --max-time 15 --max-filesize 131072 -A "$UA" \
+            'https://cal.huc.edu/display.notext.abbrevs.php?dial=999&dial1=6' -o /tmp/unknown-dialect.html
+          python - <<'PY'
+          import re
+          from pathlib import Path
+          for path in ('/tmp/unknown-source.html', '/tmp/unknown-dialect.html'):
+              raw = Path(path).read_text(encoding='utf-8', errors='replace')
+              text = re.sub(r'<[^>]+>', ' ', raw)
+              text = re.sub(r'\s+', ' ', text).strip()
+              print(Path(path).name, 'bytes=', len(raw.encode('utf-8')))
+              print(text[:1200])
+          PY
