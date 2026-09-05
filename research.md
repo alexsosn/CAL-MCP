@@ -346,3 +346,21 @@ Issue #31 records a bounded live check of `oneentry.php?lemma=)lh N`: the curren
 Source: https://cal.huc.edu/oneentry.php?lemma=)lh%20N and issue #31, captured 2026-09-05. Offline regression coverage uses a reduced semantic fixture rather than an archived full CAL page.
 
 **Implication:** parenthetical numbering is placed using the deepest matching predecessor across every existing path depth, including depth 1. Non-consecutive/unplaceable jumps still fail closed; no enclosing level is invented when CAL omits one. Trailing plain-number tokens observed on the live page remain a separate unresolved parsing question and are outside this correction.
+
+## R-019 — Current Syriac Studies module composes specialist and general CAL surfaces
+
+**Rechecked:** 2026-09-05.
+
+A bounded live audit of CAL's current Syriac Studies module found four public entry points: available Syriac texts by category, citations from texts absent from the online CAL database, CAL headwords occurring in Syriac but absent from *A Syriac Lexicon*, and MT/Peshitta verse comparison.
+
+The Peshitta comparison form currently submits one biblical `bookname`/chapter/verse POST to `showpesh.php`. Gen 1:1 returned the exact heading `MT and Peshitta for Gen 1:1`, Hebrew MT text, a CAL-owned `Peshitta:` link to the ordinary text browser, and Syriac Peshitta text. Gen 1:99 returned HTTP 200 with the matching heading plus CAL's explicit `error in coord` marker. Result HTML contains inline styles, so non-rendered `style`/`script` subtrees cannot participate in semantic marker detection.
+
+`AvailSyr.html` currently exposes four Bible-oriented static lists plus dynamic Syriac categories. A representative dynamic category returned both direct `get_a_chapter.php` text links and grouped `showsubtexts.php?keyword=...` navigation, together with file-information links. These are one-level discovery results; group expansion and text browsing remain explicit caller actions.
+
+`NotInSL.html` currently exposes nine CAL-curated lists (adjectives, adverbs, miscellaneous, nomina agentis, abstracts, verbal nouns, verbs, masculine nouns, feminine nouns) for Syriac headwords not listed in the Brockelmann/Sokoloff *A Syriac Lexicon*. Individual list pages expose ordered CAL lexicon links plus rendered notes/glosses. This is CAL's own research comparison surface and must not be represented as a SEDRA query or as adapter-inferred dictionary equivalence.
+
+The module's “citations from texts not in the CAL database” link is the Syriac-filtered entry to the same external/non-online-text citation family tracked by issue #13, so issue #11 should not duplicate that public operation. General Syriac-script lexical lookup likewise remains the existing CAL-MCP lexicon surface.
+
+Sources and bounded probe details are recorded in `docs/research/issue-11-syriac.md`. Two temporary branch-only probes made eight CAL requests total and were removed before planning; normal CI remains offline.
+
+**Implication:** issue #11 should expose three bounded task-level specialist operations: Syriac text-category discovery, CAL's curated missing-from-*A Syriac Lexicon* lists, and MT/Peshitta verse comparison. Each public operation performs exactly one CAL request and returns CAL provenance. External citations, direct text reading, grouped text expansion, lexicon-entry fetching, and verse traversal remain separate caller-controlled operations.

@@ -7,6 +7,7 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
+from cal_mcp.biblical import cal_biblical_book_id
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.concordance import _validate_lemma_key
 
@@ -458,44 +459,6 @@ class _HebrewLemmaChooserParser(HTMLParser):
         self._open_candidate = None
 
 
-_BOOK_IDS = {
-    "Gen": "01",
-    "Exod": "02",
-    "Levit": "03",
-    "Numb": "04",
-    "Deut": "05",
-    "Joshua": "06",
-    "Judges": "07",
-    "1 Sam": "08",
-    "2 Sam": "09",
-    "1 Kings": "10",
-    "2 Kings": "11",
-    "Isaiah": "12",
-    "Jeremiah": "13",
-    "Ezekiel": "14",
-    "Hosea": "15",
-    "Joel": "16",
-    "Amos": "17",
-    "Obadiah": "18",
-    "Jonah": "19",
-    "Micah": "20",
-    "Nahum": "21",
-    "Hab.": "22",
-    "Zeph.": "23",
-    "Haggai": "24",
-    "Zechariah": "25",
-    "Malachi": "26",
-    "Psalms": "27",
-    "Job": "28",
-    "Song of Songs": "29",
-    "Ruth": "30",
-    "Qoheleth": "31",
-    "Lamentations": "32",
-    "Proverbs": "33",
-    "1 Chronicles": "34",
-    "2 Chronicles": "35",
-    "Esther": "36",
-}
 _INITIALS = frozenset(
     {
         "alef",
@@ -900,9 +863,7 @@ class TargumService:
 
 
 def _validate_book(book: str) -> str:
-    if not isinstance(book, str) or book not in _BOOK_IDS:
-        raise ValueError("book must be one exact current CAL Targum book label")
-    return _BOOK_IDS[book]
+    return cal_biblical_book_id(book)
 
 
 def _validate_positive_int(value: int, name: str) -> int:

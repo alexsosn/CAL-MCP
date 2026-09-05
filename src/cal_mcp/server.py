@@ -13,6 +13,7 @@ from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
+from cal_mcp.syriac import SyriacService
 from cal_mcp.targum import TargumService
 from cal_mcp.texts import TextService
 from cal_mcp.token_analysis import TokenAnalysisService
@@ -51,7 +52,13 @@ mcp = MCPServer(
         "CAL lemma key. Use cal_targum_parallel for one biblical verse across current CAL "
         "Targum readings, cal_targum_concordance for Targum-specific lemma counts, and the "
         "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "
-        "Follow-ups are always explicit tool calls; there is no hidden text, dialect, "
+        "Use cal_syriac_texts for one explicit CAL Syriac text category, "
+        "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon "
+        "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac "
+        "text and lexicon follow-ups compose through cal_text_page and "
+        "cal_lexicon_lookup; external/non-online-text citations remain a separate "
+        "generic capability. Follow-ups are always explicit tool calls; there is no "
+        "hidden text, dialect, "
         "bibliography-tag, Targum-version, or full-context traversal. Ambiguous analyses and "
         "author prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
         "Results include CAL provenance and retrieval time."
@@ -468,6 +475,71 @@ async def cal_targum_hebrew_reflexes(
 
     client = ctx.request_context.lifespan_context.client
     result = await TargumService(client).hebrew_reflexes(targum, mt_lemma_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_texts",
+    title="Browse one CAL Syriac text category",
+    structured_output=True,
+)
+async def cal_syriac_texts(
+    category: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return one bounded CAL Syriac text-category listing.
+
+    ``category`` is a CAL-MCP descriptive slug, not CAL's private numeric category value.
+    Direct text and grouped-navigation results remain distinct and are never followed
+    automatically. Use existing text tools for explicit follow-up reading.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).texts(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_missing_words",
+    title="List CAL Syriac headwords absent from A Syriac Lexicon",
+    structured_output=True,
+)
+async def cal_syriac_missing_words(
+    category: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return one CAL-curated missing-from-A-Syriac-Lexicon category.
+
+    This is CAL's published comparison surface against A Syriac Lexicon, not SEDRA and not
+    an adapter-inferred equivalence. Full CAL lexicon entries require a separate explicit
+    lookup; one call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).missing_words(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_peshitta_parallel",
+    title="Compare one biblical verse in MT and CAL Peshitta",
+    structured_output=True,
+)
+async def cal_syriac_peshitta_parallel(
+    book: str,
+    chapter: int,
+    verse: int,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's MT/Peshitta comparison for one explicit biblical verse.
+
+    The result preserves CAL Hebrew/Syriac text and the Peshitta source link. Invalid
+    coordinates are a typed not-found state; previous/next verse links are never followed.
+    One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).peshitta_parallel(book, chapter, verse)
     return result.to_dict()
 
 
