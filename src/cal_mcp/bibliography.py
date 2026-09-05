@@ -44,6 +44,7 @@ class BibliographyRecord:
 @dataclass(frozen=True, slots=True)
 class BibliographyAuthorOptionsPage:
     candidates: tuple[BibliographyAuthorCandidate, ...]
+    empty_query: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,8 +254,11 @@ class _BibliographyHTMLParser(HTMLParser):
             self._record.citation_parts.append(data)
 
 
-_EMPTY_RESULT_RE = re.compile(r"\bNO\s+data\s+FOR\s+.+?\s+ARE\s+CURRENTLY\s+STORED\b", re.I)
-_AUTHOR_EMPTY_RE = re.compile(r"\bNo\s+authors\s+found\s+matching\b", re.I)
+_EMPTY_RESULT_RE = re.compile(
+    r"\bNO\s+data\s+FOR\s+(.+?)\s+ARE\s+CURRENTLY\s+STORED\b",
+    re.I,
+)
+_AUTHOR_EMPTY_RE = re.compile(r"\bNo\s+authors\s+found\s+matching\s+(.+?)\s*\.", re.I)
 _QUERY_ENDPOINTS = {
     "getbibauthor.php": BibliographyQueryKind.AUTHOR,
     "getbibsigla.php": BibliographyQueryKind.KEYWORD,
@@ -263,6 +267,7 @@ _QUERY_ENDPOINTS = {
 _AUTHOR_MAX_LENGTH = 160
 _KEYWORD_MAX_LENGTH = 128
 _LEMMA_MAX_LENGTH = 128
+_RESULT_HEADING_PREFIX = "CAL Bibliography for "
 
 
 def parse_author_options_page(response: CalResponse) -> BibliographyAuthorOptionsPage:
@@ -274,13 +279,14 @@ def parse_author_options_page(response: CalResponse) -> BibliographyAuthorOption
         raise BibliographyParseError("CAL bibliography author selector is incomplete")
 
     page_text = _clean_text(" ".join(parser.all_parts))
-    explicit_empty = _AUTHOR_EMPTY_RE.search(page_text) is not None
-    if explicit_empty:
+    empty_match = _AUTHOR_EMPTY_RE.search(page_text)
+    if empty_match is not None:
         if parser.candidates or parser.target_forms or parser.target_selects:
             raise BibliographyParseError(
                 "CAL bibliography author page contradicts its no-match marker"
             )
-        return BibliographyAuthorOptionsPage(candidates=())
+        empty_query = _returned_single_line(empty_match.group(1), "author no-match query")
+        return BibliographyAuthorOptionsPage(candidates=(), empty_query=empty_query)
 
     if parser.target_forms != 1 or parser.target_selects != 1 or not parser.candidates:
         raise BibliographyParseError(
@@ -301,20 +307,29 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
         raise BibliographyParseError("CAL bibliography page contains incomplete semantic markup")
 
     headings = [
-        heading for heading in parser.headings if heading.startswith("CAL Bibliography for ")
+        heading for heading in parser.headings if heading.startswith(_RESULT_HEADING_PREFIX)
     ]
     if len(headings) != 1:
         raise BibliographyParseError("CAL bibliography page lacks one recognizable result heading")
 
+    heading = headings[0]
+    heading_query = heading.removeprefix(_RESULT_HEADING_PREFIX)
     page_text = _clean_text(" ".join(parser.all_parts))
-    explicit_empty = _EMPTY_RESULT_RE.search(page_text) is not None
+    empty_match = _EMPTY_RESULT_RE.search(page_text)
+    explicit_empty = empty_match is not None
+    if empty_match is not None:
+        empty_query = _clean_text(empty_match.group(1))
+        if empty_query != heading_query:
+            raise BibliographyParseError(
+                "CAL bibliography no-data marker contradicts its result heading"
+            )
     if explicit_empty and parser.records:
         raise BibliographyParseError("CAL bibliography page contradicts its no-data marker")
     if not explicit_empty and not parser.records:
         raise BibliographyParseError(
             "CAL bibliography page contains neither records nor explicit no-data"
         )
-    return BibliographyPage(heading=headings[0], records=tuple(parser.records))
+    return BibliographyPage(heading=heading, records=tuple(parser.records))
 
 
 class BibliographyService:
@@ -332,6 +347,10 @@ class BibliographyService:
             parser=parse_author_options_page,
             cache_namespace="bibliography-authors-v1",
         )
+        if result.value.empty_query is not None and result.value.empty_query != submitted:
+            raise BibliographyParseError(
+                "CAL bibliography author no-match marker does not match the submitted prefix"
+            )
         return BibliographyAuthorOptionsResult(
             prefix=submitted,
             candidates=result.value.candidates,
@@ -397,7 +416,7 @@ class BibliographyService:
             parser=parse_bibliography_page,
             cache_namespace=cache_namespace,
         )
-        expected_heading = f"CAL Bibliography for {submitted}"
+        expected_heading = f"{_RESULT_HEADING_PREFIX}{submitted}"
         if result.value.heading != expected_heading:
             raise BibliographyParseError(
                 "CAL bibliography result heading does not match the submitted query"
