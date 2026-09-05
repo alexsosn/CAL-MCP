@@ -284,3 +284,11 @@ Any blocker must first receive a test-only review-regression RED, then a minimal
 Production: exactly one CAL request per public operation. Users explicitly choose whether to proceed from dialect → source → citations and whether to follow a lexical entry in another later action.
 
 Research for this issue used seven fixed bounded branch-only requests across three runs; temporary workflows were removed before this plan was frozen. Normal tests are offline fixtures only.
+
+## Execution record
+
+- Primary test-only RED: `8d9e3978f351eb9c3dc913e540ace5c909f50112`.
+- First documented GREEN: `b94dc404e9ed94877735ae3fd9449d9168c2cdad`, with 327 tests passing.
+- First skeptical review found source-abbreviation format-control validation and missing concrete documentation-example gaps. The review-regression RED had 327 passing / 2 failing tests; minimal fixes reached 329 passing tests.
+- Fresh whole-PR review then found a composability gap for CAL-returned source abbreviations containing Unicode format controls. A dedicated review-regression RED had 329 passing / 1 failing test.
+- The minimal returned-identifier parser fix is applied; this checkpoint exists to trigger authoritative full CI on the exact helper-free review candidate before the final whole-PR review.
