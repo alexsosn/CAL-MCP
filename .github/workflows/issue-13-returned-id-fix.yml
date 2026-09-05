@@ -1,0 +1,28 @@
+name: Issue 13 returned identifier fix
+
+on:
+  push:
+    branches:
+      - feat/issue-13-external-citations
+    paths:
+      - .github/workflows/issue-13-returned-id-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - name: Reject returned identifier controls and self-clean
+        run: |
+          python -c 'from pathlib import Path; p=Path("src/cal_mcp/external_citations.py"); s=p.read_text(encoding="utf-8"); old="if not candidate or any(char.isspace() and char != \" \" for char in candidate):"; new="if not candidate or any((char.isspace() and char != \" \") or unicodedata.category(char) in {\"Cc\", \"Cf\", \"Cs\"} for char in candidate):"; assert old in s; p.write_text(s.replace(old,new,1),encoding="utf-8")'
+          rm .github/workflows/issue-13-returned-id-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/external_citations.py .github/workflows/issue-13-returned-id-fix.yml
+          git commit -m 'fix: reject controls in returned citation identifiers'
+          git push origin HEAD:feat/issue-13-external-citations
