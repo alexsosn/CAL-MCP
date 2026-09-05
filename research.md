@@ -302,3 +302,13 @@ When new evidence changes an assumption:
 3. state the implementation/architecture consequence;
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
+
+## R-017 — CAL full lexicon entries now inline non-content stylesheet text
+
+**Rechecked:** 2026-09-05.
+
+Bounded live evidence recorded in issue #32 shows that `cal_entry_web.php?lemma=b+s` now emits `fullentry.css` inside a `<style>` element in the page head. CAL-MCP's shared semantic HTML parser previously collected text from every element, so CSS tokens such as `fullentry.css` could satisfy the generic lemma-header grammar before the rendered lexical header and silently replace `entry.lemma` with stylesheet text. The same contamination was observed on unrelated full entries, while existing reduced pre-drift fixtures did not contain head-level style/script content.
+
+Source: https://cal.huc.edu/cal_entry_web.php?lemma=b+s and issue #32, captured 2026-09-05. The reduced regression fixture `tests/fixtures/cal/entry_b_s_inline_style.html` preserves only the semantic shape needed to reproduce this drift.
+
+**Implication:** semantic HTML extraction excludes non-rendered `style` and `script` subtrees before lexicon parsing. Public lexicon models, request behavior, and lemma-header heuristics remain unchanged.
