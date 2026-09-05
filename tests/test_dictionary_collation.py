@@ -102,9 +102,7 @@ def test_success_parser_preserves_order_alias_targets_and_punctuation() -> None:
     assert page.entries[0].gloss == "work, labor"
     assert page.entries[1].gloss == "to pant → lht V"
     assert page.entries[1].display_lemma != page.entries[1].target_lemma_key
-    assert page.entries[0].entry_url == (
-        "https://cal.huc.edu/oneentry.php?lemma=l%29w+N&cits=no"
-    )
+    assert page.entries[0].entry_url == ("https://cal.huc.edu/oneentry.php?lemma=l%29w+N&cits=no")
 
 
 def test_explicit_no_data_marker_is_successful_empty_result() -> None:
