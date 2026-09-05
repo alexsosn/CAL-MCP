@@ -28,6 +28,10 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_kwic_texts",
         "cal_kwic_dialects",
         "cal_kwic_dialect",
+        "cal_bibliography_authors",
+        "cal_bibliography_author",
+        "cal_bibliography_keyword",
+        "cal_bibliography_lemma",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -74,6 +78,22 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(kwic_dialect_schema["properties"]) == {"lemma_key", "dialect_id"}
     assert kwic_dialect_schema["required"] == ["lemma_key", "dialect_id"]
 
+    bibliography_authors_schema = tools["cal_bibliography_authors"].input_schema
+    assert set(bibliography_authors_schema["properties"]) == {"prefix"}
+    assert bibliography_authors_schema["required"] == ["prefix"]
+
+    bibliography_author_schema = tools["cal_bibliography_author"].input_schema
+    assert set(bibliography_author_schema["properties"]) == {"author"}
+    assert bibliography_author_schema["required"] == ["author"]
+
+    bibliography_keyword_schema = tools["cal_bibliography_keyword"].input_schema
+    assert set(bibliography_keyword_schema["properties"]) == {"keyword"}
+    assert bibliography_keyword_schema["required"] == ["keyword"]
+
+    bibliography_lemma_schema = tools["cal_bibliography_lemma"].input_schema
+    assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}
+    assert bibliography_lemma_schema["required"] == ["lemma_key"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -86,11 +106,16 @@ async def _assert_public_tools(client: Client) -> None:
         kwic_texts_schema,
         kwic_dialects_schema,
         kwic_dialect_schema,
+        bibliography_authors_schema,
+        bibliography_author_schema,
+        bibliography_keyword_schema,
+        bibliography_lemma_schema,
     ):
         for private_parameter in (
             "English",
             "secondary",
             "first3",
+            "myauthor",
             "cits",
             "cset",
             "sub",
@@ -105,6 +130,15 @@ async def _assert_public_tools(client: Client) -> None:
             "lth",
         ):
             assert private_parameter not in schema["properties"]
+
+    for schema in (
+        bibliography_authors_schema,
+        bibliography_author_schema,
+        bibliography_keyword_schema,
+        bibliography_lemma_schema,
+    ):
+        for unsupported_bound in ("page", "offset", "limit"):
+            assert unsupported_bound not in schema["properties"]
 
 
 @pytest.mark.anyio
