@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Inspect bounded CAL Targum forms and representative results
+      - name: Inspect bounded CAL Hebrew-reflex results
         shell: bash
         run: |
           set -euo pipefail
@@ -27,12 +27,13 @@ jobs:
           class P(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.forms = []
-                  self.current = None
                   self.links = []
                   self.text = []
+                  self.forms = []
+                  self.current = None
               def handle_starttag(self, tag, attrs):
                   a = dict(attrs)
+                  if tag == "a" and a.get("href"): self.links.append(a["href"])
                   if tag == "form":
                       self.current = {"method": a.get("method"), "action": a.get("action"), "controls": []}
                       self.forms.append(self.current)
@@ -40,30 +41,25 @@ jobs:
                       self.current["controls"].append({k: a.get(k) for k in ("name", "type", "value") if a.get(k) is not None})
                   elif tag == "option" and self.current is not None:
                       self.current["controls"].append({"option": a.get("value")})
-                  elif tag == "a" and a.get("href"):
-                      self.links.append(a["href"])
               def handle_endtag(self, tag):
                   if tag == "form": self.current = None
               def handle_data(self, data):
                   s = " ".join(data.split())
                   if s: self.text.append(s)
 
-          def fetch(url, data=None):
-              body = urlencode(data).encode() if data is not None else None
-              req = Request(url, data=body, headers={"User-Agent": "CAL-MCP bounded research issue-10"})
+          def post(path, data):
+              url = "https://cal.huc.edu/" + path
+              req = Request(url, data=urlencode(data).encode(), headers={"User-Agent": "CAL-MCP bounded research issue-10"})
               with urlopen(req, timeout=15) as r:
-                  raw = r.read(500_000).decode("utf-8", "replace")
+                  raw = r.read(400_000).decode("utf-8", "replace")
                   final = r.geturl()
               p = P(); p.feed(raw)
-              print("URL", url, "FINAL", final)
-              print("FORMS", p.forms[:8])
-              print("LINKS", p.links[:100])
-              print("TEXT", p.text[:180])
+              print("REQUEST", path, data, "FINAL", final)
+              print("FORMS", p.forms[:4])
+              print("LINKS", p.links[:80])
+              print("TEXT", p.text[:160])
 
-          fetch("https://cal.huc.edu/Omtlemmas/memMTlemma.html")
-          fetch("https://cal.huc.edu/mtlemmas/memMTlemma.html")
-          fetch("https://cal.huc.edu/showtargum.php", {
-              "bookname": "01", "chapter": "01", "verse": "01", "Peshitta": "ON", "Sam": "ON"
-          })
-          fetch("https://cal.huc.edu/showtargumKWIC.php", {"lemma": "klb", "pos": "N"})
+          post("getOmtlemma.php", {"R1": "1751"})
+          post("getNmtlemma.php", {"R1": "1751"})
+          post("getOmtlemma.php", {"R1": "999999"})
           PY
