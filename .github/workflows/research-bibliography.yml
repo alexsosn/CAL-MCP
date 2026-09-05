@@ -16,7 +16,7 @@ jobs:
           from urllib.request import Request, urlopen
 
           BASE = "https://cal.huc.edu/"
-          PAGES = ["namesearch.html", "bibliography/allsigs.html", "lemmas_list.html"]
+          PAGES = ["namesearch.html", "allsigs.html", "lemmas_list.html"]
 
           class P(HTMLParser):
               def __init__(self):
