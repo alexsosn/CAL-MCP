@@ -1,0 +1,104 @@
+name: Issue 41 citation shape research
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-drift
+    paths:
+      - .github/workflows/issue41-citation-shape.yml
+
+permissions:
+  contents: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-drift
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install
+        run: python -m pip install -e .
+      - name: Inspect one entry citation block
+        run: |
+          python - <<'PY'
+          import asyncio
+
+          from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest
+          from cal_mcp.lexicon import (
+              _CITATION_MARKER_RE,
+              _NUMBER_RE,
+              _SECTION_CONCORDANCE,
+              _SECTION_DERIVATIVES,
+              _SECTION_FORM,
+              _SECTION_NOTES,
+              _STEM_HEADING_RE,
+              _SUBNUMBER_RE,
+              _parse_citations,
+              _parse_lines,
+          )
+
+          async def main() -> None:
+              async with CalHttpClient(
+                  config=CalClientConfig(max_concurrency=1, max_retries=0, cache_enabled=False)
+              ) as client:
+                  def inspect(response):
+                      lines = _parse_lines(response)
+                      for index, line in enumerate(lines):
+                          marker = _CITATION_MARKER_RE.match(line.text)
+                          if marker is None:
+                              continue
+                          expected = int(marker.group("count"))
+                          total = 0
+                          print(f"MARKER index={index} expected={expected} text={line.text!r}")
+                          for following in lines[index + 1:]:
+                              text = following.text
+                              if (
+                                  _NUMBER_RE.match(text)
+                                  or _SUBNUMBER_RE.match(text)
+                                  or _STEM_HEADING_RE.match(text)
+                                  or text in {
+                                      _SECTION_FORM,
+                                      _SECTION_DERIVATIVES,
+                                      _SECTION_NOTES,
+                                      _SECTION_CONCORDANCE,
+                                  }
+                                  or text.startswith("📖 Full Bibliography")
+                              ):
+                                  break
+                              parsed = _parse_citations(following, response.url)
+                              total += len(parsed)
+                              preview = text[:180]
+                              print(
+                                  "  LINE "
+                                  f"links={len(following.links)} parsed={len(parsed)} "
+                                  f"text={preview!r}"
+                              )
+                          print(f"TOTAL expected={expected} parsed={total}")
+                      return None
+
+                  await client.fetch(
+                      CalRequest(
+                          method="GET",
+                          path="cal_entry_web.php",
+                          params=(("lemma", "br N"),),
+                      ),
+                      parser=inspect,
+                      cache_namespace="issue41-research",
+                  )
+
+          asyncio.run(main())
+          PY
+      - name: Remove research workflow
+        if: always()
+        run: |
+          rm .github/workflows/issue41-citation-shape.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .github/workflows/issue41-citation-shape.yml
+          git commit -m "research: remove issue-41 citation probe"
+          git push origin HEAD:fix/issue-41-lexicon-citation-drift
