@@ -8,7 +8,7 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.concordance import _validate_lemma_key
+from cal_mcp.lemma_key import validate_lemma_key
 
 
 class SyriacParseError(CalContentError):
@@ -355,14 +355,14 @@ class _TextCategoryConfig:
 
 
 _TEXT_CATEGORIES = {
-    "ot-peshitta": _TextCategoryConfig("OT Peshitta", "ot_peshitta.html"),
+    "ot-peshitta": _TextCategoryConfig("OT Peshiṭta", "ot_peshitta.html"),
     "old-syriac-gospels": _TextCategoryConfig(
         "Old Syriac Gospels",
         "old_syriac_gospels.html",
     ),
-    "nt-peshitta": _TextCategoryConfig("NT Peshitta", "nt_peshitta.html"),
+    "nt-peshitta": _TextCategoryConfig("NT Peshiṭta", "nt_peshitta.html"),
     "apocryphal-pseudepigraphal": _TextCategoryConfig(
-        "Apocryphal/Pseudepigraphal",
+        "Apocryphal/Pseudepigraphal Texts",
         "apocryphal_pseudepigraphal.html",
     ),
     "commentaries": _TextCategoryConfig("Commentaries", "show_Syriac_categories.php", "5"),
@@ -586,7 +586,7 @@ def parse_syriac_missing_words_page(
             resolved = _validated_same_origin_url(response.url, link.href, endpoint)
             query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
             lemma_key = _single_query_value(query, "lemma", "Syriac missing-word entry")
-            _, _, canonical_key = _validate_lemma_key(lemma_key)
+            _, _, canonical_key = validate_lemma_key(lemma_key)
             if canonical_key != lemma_key:
                 raise SyriacParseError(
                     "CAL Syriac missing-word link contains a noncanonical lemma key"
