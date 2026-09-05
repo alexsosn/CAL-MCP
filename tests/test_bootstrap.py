@@ -23,6 +23,7 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_text_catalogue",
         "cal_text_search",
         "cal_text_page",
+        "cal_token_analysis",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -49,6 +50,10 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(text_page_schema["properties"]) == {"file_id", "subtext_id", "page"}
     assert text_page_schema["required"] == ["file_id"]
 
+    token_schema = tools["cal_token_analysis"].input_schema
+    assert set(token_schema["properties"]) == {"coordinate", "word_index"}
+    assert token_schema["required"] == ["coordinate", "word_index"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -56,8 +61,19 @@ async def _assert_public_tools(client: Client) -> None:
         catalogue_schema,
         text_search_schema,
         text_page_schema,
+        token_schema,
     ):
-        for private_parameter in ("English", "secondary", "first3", "cits", "cset", "sub", "clen"):
+        for private_parameter in (
+            "English",
+            "secondary",
+            "first3",
+            "cits",
+            "cset",
+            "sub",
+            "clen",
+            "coord",
+            "word",
+        ):
             assert private_parameter not in schema["properties"]
 
 
