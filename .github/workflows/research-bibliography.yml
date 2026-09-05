@@ -9,86 +9,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Inspect CAL bibliography selector submissions
+      - name: Inspect one positive CAL bibliography author result
         run: |
           python - <<'PY'
-          from html.parser import HTMLParser
-          from urllib.parse import urlencode, urljoin
+          import re
+          from urllib.parse import urlencode
           from urllib.request import Request, urlopen
 
           BASE = "https://cal.huc.edu/"
           UA = {"User-Agent": "CAL-MCP bounded research probe"}
 
-          class Forms(HTMLParser):
-              def __init__(self):
-                  super().__init__()
-                  self.forms = []
-                  self.current = None
-                  self.current_select = None
-                  self.skip = 0
-                  self.text_parts = []
-              def handle_starttag(self, tag, attrs):
-                  a = dict(attrs)
-                  if tag in {"style", "script"}:
-                      self.skip += 1
-                  if tag == "form":
-                      self.current = {"action": a.get("action"), "method": (a.get("method") or "GET").upper(), "fields": [], "options": []}
-                      self.forms.append(self.current)
-                  elif self.current is not None and tag == "input" and a.get("name"):
-                      self.current["fields"].append((a.get("name"), a.get("value", ""), a.get("type")))
-                  elif self.current is not None and tag == "select":
-                      self.current_select = a.get("name")
-                      self.current["fields"].append((self.current_select, None, "select"))
-                  elif self.current is not None and tag == "option":
-                      self.current["options"].append([self.current_select, a.get("value", ""), []])
-              def handle_endtag(self, tag):
-                  if tag in {"style", "script"} and self.skip:
-                      self.skip -= 1
-                  elif tag == "select":
-                      self.current_select = None
-                  elif tag == "form":
-                      self.current = None
-              def handle_data(self, data):
-                  if not self.skip:
-                      self.text_parts.append(data)
-                  if self.current is not None and self.current.get("options"):
-                      last = self.current["options"][-1]
-                      if last[0] == self.current_select:
-                          last[2].append(data)
-              def finish(self):
-                  for form in self.forms:
-                      form["options"] = [(n, v, " ".join("".join(t).split())) for n, v, t in form["options"]]
-              @property
-              def text(self):
-                  return "\n".join(x for x in (" ".join(s.split()) for s in self.text_parts) if x)
-
-          def fetch(path, data=None):
-              payload = None if data is None else urlencode(data).encode()
-              req = Request(urljoin(BASE, path), data=payload, headers=UA)
+          def post(path, data):
+              req = Request(BASE + path, data=urlencode(data).encode(), headers=UA)
               with urlopen(req, timeout=15) as response:
-                  raw = response.read().decode("utf-8", "replace")
-                  print("FETCH", path, "POST" if payload else "GET", response.status, response.geturl(), len(raw))
-                  return raw
+                  text = response.read().decode("utf-8", "replace")
+                  print("FETCH", path, response.status, response.geturl(), len(text))
+                  return text
 
-          # Author prefix -> exact selector form -> one chosen author result.
-          html = fetch("browsenames.php", {"first3": "Gze"})
-          p = Forms(); p.feed(html); p.finish()
-          print("AUTHOR_FORMS", p.forms)
-          author_form = next(f for f in p.forms if f["options"])
-          author_name = next(v for _, v, _ in author_form["options"] if v)
-          author_result = fetch(author_form["action"], {"myauthor": author_name})
-          ar = Forms(); ar.feed(author_result); ar.finish()
-          print("AUTHOR_SELECTED", author_name)
-          print("AUTHOR_RESULT_TEXT", ar.text[:2200])
-
-          # Lemma selector -> one actual option -> result.
-          lemma_html = fetch("lemmas_list.html")
-          lp = Forms(); lp.feed(lemma_html); lp.finish()
-          print("LEMMA_FORMS", [{**f, "options": f["options"][:15]} for f in lp.forms])
-          lemma_form = next(f for f in lp.forms if f["options"])
-          lemma_value = next(v for _, v, _ in lemma_form["options"] if v)
-          lemma_result = fetch(lemma_form["action"], {"myauthor": lemma_value})
-          lr = Forms(); lr.feed(lemma_result); lr.finish()
-          print("LEMMA_SELECTED", lemma_value)
-          print("LEMMA_RESULT_TEXT", lr.text[:2200])
+          select = post("browsenames.php", {"first3": "Kau"})
+          values = re.findall(r'<option[^>]+value=["\']([^"\']+)["\']', select, re.I)
+          print("AUTHOR_OPTIONS", values[:20])
+          preferred = next((v for v in values if "Kaufman" in v), values[0] if values else None)
+          if preferred:
+              result = post("getbibauthor.php", {"myauthor": preferred})
+              plain = re.sub(r"<script\b.*?</script>|<style\b.*?</style>", " ", result, flags=re.I | re.S)
+              plain = re.sub(r"<[^>]+>", "\n", plain)
+              plain = "\n".join(x for x in (" ".join(s.split()) for s in plain.splitlines()) if x)
+              print("AUTHOR_SELECTED", preferred)
+              print("AUTHOR_RESULT_TEXT", plain[:3000])
           PY
