@@ -128,11 +128,17 @@ async def _assert_public_tools(client: Client) -> None:
             "lemma",
             "pos",
             "lth",
-            "page",
-            "offset",
-            "limit",
         ):
             assert private_parameter not in schema["properties"]
+
+    for schema in (
+        bibliography_authors_schema,
+        bibliography_author_schema,
+        bibliography_keyword_schema,
+        bibliography_lemma_schema,
+    ):
+        for unsupported_bound in ("page", "offset", "limit"):
+            assert unsupported_bound not in schema["properties"]
 
 
 @pytest.mark.anyio
