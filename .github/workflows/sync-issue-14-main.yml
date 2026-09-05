@@ -18,14 +18,117 @@ jobs:
         with:
           ref: feat/issue-14-dictionary-collation
           fetch-depth: 0
-      - name: Merge current main
+      - name: Merge current main and preserve issue 14 integration
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git merge origin/main --no-edit
+          git merge origin/main --no-commit || true
+          conflicts="$(git diff --name-only --diff-filter=U | sort)"
+          expected="$(printf '%s\n' README.md src/cal_mcp/server.py tests/test_bootstrap.py | sort)"
+          test "$conflicts" = "$expected"
+          git checkout --theirs README.md src/cal_mcp/server.py tests/test_bootstrap.py
+          python - <<'PY'
+          from pathlib import Path
+
+          server = Path("src/cal_mcp/server.py")
+          text = server.read_text(encoding="utf-8")
+          text = text.replace(
+              "from cal_mcp.concordance import ConcordanceService\n",
+              "from cal_mcp.concordance import ConcordanceService\n"
+              "from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource\n",
+              1,
+          )
+          text = text.replace(
+              '        "CAL lemma key. Use cal_targum_parallel for one biblical verse across current CAL "\n',
+              '        "CAL lemma key. Use cal_dictionary_collation for CAL\'s stored lemma "\n'
+              '        "correspondences for one explicit dictionary page reference. Use "\n'
+              '        "cal_targum_parallel for one biblical verse across current CAL "\n',
+              1,
+          )
+          text = text.replace(
+              '        "bibliography-tag, Targum-version, or full-context traversal. Ambiguous analyses and "\n',
+              '        "bibliography-tag, dictionary-page, Targum-version, or full-context traversal. "\n'
+              '        "Ambiguous analyses and "\n',
+              1,
+          )
+          marker = "\n\ndef main() -> None:\n"
+          tool = '''\n\n@mcp.tool(\n    name="cal_dictionary_collation",\n    title="Collate one CAL dictionary page",\n    structured_output=True,\n)\nasync def cal_dictionary_collation(\n    source: DictionarySource,\n    page: str,\n    ctx: Context[AppContext],\n) -> dict[str, object]:\n    """Return CAL's stored lemma correspondences for one dictionary page reference.\n\n    ``source`` is a readable CAL-MCP dictionary identifier. ``page`` accepts CAL's documented\n    decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. One call\n    performs exactly one bounded CAL request and never follows returned lemma links.\n    """\n\n    client = ctx.request_context.lifespan_context.client\n    result = await DictionaryCollationService(client).collate(source, page)\n    return result.to_dict()\n'''
+          if marker not in text:
+              raise SystemExit("server main marker not found")
+          text = text.replace(marker, tool + marker, 1)
+          server.write_text(text, encoding="utf-8")
+
+          readme = Path("README.md")
+          text = readme.read_text(encoding="utf-8")
+          text = text.replace(
+              "bounded bibliography search, bounded external/non-online citation retrieval,",
+              "bounded bibliography search, bounded dictionary spelling collation, bounded external/non-online citation retrieval,",
+              1,
+          )
+          text = text.replace(
+              "CAL remains the authority for lexical data, texts, citations, bibliography, Targum data, and scholarly interpretation.",
+              "CAL remains the authority for lexical data, texts, citations, bibliography, dictionary collation, Targum data, and scholarly interpretation.",
+              1,
+          )
+          bibliography_row = "| Bibliography | **Implemented** | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, and `cal_bibliography_lemma`: one-request author discovery/exact-author, exact CAL text/subject-tag, and exact lemma bibliography operations with record links and provenance |\n"
+          dictionary_row = "| Dictionary collation | **Implemented** | `cal_dictionary_collation`: one explicit dictionary/page lookup with readable source identifiers, ordered CAL lemma correspondences, and provenance |\n"
+          if bibliography_row not in text:
+              raise SystemExit("README bibliography row not found")
+          text = text.replace(bibliography_row, bibliography_row + dictionary_row, 1)
+          text = text.replace(
+              "[`docs/tools/bibliography.md`](docs/tools/bibliography.md) for bounded CAL bibliography search, [`docs/tools/external-citations.md`]",
+              "[`docs/tools/bibliography.md`](docs/tools/bibliography.md) for bounded CAL bibliography search, [`docs/tools/dictionary-collation.md`](docs/tools/dictionary-collation.md) for bounded dictionary-page collation, [`docs/tools/external-citations.md`]",
+              1,
+          )
+          bibliography_doc = "- [`docs/tools/bibliography.md`](docs/tools/bibliography.md) — author discovery/exact-author retrieval, exact text/subject-tag and lemma bibliography search, result links, bounds, failures, and provenance.\n"
+          dictionary_doc = "- [`docs/tools/dictionary-collation.md`](docs/tools/dictionary-collation.md) — supported dictionaries/page syntax, ordered CAL lemma correspondences, alias-target preservation, bounds, failures, and provenance.\n"
+          if bibliography_doc not in text:
+              raise SystemExit("README bibliography doc entry not found")
+          text = text.replace(bibliography_doc, bibliography_doc + dictionary_doc, 1)
+          bibliography_state = "- live `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, and `cal_bibliography_lemma` tools with explicit two-step author selection, exact CAL tag/lemma semantics, ordered records/links, and no hidden archive traversal;\n"
+          dictionary_state = "- live `cal_dictionary_collation` with one-request dictionary/page lookup, readable source selection, ordered CAL lemma correspondences, and no hidden lemma expansion;\n"
+          if bibliography_state not in text:
+              raise SystemExit("README bibliography state entry not found")
+          text = text.replace(bibliography_state, bibliography_state + dictionary_state, 1)
+          text = text.replace(
+              "concordance/bibliography/external-citation/Targum/Syriac parser/service",
+              "concordance/bibliography/dictionary-collation/external-citation/Targum/Syriac parser/service",
+              1,
+          )
+          readme.write_text(text, encoding="utf-8")
+
+          bootstrap = Path("tests/test_bootstrap.py")
+          text = bootstrap.read_text(encoding="utf-8")
+          text = text.replace(
+              '        "cal_bibliography_lemma",\n',
+              '        "cal_bibliography_lemma",\n        "cal_dictionary_collation",\n',
+              1,
+          )
+          schema_marker = '''    bibliography_lemma_schema = tools["cal_bibliography_lemma"].input_schema\n    assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}\n    assert bibliography_lemma_schema["required"] == ["lemma_key"]\n\n'''
+          schema_add = '''    dictionary_collation_schema = tools["cal_dictionary_collation"].input_schema\n    assert set(dictionary_collation_schema["properties"]) == {"source", "page"}\n    assert dictionary_collation_schema["required"] == ["source", "page"]\n\n'''
+          if schema_marker not in text:
+              raise SystemExit("bootstrap bibliography schema marker not found")
+          text = text.replace(schema_marker, schema_marker + schema_add, 1)
+          text = text.replace(
+              "        bibliography_lemma_schema,\n        targum_parallel_schema,\n",
+              "        bibliography_lemma_schema,\n        dictionary_collation_schema,\n        targum_parallel_schema,\n",
+              1,
+          )
+          text = text.replace(
+              '            "myauthor",\n',
+              '            "myauthor",\n            "dict",\n',
+              1,
+          )
+          bound_marker = '''    for schema in (\n        bibliography_authors_schema,\n        bibliography_author_schema,\n        bibliography_keyword_schema,\n        bibliography_lemma_schema,\n    ):\n        for unsupported_bound in ("page", "offset", "limit"):\n            assert unsupported_bound not in schema["properties"]\n\n'''
+          bound_add = '''    for unsupported_bound in ("offset", "limit"):\n        assert unsupported_bound not in dictionary_collation_schema["properties"]\n\n'''
+          if bound_marker not in text:
+              raise SystemExit("bootstrap bibliography bound marker not found")
+          text = text.replace(bound_marker, bound_marker + bound_add, 1)
+          bootstrap.write_text(text, encoding="utf-8")
+          PY
           rm .github/workflows/sync-issue-14-main.yml
-          git add .github/workflows/sync-issue-14-main.yml
-          git commit --amend --no-edit
+          git add README.md src/cal_mcp/server.py tests/test_bootstrap.py .github/workflows/sync-issue-14-main.yml
+          git commit -m "merge: sync main into issue 14"
           git push origin HEAD:feat/issue-14-dictionary-collation
