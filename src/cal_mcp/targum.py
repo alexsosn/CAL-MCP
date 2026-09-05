@@ -177,6 +177,9 @@ class _ParallelBlock:
     anchor_depth: int = 0
 
 
+_IGNORED_CONTENT_TAGS = frozenset({"script", "style"})
+
+
 class _ParallelParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -185,8 +188,14 @@ class _ParallelParser(HTMLParser):
         self.blocks: list[_ParallelBlock] = []
         self._heading_parts: list[str] | None = None
         self._block: _ParallelBlock | None = None
+        self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _IGNORED_CONTENT_TAGS:
+            self._ignored_depth += 1
+            return
+        if self._ignored_depth:
+            return
         attributes = dict(attrs)
         if tag == "h1":
             if self._heading_parts is not None:
@@ -217,6 +226,10 @@ class _ParallelParser(HTMLParser):
                 self._block.script_depth += 1
 
     def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            if tag in _IGNORED_CONTENT_TAGS:
+                self._ignored_depth -= 1
+            return
         if tag == "h1" and self._heading_parts is not None:
             heading = _clean_text("".join(self._heading_parts))
             if heading:
@@ -239,6 +252,8 @@ class _ParallelParser(HTMLParser):
                 self._block = None
 
     def handle_data(self, data: str) -> None:
+        if self._ignored_depth:
+            return
         self.all_parts.append(data)
         if self._heading_parts is not None:
             self._heading_parts.append(data)
@@ -248,6 +263,13 @@ class _ParallelParser(HTMLParser):
             self._block.text_parts.append(data)
         else:
             self._block.label_parts.append(data)
+
+    def close(self) -> None:
+        super().close()
+        if self._ignored_depth:
+            raise TargumParseError(
+                "CAL Targum page has an unclosed ignored content subtree"
+            )
 
 
 @dataclass(slots=True)
@@ -268,8 +290,14 @@ class _SemanticTableParser(HTMLParser):
         self._in_table = False
         self._row: list[_TableCell] | None = None
         self._cell: _TableCell | None = None
+        self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _IGNORED_CONTENT_TAGS:
+            self._ignored_depth += 1
+            return
+        if self._ignored_depth:
+            return
         attributes = dict(attrs)
         if tag == "h1":
             if self._heading_parts is not None:
@@ -301,6 +329,10 @@ class _SemanticTableParser(HTMLParser):
             self._cell.hrefs.append(href)
 
     def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            if tag in _IGNORED_CONTENT_TAGS:
+                self._ignored_depth -= 1
+            return
         if tag == "h1" and self._heading_parts is not None:
             heading = _clean_text("".join(self._heading_parts))
             if heading:
@@ -323,11 +355,20 @@ class _SemanticTableParser(HTMLParser):
             self._in_table = False
 
     def handle_data(self, data: str) -> None:
+        if self._ignored_depth:
+            return
         self.all_parts.append(data)
         if self._heading_parts is not None:
             self._heading_parts.append(data)
         if self._cell is not None:
             self._cell.parts.append(data)
+
+    def close(self) -> None:
+        super().close()
+        if self._ignored_depth:
+            raise TargumParseError(
+                "CAL Targum result has an unclosed ignored content subtree"
+            )
 
 
 @dataclass(slots=True)
@@ -346,8 +387,14 @@ class _HebrewLemmaChooserParser(HTMLParser):
         self.target_forms = 0
         self._in_target_form = False
         self._open_candidate: _OpenCandidate | None = None
+        self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _IGNORED_CONTENT_TAGS:
+            self._ignored_depth += 1
+            return
+        if self._ignored_depth:
+            return
         attributes = dict(attrs)
         if tag == "form":
             if self._in_target_form:
@@ -373,17 +420,27 @@ class _HebrewLemmaChooserParser(HTMLParser):
         self._open_candidate = _OpenCandidate(mt_lemma_id=value)
 
     def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            if tag in _IGNORED_CONTENT_TAGS:
+                self._ignored_depth -= 1
+            return
         if tag == "form" and self._in_target_form:
             self._finish_candidate()
             self._in_target_form = False
 
     def handle_data(self, data: str) -> None:
+        if self._ignored_depth:
+            return
         self.all_parts.append(data)
         if self._open_candidate is not None:
             self._open_candidate.parts.append(data)
 
     def close(self) -> None:
         super().close()
+        if self._ignored_depth:
+            raise TargumParseError(
+                "CAL MT lemma chooser has an unclosed ignored content subtree"
+            )
         if self._in_target_form:
             raise TargumParseError("CAL MT lemma chooser form is incomplete")
 
