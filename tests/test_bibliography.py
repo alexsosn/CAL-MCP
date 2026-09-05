@@ -102,9 +102,7 @@ def test_keyword_bibliography_preserves_ordered_records_and_exact_tags() -> None
     assert "Textbook of Aramaic Documents" in page.records[0].citation
     assert "מכתבים ארמיים" in page.records[1].citation
     assert [link.query_value for link in page.records[0].links] == ["Collections", "TADA"]
-    assert all(
-        link.query_kind is BibliographyQueryKind.KEYWORD for link in page.records[0].links
-    )
+    assert all(link.query_kind is BibliographyQueryKind.KEYWORD for link in page.records[0].links)
 
 
 def test_lemma_bibliography_preserves_linked_lemma_keys() -> None:
