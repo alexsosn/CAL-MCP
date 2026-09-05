@@ -273,7 +273,7 @@ def parse_author_options_page(response: CalResponse) -> BibliographyAuthorOption
     if parser._open_option is not None or parser._in_target_select or parser._in_target_form:
         raise BibliographyParseError("CAL bibliography author selector is incomplete")
 
-    page_text = _clean_text("".join(parser.all_parts))
+    page_text = _clean_text(" ".join(parser.all_parts))
     explicit_empty = _AUTHOR_EMPTY_RE.search(page_text) is not None
     if explicit_empty:
         if parser.candidates or parser.target_forms or parser.target_selects:
@@ -306,7 +306,7 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
     if len(headings) != 1:
         raise BibliographyParseError("CAL bibliography page lacks one recognizable result heading")
 
-    page_text = _clean_text("".join(parser.all_parts))
+    page_text = _clean_text(" ".join(parser.all_parts))
     explicit_empty = _EMPTY_RESULT_RE.search(page_text) is not None
     if explicit_empty and parser.records:
         raise BibliographyParseError("CAL bibliography page contradicts its no-data marker")
