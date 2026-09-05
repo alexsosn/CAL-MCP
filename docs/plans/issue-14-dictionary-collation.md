@@ -239,6 +239,8 @@ The first exact-head review found that a nonempty single-line `lemma=` value fro
 
 The fresh whole-PR re-review then caught a source-label extraction error for public `qumran_aramaic`: CAL's current form lists the selector label as `Dictionary of Qumran Aramaic`, with the generic `Page` field separately rendered after the selector list. The earlier research extraction had concatenated that adjacent field into `Dictionary of Qumran Aramaic Page`. One bounded review POST attempted to verify the Qumran result title directly; CAL returned HTTP 405, the request was not retried, and the temporary workflow self-deleted. The public form itself remained sufficient evidence for the selector label. Review-regression commit `1363bf3315752ec452ad1d87853843601e4fad80` kept install, Ruff lint/format, and strict mypy green while pytest reported **369 passed / exactly 1 failed**, at the Qumran service-level source-label check. The minimal correction preserves private code `Q` and changes only the exact source label plus copied research/test/documentation expectations.
 
+Final exact candidate `89c8ff91b3c3492dd3a518e7d69f9644080926c1` passed CI run `33991836087`: install, Ruff lint, Ruff format check, strict mypy, and **370/370 pytest tests**. Fresh exact-SHA skeptical review `5123006795` found no remaining blocker.
+
 ## Merge gate
 
 Only after:
