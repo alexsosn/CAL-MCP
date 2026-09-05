@@ -7,6 +7,7 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
+from cal_mcp.biblical import cal_biblical_book_id
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lemma_key import validate_lemma_key
 
@@ -419,45 +420,6 @@ _MISSING_WORD_PATHS = {
     "feminine-nouns": "display_missing.femnouns.php",
 }
 
-_BOOK_IDS = {
-    "Gen": "01",
-    "Exod": "02",
-    "Levit": "03",
-    "Numb": "04",
-    "Deut": "05",
-    "Joshua": "06",
-    "Judges": "07",
-    "1 Sam": "08",
-    "2 Sam": "09",
-    "1 Kings": "10",
-    "2 Kings": "11",
-    "Isaiah": "12",
-    "Jeremiah": "13",
-    "Ezekiel": "14",
-    "Hosea": "15",
-    "Joel": "16",
-    "Amos": "17",
-    "Obadiah": "18",
-    "Jonah": "19",
-    "Micah": "20",
-    "Nahum": "21",
-    "Hab.": "22",
-    "Zeph.": "23",
-    "Haggai": "24",
-    "Zechariah": "25",
-    "Malachi": "26",
-    "Psalms": "27",
-    "Job": "28",
-    "Proverbs": "33",
-    "Ruth": "30",
-    "Song of Songs": "29",
-    "Qoheleth": "31",
-    "Lamentations": "32",
-    "Esther": "36",
-    "1 Chronicles": "34",
-    "2 Chronicles": "35",
-}
-
 _PESHITTA_HEADING_PREFIX = "MT and Peshitta for "
 _COORDINATE_ERROR_RE = re.compile(r"\berror\s+in\s+coord(?:inate)?\b", re.I)
 _MISSING_DICTIONARY_LABEL = "A Syriac Lexicon"
@@ -586,7 +548,12 @@ def parse_syriac_missing_words_page(
             resolved = _validated_same_origin_url(response.url, link.href, endpoint)
             query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
             lemma_key = _single_query_value(query, "lemma", "Syriac missing-word entry")
-            _, _, canonical_key = validate_lemma_key(lemma_key)
+            try:
+                _, _, canonical_key = validate_lemma_key(lemma_key)
+            except ValueError as exc:
+                raise SyriacParseError(
+                    "CAL Syriac missing-word link contains an invalid lemma key"
+                ) from exc
             if canonical_key != lemma_key:
                 raise SyriacParseError(
                     "CAL Syriac missing-word link contains a noncanonical lemma key"
@@ -735,7 +702,6 @@ class SyriacService:
                 result.retrieved_at,
                 operation="syriac_missing_words",
                 category=category,
-                upstream_category=path,
             ),
         )
 
@@ -807,9 +773,7 @@ def _missing_word_path(category: str) -> str:
 
 
 def _validate_book(book: str) -> str:
-    if not isinstance(book, str) or book not in _BOOK_IDS:
-        raise ValueError("book must be one exact current CAL biblical book label")
-    return _BOOK_IDS[book]
+    return cal_biblical_book_id(book)
 
 
 def _validate_positive_int(value: int, name: str) -> int:
