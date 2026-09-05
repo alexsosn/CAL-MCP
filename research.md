@@ -279,6 +279,30 @@ The form, pagination, missing-text, and empty-search inspections were deliberate
 
 **Implication:** CAL-MCP exposes three text primitives: one explicit catalogue level, one topic-search request, and one normal text page. Each public call performs exactly one CAL request. Category expansion and page traversal are caller-controlled; no recursive catalogue walk, automatic next-page request, `show all`, token lookup, background indexing, or local corpus mirror is introduced. Public pages are one-based, while CAL's current internal page parameter remains adapter-private. CAL file/subtext/category identifiers and machine/display coordinates are preserved with provenance but are not advertised as permanent CAL-MCP identifiers.
 
+## R-017 — Current Targum Studies surface mixes specialist comparison with existing text/KWIC primitives
+
+**Rechecked:** 2026-09-05.
+
+A bounded live audit of CAL's Targum Studies module established three specialist result families plus one navigation path that already composes with CAL-MCP's general text browser.
+
+The parallel verse form submits one biblical book/chapter/verse to `showtargum.php`, with optional Peshitta and Samaritan checkboxes. The current selector contains 36 exact CAL book labels/values. A Gen 1:1 request returned MT plus ordered CAL-labelled readings including Onqelos, Pseudo Jonathan, Neofiti, Fragment Targum material, and optional Peshitta. Source-name links lead directly to CAL's ordinary `get_a_chapter.php` text pages, so a separate single-Targum MCP browser would duplicate the already implemented text interface. A nonexistent coordinate such as Gen 1:99 returns HTTP 200 with CAL's explicit `error in coordinate` marker; this is a passage-not-found state.
+
+The Targum concordance submits one CAL lemma/POS to `showtargumKWIC.php`. `klb N` returned an ordered source/count table totaling 59 examples across named Targum groups. A nonexistent structurally valid lemma returned the same complete table with every count zero and `total examples: 0`, establishing a valid empty-result shape rather than an error page. Source rows link to the existing CAL KWIC family and should remain explicit navigation metadata rather than trigger hidden follow-up requests.
+
+The Hebrew-reflex module studies which Aramaic lemmas translate a selected MT Hebrew lemma. CAL currently exposes usable Onqelos and Neofiti workflows while Pseudo-Jonathan is explicitly marked `(under development)`. The source-specific letter pages expose vocalized Hebrew lemma labels plus opaque numeric `R1` identifiers. MT ID `1751` (`מַעֲקֶה`) returned Onqelos `תיק #2 N` with frequency 2 and Neofiti `גיפוף N` / `סייג N` with frequency 1 each. A deliberately invalid MT ID returned a broad frequency list under an empty `Onkelos correspondences to` heading, so a faithful adapter must validate the semantic heading instead of trusting apparently well-formed rows.
+
+Sources:
+
+- https://cal.huc.edu/searching/targumsearch.html
+- https://cal.huc.edu/searching/targum_concordance.html
+- https://cal.huc.edu/targumicpairsearch.htm
+- https://cal.huc.edu/Olemmaselect.htm
+- https://cal.huc.edu/Omtlemmas/memMTlemma.html
+- https://cal.huc.edu/mtlemmas/memMTlemma.html
+- bounded branch-only form/result/edge-case probes recorded in `docs/research/issue-10-targum.md`
+
+**Implication:** issue #10 should add specialist one-request operations for parallel verse comparison, Targum-specific concordance counts, MT Hebrew lemma discovery, and Onqelos/Neofiti reflex lookup. Full source browsing and detailed KWIC remain compositions through existing tools. Version labels/order, Unicode text, opaque MT IDs, zero-count results, and explicit coordinate errors must be preserved without harmonization or hidden traversal.
+
 ## Open research questions
 
 These should be answered by implementation tickets rather than guessed globally:
@@ -287,7 +311,7 @@ These should be answered by implementation tickets rather than guessed globally:
 2. Which dialect identifiers are stable machine values versus display labels?
 3. Do specialist text/module surfaces use pagination or coordinate shapes that differ materially from the general text browser?
 4. Does CAL document any stronger stability guarantee for file/subtext/category identifiers than is observable from the current public links?
-5. Which Targum and Syriac operations compose cleanly into general tools and which deserve specialist tools?
+5. Which Syriac operations compose cleanly into general tools and which deserve specialist tools?
 6. Does the bibliography interface expose stable query parameters suitable for typed search?
 7. What minimal cache policy gives useful duplicate-request suppression without retaining a meaningful CAL dataset?
 8. Does CAL expose `robots.txt` or future machine-access guidance that should alter request policy?
@@ -322,3 +346,36 @@ Issue #31 records a bounded live check of `oneentry.php?lemma=)lh N`: the curren
 Source: https://cal.huc.edu/oneentry.php?lemma=)lh%20N and issue #31, captured 2026-09-05. Offline regression coverage uses a reduced semantic fixture rather than an archived full CAL page.
 
 **Implication:** parenthetical numbering is placed using the deepest matching predecessor across every existing path depth, including depth 1. Non-consecutive/unplaceable jumps still fail closed; no enclosing level is invented when CAL omits one. Trailing plain-number tokens observed on the live page remain a separate unresolved parsing question and are outside this correction.
+
+## R-019 — Current Syriac Studies module composes specialist and general CAL surfaces
+
+**Rechecked:** 2026-09-05.
+
+A bounded live audit of CAL's current Syriac Studies module found four public entry points: available Syriac texts by category, citations from texts absent from the online CAL database, CAL headwords occurring in Syriac but absent from *A Syriac Lexicon*, and MT/Peshitta verse comparison.
+
+The Peshitta comparison form currently submits one biblical `bookname`/chapter/verse POST to `showpesh.php`. Gen 1:1 returned the exact heading `MT and Peshitta for Gen 1:1`, Hebrew MT text, a CAL-owned `Peshitta:` link to the ordinary text browser, and Syriac Peshitta text. Gen 1:99 returned HTTP 200 with the matching heading plus CAL's explicit `error in coord` marker. Result HTML contains inline styles, so non-rendered `style`/`script` subtrees cannot participate in semantic marker detection.
+
+`AvailSyr.html` currently exposes four Bible-oriented static lists plus dynamic Syriac categories. A representative dynamic category returned both direct `get_a_chapter.php` text links and grouped `showsubtexts.php?keyword=...` navigation, together with file-information links. These are one-level discovery results; group expansion and text browsing remain explicit caller actions.
+
+`NotInSL.html` currently exposes nine CAL-curated lists (adjectives, adverbs, miscellaneous, nomina agentis, abstracts, verbal nouns, verbs, masculine nouns, feminine nouns) for Syriac headwords not listed in the Brockelmann/Sokoloff *A Syriac Lexicon*. Individual list pages expose ordered CAL lexicon links plus rendered notes/glosses. This is CAL's own research comparison surface and must not be represented as a SEDRA query or as adapter-inferred dictionary equivalence.
+
+The module's “citations from texts not in the CAL database” link is the Syriac-filtered entry to the same external/non-online-text citation family tracked by issue #13, so issue #11 should not duplicate that public operation. General Syriac-script lexical lookup likewise remains the existing CAL-MCP lexicon surface.
+
+Sources and bounded probe details are recorded in `docs/research/issue-11-syriac.md`. Two temporary branch-only probes made eight CAL requests total and were removed before planning; normal CI remains offline.
+
+**Implication:** issue #11 should expose three bounded task-level specialist operations: Syriac text-category discovery, CAL's curated missing-from-*A Syriac Lexicon* lists, and MT/Peshitta verse comparison. Each public operation performs exactly one CAL request and returns CAL provenance. External citations, direct text reading, grouped text expansion, lexicon-entry fetching, and verse traversal remain separate caller-controlled operations.
+
+## R-020 — Current external-text citation finder is an explicit dialect → source → citation workflow
+
+**Rechecked:** 2026-09-05.
+
+CAL's current search page exposes citations from texts not present in the online database as a separate Citation Finder. The live UI is an explicit three-stage workflow: `citfinder.html` lists 19 ordered CAL dialect IDs/labels; choosing one dialect opens a source-abbreviation list headed as texts with citations but no full text yet; choosing one exact source abbreviation opens that source's ordered lexical citations. A bounded Syriac probe returned 703 source rows in one approximately 317 KB response, and `1CorH` returned three citation rows. No pagination/continuation control was observed on these representative pages.
+
+Current source rows preserve a CAL source abbreviation plus rendered bibliographic/source description. Current citation rows expose a same-origin CAL lexical-entry link with canonical lemma key, rendered lemma/POS, external-source citation string, lexical gloss, source-language citation text when present, and optional English translation. The lexical link is an explicit follow-up into entry context; the absent source is not thereby available through CAL's ordinary online text browser. A source abbreviation such as `1CorH` must therefore not be represented as a CAL online `file_id` or guessed passage coordinate.
+
+CAL currently returns explicit HTTP-200 empty markers for both stages: `No extra citations for that dialect are currently found.` and `No citations for "…" are currently stored.` A successful-looking page with neither recognized semantic rows nor the corresponding marker is parser drift rather than an empty result.
+
+Branch-only research made seven fixed, bounded CAL GETs across three runs (three structural pages, two negative pages, and one repeat of those same two negative pages after correcting a local visible-text extractor). All requests had hard time/size caps; no dialect/source/citation enumeration or lexical-entry traversal occurred. Detailed evidence and raw semantic shapes are recorded in `docs/research/issue-13-external-citations.md`.
+
+**Implication:** expose caller-controlled dialect discovery, one-dialect source discovery, and one-source citation retrieval as separate bounded operations. Keep private endpoint/form fields hidden, do not invent pagination, never auto-follow lexical-entry links, and keep this result model distinct from both English citation-text search and online-corpus passage retrieval.
+

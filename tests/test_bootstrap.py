@@ -33,6 +33,16 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_bibliography_keyword",
         "cal_bibliography_lemma",
         "cal_dictionary_collation",
+        "cal_targum_parallel",
+        "cal_targum_concordance",
+        "cal_targum_hebrew_lemmas",
+        "cal_targum_hebrew_reflexes",
+        "cal_external_citation_dialects",
+        "cal_external_citation_sources",
+        "cal_external_citations",
+        "cal_syriac_texts",
+        "cal_syriac_missing_words",
+        "cal_syriac_peshitta_parallel",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -99,6 +109,52 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(dictionary_collation_schema["properties"]) == {"source", "page"}
     assert dictionary_collation_schema["required"] == ["source", "page"]
 
+    targum_parallel_schema = tools["cal_targum_parallel"].input_schema
+    assert set(targum_parallel_schema["properties"]) == {
+        "book",
+        "chapter",
+        "verse",
+        "include_peshitta",
+        "include_samaritan",
+    }
+    assert targum_parallel_schema["required"] == ["book", "chapter", "verse"]
+
+    targum_concordance_schema = tools["cal_targum_concordance"].input_schema
+    assert set(targum_concordance_schema["properties"]) == {"lemma_key"}
+    assert targum_concordance_schema["required"] == ["lemma_key"]
+
+    targum_hebrew_lemmas_schema = tools["cal_targum_hebrew_lemmas"].input_schema
+    assert set(targum_hebrew_lemmas_schema["properties"]) == {"initial", "targum"}
+    assert targum_hebrew_lemmas_schema["required"] == ["initial", "targum"]
+
+    targum_hebrew_reflexes_schema = tools["cal_targum_hebrew_reflexes"].input_schema
+    assert set(targum_hebrew_reflexes_schema["properties"]) == {"targum", "mt_lemma_id"}
+    assert targum_hebrew_reflexes_schema["required"] == ["targum", "mt_lemma_id"]
+
+    external_dialects_schema = tools["cal_external_citation_dialects"].input_schema
+    assert set(external_dialects_schema["properties"]) == set()
+    assert "required" not in external_dialects_schema or external_dialects_schema["required"] == []
+
+    external_sources_schema = tools["cal_external_citation_sources"].input_schema
+    assert set(external_sources_schema["properties"]) == {"dialect_id"}
+    assert external_sources_schema["required"] == ["dialect_id"]
+
+    external_citations_schema = tools["cal_external_citations"].input_schema
+    assert set(external_citations_schema["properties"]) == {"source_abbrev"}
+    assert external_citations_schema["required"] == ["source_abbrev"]
+
+    syriac_texts_schema = tools["cal_syriac_texts"].input_schema
+    assert set(syriac_texts_schema["properties"]) == {"category"}
+    assert syriac_texts_schema["required"] == ["category"]
+
+    syriac_missing_words_schema = tools["cal_syriac_missing_words"].input_schema
+    assert set(syriac_missing_words_schema["properties"]) == {"category"}
+    assert syriac_missing_words_schema["required"] == ["category"]
+
+    syriac_peshitta_schema = tools["cal_syriac_peshitta_parallel"].input_schema
+    assert set(syriac_peshitta_schema["properties"]) == {"book", "chapter", "verse"}
+    assert syriac_peshitta_schema["required"] == ["book", "chapter", "verse"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -116,6 +172,16 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_keyword_schema,
         bibliography_lemma_schema,
         dictionary_collation_schema,
+        targum_parallel_schema,
+        targum_concordance_schema,
+        targum_hebrew_lemmas_schema,
+        targum_hebrew_reflexes_schema,
+        external_dialects_schema,
+        external_sources_schema,
+        external_citations_schema,
+        syriac_texts_schema,
+        syriac_missing_words_schema,
+        syriac_peshitta_schema,
     ):
         for private_parameter in (
             "English",
@@ -135,6 +201,9 @@ async def _assert_public_tools(client: Client) -> None:
             "lemma",
             "pos",
             "lth",
+            "bookname",
+            "Peshitta",
+            "Sam",
         ):
             assert private_parameter not in schema["properties"]
 
@@ -149,6 +218,19 @@ async def _assert_public_tools(client: Client) -> None:
 
     for unsupported_bound in ("offset", "limit"):
         assert unsupported_bound not in dictionary_collation_schema["properties"]
+
+    for schema in (syriac_texts_schema, syriac_missing_words_schema, syriac_peshitta_schema):
+        for private_syriac_parameter in (
+            "bookname",
+            "dial",
+            "dial1",
+            "abbrev",
+            "cset",
+            "file",
+            "keyword",
+            "coord",
+        ):
+            assert private_syriac_parameter not in schema["properties"]
 
 
 @pytest.mark.anyio

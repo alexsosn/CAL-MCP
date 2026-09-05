@@ -12,8 +12,11 @@ from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
 from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
+from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.search import EnglishSearchService
+from cal_mcp.syriac import SyriacService
+from cal_mcp.targum import TargumService
 from cal_mcp.texts import TextService
 from cal_mcp.token_analysis import TokenAnalysisService
 
@@ -48,12 +51,27 @@ mcp = MCPServer(
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
-        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma correspondences "
-        "for one explicit dictionary page reference. Follow-ups are always explicit tool "
-        "calls; there is no hidden text, dialect, bibliography-tag, dictionary-page, or "
-        "full-context traversal. Ambiguous analyses and author prefixes remain ordered CAL "
-        "alternatives rather than guessed preferred readings. Results include CAL provenance "
-        "and retrieval time."
+        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma "
+        "correspondences for one explicit dictionary page reference. Use "
+        "cal_targum_parallel for one biblical verse across current CAL "
+        "Targum readings, cal_targum_concordance for Targum-specific lemma counts, and the "
+        "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "
+        "Use cal_syriac_texts for one explicit CAL Syriac text category, "
+        "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon "
+        "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac "
+        "text and lexicon follow-ups compose through cal_text_page and "
+        "cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL "
+        "dialect identifiers for citations from texts not in the online corpus, "
+        "cal_external_citation_sources for one returned dialect, and "
+        "cal_external_citations for one exact returned source abbreviation. "
+        "The external/non-online-text citations workflow is distinct from "
+        "cal_citation_text_search. "
+        "Follow-ups are always explicit tool calls; there is no "
+        "hidden text, dialect, "
+        "bibliography-tag, dictionary-page, Targum-version, or full-context traversal. "
+        "Ambiguous analyses and "
+        "author prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
+        "Results include CAL provenance and retrieval time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -374,6 +392,225 @@ async def cal_bibliography_lemma(
 
     client = ctx.request_context.lifespan_context.client
     result = await BibliographyService(client).lemma(lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_parallel",
+    title="Compare one biblical verse across CAL Targum sources",
+    structured_output=True,
+)
+async def cal_targum_parallel(
+    book: str,
+    chapter: int,
+    verse: int,
+    ctx: Context[AppContext],
+    include_peshitta: bool = False,
+    include_samaritan: bool = False,
+) -> dict[str, object]:
+    """Return CAL's ordered MT/Targum readings for one explicit biblical verse.
+
+    ``book`` is one exact CAL Targum book label. Peshitta and Samaritan are optional
+    upstream comparison sources and are never fabricated when CAL has no reading.
+    One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumService(client).parallel(
+        book,
+        chapter,
+        verse,
+        include_peshitta=include_peshitta,
+        include_samaritan=include_samaritan,
+    )
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_concordance",
+    title="Count a CAL lemma across Targum sources",
+    structured_output=True,
+)
+async def cal_targum_concordance(
+    lemma_key: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's ordered Targum-specific occurrence counts for one lemma key.
+
+    A complete all-zero CAL table is preserved as a valid zero-result concordance.
+    Detailed source examples remain separate explicit follow-up requests.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumService(client).concordance(lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_hebrew_lemmas",
+    title="Discover MT Hebrew lemmas for CAL Targum reflex study",
+    structured_output=True,
+)
+async def cal_targum_hebrew_lemmas(
+    initial: str,
+    targum: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return ordered CAL MT-lemma choices for one Hebrew initial and Targum source.
+
+    ``targum`` is currently ``onqelos`` or ``neofiti``. Returned MT lemma IDs are opaque
+    CAL selector identifiers for a later explicit ``cal_targum_hebrew_reflexes`` call.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumService(client).hebrew_lemmas(initial, targum)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_hebrew_reflexes",
+    title="Find Targumic reflexes of one selected MT Hebrew lemma",
+    structured_output=True,
+)
+async def cal_targum_hebrew_reflexes(
+    targum: str,
+    mt_lemma_id: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL Aramaic lemma correspondences for one selected MT lemma.
+
+    Use an opaque ID returned by ``cal_targum_hebrew_lemmas``. CAL currently supports the
+    exposed workflow for Onqelos and Neofiti; no hidden example traversal is performed.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumService(client).hebrew_reflexes(targum, mt_lemma_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_texts",
+    title="Browse one CAL Syriac text category",
+    structured_output=True,
+)
+async def cal_syriac_texts(
+    category: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return one bounded CAL Syriac text-category listing.
+
+    ``category`` is a CAL-MCP descriptive slug, not CAL's private numeric category value.
+    Direct text and grouped-navigation results remain distinct and are never followed
+    automatically. Use existing text tools for explicit follow-up reading.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).texts(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_missing_words",
+    title="List CAL Syriac headwords absent from A Syriac Lexicon",
+    structured_output=True,
+)
+async def cal_syriac_missing_words(
+    category: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return one CAL-curated missing-from-A-Syriac-Lexicon category.
+
+    This is CAL's published comparison surface against A Syriac Lexicon, not SEDRA and not
+    an adapter-inferred equivalence. Full CAL lexicon entries require a separate explicit
+    lookup; one call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).missing_words(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_peshitta_parallel",
+    title="Compare one biblical verse in MT and CAL Peshitta",
+    structured_output=True,
+)
+async def cal_syriac_peshitta_parallel(
+    book: str,
+    chapter: int,
+    verse: int,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's MT/Peshitta comparison for one explicit biblical verse.
+
+    The result preserves CAL Hebrew/Syriac text and the Peshitta source link. Invalid
+    coordinates are a typed not-found state; previous/next verse links are never followed.
+    One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).peshitta_parallel(book, chapter, verse)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citation_dialects",
+    title="Discover CAL dialects with external citations",
+    structured_output=True,
+)
+async def cal_external_citation_dialects(
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's current dialect choices for citations from non-online texts.
+
+    Use one returned ``dialect_id`` in a separate ``cal_external_citation_sources`` call.
+    One call performs exactly one bounded CAL request and does not enumerate sources.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).dialects()
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citation_sources",
+    title="List cited non-online CAL sources in one dialect",
+    structured_output=True,
+)
+async def cal_external_citation_sources(
+    dialect_id: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL source abbreviations/descriptions for one explicit dialect.
+
+    ``dialect_id`` must come from ``cal_external_citation_dialects``. The returned sources
+    have citations in CAL but no full online text; no source or citation is followed
+    automatically. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).sources(dialect_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_external_citations",
+    title="Retrieve CAL citations for one non-online source",
+    structured_output=True,
+)
+async def cal_external_citations(
+    source_abbrev: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's ordered lexical citations for one exact external source abbreviation.
+
+    ``source_abbrev`` should come from ``cal_external_citation_sources``. Lexical-entry links
+    are preserved as metadata but are never followed automatically, and the source is not
+    represented as an online CAL passage. One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ExternalCitationService(client).citations(source_abbrev)
     return result.to_dict()
 
 

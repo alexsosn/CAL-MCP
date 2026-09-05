@@ -41,5 +41,19 @@ Capture/recheck dates: **2026-09-04–2026-09-05**.
 | `kwic_texts_empty.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (bounded no-hit text scope) | explicit per-text no-example marker plus `total examples: 0` |
 | `kwic_dialects_aryk2_a.html` | `https://cal.huc.edu/dKWIC.php?lemma=%29ryk%232+A` | ordered CAL-owned dialect IDs/labels plus hidden lemma/POS contract |
 | `kwic_dialect_aryk2_a_biblical.html` | `https://cal.huc.edu/show1dialectKWIC.php?lemma=%29ryk%232&pos=A&texts=3` | one Biblical-Aramaic target hit with file/subtext/charset/coordinate and Hebrew context |
+| `targum_parallel_gen_1_1.html` | `POST https://cal.huc.edu/showtargum.php` (`bookname=01`, `chapter=01`, `verse=01`, optional Peshitta/Samaritan requested) | MT plus ordered current CAL Targum/source readings, Hebrew/Aramaic/Syriac Unicode, source chapter links, optional Peshitta, and absent Samaritan output |
+| `targum_parallel_not_found.html` | `POST https://cal.huc.edu/showtargum.php` (`bookname=01`, `chapter=01`, `verse=99`) | current explicit `error in coordinate` not-found semantics |
+| `targum_concordance_klb.html` | `POST https://cal.huc.edu/showtargumKWIC.php` (`lemma=klb`, `pos=N`) | ordered Targum section/source counts, same-origin example links, and reported total 59 |
+| `targum_concordance_zero.html` | bounded structurally valid no-hit Targum concordance query | complete all-zero source table plus `total examples: 0` |
+| `targum_hebrew_lemmas_mem_onqelos.html` | `https://cal.huc.edu/Omtlemmas/memMTlemma.html` | Onqelos MT-Hebrew lemma chooser with ordered opaque `R1` IDs, vocalized labels, and displayed POS |
+| `targum_hebrew_lemmas_mem_neofiti.html` | `https://cal.huc.edu/mtlemmas/memMTlemma.html` | Neofiti source-specific MT-Hebrew lemma chooser form/action semantics |
+| `targum_reflex_onqelos_1751.html` | `POST https://cal.huc.edu/getOmtlemma.php` (`R1=1751`) | selected MT Hebrew lemma plus Onqelos CAL lemma correspondence, frequency, and example URL |
+| `targum_reflex_neofiti_1751.html` | `POST https://cal.huc.edu/getNmtlemma.php` (`R1=1751`) | selected MT Hebrew lemma plus multiple ordered Neofiti CAL lemma correspondences |
+| `targum_reflex_invalid_id.html` | bounded invalid Onqelos selector probe (`R1=999999`) | current broad invalid-ID fallback with missing selected Hebrew lemma, which must fail closed |
+| `syriac_category_metrical.html` | `https://cal.huc.edu/show_Syriac_categories.php?category=6` | dynamic Syriac category with ordered direct/group navigation and file-information links |
+| `syriac_category_ot_peshitta.html` | `https://cal.huc.edu/ot_peshitta.html` | static OT Peshitta category using the same typed text-item contract |
+| `syriac_missing_verbs.html` | `https://cal.huc.edu/display_missing_verbs.php` | CAL-curated verbs absent from *A Syriac Lexicon*, with canonical lemma links and notes |
+| `syriac_peshitta_gen_1_1.html` | `POST https://cal.huc.edu/showpesh.php` (`bookname=01`, `chapter=01`, `verse=01`) | Gen 1:1 MT/Peshitta Unicode text and Peshitta chapter navigation |
+| `syriac_peshitta_not_found.html` | bounded invalid-coordinate `showpesh.php` probe | current explicit `error in coord` not-found semantics |
 
-The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance/bibliography fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
+The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance/bibliography/Targum/Syriac fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
