@@ -1,0 +1,35 @@
+name: Format Syriac GREEN implementation
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/format-syriac-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-11-syriac
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Format target
+        run: |
+          python -m pip install "ruff<1,>=0.12"
+          ruff format src/cal_mcp/syriac.py
+          ruff check src/cal_mcp/syriac.py
+      - name: Commit format-only change
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/syriac.py
+          git commit -m "style: format Syriac implementation"
+          git push origin HEAD:feat/issue-11-syriac
