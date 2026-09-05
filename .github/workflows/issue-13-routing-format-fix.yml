@@ -1,0 +1,38 @@
+name: Issue 13 routing format fix
+
+on:
+  push:
+    branches:
+      - feat/issue-13-external-citations
+    paths:
+      - .github/workflows/issue-13-routing-format-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - name: Split routing string and self-clean
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/cal_mcp/server.py')
+          s = p.read_text(encoding='utf-8')
+          old = '        "The external/non-online-text citations workflow is distinct from cal_citation_text_search. "\n'
+          new = ('        "The external/non-online-text citations workflow is distinct from "\n'
+                 '        "cal_citation_text_search. "\n')
+          if old not in s:
+              raise SystemExit('routing line not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          rm .github/workflows/issue-13-routing-format-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/server.py .github/workflows/issue-13-routing-format-fix.yml
+          git commit -m 'style: wrap external citation routing instruction'
+          git push origin HEAD:feat/issue-13-external-citations
