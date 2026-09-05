@@ -230,8 +230,9 @@ class _DialectOptionBuilder:
 
 
 class _DialectSelectorParser(HTMLParser):
-    def __init__(self) -> None:
+    def __init__(self, source_url: str) -> None:
         super().__init__(convert_charrefs=True)
+        self._source_url = source_url
         self.target_forms = 0
         self.inputs: dict[str, list[str]] = {}
         self.options: list[KwicDialectRef] = []
@@ -245,6 +246,7 @@ class _DialectSelectorParser(HTMLParser):
             action = attr_map.get("action", "") or ""
             self._in_target_form = _is_path(action, "show1dialectKWIC.php")
             if self._in_target_form:
+                _cal_navigation_url(self._source_url, action, "show1dialectKWIC.php")
                 self.target_forms += 1
             return
         if not self._in_target_form:
@@ -347,7 +349,7 @@ def parse_kwic_dialect_options(
     lemma_key: str,
 ) -> KwicDialectOptionsPage:
     lemma, suffix, canonical_key = _validate_lemma_key(lemma_key)
-    parser = _DialectSelectorParser()
+    parser = _DialectSelectorParser(response.url)
     parser.feed(response.body.decode("utf-8", errors="replace"))
     parser.close()
     if parser.target_forms != 1:
