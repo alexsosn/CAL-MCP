@@ -73,7 +73,7 @@ Cross-origin or wrong-endpoint source/lemma links, duplicate ambiguous query par
 
 ## Validation and provenance
 
-`dialect_id` is an opaque decimal CAL identifier returned by dialect discovery. `source_abbrev` is an exact CAL abbreviation returned by source discovery; punctuation and case are preserved. Non-space whitespace and Unicode control/format characters are rejected before transport.
+`dialect_id` is an opaque decimal CAL identifier returned by dialect discovery. `source_abbrev` is an exact CAL abbreviation returned by source discovery; punctuation and case are preserved. Non-space whitespace and Unicode control/format characters are rejected before transport. If CAL itself returns a source abbreviation or lexical navigation key containing those characters, that response fails closed as parser drift so a value emitted by one stage cannot become unusable or unsafe in the next explicit stage.
 
 Results include the CAL source URL, retrieval time, operation name, and the submitted dialect/source identifier where applicable. CAL-private form names and endpoint parameters are adapter internals and are not exposed in the MCP schema.
 
