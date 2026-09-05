@@ -267,9 +267,7 @@ class _ParallelParser(HTMLParser):
     def close(self) -> None:
         super().close()
         if self._ignored_depth:
-            raise TargumParseError(
-                "CAL Targum page has an unclosed ignored content subtree"
-            )
+            raise TargumParseError("CAL Targum page has an unclosed ignored content subtree")
 
 
 @dataclass(slots=True)
@@ -366,9 +364,7 @@ class _SemanticTableParser(HTMLParser):
     def close(self) -> None:
         super().close()
         if self._ignored_depth:
-            raise TargumParseError(
-                "CAL Targum result has an unclosed ignored content subtree"
-            )
+            raise TargumParseError("CAL Targum result has an unclosed ignored content subtree")
 
 
 @dataclass(slots=True)
@@ -438,9 +434,7 @@ class _HebrewLemmaChooserParser(HTMLParser):
     def close(self) -> None:
         super().close()
         if self._ignored_depth:
-            raise TargumParseError(
-                "CAL MT lemma chooser has an unclosed ignored content subtree"
-            )
+            raise TargumParseError("CAL MT lemma chooser has an unclosed ignored content subtree")
         if self._in_target_form:
             raise TargumParseError("CAL MT lemma chooser form is incomplete")
 
