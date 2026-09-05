@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.lemma_key import validate_lemma_key
 
 
 class DictionaryCollationParseError(CalContentError):
@@ -353,7 +354,13 @@ def _parse_entry_paragraph(
         raise DictionaryCollationParseError(
             "CAL dictionary collation entry link has invalid lemma semantics"
         )
-    target_lemma_key = _returned_single_line(lemma_values[0], "entry lemma key")
+    returned_lemma_key = _returned_single_line(lemma_values[0], "entry lemma key")
+    try:
+        _, _, target_lemma_key = validate_lemma_key(returned_lemma_key)
+    except ValueError as exc:
+        raise DictionaryCollationParseError(
+            "CAL dictionary collation entry link has an invalid lemma key"
+        ) from exc
     cits_values = query.get("cits")
     if cits_values is not None and cits_values != ["no"]:
         raise DictionaryCollationParseError(
