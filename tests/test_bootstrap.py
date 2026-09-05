@@ -36,6 +36,9 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_targum_concordance",
         "cal_targum_hebrew_lemmas",
         "cal_targum_hebrew_reflexes",
+        "cal_syriac_texts",
+        "cal_syriac_missing_words",
+        "cal_syriac_peshitta_parallel",
     }
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
@@ -120,6 +123,18 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(targum_hebrew_reflexes_schema["properties"]) == {"targum", "mt_lemma_id"}
     assert targum_hebrew_reflexes_schema["required"] == ["targum", "mt_lemma_id"]
 
+    syriac_texts_schema = tools["cal_syriac_texts"].input_schema
+    assert set(syriac_texts_schema["properties"]) == {"category"}
+    assert syriac_texts_schema["required"] == ["category"]
+
+    syriac_missing_words_schema = tools["cal_syriac_missing_words"].input_schema
+    assert set(syriac_missing_words_schema["properties"]) == {"category"}
+    assert syriac_missing_words_schema["required"] == ["category"]
+
+    syriac_peshitta_schema = tools["cal_syriac_peshitta_parallel"].input_schema
+    assert set(syriac_peshitta_schema["properties"]) == {"book", "chapter", "verse"}
+    assert syriac_peshitta_schema["required"] == ["book", "chapter", "verse"]
+
     for schema in (
         lexicon_schema,
         gloss_schema,
@@ -140,6 +155,9 @@ async def _assert_public_tools(client: Client) -> None:
         targum_concordance_schema,
         targum_hebrew_lemmas_schema,
         targum_hebrew_reflexes_schema,
+        syriac_texts_schema,
+        syriac_missing_words_schema,
+        syriac_peshitta_schema,
     ):
         for private_parameter in (
             "English",
@@ -172,6 +190,17 @@ async def _assert_public_tools(client: Client) -> None:
     ):
         for unsupported_bound in ("page", "offset", "limit"):
             assert unsupported_bound not in schema["properties"]
+
+    for schema in (syriac_texts_schema, syriac_missing_words_schema, syriac_peshitta_schema):
+        for private_syriac_parameter in (
+            "bookname",
+            "dial",
+            "cset",
+            "file",
+            "keyword",
+            "coord",
+        ):
+            assert private_syriac_parameter not in schema["properties"]
 
 
 @pytest.mark.anyio
