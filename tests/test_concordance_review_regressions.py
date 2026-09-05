@@ -8,6 +8,7 @@ from cal_mcp.client import CalResponse
 from cal_mcp.concordance import (
     ConcordanceParseError,
     KwicScopeKind,
+    parse_kwic_dialect_options,
     parse_kwic_result,
     parse_text_concordance_page,
 )
@@ -92,3 +93,21 @@ def test_text_concordance_rejects_malformed_returned_lemma_key() -> None:
             requested_text_id="13250",
             requested_charset="S",
         )
+
+
+def test_dialect_selector_rejects_foreign_origin_target_form() -> None:
+    response = _response(
+        """<html><body>
+<form action="https://other.example/show1dialectKWIC.php" method="get">
+<input type="hidden" name="lemma" value=")ryk#2">
+<input type="hidden" name="pos" value="A">
+<select name="texts">
+<option value="3">Biblical Aramaic</option>
+</select>
+</form>
+</body></html>""",
+        "https://cal.huc.edu/dKWIC.php?lemma=%29ryk%232+A",
+    )
+
+    with pytest.raises(ConcordanceParseError):
+        parse_kwic_dialect_options(response, lemma_key=")ryk#2 A")
