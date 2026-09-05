@@ -24,10 +24,7 @@ def _response(body: str, url: str) -> CalResponse:
 
 
 def test_text_concordance_rejects_foreign_origin_kwic_link() -> None:
-    href = (
-        "https://other.example/showKWIC.php?"
-        "lemma=mlk+N&amp;charset=S&amp;texts=13250"
-    )
+    href = "https://other.example/showKWIC.php?lemma=mlk+N&amp;charset=S&amp;texts=13250"
     response = _response(
         f"""<html><body>
 <div>Frequencies of lemmas in text 13250</div>
