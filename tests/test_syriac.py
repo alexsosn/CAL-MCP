@@ -7,10 +7,10 @@ import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.syriac import (
+    SyriacParseError,
     SyriacPeshittaStatus,
     SyriacService,
     SyriacTextNavigationKind,
-    SyriacParseError,
     parse_syriac_missing_words_page,
     parse_syriac_peshitta_page,
     parse_syriac_text_category_page,
@@ -55,9 +55,7 @@ def test_dynamic_syriac_category_preserves_order_navigation_kind_and_info_links(
         ("60424", "Ephrem, Hymns", SyriacTextNavigationKind.TEXT),
         ("63400", "Narsai, metrical homilies", SyriacTextNavigationKind.GROUP),
     ]
-    assert page.items[0].navigation_url == (
-        "https://cal.huc.edu/showsubtexts.php?keyword=60420"
-    )
+    assert page.items[0].navigation_url == ("https://cal.huc.edu/showsubtexts.php?keyword=60420")
     assert page.items[1].navigation_url == (
         "https://cal.huc.edu/get_a_chapter.php?file=60424&cset=S"
     )
@@ -148,9 +146,7 @@ def test_missing_words_preserve_cal_lemma_keys_labels_notes_and_entry_urls() -> 
         "to form, fashion",
         "to come",
     ]
-    assert page.items[0].entry_url == (
-        "https://cal.huc.edu/oneentry.php?cits=all&lemma=%29br+V"
-    )
+    assert page.items[0].entry_url == ("https://cal.huc.edu/oneentry.php?cits=all&lemma=%29br+V")
 
 
 @pytest.mark.parametrize(
@@ -204,9 +200,7 @@ def test_peshitta_parallel_preserves_unicode_label_and_chapter_link() -> None:
     assert page.mt_text is not None and "בְּרֵאשִׁית" in page.mt_text
     assert page.peshitta_label == "Peshitta:"
     assert page.peshitta_text == "ܒܪܫܝܬ ܒܪܐ ܐܠܗܐܲ ܝܬ ܫܡܝܐ ܘܝܬ ܐܪܥܐܲ"
-    assert page.peshitta_url == (
-        "https://cal.huc.edu/get_a_chapter.php?file=62001&sub=01&cset=U"
-    )
+    assert page.peshitta_url == ("https://cal.huc.edu/get_a_chapter.php?file=62001&sub=01&cset=U")
 
 
 def test_peshitta_explicit_coordinate_error_is_typed_not_found() -> None:
@@ -416,7 +410,9 @@ async def test_services_issue_exactly_one_request_each_and_preserve_provenance()
         ("peshitta_parallel", ("Gen", 1, 1000)),
     ],
 )
-async def test_invalid_public_inputs_fail_before_transport(method: str, args: tuple[object, ...]) -> None:
+async def test_invalid_public_inputs_fail_before_transport(
+    method: str, args: tuple[object, ...]
+) -> None:
     service, transport = _service()
 
     with pytest.raises(ValueError):
