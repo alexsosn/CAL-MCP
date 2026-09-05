@@ -1,0 +1,128 @@
+name: Register Syriac MCP tools
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/register-syriac-tools.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-11-syriac
+      - name: Register frozen public surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/server.py")
+          text = path.read_text()
+
+          old = "from cal_mcp.search import EnglishSearchService\nfrom cal_mcp.targum import TargumService\n"
+          new = (
+              "from cal_mcp.search import EnglishSearchService\n"
+              "from cal_mcp.syriac import SyriacService\n"
+              "from cal_mcp.targum import TargumService\n"
+          )
+          if text.count(old) != 1:
+              raise SystemExit("import anchor mismatch")
+          text = text.replace(old, new, 1)
+
+          old = '''        "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "\n        "Follow-ups are always explicit tool calls; there is no hidden text, dialect, "\n'''
+          new = '''        "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. Use "\n        "cal_syriac_texts for one CAL Syriac text category, cal_syriac_missing_words for one "\n        "CAL-curated category of headwords absent from A Syriac Lexicon, and "\n        "cal_syriac_peshitta_parallel for one explicit MT/Peshitta verse comparison. "\n        "Follow-ups are always explicit tool calls; there is no hidden text, dialect, "\n'''
+          if text.count(old) != 1:
+              raise SystemExit("instructions anchor mismatch")
+          text = text.replace(old, new, 1)
+
+          marker = '''\n\ndef main() -> None:\n    """Run the CAL-MCP server over stdio."""\n    mcp.run()\n'''
+          if text.count(marker) != 1:
+              raise SystemExit("main anchor mismatch")
+          tools = r'''
+
+@mcp.tool(
+    name="cal_syriac_texts",
+    title="Browse one CAL Syriac text category",
+    structured_output=True,
+)
+async def cal_syriac_texts(
+    category: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return one bounded CAL Syriac text-category listing.
+
+    ``category`` is a CAL-MCP descriptive slug, not CAL's private numeric category value.
+    Direct text and grouped-navigation results remain distinct and are never followed
+    automatically. Use existing text tools for explicit follow-up reading.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).texts(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_missing_words",
+    title="List CAL Syriac headwords absent from A Syriac Lexicon",
+    structured_output=True,
+)
+async def cal_syriac_missing_words(
+    category: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return one CAL-curated missing-from-A-Syriac-Lexicon category.
+
+    This is CAL's published comparison surface against A Syriac Lexicon, not SEDRA and not
+    an adapter-inferred equivalence. Full CAL lexicon entries require a separate explicit
+    lookup; one call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).missing_words(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_peshitta_parallel",
+    title="Compare one biblical verse in MT and CAL Peshitta",
+    structured_output=True,
+)
+async def cal_syriac_peshitta_parallel(
+    book: str,
+    chapter: int,
+    verse: int,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Return CAL's MT/Peshitta comparison for one explicit biblical verse.
+
+    The result preserves CAL Hebrew/Syriac text and the Peshitta source link. Invalid
+    coordinates are a typed not-found state; previous/next verse links are never followed.
+    One call performs exactly one bounded CAL request.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).peshitta_parallel(book, chapter, verse)
+    return result.to_dict()
+'''
+          text = text.replace(marker, tools + marker, 1)
+          path.write_text(text)
+          PY
+          python -m pip install "ruff<1,>=0.12"
+          ruff format src/cal_mcp/server.py
+          ruff check src/cal_mcp/server.py
+      - name: Commit registration GREEN
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/server.py
+          git commit -m "feat: register Syriac MCP tools"
+          git push origin HEAD:feat/issue-11-syriac
