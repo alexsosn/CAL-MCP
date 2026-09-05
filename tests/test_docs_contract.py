@@ -70,6 +70,7 @@ def test_cross_cutting_request_bounds_preserve_lexicon_two_request_exception() -
     architecture = ARCHITECTURE.read_text(encoding="utf-8")
     lexicon = LEXICON_DOC.read_text(encoding="utf-8")
 
+    # cal_lexicon_lookup is intentionally the bounded two-request success-path exception.
     assert "successful lookup normally uses two CAL requests" in lexicon
     assert "one public operation maps to one CAL request" not in research
     assert "one explicit HTTP request" not in architecture
