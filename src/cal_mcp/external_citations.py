@@ -222,9 +222,7 @@ class _DialectParser(_IgnoredMarkupParser):
         label = _clean_text("".join(self.open_link.parts))
         if not label or self.open_dialect_id is None:
             raise ExternalCitationParseError("CAL dialect navigation has no rendered label")
-        self.dialects.append(
-            ExternalCitationDialect(dialect_id=self.open_dialect_id, label=label)
-        )
+        self.dialects.append(ExternalCitationDialect(dialect_id=self.open_dialect_id, label=label))
         self.open_link = None
         self.open_dialect_id = None
 
@@ -465,9 +463,7 @@ class _CitationParser(_IgnoredMarkupParser):
             self.entry.capture_depth -= 1
             if self.entry.capture_depth == 0:
                 field_name = self.entry.capture_field
-                self.entry.fields[field_name] = _optional_text(
-                    "".join(self.entry.capture_parts)
-                )
+                self.entry.fields[field_name] = _optional_text("".join(self.entry.capture_parts))
                 self.entry.capture_field = None
                 self.entry.capture_parts = []
 
@@ -614,9 +610,7 @@ def parse_external_citations_page(response: CalResponse) -> ExternalCitationPage
             "CAL external-citation empty marker contradicts its result heading"
         )
     if explicit_empty and parser.citations:
-        raise ExternalCitationParseError(
-            "CAL external-citation page contradicts its empty marker"
-        )
+        raise ExternalCitationParseError("CAL external-citation page contradicts its empty marker")
     if not explicit_empty and not parser.citations:
         raise ExternalCitationParseError(
             "CAL external-citation page contains neither citations nor explicit empty state"
