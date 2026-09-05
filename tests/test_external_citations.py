@@ -249,7 +249,8 @@ def test_malformed_or_contradictory_citation_page_is_parser_drift(body: str) -> 
 
 def test_style_and_script_do_not_create_false_external_citation_semantics() -> None:
     response = _inline_response(
-        "<html><body><style>.x{content:'No citations for &quot;1CorH&quot; are currently stored.'}</style>"
+        "<html><body><style>.x{content:'No citations for "
+        "&quot;1CorH&quot; are currently stored.'}</style>"
         "<script>const x = 'cit-entry';</script><h1>Citations for 1CorH</h1><p>changed</p>"
         "</body></html>",
         "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH",
