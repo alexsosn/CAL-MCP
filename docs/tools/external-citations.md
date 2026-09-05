@@ -49,6 +49,12 @@ cal_external_citations(source_abbrev)
 
 Each tool call performs exactly one bounded CAL request. There is no hidden dialect traversal, source traversal, pagination, source-text reconstruction, online-text lookup, or lexical-entry expansion.
 
+### Concrete example
+
+Current CAL discovery includes the dialect choice `{"dialect_id": "6", "label": "Syriac"}`. Calling `cal_external_citation_sources("6")` returns, among many current Syriac choices, the source abbreviation `1CorH` for the Harklean version of 1 Corinthians. A separate `cal_external_citations("1CorH")` call returns ordered lexical citations including a record whose rendered `reference` is `1CorH 12:28`.
+
+`1CorH 12:28` is CAL's external-source reference, **not an online CAL passage coordinate**. It must not be treated as a `file_id`/subtext/page location or passed to `cal_text_page`. Following the citation's returned CAL lemma with `cal_lexicon_lookup` is another explicit caller action.
+
 ## Relationship to other citation/text tools
 
 `cal_citation_text_search(query)` searches one to three English words inside CAL lexicon citations. It does not discover cited-but-not-online source texts.
@@ -67,7 +73,7 @@ Cross-origin or wrong-endpoint source/lemma links, duplicate ambiguous query par
 
 ## Validation and provenance
 
-`dialect_id` is an opaque decimal CAL identifier returned by dialect discovery. `source_abbrev` is an exact CAL abbreviation returned by source discovery; punctuation and case are preserved.
+`dialect_id` is an opaque decimal CAL identifier returned by dialect discovery. `source_abbrev` is an exact CAL abbreviation returned by source discovery; punctuation and case are preserved. Non-space whitespace and Unicode control/format characters are rejected before transport.
 
 Results include the CAL source URL, retrieval time, operation name, and the submitted dialect/source identifier where applicable. CAL-private form names and endpoint parameters are adapter internals and are not exposed in the MCP schema.
 
