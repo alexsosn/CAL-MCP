@@ -155,6 +155,10 @@ class _DictionaryCollationHTMLParser(HTMLParser):
         if tag == "div":
             classes = set((attributes.get("class") or "").split())
             if self._card_depth:
+                if "summary-card" in classes:
+                    raise DictionaryCollationParseError(
+                        "CAL dictionary collation contains a nested summary card"
+                    )
                 self._card_depth += 1
             elif "summary-card" in classes:
                 self.summary_cards += 1
