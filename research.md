@@ -364,3 +364,18 @@ The module's “citations from texts not in the CAL database” link is the Syri
 Sources and bounded probe details are recorded in `docs/research/issue-11-syriac.md`. Two temporary branch-only probes made eight CAL requests total and were removed before planning; normal CI remains offline.
 
 **Implication:** issue #11 should expose three bounded task-level specialist operations: Syriac text-category discovery, CAL's curated missing-from-*A Syriac Lexicon* lists, and MT/Peshitta verse comparison. Each public operation performs exactly one CAL request and returns CAL provenance. External citations, direct text reading, grouped text expansion, lexicon-entry fetching, and verse traversal remain separate caller-controlled operations.
+
+## R-020 — Current external-text citation finder is an explicit dialect → source → citation workflow
+
+**Rechecked:** 2026-09-05.
+
+CAL's current search page exposes citations from texts not present in the online database as a separate Citation Finder. The live UI is an explicit three-stage workflow: `citfinder.html` lists 19 ordered CAL dialect IDs/labels; choosing one dialect opens a source-abbreviation list headed as texts with citations but no full text yet; choosing one exact source abbreviation opens that source's ordered lexical citations. A bounded Syriac probe returned 703 source rows in one approximately 317 KB response, and `1CorH` returned three citation rows. No pagination/continuation control was observed on these representative pages.
+
+Current source rows preserve a CAL source abbreviation plus rendered bibliographic/source description. Current citation rows expose a same-origin CAL lexical-entry link with canonical lemma key, rendered lemma/POS, external-source citation string, lexical gloss, source-language citation text when present, and optional English translation. The lexical link is an explicit follow-up into entry context; the absent source is not thereby available through CAL's ordinary online text browser. A source abbreviation such as `1CorH` must therefore not be represented as a CAL online `file_id` or guessed passage coordinate.
+
+CAL currently returns explicit HTTP-200 empty markers for both stages: `No extra citations for that dialect are currently found.` and `No citations for "…" are currently stored.` A successful-looking page with neither recognized semantic rows nor the corresponding marker is parser drift rather than an empty result.
+
+Branch-only research made seven fixed, bounded CAL GETs across three runs (three structural pages, two negative pages, and one repeat of those same two negative pages after correcting a local visible-text extractor). All requests had hard time/size caps; no dialect/source/citation enumeration or lexical-entry traversal occurred. Detailed evidence and raw semantic shapes are recorded in `docs/research/issue-13-external-citations.md`.
+
+**Implication:** expose caller-controlled dialect discovery, one-dialect source discovery, and one-source citation retrieval as separate bounded operations. Keep private endpoint/form fields hidden, do not invent pagination, never auto-follow lexical-entry links, and keep this result model distinct from both English citation-text search and online-corpus passage retrieval.
+
