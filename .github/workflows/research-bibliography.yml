@@ -9,40 +9,85 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Inspect current CAL bibliography forms
+      - name: Inspect bounded CAL bibliography results
         run: |
           python - <<'PY'
+          import re
           from html.parser import HTMLParser
+          from urllib.parse import urlencode, urljoin
           from urllib.request import Request, urlopen
 
           BASE = "https://cal.huc.edu/"
-          PAGES = ["namesearch.html", "allsigs.html", "lemmas_list.html"]
+          UA = {"User-Agent": "CAL-MCP bounded research probe"}
 
           class P(HTMLParser):
               def __init__(self):
                   super().__init__()
-                  self.forms = []
-                  self.current = None
                   self.links = []
+                  self.options = []
+                  self._option = None
+                  self._text = []
               def handle_starttag(self, tag, attrs):
                   a = dict(attrs)
-                  if tag == "form":
-                      self.current = {"action": a.get("action"), "method": a.get("method"), "fields": []}
-                      self.forms.append(self.current)
-                  elif tag in {"input", "select", "button"} and self.current is not None:
-                      self.current["fields"].append((tag, a.get("name"), a.get("value"), a.get("type")))
-                  elif tag == "a" and a.get("href"):
-                      self.links.append(a["href"])
+                  if tag == "a" and a.get("href"):
+                      self.links.append((a["href"], ""))
+                  elif tag == "option":
+                      self._option = [a.get("value", ""), []]
+              def handle_data(self, data):
+                  self._text.append(data)
+                  if self._option is not None:
+                      self._option[1].append(data)
+                  if self.links:
+                      href, text = self.links[-1]
+                      self.links[-1] = (href, text + data)
               def handle_endtag(self, tag):
-                  if tag == "form":
-                      self.current = None
+                  if tag == "option" and self._option is not None:
+                      self.options.append((self._option[0], " ".join("".join(self._option[1]).split())))
+                      self._option = None
+              @property
+              def text(self):
+                  return "\n".join(x for x in (" ".join(s.split()) for s in self._text) if x)
 
-          for path in PAGES:
-              req = Request(BASE + path, headers={"User-Agent": "CAL-MCP bounded research probe"})
+          def fetch(path, data=None):
+              body = None if data is None else urlencode(data).encode()
+              req = Request(urljoin(BASE, path), data=body, headers=UA)
               with urlopen(req, timeout=15) as response:
-                  body = response.read().decode("utf-8", "replace")
-                  print("PAGE", path, "STATUS", response.status, "FINAL", response.geturl(), "BYTES", len(body))
-              parser = P(); parser.feed(body)
-              print("FORMS", parser.forms)
-              print("LINK_SAMPLE", parser.links[:20])
+                  raw = response.read().decode("utf-8", "replace")
+                  print("FETCH", path, "POST" if body else "GET", "STATUS", response.status, "FINAL", response.geturl(), "BYTES", len(raw))
+                  return response.geturl(), raw
+
+          # 1. Author prefix selection.
+          author_url, author_html = fetch("browsenames.php", {"first3": "Gze"})
+          p = P(); p.feed(author_html)
+          author_links = [(h, " ".join(t.split())) for h, t in p.links if h and not h.startswith("mailto:")]
+          print("AUTHOR_TEXT", p.text[:1200])
+          print("AUTHOR_LINKS", author_links[:20])
+
+          # 2. Follow only the first CAL result-ish author link if present.
+          candidates = [h for h, _ in author_links if "bib" in h.lower() or "author" in h.lower() or "sig" in h.lower()]
+          if candidates:
+              result_url, result_html = fetch(candidates[0])
+              p2 = P(); p2.feed(result_html)
+              print("AUTHOR_RESULT_TEXT", p2.text[:2500])
+              print("AUTHOR_RESULT_LINKS", [(h, " ".join(t.split())) for h, t in p2.links[:30]])
+
+          # 3. One current subject leaf result.
+          subject_path = "browsesigla.php?generalclass=General%20Topics&subclass=Lexicography"
+          subject_url, subject_html = fetch(subject_path)
+          ps = P(); ps.feed(subject_html)
+          print("SUBJECT_TEXT", ps.text[:2500])
+          print("SUBJECT_LINKS", [(h, " ".join(t.split())) for h, t in ps.links[:30]])
+
+          # 4. Discover one stable lemma option containing mlk, then submit it.
+          _, lemma_list_html = fetch("lemmas_list.html")
+          pl = P(); pl.feed(lemma_list_html)
+          matches = [(v, t) for v, t in pl.options if re.search(r"(^|[^A-Za-z])mlk([^A-Za-z]|$)", v + " " + t, re.I)]
+          print("LEMMA_OPTION_MATCHES", matches[:10])
+          if matches:
+              lemma_value = matches[0][0]
+              lemma_url, lemma_html = fetch("getbiblemma.php", {"myauthor": lemma_value})
+              pr = P(); pr.feed(lemma_html)
+              print("LEMMA_RESULT_VALUE", lemma_value)
+              print("LEMMA_RESULT_TEXT", pr.text[:2500])
+              print("LEMMA_RESULT_LINKS", [(h, " ".join(t.split())) for h, t in pr.links[:30]])
           PY
