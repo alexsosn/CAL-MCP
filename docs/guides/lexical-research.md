@@ -43,10 +43,10 @@ See [Concordance and KWIC](../tools/concordance.md) and [Corpus context](corpus-
 
 ## Move from a lemma to bibliography
 
-For a canonical lemma key returned by CAL-MCP:
+For a canonical lemma key returned by CAL-MCP, use `cal_bibliography_lemma`. The bibliography fixture contract includes keys such as `cly V`:
 
 ```text
-cal_bibliography_lemma(lemma_key="...")
+cal_bibliography_lemma(lemma_key="cly V")
 ```
 
 For bibliography organized by author, first discover the exact author choice with `cal_bibliography_authors`, then call `cal_bibliography_author`. Use `cal_bibliography_keyword` for one exact CAL text/subject tag.
