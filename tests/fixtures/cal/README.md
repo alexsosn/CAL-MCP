@@ -7,6 +7,7 @@ Capture/recheck dates: **2026-09-04–2026-09-05**.
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
 | `browse_b.html` | `https://cal.huc.edu/browseSKEYheaders.php?first3=%22b%22` | direct headwords, homographs, alias-arrow resolution |
+| `entry_b_inline_style.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=b+s` | 2026-09-05 inline non-content `<style>`/`<script>` drift before a valid lemma header; bodies reduced to parser-significant tokens |
 | `entry_br_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | numbered/nested senses, dialects, Unicode citation text, form/usage, derivative depth, notes |
 | `entry_br_nested.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | repeated parenthetical sense levels plus mixed linked/plain citations sharing rendered rows |
 | `entry_bysh_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=by%24h+N` | full-form alias resolution and optional-section absence |
