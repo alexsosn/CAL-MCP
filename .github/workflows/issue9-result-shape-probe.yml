@@ -1,0 +1,45 @@
+name: Issue 9 result shape probe
+
+on:
+  push:
+    branches: [research/issue-9-live-probe]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect representative and empty bibliography results
+        shell: bash
+        run: |
+          set -euo pipefail
+          UA='CAL-MCP research probe'
+          curl --fail --silent --show-error --max-time 20 --user-agent "$UA" -G \
+            --data-urlencode 'myauthor=Kaufman, Stephen A.' \
+            https://cal.huc.edu/getbibauthor.php > /tmp/author.html
+          for endpoint in getbibauthor.php getbibsigla.php getbiblemma.php; do
+            curl --fail --silent --show-error --max-time 20 --user-agent "$UA" -G \
+              --data-urlencode 'myauthor=CALMCP_NONEXISTENT_20260905' \
+              "https://cal.huc.edu/$endpoint" > "/tmp/empty-$endpoint.html"
+          done
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from pathlib import Path
+
+          class Text(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.parts=[]
+              def handle_data(self, data):
+                  value=' '.join(data.split())
+                  if value:
+                      self.parts.append(value)
+
+          for path in [Path('/tmp/author.html'), *sorted(Path('/tmp').glob('empty-getbib*.html'))]:
+              p=Text(); p.feed(path.read_text(encoding='utf-8', errors='replace'))
+              print(f'=== {path.name} ===')
+              for line in p.parts[:40]:
+                  print(line)
+          PY
