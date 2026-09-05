@@ -50,10 +50,10 @@ The result page also contains inline `<style>` elements. Parser semantics theref
 
 `AvailSyr.html` currently exposes four Bible-oriented static category pages and sixteen dynamic categories:
 
-- `ot-peshitta` — OT Peshitta
+- `ot-peshitta` — OT Peshiṭta
 - `old-syriac-gospels` — Old Syriac Gospels
-- `nt-peshitta` — NT Peshitta
-- `apocryphal-pseudepigraphal` — Apocryphal/Pseudepigraphal texts
+- `nt-peshitta` — NT Peshiṭta
+- `apocryphal-pseudepigraphal` — Apocryphal/Pseudepigraphal Texts
 - `commentaries`
 - `metrical-homilies-hymns`
 - `dispute-poems`
@@ -70,6 +70,8 @@ The result page also contains inline `<style>` elements. Parser semantics theref
 - `martyrologies`
 - `various`
 - `inscriptions`
+
+A review-stage bounded recheck on 2026-09-05 confirmed the exact current static headings `OT Peshiṭta`, `NT Peshiṭta`, and `Apocryphal/Pseudepigraphal Texts`; the reduced fixtures and parser contract use those upstream spellings.
 
 The dynamic categories map to CAL's current numeric category values 5–20. A bounded check of category 6 (`Metrical Homilies and Hymns`) showed two navigation shapes in the same ordered result list:
 
