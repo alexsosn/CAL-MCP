@@ -1,4 +1,4 @@
-name: Research concordance shapes
+name: Research concordance final shapes
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Probe bounded CAL concordance branches
+      - name: Probe bounded CAL concordance results
         run: |
           python - <<'PY'
           from html.parser import HTMLParser
@@ -54,17 +54,37 @@ jobs:
 
           cases = [
               (
-                  "old-aramaic-file-list",
+                  "tel-dan-single-text-concordance",
                   Request(
-                      "https://cal.huc.edu/show_files_for_KWIC.php",
-                      data=urlencode({"R1": "1"}).encode(),
+                      "https://cal.huc.edu/newconcord.php?text=13250&cset=S",
                       headers={"User-Agent": "CAL-MCP bounded research probe"},
                   ),
               ),
               (
-                  "biblical-rare-lemma-kwic",
+                  "two-small-texts-advanced-kwic",
                   Request(
-                      "https://cal.huc.edu/show1dialectKWIC.php?lemma=%29ryk%232&pos=A&texts=3",
+                      "https://cal.huc.edu/showdialectKWIC.php",
+                      data=urlencode({
+                          "lemma": "mlk",
+                          "pos": "N",
+                          "texts": "12250 13250",
+                          "charset": "R",
+                          "lth": "2",
+                      }).encode(),
+                      headers={"User-Agent": "CAL-MCP bounded research probe"},
+                  ),
+              ),
+              (
+                  "advanced-kwic-empty",
+                  Request(
+                      "https://cal.huc.edu/showdialectKWIC.php",
+                      data=urlencode({
+                          "lemma": "qzxvjk",
+                          "pos": "N",
+                          "texts": "13250",
+                          "charset": "R",
+                          "lth": "2",
+                      }).encode(),
                       headers={"User-Agent": "CAL-MCP bounded research probe"},
                   ),
               ),
@@ -79,6 +99,6 @@ jobs:
               parser.feed(raw.decode("utf-8", errors="replace"))
               for i, form in enumerate(parser.forms[:5]):
                   print("form", i, form)
-              print("links", parser.links[:50])
-              print("text", " | ".join(parser.text[:180]))
+              print("links", parser.links[:80])
+              print("text", " | ".join(parser.text[:220]))
           PY
