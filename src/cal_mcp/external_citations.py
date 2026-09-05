@@ -5,7 +5,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from datetime import datetime
 from html.parser import HTMLParser
-from urllib.parse import parse_qs, urljoin, urlsplit
+from urllib.parse import SplitResult, parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lemma_key import validate_lemma_key
@@ -593,7 +593,9 @@ def parse_external_citations_page(response: CalResponse) -> ExternalCitationPage
         or parser.heading_parts is not None
         or parser.page_capture_field is not None
     ):
-        raise ExternalCitationParseError("CAL external-citation page has incomplete semantic markup")
+        raise ExternalCitationParseError(
+            "CAL external-citation page has incomplete semantic markup"
+        )
 
     headings = [
         heading for heading in parser.headings if heading.startswith(_CITATION_HEADING_PREFIX)
@@ -750,10 +752,8 @@ def _parse_entry_target(source_url: str, href: str) -> tuple[str, str]:
     return canonical, target
 
 
-def _require_cal_origin(split: object, context: str) -> None:
-    scheme = getattr(split, "scheme")
-    hostname = getattr(split, "hostname")
-    if (scheme.lower(), (hostname or "").lower()) != _CAL_ORIGIN:
+def _require_cal_origin(split: SplitResult, context: str) -> None:
+    if (split.scheme.lower(), split.netloc.lower()) != _CAL_ORIGIN:
         raise ExternalCitationParseError(f"CAL {context} escapes the CAL origin")
 
 
