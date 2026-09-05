@@ -2,6 +2,8 @@
 
 CAL includes lexical citations from some source texts that are cited in the database but are not available as full online CAL texts. CAL-MCP exposes that workflow separately from both online text browsing and English citation-text search.
 
+Public tools: `cal_external_citation_dialects`, `cal_external_citation_sources`, and `cal_external_citations`.
+
 ## Tools
 
 ### `cal_external_citation_dialects()`
