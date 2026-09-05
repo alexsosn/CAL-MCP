@@ -533,7 +533,9 @@ def parse_syriac_text_category_page(
         if info_links:
             info_id, info_url, info_link = info_links[0]
             if info_id != upstream_id:
-                raise SyriacParseError("CAL Syriac category file-information link contradicts its row")
+                raise SyriacParseError(
+                    "CAL Syriac category file-information link contradicts its row"
+                )
             ignored_labels.append(info_link.text)
         label = _row_label(line.text, navigation_link.text, upstream_id, ignored_labels)
         if not label:
@@ -564,9 +566,13 @@ def parse_syriac_missing_words_page(
     parser.feed(response.body.decode("utf-8", errors="replace"))
     parser.close()
 
-    headings = [line.text for line in parser.lines if _MISSING_MARKER.casefold() in line.text.casefold()]
+    headings = [
+        line.text for line in parser.lines if _MISSING_MARKER.casefold() in line.text.casefold()
+    ]
     if len(headings) != 1:
-        raise SyriacParseError("CAL Syriac missing-word page lacks its dictionary comparison heading")
+        raise SyriacParseError(
+            "CAL Syriac missing-word page lacks its dictionary comparison heading"
+        )
 
     items: list[SyriacMissingWord] = []
     seen_lemmas: set[str] = set()
@@ -582,7 +588,9 @@ def parse_syriac_missing_words_page(
             lemma_key = _single_query_value(query, "lemma", "Syriac missing-word entry")
             _, _, canonical_key = _validate_lemma_key(lemma_key)
             if canonical_key != lemma_key:
-                raise SyriacParseError("CAL Syriac missing-word link contains a noncanonical lemma key")
+                raise SyriacParseError(
+                    "CAL Syriac missing-word link contains a noncanonical lemma key"
+                )
             entry_links.append((canonical_key, resolved, link))
         if not entry_links:
             continue
