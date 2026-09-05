@@ -30,17 +30,17 @@ See [English search](tools/search.md) and [Lexical research](guides/lexical-rese
 
 ## Read a CAL text and inspect one token
 
-Use one explicit discovery step, then one page request:
+Use one explicit discovery step, then one page request. The current reduced text fixtures include a `Tel Dan` search result with CAL file `13250`:
 
 ```text
 cal_text_search(query="Tel Dan")
 cal_text_page(file_id="13250")
 ```
 
-A text page preserves CAL machine coordinates and token positions. To inspect one token, make a separate call using the returned coordinate and zero-based token index:
+A text page preserves CAL machine coordinates and token positions. A separate token-analysis fixture uses machine coordinate `7102601002203`, zero-based token index `0`, and returns two ordered analyses:
 
 ```text
-cal_token_analysis(coordinate="...", word_index=0)
+cal_token_analysis(coordinate="7102601002203", word_index=0)
 ```
 
 CAL-MCP never analyses every token on a page automatically.
@@ -74,12 +74,12 @@ See [Bibliography](tools/bibliography.md).
 
 ## Work with cited sources that are not online CAL texts
 
-Use the staged external-citation workflow:
+Use the staged external-citation workflow. Current reduced fixtures include dialect ID `6` (`Syriac`) and source abbreviation `1CorH`:
 
 ```text
 cal_external_citation_dialects()
-cal_external_citation_sources(dialect_id="...")
-cal_external_citations(source_abbrev="...")
+cal_external_citation_sources(dialect_id="6")
+cal_external_citations(source_abbrev="1CorH")
 ```
 
 Each stage is explicit. A returned external-source abbreviation is not an online CAL `file_id`, and CAL-MCP does not reconstruct the missing source text.
@@ -90,7 +90,7 @@ See [External citations](tools/external-citations.md).
 
 For one biblical verse across current CAL Targum readings, use `cal_targum_parallel`. For a Targum-specific lemma count, use `cal_targum_concordance`.
 
-The MT-Hebrew reflex workflow is deliberately two-step:
+The MT-Hebrew reflex workflow is deliberately two-step; current fixtures include selector ID `1751` under Onqelos:
 
 ```text
 cal_targum_hebrew_lemmas(initial="mem", targum="onqelos")
@@ -115,7 +115,7 @@ See [Syriac Studies](tools/syriac.md).
 
 ## Collate one dictionary page
 
-Use `cal_dictionary_collation` when the research question begins from a page reference in one of CAL's supported dictionaries.
+Use `cal_dictionary_collation` when the research question begins from a page reference in one of CAL's supported dictionaries. The fixture-backed Jastrow example uses page `705`:
 
 ```text
 cal_dictionary_collation(source="jastrow", page="705")
