@@ -1,0 +1,46 @@
+name: Fix issue 13 external citation static checks
+on:
+  push:
+    branches: [feat/issue-13-external-citations]
+permissions:
+  contents: write
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - name: Apply minimal static fixes and self-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/cal_mcp/external_citations.py')
+          text = path.read_text(encoding='utf-8')
+          text = text.replace(
+              'from urllib.parse import parse_qs, urljoin, urlsplit',
+              'from urllib.parse import SplitResult, parse_qs, urljoin, urlsplit',
+          )
+          text = text.replace(
+              '        raise ExternalCitationParseError("CAL external-citation page has incomplete semantic markup")',
+              '        raise ExternalCitationParseError(\n'
+              '            "CAL external-citation page has incomplete semantic markup"\n'
+              '        )',
+          )
+          old = '''def _require_cal_origin(split: object, context: str) -> None:\n    scheme = getattr(split, "scheme")\n    hostname = getattr(split, "hostname")\n    if (scheme.lower(), (hostname or "").lower()) != _CAL_ORIGIN:\n        raise ExternalCitationParseError(f"CAL {context} escapes the CAL origin")\n'''
+          new = '''def _require_cal_origin(split: SplitResult, context: str) -> None:\n    if (split.scheme.lower(), split.netloc.lower()) != _CAL_ORIGIN:\n        raise ExternalCitationParseError(f"CAL {context} escapes the CAL origin")\n'''
+          if old not in text:
+              raise SystemExit('origin helper shape not found')
+          text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/issue-13-core-lint-fix.yml
+          git add src/cal_mcp/external_citations.py
+          git commit -m 'fix: satisfy external citation static checks'
+          git push origin HEAD:feat/issue-13-external-citations
