@@ -301,9 +301,7 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
         raise BibliographyParseError("CAL bibliography page contains incomplete semantic markup")
 
     headings = [
-        heading
-        for heading in parser.headings
-        if heading.startswith("CAL Bibliography for ")
+        heading for heading in parser.headings if heading.startswith("CAL Bibliography for ")
     ]
     if len(headings) != 1:
         raise BibliographyParseError("CAL bibliography page lacks one recognizable result heading")
@@ -444,10 +442,9 @@ def _is_expected_cal_target(source_url: str, href: str, filename: str) -> bool:
     resolved = urljoin(source_url, href)
     source = urlsplit(source_url)
     target = urlsplit(resolved)
-    return (
-        (target.scheme, target.netloc) == (source.scheme, source.netloc)
-        and target.path.rsplit("/", 1)[-1] == filename
-    )
+    return (target.scheme, target.netloc) == (source.scheme, source.netloc) and target.path.rsplit(
+        "/", 1
+    )[-1] == filename
 
 
 def _prepare_single_line(value: str, name: str, *, max_length: int) -> str:
@@ -472,8 +469,7 @@ def _returned_single_line(value: str, name: str) -> str:
 
 def _contains_forbidden_control(value: str) -> bool:
     return any(
-        (char.isspace() and char != " ") or ord(char) < 32 or ord(char) == 127
-        for char in value
+        (char.isspace() and char != " ") or ord(char) < 32 or ord(char) == 127 for char in value
     )
 
 
