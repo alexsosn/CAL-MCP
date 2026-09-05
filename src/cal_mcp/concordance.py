@@ -645,9 +645,7 @@ def _parse_kwic_total(
     raise ConcordanceParseError("CAL dialect KWIC lacks one unique total")
 
 
-def _parse_empty_scopes(
-    lines: Sequence[object], scope_ids: tuple[str, ...]
-) -> tuple[str, ...]:
+def _parse_empty_scopes(lines: Sequence[object], scope_ids: tuple[str, ...]) -> tuple[str, ...]:
     requested = set(scope_ids)
     empty: list[str] = []
     for line in lines:
