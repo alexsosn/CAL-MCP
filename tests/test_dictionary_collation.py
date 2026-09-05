@@ -129,7 +129,10 @@ def test_explicit_no_data_marker_is_successful_empty_result() -> None:
             "</div></body></html>"
         ),
         # Missing summary card.
-        "<html><head><title>CAL: entries for page 705 of Jastrow</title></head><body></body></html>",
+        (
+            "<html><head><title>CAL: entries for page 705 of Jastrow</title></head>"
+            "<body></body></html>"
+        ),
         # Duplicate summary cards.
         (
             "<html><head><title>CAL: entries for page 705 of Jastrow</title></head><body>"
