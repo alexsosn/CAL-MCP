@@ -4,6 +4,8 @@ from pathlib import Path
 
 
 def test_server_instructions_route_syriac_studies_tools() -> None:
+    """Keep top-level MCP routing aligned with the registered Syriac tool surface."""
+
     source = Path("src/cal_mcp/server.py").read_text(encoding="utf-8")
     instructions = source.split("instructions=(", 1)[1].split("version=__version__", 1)[0]
 
