@@ -10,6 +10,6 @@ def test_server_instructions_route_syriac_studies_tools() -> None:
     assert "cal_syriac_texts" in instructions
     assert "cal_syriac_missing_words" in instructions
     assert "cal_syriac_peshitta_parallel" in instructions
-    assert "issue #13" in instructions
+    assert "external/non-online-text citations" in instructions
     assert "cal_text_page" in instructions
     assert "cal_lexicon_lookup" in instructions
