@@ -49,7 +49,7 @@ def test_full_entry_lemma_agrees_with_matching_browse_candidate() -> None:
                 b'<html><body><div><a href="/cal_entry_web.php?lemma=b+s">b sym.</a></div>'
                 b"<div>second letter of alphabet</div></body></html>"
             ),
-            url='https://cal.huc.edu/browseSKEYheaders.php?first3=%22b%22',
+            url="https://cal.huc.edu/browseSKEYheaders.php?first3=%22b%22",
         )
     )
     candidate = next(item for item in browse.entries if item.lemma_key == "b s")
