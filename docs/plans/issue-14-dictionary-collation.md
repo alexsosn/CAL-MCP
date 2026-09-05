@@ -233,6 +233,12 @@ Freeze an exact final SHA and review the entire issue boundary, specifically cha
 
 Any blocker enters a fresh review-regression RED → minimal fix → full GREEN → fresh exact-SHA independent re-review loop.
 
+## Review-regression evidence
+
+The first exact-head review found that a nonempty single-line `lemma=` value from a CAL entry link could be exposed as `target_lemma_key` even when it was not structurally reusable by downstream CAL lemma operations. Review-regression commit `372bfbed66fa62022a1826cb82e7bfae41eb7adf` kept install, Ruff lint/format, and strict mypy green while pytest reported **368 passed / exactly 1 failed**. The minimal fix validates returned keys through the shared `validate_lemma_key()` boundary and translates its `ValueError` into `DictionaryCollationParseError`.
+
+The fresh whole-PR re-review then caught a source-label extraction error for public `qumran_aramaic`: CAL's current form lists the selector label as `Dictionary of Qumran Aramaic`, with the generic `Page` field separately rendered after the selector list. The earlier research extraction had concatenated that adjacent field into `Dictionary of Qumran Aramaic Page`. One bounded review POST attempted to verify the Qumran result title directly; CAL returned HTTP 405, the request was not retried, and the temporary workflow self-deleted. The public form itself remained sufficient evidence for the selector label. Review-regression commit `1363bf3315752ec452ad1d87853843601e4fad80` kept install, Ruff lint/format, and strict mypy green while pytest reported **369 passed / exactly 1 failed**, at the Qumran service-level source-label check. The minimal correction preserves private code `Q` and changes only the exact source label plus copied research/test/documentation expectations.
+
 ## Merge gate
 
 Only after:
@@ -251,4 +257,4 @@ Then mark ready and guarded-squash merge with the expected reviewed head SHA, an
 
 Production: exactly one user-initiated CAL POST per tool call. No source-form prefetch, dictionary traversal, lemma follow-up, corpus crawl, background refresh, or pagination loop.
 
-Tests and review: offline fixtures only. Live research for this issue ended before the TDD stage after four total bounded CAL requests.
+Normal tests remain offline. Initial live research used four bounded CAL requests. Review added one bounded Qumran POST attempt, which returned HTTP 405 and was not retried. No result links or dictionary pages were traversed automatically.
