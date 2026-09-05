@@ -397,6 +397,11 @@ class BibliographyService:
             parser=parse_bibliography_page,
             cache_namespace=cache_namespace,
         )
+        expected_heading = f"CAL Bibliography for {submitted}"
+        if result.value.heading != expected_heading:
+            raise BibliographyParseError(
+                "CAL bibliography result heading does not match the submitted query"
+            )
         return BibliographyResult(
             query_kind=query_kind,
             query=submitted,
