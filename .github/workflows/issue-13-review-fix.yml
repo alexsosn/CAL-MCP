@@ -1,0 +1,50 @@
+name: Issue 13 review validation fix
+
+on:
+  push:
+    branches:
+      - feat/issue-13-external-citations
+    paths:
+      - .github/workflows/issue-13-review-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - name: Reject source format controls and self-clean
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/cal_mcp/external_citations.py')
+          s = p.read_text(encoding='utf-8')
+          old = '''    if any(
+              (char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cs"}
+              for char in candidate
+          ):
+              raise ValueError("source_abbrev may contain only ordinary spaces, not controls")
+'''
+          new = '''    if any(
+              (char.isspace() and char != " ")
+              or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
+              for char in candidate
+          ):
+              raise ValueError(
+                  "source_abbrev may contain only ordinary spaces, not controls or formatting"
+              )
+'''
+          if old not in s:
+              raise SystemExit('source validation target not found')
+          p.write_text(s.replace(old, new, 1), encoding='utf-8')
+          PY
+          rm .github/workflows/issue-13-review-fix.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/external_citations.py .github/workflows/issue-13-review-fix.yml
+          git commit -m 'fix: reject source abbreviation format controls'
+          git push origin HEAD:feat/issue-13-external-citations
