@@ -1,0 +1,57 @@
+name: Issue 13 returned source length fix
+
+on:
+  push:
+    branches:
+      - feat/issue-13-external-citations
+    paths:
+      - .github/workflows/issue-13-source-length-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-13-external-citations
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Apply returned-source length bound
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/external_citations.py")
+          text = path.read_text(encoding="utf-8")
+          text = text.replace(
+              '_DIALECT_RE = re.compile(r"^[0-9]{1,6}$")\n',
+              '_DIALECT_RE = re.compile(r"^[0-9]{1,6}$")\n_MAX_SOURCE_ABBREV_CHARS = 128\n',
+              1,
+          )
+          text = text.replace(
+              '    abbreviation = _returned_single_line(query["abbrev"][0], "source abbreviation")\n    return abbreviation, target\n',
+              '    abbreviation = _returned_single_line(query["abbrev"][0], "source abbreviation")\n    if len(abbreviation) > _MAX_SOURCE_ABBREV_CHARS:\n        raise ExternalCitationParseError("CAL returned an invalid source abbreviation")\n    return abbreviation, target\n',
+              1,
+          )
+          text = text.replace(
+              '    if len(candidate) > 128:\n        raise ValueError("source_abbrev must be at most 128 characters")\n',
+              '    if len(candidate) > _MAX_SOURCE_ABBREV_CHARS:\n        raise ValueError(\n            f"source_abbrev must be at most {_MAX_SOURCE_ABBREV_CHARS} characters"\n        )\n',
+              1,
+          )
+          path.write_text(text, encoding="utf-8")
+          PY
+      - run: python -m pip install "ruff<1,>=0.12"
+      - run: ruff format src/cal_mcp/external_citations.py
+      - name: Commit fix and self-clean
+        run: |
+          set -euo pipefail
+          rm .github/workflows/issue-13-source-length-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/external_citations.py .github/workflows/issue-13-source-length-fix.yml
+          git commit -m "fix: bound returned citation source abbreviations"
+          git push origin HEAD:feat/issue-13-external-citations
