@@ -1,0 +1,35 @@
+name: Format Syriac RED tests
+
+on:
+  push:
+    branches:
+      - feat/issue-11-syriac
+    paths:
+      - .github/workflows/format-syriac-red.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-11-syriac
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Format test-only RED
+        run: |
+          python -m pip install "ruff<1,>=0.12"
+          ruff check --fix tests/test_syriac.py
+          ruff format tests/test_syriac.py
+      - name: Commit test-only correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/test_syriac.py
+          git commit -m "test: format Syriac RED contracts"
+          git push origin HEAD:feat/issue-11-syriac
