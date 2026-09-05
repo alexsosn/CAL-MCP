@@ -289,9 +289,7 @@ def parse_text_concordance_page(
 ) -> TextConcordancePage:
     lines = _parse_lines(response)
     markers = [
-        match
-        for line in lines
-        if (match := _FREQUENCY_MARKER_RE.fullmatch(line.text)) is not None
+        match for line in lines if (match := _FREQUENCY_MARKER_RE.fullmatch(line.text)) is not None
     ]
     if len(markers) != 1 or markers[0].group(1) != requested_text_id:
         raise ConcordanceParseError("CAL text concordance marker does not match the request")
@@ -601,8 +599,7 @@ def _parse_kwic_hits(response: CalResponse) -> tuple[KwicHit, ...]:
         context_parts = [
             cell.text
             for cell in row.cells
-            if not any(candidate is link for candidate in cell.links)
-            and cell.text
+            if not any(candidate is link for candidate in cell.links) and cell.text
         ]
         if not context_parts:
             raise ConcordanceParseError("CAL KWIC target row has no rendered context")
