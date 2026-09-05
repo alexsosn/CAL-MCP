@@ -1,0 +1,49 @@
+name: Issue 14 Qumran label fix
+
+on:
+  push:
+    branches:
+      - feat/issue-14-dictionary-collation
+    paths:
+      - .github/workflows/issue-14-qumran-label-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-14-dictionary-collation
+      - name: Correct Qumran dictionary label
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          paths = [
+              Path('src/cal_mcp/dictionary_collation.py'),
+              Path('tests/test_dictionary_collation.py'),
+              Path('docs/research/issue-14-dictionary-collation.md'),
+              Path('docs/tools/dictionary-collation.md'),
+          ]
+          old = 'Dictionary of Qumran Aramaic Page'
+          new = 'Dictionary of Qumran Aramaic'
+          replacements = 0
+          for path in paths:
+              text = path.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count:
+                  path.write_text(text.replace(old, new), encoding='utf-8')
+                  replacements += count
+          if replacements < 4:
+              raise SystemExit(f'expected at least 4 Qumran label replacements, got {replacements}')
+          PY
+          rm .github/workflows/issue-14-qumran-label-fix.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/dictionary_collation.py tests/test_dictionary_collation.py docs/research/issue-14-dictionary-collation.md docs/tools/dictionary-collation.md .github/workflows/issue-14-qumran-label-fix.yml
+          git commit -m "fix: correct Qumran dictionary label"
+          git push origin HEAD:feat/issue-14-dictionary-collation
