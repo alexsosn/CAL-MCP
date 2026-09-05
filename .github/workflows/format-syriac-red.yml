@@ -24,8 +24,9 @@ jobs:
       - name: Format test-only RED
         run: |
           python -m pip install "ruff<1,>=0.12"
-          ruff check --fix tests/test_syriac.py
+          ruff check --fix --exit-zero tests/test_syriac.py
           ruff format tests/test_syriac.py
+          ruff check tests/test_syriac.py
       - name: Commit test-only correction
         run: |
           git config user.name "github-actions[bot]"
