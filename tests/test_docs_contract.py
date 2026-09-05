@@ -12,6 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 TOOLS_DIR = DOCS / "tools"
 DOCS_INDEX = DOCS / "index.md"
+RESEARCH_AUDIT = DOCS / "research" / "issue-12-v0.1-contract-docs.md"
+ARCHITECTURE = ROOT / "wiki" / "architecture.md"
+LEXICON_DOC = TOOLS_DIR / "lexicon.md"
 
 REQUIRED_V01_DOCS = (
     "docs/index.md",
@@ -60,6 +63,18 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
     assert missing_links == []
     assert "#39" in index
     assert "defer" in index.lower()
+
+
+def test_cross_cutting_request_bounds_preserve_lexicon_two_request_exception() -> None:
+    research = RESEARCH_AUDIT.read_text(encoding="utf-8")
+    architecture = ARCHITECTURE.read_text(encoding="utf-8")
+    lexicon = LEXICON_DOC.read_text(encoding="utf-8")
+
+    assert "successful lookup normally uses two CAL requests" in lexicon
+    assert "one public operation maps to one CAL request" not in research
+    assert "one explicit HTTP request" not in architecture
+    assert "cal_lexicon_lookup" in research
+    assert "two CAL requests" in research
 
 
 def test_relative_markdown_links_resolve() -> None:
