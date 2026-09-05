@@ -640,7 +640,7 @@ def _subsense_path(previous: tuple[int, ...] | None, value: int) -> tuple[int, .
     if value == 1:
         return (*previous, 1)
 
-    for index in range(len(previous) - 1, 0, -1):
+    for index in range(len(previous) - 1, -1, -1):
         if previous[index] == value - 1:
             return (*previous[:index], value)
     raise LexiconParseError("CAL lexicon subsense numbering cannot be placed safely")
