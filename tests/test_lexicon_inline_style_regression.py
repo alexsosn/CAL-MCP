@@ -4,8 +4,10 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 
+import pytest
+
 from cal_mcp.client import CalResponse
-from cal_mcp.lexicon import parse_browse_page, parse_lexicon_entry
+from cal_mcp.lexicon import LexiconParseError, parse_browse_page, parse_lexicon_entry
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 
@@ -64,3 +66,24 @@ def test_full_entry_lemma_agrees_with_current_browse_candidate() -> None:
     assert entry.lemma.headwords == candidate.headwords
     assert entry.lemma.part_of_speech == candidate.part_of_speech
     assert entry.lemma.gloss == candidate.gloss
+
+
+def test_unclosed_ignored_subtree_fails_closed_instead_of_returning_partial_entry() -> None:
+    html = b"""
+    <html><body>
+      <header>b sym. second letter of alphabet</header>
+      <div>1</div><div>letter name</div>
+      <style>.broken { display: none; }
+      <div>2</div><div>content after malformed style must not be silently lost</div>
+    </body></html>
+    """
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/cal_entry_web.php?lemma=b+s",
+        body=html,
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 9, 5, tzinfo=UTC),
+    )
+
+    with pytest.raises(LexiconParseError, match="ignored content subtree"):
+        parse_lexicon_entry(response, lemma_key="b s")
