@@ -1,0 +1,43 @@
+name: Patch issue 32 review finding
+
+on:
+  push:
+    branches:
+      - fix/issue-32-lexicon-inline-style
+    paths:
+      - .github/workflows/patch-issue-32-review.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-32-lexicon-inline-style
+      - name: Fail closed on incomplete ignored subtree
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/cal_mcp/lexicon.py')
+          text = path.read_text()
+          old = '''    def close(self) -> None:\n        super().close()\n        self._flush()\n'''
+          new = '''    def close(self) -> None:\n        super().close()\n        if self._ignored_depth:\n            raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")\n        self._flush()\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f'close anchor count={text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
+      - name: Commit review fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/lexicon.py
+          git commit -m "fix: fail closed on incomplete ignored lexicon HTML"
+          git push origin HEAD:fix/issue-32-lexicon-inline-style
