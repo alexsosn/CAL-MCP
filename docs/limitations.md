@@ -27,7 +27,7 @@ CAL-MCP intentionally does not provide:
 - hidden following of returned entry/context links;
 - a persistent CAL cache/database.
 
-Most public operations map to exactly one explicit CAL request. Multi-stage workflows expose each stage as a separate caller-controlled tool.
+Most public operations map to exactly one explicit CAL request. The documented bounded exception is `cal_lexicon_lookup`: a successful exact lookup normally uses two CAL requests (browser discovery followed by the selected entry fetch). Multi-stage workflows otherwise expose each stage as a separate caller-controlled tool.
 
 The shared HTTP client also applies finite timeouts, conservative concurrency/retries, same-origin/redirect boundaries, and a decoded-response size limit. See [Configuration](configuration.md).
 

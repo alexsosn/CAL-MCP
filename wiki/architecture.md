@@ -222,7 +222,7 @@ sequenceDiagram
     S->>N: validate/normalize if applicable
     N-->>S: canonical public/upstream values
     S->>H: bounded CalRequest
-    H->>C: one explicit HTTP request
+    H->>C: bounded HTTP request for the current task step
     C-->>H: upstream response
     H->>P: validated response + source URL/time
     P-->>S: typed CAL result

@@ -156,7 +156,7 @@ The main v0.1 gap is documentation of this taxonomy and user-visible expectation
 There is no single CAL pagination contract across surfaces. Current adapter policy is therefore intentionally semantic rather than syntactic:
 
 - expose pagination only where CAL provides a researched stable bounded control;
-- one public operation maps to one CAL request unless the operation explicitly represents a caller-selected stage;
+- public operations use the smallest researched bounded request sequence for the task; most use one CAL request, while a successful `cal_lexicon_lookup` normally uses two CAL requests (browser discovery, then the selected entry fetch);
 - never invent `page`, `offset`, `limit`, continuation, or `show all` semantics that CAL does not expose;
 - never automatically follow result links, next pages, source lists, lexical entries, or corpus navigation;
 - the shared decoded-response byte limit remains the ultimate response-size bound.
