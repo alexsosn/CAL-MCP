@@ -11,6 +11,8 @@ from cal_mcp.dictionary_collation import (
 )
 
 
+# Re-established against current main after the issue-14 branch integration: the
+# parser must reject a nested semantic result container rather than duplicate rows.
 def test_nested_duplicate_summary_card_fails_closed() -> None:
     response = CalResponse(
         status_code=200,
