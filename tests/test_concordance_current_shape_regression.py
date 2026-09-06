@@ -66,6 +66,25 @@ def test_current_inline_mode_rejects_frequency_row_without_kwic_link() -> None:
         )
 
 
+def test_current_inline_mode_rejects_kwic_row_without_frequency() -> None:
+    body = """
+    <html><body>
+    <div>Frequencies of lemmas in text 13250</div>
+    <span>
+    4:.......<a href="/showKWIC.php?lemma=%29b+N&amp;charset=S&amp;texts=13250">)b N</a>: father<br>
+    <a href="/showKWIC.php?lemma=br+N&amp;charset=S&amp;texts=13250">br N</a>: son<br>
+    </span>
+    </body></html>
+    """
+
+    with pytest.raises(ConcordanceParseError):
+        parse_text_concordance_page(
+            _response(body),
+            requested_text_id="13250",
+            requested_charset="S",
+        )
+
+
 def test_current_inline_mode_rejects_empty_gloss() -> None:
     body = """
     <html><body>
