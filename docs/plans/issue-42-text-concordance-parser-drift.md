@@ -33,6 +33,8 @@ Before touching production code:
 
 The fixture contains only a few representative rows, not the full live response.
 
+**RED evidence:** PR CI run `34041950093` at test-only head `7a6347f43dbf595ab9f80975e8e97f505fff766d` passed install, Ruff lint, Ruff format, and mypy. Pytest collected 378 tests and finished `1 failed, 377 passed`; the sole failure was `test_current_inline_text_concordance_preserves_ordered_semantics`, which raised the pre-fix `CAL text concordance contains no recognizable lemma rows` error. The two malformed-inline tests already passed fail-closed.
+
 ## Minimal implementation
 
 Keep `parse_text_concordance_page()` marker validation unchanged.
@@ -48,6 +50,8 @@ Add a strict current-inline parser using the already shared `_parse_lines()` sem
 - if neither parser yields rows, keep the existing explicit `ConcordanceParseError`.
 
 Extract only the smallest shared helper needed to avoid having two contradictory link-validation implementations.
+
+**Implementation checkpoint:** commit `1fa30e1eff67e9307ebfdc59216ba9e9a23e995c` adds the inline-row parser and one shared concordance-link validator, keeps the earlier table parser as fallback, appends the dated root research update, and removes all temporary edit/probe files. Public service request construction and advanced/dialect KWIC parsing are unchanged.
 
 ## Failure invariants
 
