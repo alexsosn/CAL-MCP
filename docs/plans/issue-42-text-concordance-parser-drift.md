@@ -78,6 +78,16 @@ The first adversarial invariant pass found a concrete gap before final review: o
 
 **Focused GREEN:** helper run `34046914844` reformatted the touched source, passed Ruff on the changed parser/tests, and ran `tests/test_concordance_current_shape_regression.py`, `tests/test_concordance.py`, and `tests/test_concordance_review_regressions.py`: **32 passed**.
 
+## Exact-head adversarial review cleanup checkpoint
+
+Independent review `5126008609` examined exact head `6f6ba692ca55b72488451c220f2409da87c5f4f3` after full CI run `34047021407` passed Ruff, format, mypy, and **379/379 tests**. The parser/request behavior passed the adversarial checks, but the review blocked merge because two branch-only implementation helpers were still tracked: `.github/issue42_review_fix.py` and `.github/workflows/issue42-review-fix.yml`. The latter had `contents: write` and branch-push behavior, so neither artifact belonged in the release diff.
+
+The cleanup itself landed in commits `1dd03afe200ffb83fcefb1074601b34e891a4e81` (temporary edit script removed) and `b9a846f58f0883958fd9a72aea85d09281391b26` (temporary edit workflow removed). A broad permanent repository-hygiene test was considered and then removed because that policy would exceed issue #42's scope.
+
+To preserve the review-fix RED gate without shipping that broad policy, workflow run `34047682600` checked out the exact blocked head `6f6ba692ca55b72488451c220f2409da87c5f4f3`, materialized a focused test that required those two issue-specific helpers to be absent, and ran it under pytest 8.4.2. The test failed as expected and the proof step verified that the failure named both tracked paths. The proof workflow then self-removed in commit `91f2ced3013d058f6a2507f3ac97d5ed788ee4e4`.
+
+While this review cycle was running, PR #43 merged to `main` as `ded0b98552c721fe3915803bdc82dbe563e0bf59`. Commit `ac41efe4f086ed302d997ad891c6b8ba4230594a` merged that exact `main` into the issue #42 branch with `ded0b985...` as its second parent. The only overlapping append was `research.md`; #43's R-021 was retained and the concordance update was renumbered to R-022. Temporary sync helpers were subsequently removed and are absent from the PR diff.
+
 ## GREEN and verification
 
 Run, in order:
