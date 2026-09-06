@@ -118,11 +118,33 @@ class _Line:
 
 @dataclass(slots=True)
 class _OpenLink:
+    tag: str
     href: str
+    depth: int = 1
     parts: list[str] = field(default_factory=list)
 
 
 _IGNORED_CONTENT_TAGS = frozenset({"script", "style"})
+_HTML_VOID_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
+_CITATION_BOUNDARY = "\ue000"
+_DISPLAY_NONE_RE = re.compile(r"(?:^|;)\s*display\s*:\s*none\s*(?:;|$)", re.IGNORECASE)
 
 
 _BLOCK_TAGS = frozenset(
@@ -160,6 +182,7 @@ class _SemanticHTMLParser(HTMLParser):
         self._list_depth = -1
         self._line_depth = 0
         self._ignored_depth = 0
+        self._semantic_skip_tags: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _IGNORED_CONTENT_TAGS:
@@ -167,6 +190,27 @@ class _SemanticHTMLParser(HTMLParser):
             return
         if self._ignored_depth:
             return
+        if self._semantic_skip_tags:
+            if tag not in _HTML_VOID_TAGS:
+                self._semantic_skip_tags.append(tag)
+            return
+
+        attributes = {key: value or "" for key, value in attrs}
+        classes = frozenset(attributes.get("class", "").split())
+        if tag == "span" and "cit-sep" in classes:
+            self._parts.append(f" {_CITATION_BOUNDARY} ")
+            self._semantic_skip_tags.append(tag)
+            return
+        if (
+            tag == "span"
+            and "cit-script" in classes
+            and _DISPLAY_NONE_RE.search(attributes.get("style", "")) is not None
+        ):
+            self._semantic_skip_tags.append(tag)
+            return
+
+        if self._open_link is not None and tag == self._open_link.tag:
+            self._open_link.depth += 1
         if tag in {"ul", "ol"}:
             self._flush()
             self._list_depth += 1
@@ -176,19 +220,35 @@ class _SemanticHTMLParser(HTMLParser):
             self._line_depth = max(self._list_depth, 0)
         if tag == "br":
             self._flush()
-        if tag == "a":
-            href = next((value for key, value in attrs if key == "href" and value), "")
-            self._open_link = _OpenLink(href=href)
+        if tag == "a" and self._open_link is None:
+            href = attributes.get("href", "")
+            self._open_link = _OpenLink(tag="a", href=href)
+        elif tag == "span" and "cit-ref-plain" in classes and self._open_link is None:
+            self._open_link = _OpenLink((tag="span", href="")
 
     def handle_endtag(self, tag: str) -> None:
         if self._ignored_depth:
             if tag in _IGNORED_CONTENT_TAGS:
                 self._ignored_depth -= 1
             return
-        if tag == "a" and self._open_link is not None:
-            text = _clean_text("".join(self._open_link.parts))
-            self._links.append(_Link(href=self._open_link.href, text=text))
-            self._open_link = None
+        if self._semantic_skip_tags:
+            if tag != self._semantic_skip_tags[-1]:
+                raise LexiconParseError("CAL lexicon has malformed excluded citation content")
+            self._semantic_skip_tags.pop()
+            return
+        if self._open_link is not None and tag == self._open_link.tag:
+            self._open_link.depth -= 1
+            if self._open_link.depth == 0:
+                text = _clean_text("".join(self._open_link.parts))
+                self._links.append(_Link(href=self._open_link.href, text=text))
+                self._open_link = None
+        if tag in _BLOCK_TAGS or tag == "br":
+            self._flush()
+        if tag in {"ul", "ol"}:
+            self._flush()
+            self._list_depth -= 1
+".text=text))
+                self._open_link = None
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
         if tag in {"ul", "ol"}:
@@ -206,6 +266,8 @@ class _SemanticHTMLParser(HTMLParser):
         super().close()
         if self._ignored_depth:
             raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")
+        if self._semantic_skip_tags:
+            raise LexiconParseError("CAL lexicon has an unclosed excluded citation subtree")
         self._flush()
 
     def _flush(self) -> None:
@@ -697,6 +759,8 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
 
 
 def _split_citation_segments(value: str) -> list[str]:
+    if _CITATION_BOUNDARY in value:
+        return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
     return [part.strip() for part in _CITATION_SEPARATOR_RE.split(value.strip()) if part.strip()]
 
 
