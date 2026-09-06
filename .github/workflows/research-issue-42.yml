@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   probe:
-    if: github.event.head_commit.message == 'research: probe CAL concordance shape'
+    if: "github.event.head_commit.message == 'research probe CAL concordance shape'"
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -39,19 +39,19 @@ jobs:
               print(f"bytes={len(body)}")
 
           text = body.decode("utf-8", errors="replace")
-          compact = re.sub(r"\\s+", " ", text)
+          compact = re.sub(r"\s+", " ", text)
           print(f"frequency_marker_count={len(re.findall(r'Frequencies of lemmas in text 13250', text, re.I))}")
           for needle in ["showKWIC.php", "newconcord.php", "lemma=", "charset=", "cset=", "frequency", "gloss"]:
               print(f"needle[{needle}]={text.lower().count(needle.lower())}")
 
-          hrefs = re.findall(r'''href\\s*=\\s*["']([^"']+)["']''', text, re.I)
+          hrefs = re.findall(r'''href\s*=\s*["']([^"']+)["']''', text, re.I)
           kwic_hrefs = [href for href in hrefs if "kwic" in href.lower()]
           print(f"href_count={len(hrefs)}")
           print(f"kwic_href_count={len(kwic_hrefs)}")
           for i, href in enumerate(kwic_hrefs[:8]):
               print(f"kwic_href[{i}]={html.unescape(href)}")
 
-          patterns = [r"showKWIC\\.php", r"lemma=", r"Frequencies of lemmas in text 13250"]
+          patterns = [r"showKWIC\.php", r"lemma=", r"Frequencies of lemmas in text 13250"]
           seen = set()
           snippet_no = 0
           for pattern in patterns:
