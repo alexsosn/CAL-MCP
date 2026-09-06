@@ -718,6 +718,7 @@ def _is_dialect_label(value: str) -> bool:
 
 
 def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
+    structural_boundaries = _CITATION_BOUNDARY in line.text
     locations: list[tuple[_Link, int]] = []
     cursor = 0
     for link in line.links:
@@ -732,12 +733,19 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
 
     citations: list[Citation] = []
     prefix = line.text[: locations[0][1]]
-    citations.extend(_raw_citation(part) for part in _split_citation_segments(prefix))
+    citations.extend(
+        _raw_citation(part)
+        for part in _split_citation_segments(
+            prefix, structural_boundaries=structural_boundaries
+        )
+    )
 
     for index, (link, start) in enumerate(locations):
         text_start = start + len(link.text)
         text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
-        segments = _split_citation_segments(line.text[text_start:text_end])
+        segments = _split_citation_segments(
+            line.text[text_start:text_end], structural_boundaries=structural_boundaries
+        )
         linked_text = segments[0] if segments else ""
         reference = link.text.removesuffix("↗").strip()
         citations.append(
@@ -751,8 +759,10 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
     return citations
 
 
-def _split_citation_segments(value: str) -> list[str]:
-    if _CITATION_BOUNDARY in value:
+def _split_citation_segments(
+    value: str, *, structural_boundaries: bool = False
+) -> list[str]:
+    if structural_boundaries or _CITATION_BOUNDARY in value:
         return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
     return [part.strip() for part in _CITATION_SEPARATOR_RE.split(value.strip()) if part.strip()]
 
