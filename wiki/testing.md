@@ -151,20 +151,23 @@ At least one test should launch the actual stdio entry point once packaging exis
 
 ## 9. Live smoke tests
 
-Live tests detect upstream drift; they do not validate CAL scholarship.
+Live tests detect upstream drift; they do not validate CAL scholarship. They remain separate from normal required CI so ordinary pull-request correctness never depends on CAL availability.
 
-Rules:
+The permanent v0.1 workflow is `.github/workflows/live-smoke.yml`. It supports explicit `workflow_dispatch` and a weekly scheduled run. A developer who intentionally wants the same networked smoke locally can run:
 
-- opt-in locally and separated from normal CI;
-- scheduled/release runs only after the relevant feature is stable;
-- strict total request cap per run;
-- no loops over lemma lists/text catalogues;
-- representative queries chosen for structural stability, not exhaustive coverage;
-- cache disabled or controlled so request count is explicit;
-- identify CAL-MCP in requests where appropriate;
-- record timestamps and distinguish upstream downtime from parser drift.
+```bash
+python -m cal_mcp.live_smoke
+```
 
-A possible v0.1 smoke budget is one representative request per major surface, but the exact number belongs in the release/live-smoke ticket and should remain intentionally small.
+That command is an opt-in CAL network operation. Do not add it to normal offline CI.
+
+The v0.1 smoke contract is frozen at a maximum of **9 CAL requests** across eight representative cases: lexicon lookup, text search, one-text concordance, bibliography, dictionary collation, external-citation discovery, Targum comparison, and Syriac/Peshitta comparison. The lexicon case may consume two requests; the remaining cases consume one each. The runner is sequential and does not enumerate result pages, lemma lists, text catalogues, or corpora.
+
+The smoke client deliberately uses **concurrency 1**, **retries 0**, and **cache disabled** so the request count is explicit and an upstream failure cannot multiply load. The ninth request is a hard ceiling: attempting another request fails before transport.
+
+Smoke failures are classified diagnostically as `drift`, `upstream`, `content`, or `harness`. Parser/semantic-shape failures belong to `drift`; network failures and upstream HTTP failures belong to `upstream`; other CAL content-policy failures remain distinct from harness/programming failures. A failed live smoke must not be reinterpreted as a valid empty CAL result.
+
+Representative queries are chosen for structural stability rather than exhaustive scholarly coverage. The workflow does not crawl, prefetch continuation pages, poll CAL, or expand links beyond the explicit service operation being checked.
 
 ## 10. Data-quality boundary
 
