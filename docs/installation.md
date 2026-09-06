@@ -1,25 +1,35 @@
 # Installation
 
-CAL-MCP is currently **pre-release**. The repository version is `0.1.0.dev0`; no versioned PyPI/release artifact is documented yet. Issue #15 owns the clean published v0.1 package/release gate.
+The v0.1 release coordinate is `cal-mcp==0.1.0`. The repository release workflow publishes that exact version from the `v0.1.0` tag after deterministic tests, built-artifact validation, and the bounded CAL live smoke pass.
 
-The instructions here describe the current source/development installation and the entry points already exercised by the deterministic test suite.
+Public package-index availability should be treated as established only after the tagged release workflow's PyPI publication step succeeds. Until then, install from a repository checkout rather than assuming `cal-mcp==0.1.0` is already available on PyPI.
 
 ## Requirements
 
 - Python 3.11 or newer;
 - network access to `https://cal.huc.edu/` when a CAL-backed tool is actually called.
 
-Importing/introspecting the server does not contact CAL. Normal automated tests are offline.
+Importing or introspecting the server does not contact CAL. Normal automated tests are offline.
+
+## Install the released package
+
+After v0.1.0 has been published to PyPI, install the exact release pin with:
+
+```bash
+python -m pip install "cal-mcp==0.1.0"
+```
+
+The exact package/version pair is the downstream integration coordinate for the v0.1 release. Avoid an unpinned install when reproducible integration metadata is required.
 
 ## Install from a repository checkout
 
-From the CAL-MCP repository root:
+For development, or before the tagged package has been published, install from the CAL-MCP repository root:
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
-The `dev` extra installs Ruff, mypy, and pytest for repository development. Runtime dependencies are declared separately in `pyproject.toml`.
+The `dev` extra installs Ruff, mypy, pytest, and the release build tooling used by repository validation. Runtime dependencies are declared separately in `pyproject.toml`.
 
 ## Start the stdio server
 
@@ -37,7 +47,13 @@ python -m cal_mcp
 
 Both start the same local MCP server over stdio. CAL-MCP does not require Agora to run.
 
-See [Standalone MCP](integrations/standalone-mcp.md) for the client/process boundary and [Configuration](configuration.md) for the request-policy defaults.
+See [Standalone MCP](integrations/standalone-mcp.md) for the client/process boundary and [Configuration](configuration.md) for request-policy defaults.
+
+## Release validation
+
+The v0.1 release pipeline builds one wheel and one source distribution, verifies the built wheel in a fresh virtual environment, launches its installed `cal-mcp` executable over stdio, and checks the frozen 26-tool MCP surface. A separate bounded live smoke then checks representative CAL-backed surfaces before publication.
+
+Merging the release preparation PR does not itself prove that the package is publicly available. The tagged release workflow and its PyPI publication result are the publication evidence.
 
 ## Development checks
 
@@ -52,17 +68,9 @@ pytest
 
 The normal suite uses reduced fixtures and mocked transports; it must not rely on CAL availability.
 
-## What is not published yet
+## Agora status
 
-Until issue #15 completes, do not assume any of the following exists as a stable release contract:
-
-- a released `cal-mcp==0.1.0` package/version;
-- a package-index installation command;
-- versioned release notes or changelog;
-- scheduled/opt-in live drift smoke tests for the release;
-- a version suitable for downstream marketplace pinning.
-
-Until issue #16 completes, CAL-MCP is also **not** documented as registered in Agora. Agora remains an optional future discovery/install path, not a runtime dependency.
+Agora registration is a separate downstream task in issue #16. CAL-MCP remains a standalone stdio MCP server and does not import or require Agora. Once v0.1.0 publication is confirmed, Agora can pin the exact `cal-mcp==0.1.0` coordinate and `cal-mcp` executable without changing the runtime implementation.
 
 ## Data boundary
 
