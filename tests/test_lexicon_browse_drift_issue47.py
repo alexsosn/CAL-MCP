@@ -29,10 +29,25 @@ def test_current_browse_shape_recovers_unclosed_jump_anchors_without_losing_cand
 
     assert [entry.lemma_key for entry in browse.entries] == ["br N", "br#2 N"]
     assert browse.entries[0].headwords == ("br", "brˀ")
+    assert browse.entries[0].pronunciation == "bar (ber), brā"
     assert browse.entries[0].part_of_speech == "n.m."
     assert browse.entries[0].gloss == "son"
     assert browse.entries[1].part_of_speech == "n.f."
     assert browse.entries[1].gloss == "field, outside"
+
+
+def test_nested_pronunciation_parentheses_do_not_leak_into_headwords() -> None:
+    html = """
+    <html><body>
+      <div><a href="oneentry.php?lemma=br N&cits=all">br, brˀ (bar (ber), brā) n.m.</a></div>
+      <div>son</div>
+    </body></html>
+    """
+
+    browse = parse_browse_page(_response(html))
+
+    assert browse.entries[0].headwords == ("br", "brˀ")
+    assert browse.entries[0].pronunciation == "bar (ber), brā"
 
 
 def test_candidate_like_link_missing_required_pos_fails_closed_instead_of_partial_result() -> None:
