@@ -18,59 +18,11 @@ jobs:
         with:
           ref: fix/issue-41-lexicon-citation-count-drift
       - name: Carry structural citation mode through slices
+        env:
+          PATCH_B64: ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnBhdGggPSBQYXRoKCJzcmMvY2FsX21jcC9sZXhpY29uLnB5IikKdGV4dCA9IHBhdGgucmVhZF90ZXh0KGVuY29kaW5nPSJ1dGYtOCIpCm9sZCA9ICIiImRlZiBfcGFyc2VfY2l0YXRpb25zKGxpbmU6IF9MaW5lLCBiYXNlX3VybDogc3RyKSAtPiBsaXN0W0NpdGF0aW9uXToKICAgIGxvY2F0aW9uczogbGlzdFt0dXBsZVtfTGluaywgaW50XV0gPSBbXQoiIiIKbmV3ID0gIiIiZGVmIF9wYXJzZV9jaXRhdGlvbnMobGluZTogX0xpbmUsIGJhc2VfdXJsOiBzdHIpIC0+IGxpc3RbQ2l0YXRpb25dOgogICAgc3RydWN0dXJhbF9ib3VuZGFyaWVzID0gX0NJVEFUSU9OX0JPVU5EQVJZIGluIGxpbmUudGV4dAogICAgbG9jYXRpb25zOiBsaXN0W3R1cGxlW19MaW5rLCBpbnRdXSA9IFtdCiIiIgppZiB0ZXh0LmNvdW50KG9sZCkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoInVuZXhwZWN0ZWQgX3BhcnNlX2NpdGF0aW9ucyBoZWFkZXIgY291bnQiKQp0ZXh0ID0gdGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKQpvbGQgPSAiIiIgICAgY2l0YXRpb25zLmV4dGVuZChfcmF3X2NpdGF0aW9uKHBhcnQpIGZvciBwYXJ0IGluIF9zcGxpdF9jaXRhdGlvbl9zZWdtZW50cyhwcmVmaXgpKQoKICAgIGZvciBpbmRleCwgKGxpbmssIHN0YXJ0KSBpbiBlbnVtZXJhdGUobG9jYXRpb25zKToKICAgICAgICB0ZXh0X3N0YXJ0ID0gc3RhcnQgKyBsZW4obGluay50ZXh0KQogICAgICAgIHRleHRfZW5kID0gbG9jYXRpb25zW2luZGV4ICsgMV1bMV0gaWYgaW5kZXggKyAxIDwgbGVuKGxvY2F0aW9ucykgZWxzZSBsZW4obGluZS50ZXh0KQogICAgICAgIHNlZ21lbnRzID0gX3NwbGl0X2NpdGF0aW9uX3NlZ21lbnRzKGxpbmUudGV4dFt0ZXh0X3N0YXJ0OnRleHRfZW5kXSkKIiIiCm5ldyA9ICIiIiAgICBjaXRhdGlvbnMuZXh0ZW5kKAogICAgICAgIF9yYXdfY2l0YXRpb24ocGFydCkKICAgICAgICBmb3IgcGFydCBpbiBfc3BsaXRfY2l0YXRpb25fc2VnbWVudHMoCiAgICAgICAgICAgIHByZWZpeCwgc3RydWN0dXJhbF9ib3VuZGFyaWVzPXN0cnVjdHVyYWxfYm91bmRhcmllcwogICAgICAgICkKICAgICkKCiAgICBmb3IgaW5kZXgsIChsaW5rLCBzdGFydCkgaW4gZW51bWVyYXRlKGxvY2F0aW9ucyk6CiAgICAgICAgdGV4dF9zdGFydCA9IHN0YXJ0ICsgbGVuKGxpbmsudGV4dCkKICAgICAgICB0ZXh0X2VuZCA9IGxvY2F0aW9uc1tpbmRleCArIDFdWzFdIGlmIGluZGV4ICsgMSA8IGxlbihsb2NhdGlvbnMpIGVsc2UgbGVuKGxpbmUudGV4dCkKICAgICAgICBzZWdtZW50cyA9IF9zcGxpdF9jaXRhdGlvbl9zZWdtZW50cygKICAgICAgICAgICAgbGluZS50ZXh0W3RleHRfc3RhcnQ6dGV4dF9lbmRdLCBzdHJ1Y3R1cmFsX2JvdW5kYXJpZXM9c3RydWN0dXJhbF9ib3VuZGFyaWVzCiAgICAgICAgKQoiIiIKaWYgdGV4dC5jb3VudChvbGQpICE9IDE6CiAgICByYWlzZSBTeXN0ZW1FeGl0KCJ1bmV4cGVjdGVkIGNpdGF0aW9uIHNsaWNpbmcgYmxvY2sgY291bnQiKQp0ZXh0ID0gdGV4dC5yZXBsYWNlKG9sZCwgbmV3LCAxKQpvbGQgPSAiIiJkZWYgX3NwbGl0X2NpdGF0aW9uX3NlZ21lbnRzKHZhbHVlOiBzdHIpIC0+IGxpc3Rbc3RyXToKICAgIGlmIF9DSVRBVElPTl9CT1VOREFSWSBpbiB2YWx1ZToKICAgICAgICByZXR1cm4gW3BhcnQuc3RyaXAoKSBmb3IgcGFydCBpbiB2YWx1ZS5zcGxpdChfQ0lUQVRJT05fQk9VTkRBUlkpIGlmIHBhcnQuc3RyaXAoKV0KIiIiCm5ldyA9ICIiImRlZiBfc3BsaXRfY2l0YXRpb25fc2VnbWVudHMoCiAgICB2YWx1ZTogc3RyLCAqLCBzdHJ1Y3R1cmFsX2JvdW5kYXJpZXM6IGJvb2wgPSBGYWxzZQopIC0+IGxpc3Rbc3RyXToKICAgIGlmIHN0cnVjdHVyYWxfYm91bmRhcmllcyBvciBfQ0lUQVRJT05fQk9VTkRBUlkgaW4gdmFsdWU6CiAgICAgICAgcmV0dXJuIFtwYXJ0LnN0cmlwKCkgZm9yIHBhcnQgaW4gdmFsdWUuc3BsaXQoX0NJVEFUSU9OX0JPVU5EQVJZKSBpZiBwYXJ0LnN0cmlwKCldCiIiIgppZiB0ZXh0LmNvdW50KG9sZCkgIT0gMToKICAgIHJhaXNlIFN5c3RlbUV4aXQoInVuZXhwZWN0ZWQgX3NwbGl0X2NpdGF0aW9uX3NlZ21lbnRzIGJsb2NrIGNvdW50IikKcGF0aC53cml0ZV90ZXh0KHRleHQucmVwbGFjZShvbGQsIG5ldywgMSksIGVuY29kaW5nPSJ1dGYtOCIpCg==
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('src/cal_mcp/lexicon.py')
-          text = path.read_text(encoding='utf-8')
-          old = '''def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
-    locations: list[tuple[_Link, int]] = []
-'''
-          new = '''def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
-    structural_boundaries = _CITATION_BOUNDARY in line.text
-    locations: list[tuple[_Link, int]] = []
-'''
-          if text.count(old) != 1:
-              raise SystemExit('unexpected _parse_citations header count')
-          text = text.replace(old, new, 1)
-          old = '''    citations.extend(_raw_citation(part) for part in _split_citation_segments(prefix))
-
-    for index, (link, start) in enumerate(locations):
-        text_start = start + len(link.text)
-        text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
-        segments = _split_citation_segments(line.text[text_start:text_end])
-'''
-          new = '''    citations.extend(
-        _raw_citation(part)
-        for part in _split_citation_segments(
-            prefix, structural_boundaries=structural_boundaries
-        )
-    )
-
-    for index, (link, start) in enumerate(locations):
-        text_start = start + len(link.text)
-        text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
-        segments = _split_citation_segments(
-            line.text[text_start:text_end], structural_boundaries=structural_boundaries
-        )
-'''
-          if text.count(old) != 1:
-              raise SystemExit('unexpected citation slicing block count')
-          text = text.replace(old, new, 1)
-          old = '''def _split_citation_segments(value: str) -> list[str]:
-    if _CITATION_BOUNDARY in value:
-        return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
-'''
-          new = '''def _split_citation_segments(
-    value: str, *, structural_boundaries: bool = False
-) -> list[str]:
-    if structural_boundaries or _CITATION_BOUNDARY in value:
-        return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
-'''
-          if text.count(old) != 1:
-              raise SystemExit('unexpected _split_citation_segments block count')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
-          PY
+          set -euo pipefail
+          python -c "import base64, os; exec(base64.b64decode(os.environ['PATCH_B64']))"
           ruff format src/cal_mcp/lexicon.py
           rm .github/workflows/issue-41-fix-structural-slices.yml
           git config user.name 'github-actions[bot]'
