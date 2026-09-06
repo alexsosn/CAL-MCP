@@ -1,10 +1,10 @@
 # Standalone MCP
 
-CAL-MCP is designed to run as a normal local MCP server without Agora. The required v0.1 transport is stdio.
+CAL-MCP v0.1.0 runs as a normal local MCP server without Agora. The required v0.1 transport is stdio.
 
 ## Process contract
 
-After the current source/development install, launch either:
+After installing the v0.1.0 wheel, launch either:
 
 ```bash
 cal-mcp
@@ -22,13 +22,13 @@ A client should treat CAL-MCP as a long-running local child process for the sess
 
 Starting the process does not itself send a CAL query. CAL traffic begins only when a CAL-backed tool is called.
 
-## Client configuration
+## Stable downstream launch contract
 
-Exact client configuration syntax differs by MCP client and changes independently of CAL-MCP. The stable CAL-MCP launch contract is therefore the executable plus arguments, not a copied client-specific JSON schema.
-
-For an installed entry point:
+Exact client configuration syntax differs by MCP client and changes independently of CAL-MCP. The stable v0.1.0 launch contract is:
 
 ```text
+package: cal-mcp
+version: 0.1.0
 command: cal-mcp
 arguments: none
 transport: stdio
@@ -42,7 +42,7 @@ arguments: -m cal_mcp
 transport: stdio
 ```
 
-The client should launch the command in an environment where the CAL-MCP package and its dependencies are installed.
+The client should launch the command in an environment where CAL-MCP and its runtime dependencies are installed. No Agora runtime is required.
 
 ## Network/data boundary
 
@@ -54,7 +54,7 @@ See [Configuration](../configuration.md) and [Limitations](../limitations.md).
 
 ## Tool discovery
 
-MCP clients should use the server's executable tool schemas rather than relying on hand-maintained parameter lists. The v0.1 surface currently contains 26 public tools grouped in the [user documentation index](../index.md).
+MCP clients should use the server's executable tool schemas rather than relying on hand-maintained parameter lists. The v0.1.0 surface contains 26 public tools grouped in the [user documentation index](../index.md).
 
 CAL form field names and PHP endpoint names are not part of the MCP contract.
 
@@ -62,14 +62,18 @@ CAL form field names and PHP endpoint names are not part of the MCP contract.
 
 Transport-level MCP process failures are distinct from CAL request/parser failures produced while executing a tool. For the CAL-side taxonomy, see [Errors and upstream drift](../concepts/errors-and-upstream-drift.md).
 
-A parser-drift error should not be interpreted by the client as a legitimate empty CAL result.
+A parser-drift error should not be interpreted by the client as a legitimate empty CAL result. The separately scheduled/opt-in live smoke treats MCP error results as failures and keeps network/upstream unavailability distinguishable from adapter/parser drift where the execution boundary provides enough evidence.
+
+## Release verification
+
+The v0.1 release gate builds both source distribution and wheel, installs the built wheel into a fresh environment, verifies installed metadata version `0.1.0`, and launches the installed `cal-mcp` command over stdio. Normal CI remains CAL-independent.
+
+A separate live drift smoke exercises eight fixed public operations sequentially with retries disabled, cache disabled, concurrency 1, and a hard ceiling of nine CAL requests. It does not enumerate results or follow discovered links.
 
 ## Shutdown
 
 When the MCP session ends, the client should close/terminate the stdio server normally. CAL-MCP closes its owned HTTP client at server shutdown; its in-memory cache is not persisted.
 
-## Pre-release and Agora status
+## Agora status
 
-No stable published v0.1 package is documented yet; see [Installation](../installation.md). Issue #15 owns release packaging and clean-install validation.
-
-Agora registration is a separate downstream task in issue #16. CAL-MCP does not import Agora and does not require it to operate. After registration, Agora should remain discovery/install/launch metadata around the same standalone server rather than a second CAL implementation.
+Agora registration is a separate downstream task in issue #16. CAL-MCP does not import Agora and does not require it to operate. After registration, Agora should remain discovery/install/launch metadata around the same standalone `cal-mcp==0.1.0` server rather than a second CAL implementation.
