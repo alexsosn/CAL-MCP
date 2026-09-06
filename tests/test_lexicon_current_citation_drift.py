@@ -78,6 +78,26 @@ async def test_current_structural_citations_preserve_three_items_without_hidden_
     ]
 
 
+def test_hidden_alternate_citation_script_allows_self_closing_void_element() -> None:
+    html = (FIXTURES / "entry_br_current_citations.html").read_text(encoding="utf-8")
+    html = html.replace("hidden; alternate", "hidden<br/>alternate", 1)
+
+    entry = parse_lexicon_entry(
+        CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/cal_entry_web.php?lemma=br+N",
+            body=html.encode(),
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 6, tzinfo=UTC),
+        ),
+        lemma_key="br N",
+    )
+
+    citations = entry.senses[0].citations
+    assert len(citations) == 3
+    assert all("hidden" not in item.text and "alternate" not in item.text for item in citations)
+
+
 def test_current_structural_citations_still_fail_closed_on_wrong_rendered_count() -> None:
     html = (FIXTURES / "entry_br_current_citations.html").read_text(encoding="utf-8")
     html = html.replace("3 citations", "4 citations", 1)
