@@ -85,11 +85,14 @@ jobs:
               structured = getattr(result, "structured_content", None)
               if not isinstance(structured, dict):
                   raise RuntimeError("missing structured lexicon result")
+              if structured.get("status") != "found":
+                  raise RuntimeError(f"unexpected lookup status: {structured.get('status')!r}")
               provenance = structured.get("provenance")
               source_url = provenance.get("source_url") if isinstance(provenance, dict) else None
               if not isinstance(source_url, str) or not source_url.startswith("https://cal.huc.edu/"):
                   raise RuntimeError("missing CAL provenance")
-              lemma = structured.get("lemma")
+              entry = structured.get("entry")
+              lemma = entry.get("lemma") if isinstance(entry, dict) else None
               lemma_key = lemma.get("lemma_key") if isinstance(lemma, dict) else None
               if lemma_key != "br N":
                   raise RuntimeError(f"unexpected selected lemma key: {lemma_key!r}")
