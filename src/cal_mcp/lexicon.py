@@ -118,11 +118,33 @@ class _Line:
 
 @dataclass(slots=True)
 class _OpenLink:
+    tag: str
     href: str
+    depth: int = 1
     parts: list[str] = field(default_factory=list)
 
 
 _IGNORED_CONTENT_TAGS = frozenset({"script", "style"})
+_HTML_VOID_TAGS = frozenset(
+    {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
+)
+_CITATION_BOUNDARY = "\ue000"
+_DISPLAY_NONE_RE = re.compile(r"(?:^|;)\s*display\s*:\s*none\s*(?:;|$)", re.IGNORECASE)
 
 
 _BLOCK_TAGS = frozenset(
@@ -160,6 +182,7 @@ class _SemanticHTMLParser(HTMLParser):
         self._list_depth = -1
         self._line_depth = 0
         self._ignored_depth = 0
+        self._semantic_skip_tags: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _IGNORED_CONTENT_TAGS:
@@ -167,6 +190,27 @@ class _SemanticHTMLParser(HTMLParser):
             return
         if self._ignored_depth:
             return
+        if self._semantic_skip_tags:
+            if tag not in _HTML_VOID_TAGS:
+                self._semantic_skip_tags.append(tag)
+            return
+
+        attributes = {key: value or "" for key, value in attrs}
+        classes = frozenset(attributes.get("class", "").split())
+        if tag == "span" and "cit-sep" in classes:
+            self._parts.append(f" {_CITATION_BOUNDARY} ")
+            self._semantic_skip_tags.append(tag)
+            return
+        if (
+            tag == "span"
+            and "cit-script" in classes
+            and _DISPLAY_NONE_RE.search(attributes.get("style", "")) is not None
+        ):
+            self._semantic_skip_tags.append(tag)
+            return
+
+        if self._open_link is not None and tag == self._open_link.tag:
+            self._open_link.depth += 1
         if tag in {"ul", "ol"}:
             self._flush()
             self._list_depth += 1
@@ -176,19 +220,34 @@ class _SemanticHTMLParser(HTMLParser):
             self._line_depth = max(self._list_depth, 0)
         if tag == "br":
             self._flush()
-        if tag == "a":
-            href = next((value for key, value in attrs if key == "href" and value), "")
-            self._open_link = _OpenLink(href=href)
+        if tag == "a" and self._open_link is None:
+            href = attributes.get("href", "")
+            self._open_link = _OpenLink(tag="a", href=href)
+        elif tag == "span" and "cit-ref-plain" in classes and self._open_link is None:
+            self._open_link = _OpenLink(tag="span", href="")
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._semantic_skip_tags and tag in _HTML_VOID_TAGS:
+            self.handle_starttag(tag, attrs)
+            return
+        super().handle_startendtag(tag, attrs)
 
     def handle_endtag(self, tag: str) -> None:
         if self._ignored_depth:
             if tag in _IGNORED_CONTENT_TAGS:
                 self._ignored_depth -= 1
             return
-        if tag == "a" and self._open_link is not None:
-            text = _clean_text("".join(self._open_link.parts))
-            self._links.append(_Link(href=self._open_link.href, text=text))
-            self._open_link = None
+        if self._semantic_skip_tags:
+            if tag != self._semantic_skip_tags[-1]:
+                raise LexiconParseError("CAL lexicon has malformed excluded citation content")
+            self._semantic_skip_tags.pop()
+            return
+        if self._open_link is not None and tag == self._open_link.tag:
+            self._open_link.depth -= 1
+            if self._open_link.depth == 0:
+                text = _clean_text("".join(self._open_link.parts))
+                self._links.append(_Link(href=self._open_link.href, text=text))
+                self._open_link = None
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
         if tag in {"ul", "ol"}:
@@ -196,7 +255,7 @@ class _SemanticHTMLParser(HTMLParser):
             self._list_depth -= 1
 
     def handle_data(self, data: str) -> None:
-        if self._ignored_depth:
+        if self._ignored_depth or self._semantic_skip_tags:
             return
         self._parts.append(data)
         if self._open_link is not None:
@@ -206,6 +265,8 @@ class _SemanticHTMLParser(HTMLParser):
         super().close()
         if self._ignored_depth:
             raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")
+        if self._semantic_skip_tags:
+            raise LexiconParseError("CAL lexicon has an unclosed excluded citation subtree")
         self._flush()
 
     def _flush(self) -> None:
@@ -663,6 +724,7 @@ def _is_dialect_label(value: str) -> bool:
 
 
 def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
+    structural_boundaries = _CITATION_BOUNDARY in line.text
     locations: list[tuple[_Link, int]] = []
     cursor = 0
     for link in line.links:
@@ -677,12 +739,17 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
 
     citations: list[Citation] = []
     prefix = line.text[: locations[0][1]]
-    citations.extend(_raw_citation(part) for part in _split_citation_segments(prefix))
+    citations.extend(
+        _raw_citation(part)
+        for part in _split_citation_segments(prefix, structural_boundaries=structural_boundaries)
+    )
 
     for index, (link, start) in enumerate(locations):
         text_start = start + len(link.text)
         text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
-        segments = _split_citation_segments(line.text[text_start:text_end])
+        segments = _split_citation_segments(
+            line.text[text_start:text_end], structural_boundaries=structural_boundaries
+        )
         linked_text = segments[0] if segments else ""
         reference = link.text.removesuffix("↗").strip()
         citations.append(
@@ -696,7 +763,9 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
     return citations
 
 
-def _split_citation_segments(value: str) -> list[str]:
+def _split_citation_segments(value: str, *, structural_boundaries: bool = False) -> list[str]:
+    if structural_boundaries or _CITATION_BOUNDARY in value:
+        return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
     return [part.strip() for part in _CITATION_SEPARATOR_RE.split(value.strip()) if part.strip()]
 
 
