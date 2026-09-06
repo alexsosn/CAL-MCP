@@ -176,8 +176,7 @@ async def run_live_smoke() -> SmokeSummary:
                     validate_tool_result(
                         case.tool_name,
                         result,
-                        failure_kind=budget_client.last_failure_kind
-                        or "adapter_or_parser_drift",
+                        failure_kind=budget_client.last_failure_kind or "adapter_or_parser_drift",
                     )
                 except SmokeFailure as exc:
                     exc.request_count = budget_client.budget.request_count
@@ -208,8 +207,7 @@ async def _async_main() -> None:
         )
         raise
     print(
-        f"SMOKE_OK tools={len(summary.completed_tools)} "
-        f"TOTAL_CAL_REQUESTS={summary.request_count}"
+        f"SMOKE_OK tools={len(summary.completed_tools)} TOTAL_CAL_REQUESTS={summary.request_count}"
     )
 
 
