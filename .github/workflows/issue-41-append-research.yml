@@ -1,0 +1,31 @@
+name: Issue 41 append research
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-count-drift
+    paths:
+      - .github/workflows/issue-41-append-research.yml
+
+permissions:
+  contents: write
+
+jobs:
+  append:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-count-drift
+      - name: Append R-021 and remove helper
+        env:
+          R021_B64: CiMjIFItMDIxIOKAlCBDdXJyZW50IGZ1bGwtZW50cnkgY2l0YXRpb25zIGV4cG9zZSBzdHJ1Y3R1cmFsIGl0ZW0vc2VwYXJhdG9yIHNlbWFudGljcw0KDQoqKlJlY2hlY2tlZDoqKiAyMDI2LTA5LTA2Lg0KDQpJc3N1ZSAjNDEncyBmb2N1c2VkIGBiciBOYCBwcm9iZSBzaG93cyB0aGF0IGN1cnJlbnQgYGNhbF9lbnRyeV93ZWIucGhwYCBjaXRhdGlvbiBncm91cHMgd3JhcCBlYWNoIGNpdGF0aW9uIGluIGBzcGFuLmNpdC1pdGVtYCBhbmQgd3JhcCB0aGUgcHVuY3R1YXRpb24gKmJldHdlZW4qIGNpdGF0aW9ucyBpbiBgc3Bhbi5jaXQtc2VwYC4gQ2l0YXRpb24gY29udGVudCBpdHNlbGYgbWF5IGNvbnRhaW4gc2VtaWNvbG9uczogdGhlIGN1cnJlbnQgYEJUIFlldiA3NmEoNDApYCBjaXRhdGlvbiBpbmNsdWRlcyBvbmUgaW5zaWRlIGl0cyB0cmFuc2xpdGVyYXRpb24gYW5kIGFub3RoZXIgY2xhdXNlIHNlbWljb2xvbiBpbiB0aGUgcmVuZGVyZWQgdHJhbnNsYXRpb24uIEN1cnJlbnQgZW50cmllcyBhbHNvIHByZS1yZW5kZXIgaGlkZGVuIGFsdGVybmF0ZSBgc3Bhbi5jaXQtc2NyaXB0YCByZXByZXNlbnRhdGlvbnMgYW5kIGRpc3Rpbmd1aXNoIHVubGlua2VkIHJlZmVyZW5jZXMgd2l0aCBgc3Bhbi5jaXQtcmVmLXBsYWluYC4NCg0KVGhlIG9sZCBzZW1hbnRpYyBwYXJzZXIgZmxhdHRlbmVkIHRob3NlIGJvdW5kYXJpZXMgYW5kIHRoZW4gdHJlYXRlZCB3aGl0ZXNwYWNlLWFkamFjZW50IHNlbWljb2xvbnMgYXMgY2l0YXRpb24gc2VwYXJhdG9ycy4gVGhhdCBjYW4gaW5mbGF0ZSBhIHJlbmRlcmVkIHRocmVlLWNpdGF0aW9uIGdyb3VwIHRvIGZvdXIgb3IgbW9yZSBwYXJzZWQgY2l0YXRpb25zIGFuZCB0cmlnZ2VyIHRoZSBvdGhlcndpc2UtY29ycmVjdCBjaXRhdGlvbi1jb3VudCBkcmlmdCBndWFyZC4gSXQgY2FuIGFsc28gbWl4IGhpZGRlbiBhbHRlcm5hdGUgc2NyaXB0IHRleHQgaW50byB0aGUgdmlzaWJsZSBjaXRhdGlvbiByZXByZXNlbnRhdGlvbi4NCg0KU291cmNlOiBodHRwczovL2NhbC5odWMuZWR1L2NhbF9lbnRyeV93ZWIucGhwP2xlbW1hPWJyK04gYW5kIGBkb2NzL3Jlc2VhcmNoL2lzc3VlLTQxLWxleGljb24tY2l0YXRpb24tY291bnQtZHJpZnQubWRgLCByZWNoZWNrZWQgMjAyNi0wOS0wNiB3aXRoIHRocmVlIGZpeGVkIHJlcXVlc3RzIHRvIHRoYXQgc2luZ2xlIGVudHJ5IChmaW5hbCBzdHJ1Y3R1cmFsIHByb2JlIHJ1biBgMzQwMjQxMDAxNjlgIHVzZWQgdGhlIHByb2R1Y3Rpb24gQ0FMLU1DUCBVc2VyLUFnZW50KS4gTm8gbmVpZ2hib3JpbmcgZW50cmllcyB3ZXJlIGVudW1lcmF0ZWQuDQoNCioqSW1wbGljYXRpb246KiogY3VycmVudCBzdHJ1Y3R1cmFsIGBjaXQtc2VwYCBib3VuZGFyaWVzIG11c3QgdGFrZSBwcmVjZWRlbmNlIG92ZXIgcHVuY3R1YXRpb24gc3BsaXR0aW5nOyBoaWRkZW4gYWx0ZXJuYXRlIGBjaXQtc2NyaXB0YCB2YXJpYW50cyBtdXN0IG5vdCBjb250YW1pbmF0ZSB2aXNpYmxlIGNpdGF0aW9uIHRleHQ7IHNhZmVseSBkZWxpbWl0ZWQgYGNpdC1yZWYtcGxhaW5gIHJlZmVyZW5jZXMgbWF5IGJlIHByZXNlcnZlZCB3aXRoIGEgbnVsbCBVUkwuIExlZ2FjeS9yZWR1Y2VkIG1hcmt1cCB3aXRob3V0IHN0cnVjdHVyYWwgc2VwYXJhdG9ycyBtYXkgcmV0YWluIHRoZSBleGlzdGluZyBzZW1pY29sb24gZmFsbGJhY2suIFJlbmRlcmVkIGNpdGF0aW9uLWNvdW50IGVxdWFsaXR5IHJlbWFpbnMgYSBzdHJpY3QgZmFpbC1jbG9zZWQgaW52YXJpYW50Lg0K
+        run: |
+          set -euo pipefail
+          python -c "import base64,os,pathlib; p=pathlib.Path('research.md'); p.write_text(p.read_text(encoding='utf-8') + base64.b64decode(os.environ['R021_B64']).decode('utf-8'), encoding='utf-8')"
+          rm .github/workflows/issue-41-append-research.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add research.md .github/workflows/issue-41-append-research.yml
+          git commit -m 'docs: record current lexicon citation structure'
+          git push origin HEAD:fix/issue-41-lexicon-citation-count-drift
