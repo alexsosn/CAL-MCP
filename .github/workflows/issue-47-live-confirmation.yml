@@ -60,7 +60,10 @@ jobs:
                   self.request_count += 1
                   if self.request_count > 2:
                       raise RuntimeError(f"request ceiling exceeded: {self.request_count}>2")
-                  print(f"CAL_REQUEST_{self.request_count} {request.method} {request.url}")
+                  print(
+                      f"CAL_REQUEST_{self.request_count} {request.method} "
+                      f"path={request.path} params={request.params!r}"
+                  )
                   return await super().fetch(
                       request,
                       parser=parser,
