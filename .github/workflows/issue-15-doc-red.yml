@@ -1,0 +1,26 @@
+name: Issue 15 documentation RED gate
+
+on:
+  push:
+    branches:
+      - release/issue-15-v0.1-resume
+    paths:
+      - .github/workflows/issue-15-doc-red.yml
+
+permissions:
+  contents: read
+
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install development dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Run release documentation contract tests
+        run: pytest tests/test_release_contract.py -q
