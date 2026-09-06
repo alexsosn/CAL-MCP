@@ -242,12 +242,12 @@ class _SemanticHTMLParser(HTMLParser):
                 raise LexiconParseError("CAL lexicon has malformed excluded citation content")
             self._semantic_skip_tags.pop()
             return
-        if self._open_link is not None and tag == self._open_link.tag:
+        if tag in {"td", "th"} and self._open_link is not None and self._open_link.tag == "a":
+            self._finish_open_link()
+        elif self._open_link is not None and tag == self._open_link.tag:
             self._open_link.depth -= 1
             if self._open_link.depth == 0:
-                text = _clean_text("".join(self._open_link.parts))
-                self._links.append(_Link(href=self._open_link.href, text=text))
-                self._open_link = None
+                self._finish_open_link()
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
         if tag in {"ul", "ol"}:
@@ -268,6 +268,13 @@ class _SemanticHTMLParser(HTMLParser):
         if self._semantic_skip_tags:
             raise LexiconParseError("CAL lexicon has an unclosed excluded citation subtree")
         self._flush()
+
+    def _finish_open_link(self) -> None:
+        if self._open_link is None:
+            return
+        text = _clean_text("".join(self._open_link.parts))
+        self._links.append(_Link(href=self._open_link.href, text=text))
+        self._open_link = None
 
     def _flush(self) -> None:
         text = _clean_text("".join(self._parts))
@@ -370,12 +377,18 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
 
     for index, line in enumerate(lines):
         for link in line.links:
+            if not _is_lemma_entry_href(link.href):
+                continue
             lemma_key = _lemma_key_from_href(link.href)
             if lemma_key is None:
-                continue
+                raise LexiconParseError(
+                    "CAL lexicon browse candidate is missing a usable lemma key"
+                )
             parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
             if parsed is None:
-                continue
+                raise LexiconParseError(
+                    "CAL lexicon browse candidate is missing a recognizable lemma header"
+                )
 
             aliases: tuple[str, ...] = ()
             before_link = line.text.split(link.text, 1)[0]
@@ -658,9 +671,9 @@ def _parse_lemma_header(
         return None
 
     pronunciation: str | None = None
-    if label.endswith(")") and " (" in label:
-        headword_text, pronunciation_text = label.rsplit(" (", 1)
-        pronunciation = pronunciation_text[:-1].strip()
+    pronunciation_parts = _split_trailing_parenthetical(label)
+    if pronunciation_parts is not None:
+        headword_text, pronunciation = pronunciation_parts
     else:
         headword_text = label
     headwords = tuple(part.strip() for part in headword_text.split(",") if part.strip())
@@ -675,18 +688,42 @@ def _parse_lemma_header(
     )
 
 
+def _split_trailing_parenthetical(value: str) -> tuple[str, str] | None:
+    if not value.endswith(")"):
+        return None
+    depth = 0
+    for index in range(len(value) - 1, -1, -1):
+        char = value[index]
+        if char == ")":
+            depth += 1
+        elif char == "(":
+            depth -= 1
+            if depth < 0:
+                return None
+            if depth == 0:
+                if index == 0 or not value[index - 1].isspace():
+                    return None
+                return value[:index].rstrip(), value[index + 1 : -1].strip()
+    return None
+
+
 def _looks_like_pos_token(value: str) -> bool:
     if not value or not value[0].isascii() or not value[0].isalpha() or "." not in value:
         return False
     return all(char.isascii() and (char.isalnum() or char in "./-") for char in value)
 
 
-def _lemma_key_from_href(href: str) -> str | None:
+def _is_lemma_entry_href(href: str) -> bool:
     if not href:
+        return False
+    path = urlsplit(href).path
+    return path.endswith("oneentry.php") or path.endswith("cal_entry_web.php")
+
+
+def _lemma_key_from_href(href: str) -> str | None:
+    if not _is_lemma_entry_href(href):
         return None
     parsed = urlsplit(href)
-    if not (parsed.path.endswith("oneentry.php") or parsed.path.endswith("cal_entry_web.php")):
-        return None
     values = parse_qs(parsed.query, keep_blank_values=True).get("lemma")
     if not values or not values[0].strip():
         return None
