@@ -68,6 +68,10 @@ Tests must continue to prove fail-closed behavior for:
 
 Advanced/dialect KWIC parsing is out of scope and must remain unchanged.
 
+## Review-regression checkpoint
+
+The first adversarial invariant pass found a concrete gap before final review: once inline mode is recognized, a later `showKWIC.php` row with its frequency prefix removed can fall outside the current contiguous frequency-row window and therefore be silently skipped. A dedicated test, `test_current_inline_mode_rejects_kwic_row_without_frequency`, was added test-first. The first run at `f163dd545472b2dcf62f8219f39791444bb4b65f` was not a valid behavioral RED because Ruff format stopped before pytest; the formatting-only correction at `f85b75629542f2dd994d298b739aedd677da048b` changes no parser behavior. This checkpoint commit exists only to trigger normal PR CI on that exact behavior. A valid review-regression RED must reach pytest with Ruff/format/mypy green and fail on that new test before production code is hardened.
+
 ## GREEN and verification
 
 Run, in order:
