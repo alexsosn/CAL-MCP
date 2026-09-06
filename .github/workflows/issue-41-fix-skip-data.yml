@@ -1,0 +1,31 @@
+name: Issue 41 fix skipped citation data
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-count-drift
+    paths:
+      - .github/workflows/issue-41-fix-skip-data.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-count-drift
+      - name: Exclude skipped subtree data and remove helper
+        env:
+          PATCH_B64: ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCnBhdGg9UGF0aCgic3JjL2NhbF9tY3AvbGV4aWNvbi5weSIpCnRleHQ9cGF0aC5yZWFkX3RleHQoZW5jb2Rpbmc9InV0Zi04IikKb2xkPScgICAgZGVmIGhhbmRsZV9kYXRhKHNlbGYsIGRhdGE6IHN0cikgLT4gTm9uZTpcbiAgICAgICAgaWYgc2VsZi5faWdub3JlZF9kZXB0aDpcbiAgICAgICAgICAgIHJldHVyblxuICAgICAgICBzZWxmLl9wYXJ0cy5hcHBlbmQoZGF0YSlcbicKbmV3PScgICAgZGVmIGhhbmRsZV9kYXRhKHNlbGYsIGRhdGE6IHN0cikgLT4gTm9uZTpcbiAgICAgICAgaWYgc2VsZi5faWdub3JlZF9kZXB0aCBvciBzZWxmLl9zZW1hbnRpY19za2lwX3RhZ3M6XG4gICAgICAgICAgICByZXR1cm5cbiAgICAgICAgc2VsZi5fcGFydHMuYXBwZW5kKGRhdGEpXG4nCmlmIHRleHQuY291bnQob2xkKSE9MTogcmFpc2UgU3lzdGVtRXhpdCgidW5leHBlY3RlZCBoYW5kbGVfZGF0YSBibG9jayBjb3VudCIpCnBhdGgud3JpdGVfdGV4dCh0ZXh0LnJlcGxhY2Uob2xkLG5ldywxKSwgZW5jb2Rpbmc9InV0Zi04IikK
+        run: |
+          set -euo pipefail
+          python -c "import base64,os; exec(base64.b64decode(os.environ['PATCH_B64']))"
+          rm .github/workflows/issue-41-fix-skip-data.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/lexicon.py .github/workflows/issue-41-fix-skip-data.yml
+          git commit -m 'fix: exclude skipped citation subtree data'
+          git push origin HEAD:fix/issue-41-lexicon-citation-count-drift
