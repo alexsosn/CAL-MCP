@@ -1,0 +1,38 @@
+name: Issue 41 raw CAL probe
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-count-drift
+    paths:
+      - .github/workflows/issue-41-raw-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch one br N entry and print bounded structural snippets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --max-time 15 --max-filesize 2097152 \
+            'https://cal.huc.edu/cal_entry_web.php?lemma=br+N' -o /tmp/br.html
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          text = Path('/tmp/br.html').read_text(encoding='utf-8', errors='replace')
+          print('bytes=', len(text.encode('utf-8')))
+          for needle in ('BT Yev 76a(40)', 'EphCruc 2:3'):
+              idx = text.find(needle)
+              print('needle=', needle, 'index=', idx)
+              if idx < 0:
+                  continue
+              start = max(0, idx - 700)
+              end = min(len(text), idx + 1200)
+              snippet = re.sub(r'\s+', ' ', text[start:end])
+              print(snippet)
+          PY
