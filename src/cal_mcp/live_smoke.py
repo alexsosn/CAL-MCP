@@ -8,6 +8,7 @@ from typing import Literal, TypeVar, cast
 
 from cal_mcp.bibliography import BibliographyParseError, BibliographyService
 from cal_mcp.client import (
+    CalClientConfig,
     CalContentError,
     CalFetchResult,
     CalHttpClient,
@@ -16,7 +17,6 @@ from cal_mcp.client import (
     CalResponse,
     CalUpstreamError,
     Transport,
-    CalClientConfig,
 )
 from cal_mcp.concordance import ConcordanceParseError, ConcordanceService
 from cal_mcp.dictionary_collation import (
