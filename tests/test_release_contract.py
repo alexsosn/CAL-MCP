@@ -20,6 +20,9 @@ from cal_mcp.concordance import ConcordanceParseError
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
 CHANGELOG = ROOT / "CHANGELOG.md"
+INSTALLATION_DOC = ROOT / "docs" / "installation.md"
+STANDALONE_DOC = ROOT / "docs" / "integrations" / "standalone-mcp.md"
+TESTING_GUIDE = ROOT / "wiki" / "testing.md"
 LIVE_SMOKE_WORKFLOW = ROOT / ".github" / "workflows" / "live-smoke.yml"
 RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 RELEASE_VERIFY_SCRIPT = ROOT / "scripts" / "verify_release_artifact.py"
@@ -49,6 +52,29 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     assert LIVE_SMOKE_WORKFLOW.exists()
     assert RELEASE_WORKFLOW.exists()
     assert RELEASE_VERIFY_SCRIPT.exists()
+
+
+def test_v01_release_coordinates_are_documented_without_stale_dev_version() -> None:
+    installation = INSTALLATION_DOC.read_text(encoding="utf-8")
+    standalone = STANDALONE_DOC.read_text(encoding="utf-8")
+
+    assert "0.1.0.dev0" not in installation
+    assert "0.1.0.dev0" not in standalone
+    assert "cal-mcp==0.1.0" in installation
+    assert "cal-mcp==0.1.0" in standalone
+    assert "command: cal-mcp" in standalone
+    assert "transport: stdio" in standalone
+
+
+def test_live_smoke_operator_documentation_freezes_invocation_and_budget() -> None:
+    testing = TESTING_GUIDE.read_text(encoding="utf-8")
+
+    assert ".github/workflows/live-smoke.yml" in testing
+    assert "python -m cal_mcp.live_smoke" in testing
+    assert "9" in testing
+    assert "concurrency" in testing.lower()
+    assert "retries" in testing.lower()
+    assert "cache" in testing.lower()
 
 
 def test_live_smoke_workflow_is_separate_and_bounded() -> None:
