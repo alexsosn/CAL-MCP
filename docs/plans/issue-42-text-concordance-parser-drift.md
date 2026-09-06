@@ -70,7 +70,13 @@ Advanced/dialect KWIC parsing is out of scope and must remain unchanged.
 
 ## Review-regression checkpoint
 
-The first adversarial invariant pass found a concrete gap before final review: once inline mode is recognized, a later `showKWIC.php` row with its frequency prefix removed can fall outside the current contiguous frequency-row window and therefore be silently skipped. A dedicated test, `test_current_inline_mode_rejects_kwic_row_without_frequency`, was added test-first. The first run at `f163dd545472b2dcf62f8219f39791444bb4b65f` was not a valid behavioral RED because Ruff format stopped before pytest; the formatting-only correction at `f85b75629542f2dd994d298b739aedd677da048b` changes no parser behavior. This checkpoint commit exists only to trigger normal PR CI on that exact behavior. A valid review-regression RED must reach pytest with Ruff/format/mypy green and fail on that new test before production code is hardened.
+The first adversarial invariant pass found a concrete gap before final review: once inline mode is recognized, a later `showKWIC.php` row with its frequency prefix removed can fall outside the current contiguous frequency-row window and therefore be silently skipped. A dedicated test, `test_current_inline_mode_rejects_kwic_row_without_frequency`, was added test-first. The first run at `f163dd545472b2dcf62f8219f39791444bb4b65f` was not a valid behavioral RED because Ruff format stopped before pytest; the formatting-only correction at `f85b75629542f2dd994d298b739aedd677da048b` changes no parser behavior.
+
+**Review-regression RED:** PR CI run `34046753335` at head `b5765d2df7456715c2cb1d376399441211bedebd` passed install, Ruff lint, Ruff format, and mypy. Pytest collected 379 tests and finished `1 failed, 378 passed`; the sole failure was `test_current_inline_mode_rejects_kwic_row_without_frequency` because the parser returned normally instead of raising.
+
+**Review-regression fix:** commit `52e62a119bbcf500e5c779532bc3bd0103a03ad4` broadens only the already-detected inline row window to include adjacent `showKWIC.php` rows as candidates. Those rows then pass through the existing strict row parser, so a missing frequency is rejected rather than silently skipped. The temporary patch helper removed itself in the same commit.
+
+**Focused GREEN:** helper run `34046914844` reformatted the touched source, passed Ruff on the changed parser/tests, and ran `tests/test_concordance_current_shape_regression.py`, `tests/test_concordance.py`, and `tests/test_concordance_review_regressions.py`: **32 passed**.
 
 ## GREEN and verification
 
