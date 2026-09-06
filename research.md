@@ -379,3 +379,18 @@ Branch-only research made seven fixed, bounded CAL GETs across three runs (three
 
 **Implication:** expose caller-controlled dialect discovery, one-dialect source discovery, and one-source citation retrieval as separate bounded operations. Keep private endpoint/form fields hidden, do not invent pagination, never auto-follow lexical-entry links, and keep this result model distinct from both English citation-text search and online-corpus passage retrieval.
 
+
+
+## R-021 — Current one-text concordance rows are inline BR-delimited streams
+
+**Rechecked:** 2026-09-06.
+
+A release-blocking live check of `newconcord.php?text=13250&cset=S` found that CAL still returns HTTP 200, the expected `Frequencies of lemmas in text 13250` marker, and 41 `showKWIC.php` lemma links with the same `lemma`, `charset`, and `texts` semantics. The row layout has changed from the reduced table-row shape captured on 2026-09-05: current rows are rendered in an inline `span` stream and separated by `<br>`, for example an integer frequency and dotted filler followed by the lemma link, `:`, and the gloss.
+
+One fixed branch-only probe made one CAL GET with a 20-second timeout and 256 KiB cap; it returned 7,071 bytes. No text enumeration, pagination, KWIC follow-up, or retry occurred. Detailed evidence and the reduced structural fixture are recorded in `docs/research/issue-42-text-concordance-parser-drift.md`.
+
+Source:
+
+- https://cal.huc.edu/newconcord.php?text=13250&cset=S
+
+**Implication:** the single-text concordance parser recognizes the current BR-delimited semantic rows while retaining the earlier table parser as a strict compatibility fallback. Required frequency/link/gloss semantics and link/request consistency checks remain fail-closed. The public MCP schema, request contract, provenance, and one-request bound do not change.
