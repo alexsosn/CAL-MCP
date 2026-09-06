@@ -1,0 +1,51 @@
+name: Issue 41 fix patch artifacts
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-count-drift
+    paths:
+      - .github/workflows/issue-41-fix-patch-artifacts.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-count-drift
+      - name: Correct literal patch artifacts and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("src/cal_mcp/lexicon.py")
+          text = path.read_text(encoding="utf-8")
+          bad_call = 'self._open_link = _OpenLink((tag="span", href="")'
+          good_call = 'self._open_link = _OpenLink(tag="span", href="")'
+          if text.count(bad_call) != 1:
+              raise SystemExit("unexpected plain-reference artifact count")
+          text = text.replace(bad_call, good_call, 1)
+          bad_tail = '''\n".text=text))
+                self._open_link = None
+        if tag in _BLOCK_TAGS or tag == "br":
+            self._flush()
+        if tag in {"ul", "ol"}:
+            self._flush()
+            self._list_depth -= 1
+'''
+          if text.count(bad_tail) != 1:
+              raise SystemExit("unexpected duplicated end-tag artifact count")
+          text = text.replace(bad_tail, "\n", 1)
+          path.write_text(text, encoding="utf-8")
+          PY
+          rm .github/workflows/issue-41-fix-patch-artifacts.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/lexicon.py .github/workflows/issue-41-fix-patch-artifacts.yml
+          git commit -m 'fix: correct issue 41 parser patch artifacts'
+          git push origin HEAD:fix/issue-41-lexicon-citation-count-drift
