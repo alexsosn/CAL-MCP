@@ -1,0 +1,271 @@
+from pathlib import Path
+
+path = Path("src/cal_mcp/concordance.py")
+text = path.read_text()
+old_regex = '_FREQUENCY_RE = re.compile(r"^([0-9]+)\\s*:")\n'
+new_regex = old_regex + '_INLINE_FREQUENCY_PREFIX_RE = re.compile(r"^([0-9]+)\\s*:\\s*\\.*$")\n'
+if text.count(old_regex) != 1:
+    raise SystemExit("frequency regex anchor changed")
+text = text.replace(old_regex, new_regex, 1)
+
+old = '''def parse_text_concordance_page(
+    response: CalResponse,
+    *,
+    requested_text_id: str,
+    requested_charset: str,
+) -> TextConcordancePage:
+    lines = _parse_lines(response)
+    markers = [
+        match for line in lines if (match := _FREQUENCY_MARKER_RE.fullmatch(line.text)) is not None
+    ]
+    if len(markers) != 1 or markers[0].group(1) != requested_text_id:
+        raise ConcordanceParseError("CAL text concordance marker does not match the request")
+
+    parser = _TableHTMLParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    lemmas: list[ConcordanceLemma] = []
+    for row in parser.rows:
+        links = [
+            (cell_index, link)
+            for cell_index, cell in enumerate(row.cells)
+            for link in cell.links
+            if _is_path(link.href, "showKWIC.php")
+        ]
+        if not links:
+            continue
+        if len(links) != 1:
+            raise ConcordanceParseError("CAL concordance row has multiple KWIC links")
+        cell_index, link = links[0]
+        if cell_index == 0 or cell_index + 1 >= len(row.cells):
+            raise ConcordanceParseError("CAL concordance row is missing frequency or gloss")
+
+        kwic_url = _cal_navigation_url(response.url, link.href, "showKWIC.php")
+        query = parse_qs(urlsplit(kwic_url).query, keep_blank_values=True)
+        lemma_key = _parse_returned_lemma_key(_single_query_value(query, "lemma", "KWIC lemma"))
+        text_id = _single_query_value(query, "texts", "KWIC text")
+        charset = _single_query_value(query, "charset", "KWIC charset")
+        if text_id != requested_text_id or charset != requested_charset:
+            raise ConcordanceParseError("CAL concordance row link contradicts the request")
+        if link.text != lemma_key:
+            raise ConcordanceParseError("CAL concordance lemma link text differs from its key")
+
+        frequency_match = _FREQUENCY_RE.match(row.cells[cell_index - 1].text)
+        gloss = row.cells[cell_index + 1].text.removeprefix(":").strip()
+        if frequency_match is None or not gloss:
+            raise ConcordanceParseError("CAL concordance row lacks frequency or gloss")
+        lemmas.append(
+            ConcordanceLemma(
+                frequency=int(frequency_match.group(1)),
+                lemma_key=lemma_key,
+                gloss=gloss,
+                kwic_url=kwic_url,
+            )
+        )
+
+    if not lemmas:
+        raise ConcordanceParseError("CAL text concordance contains no recognizable lemma rows")
+    return TextConcordancePage(lemmas=tuple(lemmas))
+'''
+
+new = '''def parse_text_concordance_page(
+    response: CalResponse,
+    *,
+    requested_text_id: str,
+    requested_charset: str,
+) -> TextConcordancePage:
+    lines = _parse_lines(response)
+    markers = [
+        match for line in lines if (match := _FREQUENCY_MARKER_RE.fullmatch(line.text)) is not None
+    ]
+    if len(markers) != 1 or markers[0].group(1) != requested_text_id:
+        raise ConcordanceParseError("CAL text concordance marker does not match the request")
+
+    inline_lemmas = _parse_inline_text_concordance_rows(
+        lines,
+        base_url=response.url,
+        requested_text_id=requested_text_id,
+        requested_charset=requested_charset,
+    )
+    if inline_lemmas is not None:
+        return TextConcordancePage(lemmas=inline_lemmas)
+
+    parser = _TableHTMLParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    lemmas: list[ConcordanceLemma] = []
+    for row in parser.rows:
+        links = [
+            (cell_index, link)
+            for cell_index, cell in enumerate(row.cells)
+            for link in cell.links
+            if _is_path(link.href, "showKWIC.php")
+        ]
+        if not links:
+            continue
+        if len(links) != 1:
+            raise ConcordanceParseError("CAL concordance row has multiple KWIC links")
+        cell_index, link = links[0]
+        if cell_index == 0 or cell_index + 1 >= len(row.cells):
+            raise ConcordanceParseError("CAL concordance row is missing frequency or gloss")
+
+        lemma_key, kwic_url = _parse_text_concordance_link(
+            base_url=response.url,
+            href=link.href,
+            link_text=link.text,
+            requested_text_id=requested_text_id,
+            requested_charset=requested_charset,
+        )
+        frequency_match = _FREQUENCY_RE.match(row.cells[cell_index - 1].text)
+        gloss = row.cells[cell_index + 1].text.removeprefix(":").strip()
+        if frequency_match is None or not gloss:
+            raise ConcordanceParseError("CAL concordance row lacks frequency or gloss")
+        lemmas.append(
+            ConcordanceLemma(
+                frequency=int(frequency_match.group(1)),
+                lemma_key=lemma_key,
+                gloss=gloss,
+                kwic_url=kwic_url,
+            )
+        )
+
+    if not lemmas:
+        raise ConcordanceParseError("CAL text concordance contains no recognizable lemma rows")
+    return TextConcordancePage(lemmas=tuple(lemmas))
+
+
+def _parse_inline_text_concordance_rows(
+    lines: Sequence[object],
+    *,
+    base_url: str,
+    requested_text_id: str,
+    requested_charset: str,
+) -> tuple[ConcordanceLemma, ...] | None:
+    linked_row_indexes: list[int] = []
+    for index, line in enumerate(lines):
+        text = getattr(line, "text", "")
+        if _FREQUENCY_RE.match(text) is None:
+            continue
+        links = getattr(line, "links", ())
+        if any(
+            _is_path(getattr(link, "href", ""), "showKWIC.php")
+            for link in links
+        ):
+            linked_row_indexes.append(index)
+
+    if not linked_row_indexes:
+        return None
+
+    start = linked_row_indexes[0]
+    while start > 0 and _FREQUENCY_RE.match(
+        getattr(lines[start - 1], "text", "")
+    ) is not None:
+        start -= 1
+    end = linked_row_indexes[0]
+    while end + 1 < len(lines) and _FREQUENCY_RE.match(
+        getattr(lines[end + 1], "text", "")
+    ) is not None:
+        end += 1
+    if any(index > end for index in linked_row_indexes):
+        raise ConcordanceParseError("CAL inline concordance lemma rows are not contiguous")
+
+    lemmas: list[ConcordanceLemma] = []
+    for line in lines[start : end + 1]:
+        text = getattr(line, "text", "")
+        links = tuple(getattr(line, "links", ()))
+        if len(links) != 1 or not _is_path(
+            getattr(links[0], "href", ""), "showKWIC.php"
+        ):
+            raise ConcordanceParseError(
+                "CAL inline concordance row lacks one unique KWIC link"
+            )
+        link = links[0]
+        link_text = getattr(link, "text", "")
+        link_start = text.find(link_text)
+        if not link_text or link_start < 0:
+            raise ConcordanceParseError(
+                "CAL inline concordance lemma link is missing from its rendered row"
+            )
+
+        frequency_match = _INLINE_FREQUENCY_PREFIX_RE.fullmatch(
+            text[:link_start].strip()
+        )
+        remainder = text[link_start + len(link_text) :].strip()
+        if frequency_match is None or not remainder.startswith(":"):
+            raise ConcordanceParseError(
+                "CAL inline concordance row lacks frequency or gloss delimiter"
+            )
+        gloss = remainder[1:].strip()
+        if not gloss:
+            raise ConcordanceParseError("CAL inline concordance row lacks a gloss")
+
+        lemma_key, kwic_url = _parse_text_concordance_link(
+            base_url=base_url,
+            href=getattr(link, "href", ""),
+            link_text=link_text,
+            requested_text_id=requested_text_id,
+            requested_charset=requested_charset,
+        )
+        lemmas.append(
+            ConcordanceLemma(
+                frequency=int(frequency_match.group(1)),
+                lemma_key=lemma_key,
+                gloss=gloss,
+                kwic_url=kwic_url,
+            )
+        )
+    return tuple(lemmas)
+
+
+def _parse_text_concordance_link(
+    *,
+    base_url: str,
+    href: str,
+    link_text: str,
+    requested_text_id: str,
+    requested_charset: str,
+) -> tuple[str, str]:
+    kwic_url = _cal_navigation_url(base_url, href, "showKWIC.php")
+    query = parse_qs(urlsplit(kwic_url).query, keep_blank_values=True)
+    lemma_key = _parse_returned_lemma_key(
+        _single_query_value(query, "lemma", "KWIC lemma")
+    )
+    text_id = _single_query_value(query, "texts", "KWIC text")
+    charset = _single_query_value(query, "charset", "KWIC charset")
+    if text_id != requested_text_id or charset != requested_charset:
+        raise ConcordanceParseError("CAL concordance row link contradicts the request")
+    if link_text != lemma_key:
+        raise ConcordanceParseError(
+            "CAL concordance lemma link text differs from its key"
+        )
+    return lemma_key, kwic_url
+'''
+
+if text.count(old) != 1:
+    raise SystemExit("text concordance function block changed")
+path.write_text(text.replace(old, new, 1))
+
+research = Path("research.md")
+research_text = research.read_text()
+heading = "## R-021 — Current one-text concordance rows are inline BR-delimited streams"
+if heading not in research_text:
+    research_text += '''
+
+## R-021 — Current one-text concordance rows are inline BR-delimited streams
+
+**Rechecked:** 2026-09-06.
+
+A release-blocking live check of `newconcord.php?text=13250&cset=S` found that CAL still returns HTTP 200, the expected `Frequencies of lemmas in text 13250` marker, and 41 `showKWIC.php` lemma links with the same `lemma`, `charset`, and `texts` semantics. The row layout has changed from the reduced table-row shape captured on 2026-09-05: current rows are rendered in an inline `span` stream and separated by `<br>`, for example an integer frequency and dotted filler followed by the lemma link, `:`, and the gloss.
+
+One fixed branch-only probe made one CAL GET with a 20-second timeout and 256 KiB cap; it returned 7,071 bytes. No text enumeration, pagination, KWIC follow-up, or retry occurred. Detailed evidence and the reduced structural fixture are recorded in `docs/research/issue-42-text-concordance-parser-drift.md`.
+
+Source:
+
+- https://cal.huc.edu/newconcord.php?text=13250&cset=S
+
+**Implication:** the single-text concordance parser recognizes the current BR-delimited semantic rows while retaining the earlier table parser as a strict compatibility fallback. Required frequency/link/gloss semantics and link/request consistency checks remain fail-closed. The public MCP schema, request contract, provenance, and one-request bound do not change.
+'''
+    research.write_text(research_text)
+
+Path(".github/workflows/issue-42-apply.yml").unlink()
+Path(".github/scripts/issue42_apply.py").unlink()
