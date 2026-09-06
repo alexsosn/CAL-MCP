@@ -1,0 +1,124 @@
+name: Issue 47 bounded lexicon research probe
+
+on:
+  push:
+    branches:
+      - issue-47-lexicon-browse-drift
+    paths:
+      - .github/workflows/issue-47-research-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Inspect one current CAL browse response
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import http.client
+          from html.parser import HTMLParser
+
+          HOST = "cal.huc.edu"
+          PATH = "/browseSKEYheaders.php?first3=%22br%22"
+          LIMIT = 128 * 1024
+
+          class ProbeParser(HTMLParser):
+              def __init__(self) -> None:
+                  super().__init__(convert_charrefs=True)
+                  self.anchors: list[dict[str, object]] = []
+                  self.blocks: list[str] = []
+                  self.inputs: list[dict[str, str]] = []
+                  self._anchor: dict[str, object] | None = None
+                  self._block_parts: list[str] | None = None
+
+              def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+                  a = {key: value or "" for key, value in attrs}
+                  if tag == "a":
+                      self._anchor = {"href": a.get("href", ""), "parts": []}
+                  if tag in {"div", "td", "li", "option", "p"} and self._block_parts is None:
+                      self._block_parts = []
+                  if tag == "input":
+                      self.inputs.append(a)
+
+              def handle_endtag(self, tag: str) -> None:
+                  if tag == "a" and self._anchor is not None:
+                      parts = self._anchor.pop("parts")
+                      self._anchor["text"] = " ".join("".join(parts).split())
+                      self.anchors.append(self._anchor)
+                      self._anchor = None
+                  if tag in {"div", "td", "li", "option", "p"} and self._block_parts is not None:
+                      text = " ".join("".join(self._block_parts).split())
+                      if text:
+                          self.blocks.append(text)
+                      self._block_parts = None
+
+              def handle_data(self, data: str) -> None:
+                  if self._anchor is not None:
+                      self._anchor["parts"].append(data)
+                  if self._block_parts is not None:
+                      self._block_parts.append(data)
+
+          conn = http.client.HTTPSConnection(HOST, timeout=10)
+          conn.request(
+              "GET",
+              PATH,
+              headers={
+                  "User-Agent": "CAL-MCP/0.1 issue-47-bounded-research-probe",
+                  "Accept": "text/html,application/xhtml+xml",
+              },
+          )
+          response = conn.getresponse()
+          body = response.read(LIMIT + 1)
+          conn.close()
+
+          print(f"REQUEST GET https://{HOST}{PATH}")
+          print(f"STATUS {response.status} {response.reason}")
+          print(f"CONTENT_TYPE {response.getheader('Content-Type')}")
+          print(f"LOCATION {response.getheader('Location')}")
+          print(f"BYTES {len(body)}")
+          if len(body) > LIMIT:
+              raise SystemExit("response exceeded 128 KiB research cap")
+          if response.status != 200:
+              raise SystemExit(f"unexpected HTTP status {response.status}")
+
+          html = body.decode("utf-8", errors="replace")
+          parser = ProbeParser()
+          parser.feed(html)
+          parser.close()
+
+          print("FEATURES")
+          for needle in (
+              "oneentry.php",
+              "cal_entry_web.php",
+              "lemma=",
+              "NEXT PAGE",
+              "PREVIOUS PAGE",
+              "no matching",
+              "No matching",
+              "<script",
+              "<form",
+              "<option",
+          ):
+              print(f"  {needle!r}: {html.count(needle)}")
+
+          print(f"ANCHORS {len(parser.anchors)}")
+          for index, anchor in enumerate(parser.anchors[:30]):
+              href = str(anchor.get("href", ""))
+              text = str(anchor.get("text", ""))
+              print(f"  A{index}: href={href!r} text={text!r}")
+
+          print(f"BLOCKS {len(parser.blocks)}")
+          for index, text in enumerate(parser.blocks[:30]):
+              print(f"  B{index}: {text[:240]!r}")
+
+          print(f"INPUTS {len(parser.inputs)}")
+          for index, item in enumerate(parser.inputs[:20]):
+              keep = {k: item[k] for k in ("name", "value", "type") if k in item}
+              print(f"  I{index}: {keep!r}")
+          PY
