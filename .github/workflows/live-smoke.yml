@@ -1,0 +1,28 @@
+name: CAL live drift smoke
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 5 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cal-live-drift-smoke
+  cancel-in-progress: false
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install released server code
+        run: python -m pip install .
+      - name: Run fixed nine-request CAL smoke budget
+        run: python -m cal_mcp.live_smoke
