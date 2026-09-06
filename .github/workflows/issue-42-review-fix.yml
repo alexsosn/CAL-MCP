@@ -25,64 +25,12 @@ jobs:
       - name: Apply review regression fix
         shell: python
         run: |
+          import base64
           from pathlib import Path
-
           path = Path("src/cal_mcp/concordance.py")
           text = path.read_text()
-          old = '''    linked_row_indexes: list[int] = []
-    for index, line in enumerate(lines):
-        text = getattr(line, "text", "")
-        if _FREQUENCY_RE.match(text) is None:
-            continue
-        links = getattr(line, "links", ())
-        if any(_is_path(getattr(link, "href", ""), "showKWIC.php") for link in links):
-            linked_row_indexes.append(index)
-
-    if not linked_row_indexes:
-        return None
-
-    start = linked_row_indexes[0]
-    while start > 0 and _FREQUENCY_RE.match(getattr(lines[start - 1], "text", "")) is not None:
-        start -= 1
-    end = linked_row_indexes[0]
-    while (
-        end + 1 < len(lines)
-        and _FREQUENCY_RE.match(getattr(lines[end + 1], "text", "")) is not None
-    ):
-        end += 1
-    if any(index > end for index in linked_row_indexes):
-        raise ConcordanceParseError("CAL inline concordance lemma rows are not contiguous")
-'''
-          new = '''    kwic_row_indexes: list[int] = []
-    linked_frequency_indexes: list[int] = []
-    for index, line in enumerate(lines):
-        text = getattr(line, "text", "")
-        links = getattr(line, "links", ())
-        has_kwic_link = any(
-            _is_path(getattr(link, "href", ""), "showKWIC.php") for link in links
-        )
-        if has_kwic_link:
-            kwic_row_indexes.append(index)
-        if has_kwic_link and _FREQUENCY_RE.match(text) is not None:
-            linked_frequency_indexes.append(index)
-
-    if not linked_frequency_indexes:
-        return None
-
-    def is_candidate_row(index: int) -> bool:
-        line = lines[index]
-        text = getattr(line, "text", "")
-        return _FREQUENCY_RE.match(text) is not None or index in kwic_row_indexes
-
-    start = linked_frequency_indexes[0]
-    while start > 0 and is_candidate_row(start - 1):
-        start -= 1
-    end = linked_frequency_indexes[0]
-    while end + 1 < len(lines) and is_candidate_row(end + 1):
-        end += 1
-    if any(index < start or index > end for index in kwic_row_indexes):
-        raise ConcordanceParseError("CAL inline concordance lemma rows are not contiguous")
-'''
+          old = base64.b64decode("ICAgIGxpbmtlZF9yb3dfaW5kZXhlczogbGlzdFtpbnRdID0gW10KICAgIGZvciBpbmRleCwgbGluZSBpbiBlbnVtZXJhdGUobGluZXMpOgogICAgICAgIHRleHQgPSBnZXRhdHRyKGxpbmUsICJ0ZXh0IiwgIiIpCiAgICAgICAgaWYgX0ZSRVFVRU5DWV9SRS5tYXRjaCh0ZXh0KSBpcyBOb25lOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIGxpbmtzID0gZ2V0YXR0cihsaW5lLCAibGlua3MiLCAoKSkKICAgICAgICBpZiBhbnkoX2lzX3BhdGgoZ2V0YXR0cihsaW5rLCAiaHJlZiIsICIiKSwgInNob3dLV0lDLnBocCIpIGZvciBsaW5rIGluIGxpbmtzKToKICAgICAgICAgICAgbGlua2VkX3Jvd19pbmRleGVzLmFwcGVuZChpbmRleCkKCiAgICBpZiBub3QgbGlua2VkX3Jvd19pbmRleGVzOgogICAgICAgIHJldHVybiBOb25lCgogICAgc3RhcnQgPSBsaW5rZWRfcm93X2luZGV4ZXNbMF0KICAgIHdoaWxlIHN0YXJ0ID4gMCBhbmQgX0ZSRVFVRU5DWV9SRS5tYXRjaChnZXRhdHRyKGxpbmVzW3N0YXJ0IC0gMV0sICJ0ZXh0IiwgIiIpKSBpcyBub3QgTm9uZToKICAgICAgICBzdGFydCAtPSAxCiAgICBlbmQgPSBsaW5rZWRfcm93X2luZGV4ZXNbMF0KICAgIHdoaWxlICgKICAgICAgICBlbmQgKyAxIDwgbGVuKGxpbmVzKQogICAgICAgIGFuZCBfRlJFUVVFTkNZX1JFLm1hdGNoKGdldGF0dHIobGluZXNbZW5kICsgMV0sICJ0ZXh0IiwgIiIpKSBpcyBub3QgTm9uZQogICAgKToKICAgICAgICBlbmQgKz0gMQogICAgaWYgYW55KGluZGV4ID4gZW5kIGZvciBpbmRleCBpbiBsaW5rZWRfcm93X2luZGV4ZXMpOgogICAgICAgIHJhaXNlIENvbmNvcmRhbmNlUGFyc2VFcnJvcigiQ0FMIGlubGluZSBjb25jb3JkYW5jZSBsZW1tYSByb3dzIGFyZSBub3QgY29udGlndW91cyIpCg==").decode()
+          new = base64.b64decode("ICAgIGt3aWNfcm93X2luZGV4ZXM6IGxpc3RbaW50XSA9IFtdCiAgICBsaW5rZWRfZnJlcXVlbmN5X2luZGV4ZXM6IGxpc3RbaW50XSA9IFtdCiAgICBmb3IgaW5kZXgsIGxpbmUgaW4gZW51bWVyYXRlKGxpbmVzKToKICAgICAgICB0ZXh0ID0gZ2V0YXR0cihsaW5lLCAidGV4dCIsICIiKQogICAgICAgIGxpbmtzID0gZ2V0YXR0cihsaW5lLCAibGlua3MiLCAoKSkKICAgICAgICBoYXNfa3dpY19saW5rID0gYW55KAogICAgICAgICAgICBfaXNfcGF0aChnZXRhdHRyKGxpbmssICJocmVmIiwgIiIpLCAic2hvd0tXSUMucGhwIikgZm9yIGxpbmsgaW4gbGlua3MKICAgICAgICApCiAgICAgICAgaWYgaGFzX2t3aWNfbGluazoKICAgICAgICAgICAga3dpY19yb3dfaW5kZXhlcy5hcHBlbmQoaW5kZXgpCiAgICAgICAgaWYgaGFzX2t3aWNfbGluayBhbmQgX0ZSRVFVRU5DWV9SRS5tYXRjaCh0ZXh0KSBpcyBub3QgTm9uZToKICAgICAgICAgICAgbGlua2VkX2ZyZXF1ZW5jeV9pbmRleGVzLmFwcGVuZChpbmRleCkKCiAgICBpZiBub3QgbGlua2VkX2ZyZXF1ZW5jeV9pbmRleGVzOgogICAgICAgIHJldHVybiBOb25lCgogICAgZGVmIGlzX2NhbmRpZGF0ZV9yb3coaW5kZXg6IGludCkgLT4gYm9vbDoKICAgICAgICBsaW5lID0gbGluZXNbaW5kZXhdCiAgICAgICAgdGV4dCA9IGdldGF0dHIobGluZSwgInRleHQiLCAiIikKICAgICAgICByZXR1cm4gX0ZSRVFVRU5DWV9SRS5tYXRjaCh0ZXh0KSBpcyBub3QgTm9uZSBvciBpbmRleCBpbiBrd2ljX3Jvd19pbmRleGVzCgogICAgc3RhcnQgPSBsaW5rZWRfZnJlcXVlbmN5X2luZGV4ZXNbMF0KICAgIHdoaWxlIHN0YXJ0ID4gMCBhbmQgaXNfY2FuZGlkYXRlX3JvdyhzdGFydCAtIDEpOgogICAgICAgIHN0YXJ0IC09IDEKICAgIGVuZCA9IGxpbmtlZF9mcmVxdWVuY3lfaW5kZXhlc1swXQogICAgd2hpbGUgZW5kICsgMSA8IGxlbihsaW5lcykgYW5kIGlzX2NhbmRpZGF0ZV9yb3coZW5kICsgMSk6CiAgICAgICAgZW5kICs9IDEKICAgIGlmIGFueShpbmRleCA8IHN0YXJ0IG9yIGluZGV4ID4gZW5kIGZvciBpbmRleCBpbiBrd2ljX3Jvd19pbmRleGVzKToKICAgICAgICByYWlzZSBDb25jb3JkYW5jZVBhcnNlRXJyb3IoIkNBTCBpbmxpbmUgY29uY29yZGFuY2UgbGVtbWEgcm93cyBhcmUgbm90IGNvbnRpZ3VvdXMiKQo=").decode()
           if text.count(old) != 1:
               raise SystemExit("inline concordance window block changed")
           path.write_text(text.replace(old, new, 1))
