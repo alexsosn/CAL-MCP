@@ -1,4 +1,4 @@
-name: Issue 15 documentation RED gate
+name: Issue 15 documentation GREEN gate
 
 on:
   push:
@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 jobs:
-  red:
+  focused:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
