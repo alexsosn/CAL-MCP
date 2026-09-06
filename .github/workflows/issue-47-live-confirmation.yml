@@ -1,0 +1,98 @@
+name: Issue 47 bounded live confirmation
+
+on:
+  push:
+    branches:
+      - issue-47-lexicon-browse-drift
+    paths:
+      - .github/workflows/issue-47-live-confirmation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  confirm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install current PR code
+        run: python -m pip install .
+      - name: Run one production-path lexicon lookup with a two-request ceiling
+        shell: bash
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import asyncio
+          from collections.abc import Callable
+          from typing import TypeVar
+          from unittest.mock import patch
+
+          from mcp import Client
+
+          from cal_mcp.client import CalClientConfig, CalFetchResult, CalHttpClient, CalRequest, CalResponse
+
+          T = TypeVar("T")
+
+          class BudgetClient(CalHttpClient):
+              def __init__(self) -> None:
+                  super().__init__(
+                      config=CalClientConfig(
+                          max_concurrency=1,
+                          max_retries=0,
+                          cache_enabled=False,
+                      )
+                  )
+                  self.request_count = 0
+
+              async def fetch(
+                  self,
+                  request: CalRequest,
+                  *,
+                  parser: Callable[[CalResponse], T],
+                  cache_namespace: str,
+              ) -> CalFetchResult[T]:
+                  self.request_count += 1
+                  if self.request_count > 2:
+                      raise RuntimeError(f"request ceiling exceeded: {self.request_count}>2")
+                  print(f"CAL_REQUEST_{self.request_count} {request.method} {request.url}")
+                  return await super().fetch(
+                      request,
+                      parser=parser,
+                      cache_namespace=cache_namespace,
+                  )
+
+          async def main() -> None:
+              import cal_mcp.server as server
+
+              budget = BudgetClient()
+              with patch.object(server, "CalHttpClient", return_value=budget):
+                  async with Client(server.mcp, raise_exceptions=True) as client:
+                      result = await client.call_tool(
+                          "cal_lexicon_lookup",
+                          {"query": "br", "lemma_key": "br N"},
+                      )
+              if bool(getattr(result, "is_error", False)):
+                  raise RuntimeError(f"MCP result is error: {result}")
+              structured = getattr(result, "structured_content", None)
+              if not isinstance(structured, dict):
+                  raise RuntimeError("missing structured lexicon result")
+              provenance = structured.get("provenance")
+              source_url = provenance.get("source_url") if isinstance(provenance, dict) else None
+              if not isinstance(source_url, str) or not source_url.startswith("https://cal.huc.edu/"):
+                  raise RuntimeError("missing CAL provenance")
+              lemma = structured.get("lemma")
+              lemma_key = lemma.get("lemma_key") if isinstance(lemma, dict) else None
+              if lemma_key != "br N":
+                  raise RuntimeError(f"unexpected selected lemma key: {lemma_key!r}")
+              if budget.request_count != 2:
+                  raise RuntimeError(f"unexpected CAL request count: {budget.request_count}, expected 2")
+              print(f"LIVE_CONFIRMATION_OK lemma_key={lemma_key} TOTAL_CAL_REQUESTS={budget.request_count}")
+
+          asyncio.run(main())
+          PY
