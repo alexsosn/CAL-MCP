@@ -363,24 +363,20 @@ def _parse_inline_text_concordance_rows(
         if _FREQUENCY_RE.match(text) is None:
             continue
         links = getattr(line, "links", ())
-        if any(
-            _is_path(getattr(link, "href", ""), "showKWIC.php")
-            for link in links
-        ):
+        if any(_is_path(getattr(link, "href", ""), "showKWIC.php") for link in links):
             linked_row_indexes.append(index)
 
     if not linked_row_indexes:
         return None
 
     start = linked_row_indexes[0]
-    while start > 0 and _FREQUENCY_RE.match(
-        getattr(lines[start - 1], "text", "")
-    ) is not None:
+    while start > 0 and _FREQUENCY_RE.match(getattr(lines[start - 1], "text", "")) is not None:
         start -= 1
     end = linked_row_indexes[0]
-    while end + 1 < len(lines) and _FREQUENCY_RE.match(
-        getattr(lines[end + 1], "text", "")
-    ) is not None:
+    while (
+        end + 1 < len(lines)
+        and _FREQUENCY_RE.match(getattr(lines[end + 1], "text", "")) is not None
+    ):
         end += 1
     if any(index > end for index in linked_row_indexes):
         raise ConcordanceParseError("CAL inline concordance lemma rows are not contiguous")
@@ -389,12 +385,8 @@ def _parse_inline_text_concordance_rows(
     for line in lines[start : end + 1]:
         text = getattr(line, "text", "")
         links = tuple(getattr(line, "links", ()))
-        if len(links) != 1 or not _is_path(
-            getattr(links[0], "href", ""), "showKWIC.php"
-        ):
-            raise ConcordanceParseError(
-                "CAL inline concordance row lacks one unique KWIC link"
-            )
+        if len(links) != 1 or not _is_path(getattr(links[0], "href", ""), "showKWIC.php"):
+            raise ConcordanceParseError("CAL inline concordance row lacks one unique KWIC link")
         link = links[0]
         link_text = getattr(link, "text", "")
         link_start = text.find(link_text)
@@ -403,9 +395,7 @@ def _parse_inline_text_concordance_rows(
                 "CAL inline concordance lemma link is missing from its rendered row"
             )
 
-        frequency_match = _INLINE_FREQUENCY_PREFIX_RE.fullmatch(
-            text[:link_start].strip()
-        )
+        frequency_match = _INLINE_FREQUENCY_PREFIX_RE.fullmatch(text[:link_start].strip())
         remainder = text[link_start + len(link_text) :].strip()
         if frequency_match is None or not remainder.startswith(":"):
             raise ConcordanceParseError(
@@ -443,17 +433,13 @@ def _parse_text_concordance_link(
 ) -> tuple[str, str]:
     kwic_url = _cal_navigation_url(base_url, href, "showKWIC.php")
     query = parse_qs(urlsplit(kwic_url).query, keep_blank_values=True)
-    lemma_key = _parse_returned_lemma_key(
-        _single_query_value(query, "lemma", "KWIC lemma")
-    )
+    lemma_key = _parse_returned_lemma_key(_single_query_value(query, "lemma", "KWIC lemma"))
     text_id = _single_query_value(query, "texts", "KWIC text")
     charset = _single_query_value(query, "charset", "KWIC charset")
     if text_id != requested_text_id or charset != requested_charset:
         raise ConcordanceParseError("CAL concordance row link contradicts the request")
     if link_text != lemma_key:
-        raise ConcordanceParseError(
-            "CAL concordance lemma link text differs from its key"
-        )
+        raise ConcordanceParseError("CAL concordance lemma link text differs from its key")
     return lemma_key, kwic_url
 
 
