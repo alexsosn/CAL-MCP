@@ -111,9 +111,11 @@ Normal CI makes zero CAL requests.
 
 The valid test-only RED is commit `e2439ac792b50e866ef208a04cdbc0f5338a1de1`, CI run `34024538803`: install, Ruff lint, Ruff format, and strict mypy passed; pytest reported **376 passed / exactly 1 intended failure**, reproducing the current `br N` citation-count drift through `LexiconLookupService.lookup`.
 
-The implementation candidate keeps the public two-request success path unchanged and limits production changes to current citation semantic extraction: structural `cit-sep` boundaries, hidden inline-`display:none` citation-script exclusion, explicit unlinked `cit-ref-plain` capture, and the existing legacy semicolon fallback. Rendered citation-count equality remains strict.
+The first helper-free implementation checkpoint `d4d36f98011e76e0e3cb9285053220ac10cf5d3f` kept static/type gates green but correctly failed pytest with two focused regressions: the final citation slice re-entered legacy semicolon splitting, so the happy path produced four citation pieces and a deliberately wrong rendered count of four accidentally matched. This was not accepted as GREEN.
 
-This checkpoint is intentionally committed after the bot-authored exact patch so normal PR CI executes on the real helper-free implementation candidate before adversarial review.
+The correction makes structural citation mode a property of the complete semantic citation line and carries that mode through every reference-delimited slice. Consequently, if CAL supplied any `cit-sep` boundary for the group, no slice may reactivate punctuation-only splitting; legacy semicolon fallback remains only for lines with no structural boundary signal at all.
+
+The corrected production patch is helper-free at branch head before the next validation checkpoint. This human-authored checkpoint exists solely to trigger authoritative normal CI on that exact implementation before adversarial review.
 
 ## Adversarial review gate
 
