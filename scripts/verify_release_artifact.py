@@ -4,7 +4,6 @@ import argparse
 import asyncio
 import os
 import subprocess
-import sys
 import tempfile
 import venv
 import zipfile
