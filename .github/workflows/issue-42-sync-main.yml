@@ -19,6 +19,10 @@ jobs:
         with:
           ref: fix/issue-42-text-concordance-parser-drift
           fetch-depth: 0
+      - name: Configure merge identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
       - name: Capture issue 42 research update
         shell: python
         run: |
@@ -53,7 +57,5 @@ jobs:
           git diff --check
       - name: Commit merged base
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "merge main into issue 42 after citation drift fix"
           git push origin HEAD:fix/issue-42-text-concordance-parser-drift
