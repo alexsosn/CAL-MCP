@@ -23,9 +23,7 @@ def _response(html: str) -> CalResponse:
 
 
 def test_current_browse_shape_recovers_unclosed_jump_anchors_without_losing_candidates() -> None:
-    html = (FIXTURES / "browse_br_unclosed_jump_2026_09_06.html").read_text(
-        encoding="utf-8"
-    )
+    html = (FIXTURES / "browse_br_unclosed_jump_2026_09_06.html").read_text(encoding="utf-8")
 
     browse = parse_browse_page(_response(html))
 
