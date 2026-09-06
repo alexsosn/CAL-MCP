@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar
+from typing import Literal, TypeVar
 from unittest.mock import patch
 
 from mcp import Client
@@ -44,9 +44,17 @@ SMOKE_CASES = (
 class SmokeFailure(RuntimeError):
     """A live-smoke result cannot be trusted as a successful CAL operation."""
 
-    def __init__(self, kind: FailureKind, tool_name: str, message: str) -> None:
+    def __init__(
+        self,
+        kind: FailureKind,
+        tool_name: str,
+        message: str,
+        *,
+        request_count: int | None = None,
+    ) -> None:
         self.kind = kind
         self.tool_name = tool_name
+        self.request_count = request_count
         super().__init__(message)
 
 
@@ -162,12 +170,24 @@ async def run_live_smoke() -> SmokeSummary:
         async with Client(server.mcp, raise_exceptions=True) as client:
             for case in SMOKE_CASES:
                 budget_client.last_failure_kind = None
-                result = await client.call_tool(case.tool_name, case.arguments)
-                validate_tool_result(
-                    case.tool_name,
-                    result,
-                    failure_kind=budget_client.last_failure_kind or "adapter_or_parser_drift",
-                )
+                try:
+                    result = await client.call_tool(case.tool_name, case.arguments)
+                    validate_tool_result(
+                        case.tool_name,
+                        result,
+                        failure_kind=budget_client.last_failure_kind
+                        or "adapter_or_parser_drift",
+                    )
+                except SmokeFailure as exc:
+                    exc.request_count = budget_client.budget.request_count
+                    raise
+                except Exception as exc:
+                    raise SmokeFailure(
+                        budget_client.last_failure_kind or "adapter_or_parser_drift",
+                        case.tool_name,
+                        str(exc),
+                        request_count=budget_client.budget.request_count,
+                    ) from exc
                 completed.append(case.tool_name)
 
     return SmokeSummary(
@@ -180,12 +200,12 @@ async def _async_main() -> None:
     try:
         summary = await run_live_smoke()
     except SmokeFailure as exc:
-        print(f"SMOKE_FAILURE kind={exc.kind} tool={exc.tool_name}: {exc}")
+        request_count = "unknown" if exc.request_count is None else str(exc.request_count)
+        print(
+            f"SMOKE_FAILURE kind={exc.kind} tool={exc.tool_name} "
+            f"TOTAL_CAL_REQUESTS={request_count}: {exc}"
+        )
         raise
-    finally:
-        # The concrete request count is also printed by the workflow wrapper when a
-        # pre-tool client/budget construction failure prevents a summary.
-        pass
     print(
         f"SMOKE_OK tools={len(summary.completed_tools)} "
         f"TOTAL_CAL_REQUESTS={summary.request_count}"
