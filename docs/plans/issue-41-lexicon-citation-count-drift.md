@@ -115,7 +115,7 @@ The first helper-free implementation checkpoint `d4d36f98011e76e0e3cb9285053220a
 
 The correction makes structural citation mode a property of the complete semantic citation line and carries that mode through every reference-delimited slice. Consequently, if CAL supplied any `cit-sep` boundary for the group, no slice may reactivate punctuation-only splitting; legacy semicolon fallback remains only for lines with no structural boundary signal at all.
 
-The corrected production patch is helper-free at branch head before the next validation checkpoint. This human-authored checkpoint exists solely to trigger authoritative normal CI on that exact implementation before adversarial review.
+The first corrected checkpoint then stopped at Ruff format before behavioral tests. The only subsequent change to production code is the exact formatting Ruff reported; no parser semantics changed. The current helper-free, Ruff-formatted branch head is the authoritative GREEN candidate to validate before adversarial review.
 
 ## Adversarial review gate
 
