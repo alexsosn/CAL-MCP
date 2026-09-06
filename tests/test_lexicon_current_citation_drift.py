@@ -78,6 +78,7 @@ async def test_current_structural_citations_preserve_three_items_without_hidden_
     ]
 
 
+# Review 5125438201: HTMLParser emits start and end callbacks for a self-closing <br/>.
 def test_hidden_alternate_citation_script_allows_self_closing_void_element() -> None:
     html = (FIXTURES / "entry_br_current_citations.html").read_text(encoding="utf-8")
     html = html.replace("hidden; alternate", "hidden<br/>alternate", 1)
