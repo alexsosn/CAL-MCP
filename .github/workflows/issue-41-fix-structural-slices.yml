@@ -1,0 +1,80 @@
+name: Issue 41 structural citation slice fix
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-count-drift
+    paths:
+      - .github/workflows/issue-41-fix-structural-slices.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-count-drift
+      - name: Carry structural citation mode through slices
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/cal_mcp/lexicon.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
+    locations: list[tuple[_Link, int]] = []
+'''
+          new = '''def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
+    structural_boundaries = _CITATION_BOUNDARY in line.text
+    locations: list[tuple[_Link, int]] = []
+'''
+          if text.count(old) != 1:
+              raise SystemExit('unexpected _parse_citations header count')
+          text = text.replace(old, new, 1)
+          old = '''    citations.extend(_raw_citation(part) for part in _split_citation_segments(prefix))
+
+    for index, (link, start) in enumerate(locations):
+        text_start = start + len(link.text)
+        text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
+        segments = _split_citation_segments(line.text[text_start:text_end])
+'''
+          new = '''    citations.extend(
+        _raw_citation(part)
+        for part in _split_citation_segments(
+            prefix, structural_boundaries=structural_boundaries
+        )
+    )
+
+    for index, (link, start) in enumerate(locations):
+        text_start = start + len(link.text)
+        text_end = locations[index + 1][1] if index + 1 < len(locations) else len(line.text)
+        segments = _split_citation_segments(
+            line.text[text_start:text_end], structural_boundaries=structural_boundaries
+        )
+'''
+          if text.count(old) != 1:
+              raise SystemExit('unexpected citation slicing block count')
+          text = text.replace(old, new, 1)
+          old = '''def _split_citation_segments(value: str) -> list[str]:
+    if _CITATION_BOUNDARY in value:
+        return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
+'''
+          new = '''def _split_citation_segments(
+    value: str, *, structural_boundaries: bool = False
+) -> list[str]:
+    if structural_boundaries or _CITATION_BOUNDARY in value:
+        return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
+'''
+          if text.count(old) != 1:
+              raise SystemExit('unexpected _split_citation_segments block count')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          ruff format src/cal_mcp/lexicon.py
+          rm .github/workflows/issue-41-fix-structural-slices.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/lexicon.py .github/workflows/issue-41-fix-structural-slices.yml
+          git commit -m 'fix: preserve structural citation mode across slices'
+          git push origin HEAD:fix/issue-41-lexicon-citation-count-drift
