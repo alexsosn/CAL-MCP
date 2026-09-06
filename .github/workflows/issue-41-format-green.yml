@@ -1,0 +1,28 @@
+name: Issue 41 format corrected candidate
+
+on:
+  push:
+    branches:
+      - fix/issue-41-lexicon-citation-count-drift
+    paths:
+      - .github/workflows/issue-41-format-green.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-41-lexicon-citation-count-drift
+      - name: Apply Ruff-reported formatting only
+        run: |
+          python -c 'from pathlib import Path; p=Path("src/cal_mcp/lexicon.py"); s=p.read_text(); a="""for part in _split_citation_segments(\n            prefix, structural_boundaries=structural_boundaries\n        )"""; b="""for part in _split_citation_segments(prefix, structural_boundaries=structural_boundaries)"""; assert s.count(a)==1; s=s.replace(a,b,1); a="""def _split_citation_segments(\n    value: str, *, structural_boundaries: bool = False\n) -> list[str]:"""; b="""def _split_citation_segments(value: str, *, structural_boundaries: bool = False) -> list[str]:"""; assert s.count(a)==1; p.write_text(s.replace(a,b,1))'
+          rm .github/workflows/issue-41-format-green.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/lexicon.py .github/workflows/issue-41-format-green.yml
+          git commit -m 'style: format issue 41 structural citation fix'
+          git push origin HEAD:fix/issue-41-lexicon-citation-count-drift
