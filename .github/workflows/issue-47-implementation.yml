@@ -52,6 +52,18 @@ jobs:
               raise SystemExit("expected browse candidate block exactly once")
           text = text.replace(old_browse, new_browse)
 
+          old_pronunciation = '''    pronunciation: str | None = None\n    if label.endswith(")") and " (" in label:\n        headword_text, pronunciation_text = label.rsplit(" (", 1)\n        pronunciation = pronunciation_text[:-1].strip()\n    else:\n        headword_text = label\n'''
+          new_pronunciation = '''    pronunciation: str | None = None\n    pronunciation_parts = _split_trailing_parenthetical(label)\n    if pronunciation_parts is not None:\n        headword_text, pronunciation = pronunciation_parts\n    else:\n        headword_text = label\n'''
+          if text.count(old_pronunciation) != 1:
+              raise SystemExit("expected pronunciation parsing block exactly once")
+          text = text.replace(old_pronunciation, new_pronunciation)
+
+          old_pos_helper = '''def _looks_like_pos_token(value: str) -> bool:\n'''
+          new_pos_helper = '''def _split_trailing_parenthetical(value: str) -> tuple[str, str] | None:\n    if not value.endswith(")"):\n        return None\n    depth = 0\n    for index in range(len(value) - 1, -1, -1):\n        char = value[index]\n        if char == ")":\n            depth += 1\n        elif char == "(":\n            depth -= 1\n            if depth < 0:\n                return None\n            if depth == 0:\n                if index == 0 or not value[index - 1].isspace():\n                    return None\n                return value[:index].rstrip(), value[index + 1 : -1].strip()\n    return None\n\n\ndef _looks_like_pos_token(value: str) -> bool:\n'''
+          if text.count(old_pos_helper) != 1:
+              raise SystemExit("expected POS helper marker exactly once")
+          text = text.replace(old_pos_helper, new_pos_helper)
+
           old_href = '''def _lemma_key_from_href(href: str) -> str | None:\n    if not href:\n        return None\n    parsed = urlsplit(href)\n    if not (parsed.path.endswith("oneentry.php") or parsed.path.endswith("cal_entry_web.php")):\n        return None\n    values = parse_qs(parsed.query, keep_blank_values=True).get("lemma")\n'''
           new_href = '''def _is_lemma_entry_href(href: str) -> bool:\n    if not href:\n        return False\n    path = urlsplit(href).path\n    return path.endswith("oneentry.php") or path.endswith("cal_entry_web.php")\n\n\ndef _lemma_key_from_href(href: str) -> str | None:\n    if not _is_lemma_entry_href(href):\n        return None\n    parsed = urlsplit(href)\n    values = parse_qs(parsed.query, keep_blank_values=True).get("lemma")\n'''
           if text.count(old_href) != 1:
