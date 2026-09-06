@@ -226,6 +226,12 @@ class _SemanticHTMLParser(HTMLParser):
         elif tag == "span" and "cit-ref-plain" in classes and self._open_link is None:
             self._open_link = _OpenLink(tag="span", href="")
 
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._semantic_skip_tags and tag in _HTML_VOID_TAGS:
+            self.handle_starttag(tag, attrs)
+            return
+        super().handle_startendtag(tag, attrs)
+
     def handle_endtag(self, tag: str) -> None:
         if self._ignored_depth:
             if tag in _IGNORED_CONTENT_TAGS:
