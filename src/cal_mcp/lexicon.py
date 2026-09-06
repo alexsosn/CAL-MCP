@@ -224,7 +224,7 @@ class _SemanticHTMLParser(HTMLParser):
             href = attributes.get("href", "")
             self._open_link = _OpenLink(tag="a", href=href)
         elif tag == "span" and "cit-ref-plain" in classes and self._open_link is None:
-            self._open_link = _OpenLink((tag="span", href="")
+            self._open_link = _OpenLink(tag="span", href="")
 
     def handle_endtag(self, tag: str) -> None:
         if self._ignored_depth:
@@ -241,13 +241,6 @@ class _SemanticHTMLParser(HTMLParser):
             if self._open_link.depth == 0:
                 text = _clean_text("".join(self._open_link.parts))
                 self._links.append(_Link(href=self._open_link.href, text=text))
-                self._open_link = None
-        if tag in _BLOCK_TAGS or tag == "br":
-            self._flush()
-        if tag in {"ul", "ol"}:
-            self._flush()
-            self._list_depth -= 1
-".text=text))
                 self._open_link = None
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
