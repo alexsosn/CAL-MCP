@@ -249,7 +249,7 @@ class _SemanticHTMLParser(HTMLParser):
             self._list_depth -= 1
 
     def handle_data(self, data: str) -> None:
-        if self._ignored_depth:
+        if self._ignored_depth or self._semantic_skip_tags:
             return
         self._parts.append(data)
         if self._open_link is not None:
