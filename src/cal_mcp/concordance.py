@@ -357,28 +357,32 @@ def _parse_inline_text_concordance_rows(
     requested_text_id: str,
     requested_charset: str,
 ) -> tuple[ConcordanceLemma, ...] | None:
-    linked_row_indexes: list[int] = []
+    kwic_row_indexes: list[int] = []
+    linked_frequency_indexes: list[int] = []
     for index, line in enumerate(lines):
         text = getattr(line, "text", "")
-        if _FREQUENCY_RE.match(text) is None:
-            continue
         links = getattr(line, "links", ())
-        if any(_is_path(getattr(link, "href", ""), "showKWIC.php") for link in links):
-            linked_row_indexes.append(index)
+        has_kwic_link = any(_is_path(getattr(link, "href", ""), "showKWIC.php") for link in links)
+        if has_kwic_link:
+            kwic_row_indexes.append(index)
+        if has_kwic_link and _FREQUENCY_RE.match(text) is not None:
+            linked_frequency_indexes.append(index)
 
-    if not linked_row_indexes:
+    if not linked_frequency_indexes:
         return None
 
-    start = linked_row_indexes[0]
-    while start > 0 and _FREQUENCY_RE.match(getattr(lines[start - 1], "text", "")) is not None:
+    def is_candidate_row(index: int) -> bool:
+        line = lines[index]
+        text = getattr(line, "text", "")
+        return _FREQUENCY_RE.match(text) is not None or index in kwic_row_indexes
+
+    start = linked_frequency_indexes[0]
+    while start > 0 and is_candidate_row(start - 1):
         start -= 1
-    end = linked_row_indexes[0]
-    while (
-        end + 1 < len(lines)
-        and _FREQUENCY_RE.match(getattr(lines[end + 1], "text", "")) is not None
-    ):
+    end = linked_frequency_indexes[0]
+    while end + 1 < len(lines) and is_candidate_row(end + 1):
         end += 1
-    if any(index > end for index in linked_row_indexes):
+    if any(index < start or index > end for index in kwic_row_indexes):
         raise ConcordanceParseError("CAL inline concordance lemma rows are not contiguous")
 
     lemmas: list[ConcordanceLemma] = []
