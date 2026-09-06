@@ -107,6 +107,14 @@ pytest
 
 Normal CI makes zero CAL requests.
 
+## Implementation checkpoint
+
+The valid test-only RED is commit `e2439ac792b50e866ef208a04cdbc0f5338a1de1`, CI run `34024538803`: install, Ruff lint, Ruff format, and strict mypy passed; pytest reported **376 passed / exactly 1 intended failure**, reproducing the current `br N` citation-count drift through `LexiconLookupService.lookup`.
+
+The implementation candidate keeps the public two-request success path unchanged and limits production changes to current citation semantic extraction: structural `cit-sep` boundaries, hidden inline-`display:none` citation-script exclusion, explicit unlinked `cit-ref-plain` capture, and the existing legacy semicolon fallback. Rendered citation-count equality remains strict.
+
+This checkpoint is intentionally committed after the bot-authored exact patch so normal PR CI executes on the real helper-free implementation candidate before adversarial review.
+
 ## Adversarial review gate
 
 Freeze the exact final SHA and review from current-source and fail-closed boundaries, not from implementation history. Challenge specifically:
