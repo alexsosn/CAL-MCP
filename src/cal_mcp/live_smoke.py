@@ -69,8 +69,9 @@ class RequestBudget:
 
     def claim(self) -> None:
         if self.request_count >= self.max_requests:
+            next_request = self.request_count + 1
             raise SmokeBudgetExceeded(
-                f"CAL live-smoke request budget exceeded: {self.request_count + 1}>{self.max_requests}"
+                f"CAL live-smoke request budget exceeded: {next_request}>{self.max_requests}"
             )
         self.request_count += 1
 
