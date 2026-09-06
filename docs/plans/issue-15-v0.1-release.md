@@ -30,6 +30,8 @@ Before release implementation:
 3. add a package-build/clean-install workflow or test path that builds sdist+wheel, installs the wheel into a fresh environment, checks metadata version, and launches the installed stdio entry point;
 4. establish RED with static gates green and failures caused only by the absent release/smoke implementation.
 
+**RED evidence:** CI run `34049886524` on test-only head `90e288e4e7d7f08c5fa9e39224dccdf7d4450ecd` passed install, Ruff lint, Ruff format, and strict mypy. Pytest collected 389 tests and finished **382 passed, 7 failed**. Six failures were the intentionally absent `cal_mcp.live_smoke` module; the seventh was the expected release-version mismatch (`0.1.0.dev0` instead of `0.1.0`). No production release code had been added at that head.
+
 ## Minimal implementation
 
 - change project version from `0.1.0.dev0` to `0.1.0`;
@@ -46,6 +48,8 @@ Before release implementation:
 
 No public MCP tool or parameter changes belong in #15.
 
+Implementation reached the planned shape without public-schema changes. The runtime wheel contains the `cal_mcp` package, typing marker, metadata/license, and console entry point; it does not contain test fixtures or CAL pages. The source distribution is a normal source snapshot and includes the repository's existing reduced regression fixtures, not a CAL corpus/page capture.
+
 ## Offline GREEN gate
 
 Run the existing deterministic suite plus new release/smoke tests:
@@ -60,6 +64,8 @@ pytest
 The offline gate must not contact CAL.
 
 The package check must build both artifacts and test the built wheel from a fresh environment rather than relying only on editable installation.
+
+**Offline/package GREEN:** CI run `34050373316` on head `aaca4980fd5d7d0eb2721fedb43049f261ff76de` completed both jobs successfully. The test job passed Ruff lint, Ruff format, strict mypy (`19 source files`), and **389/389 pytest tests**. The package job built `cal_mcp-0.1.0.tar.gz` and `cal_mcp-0.1.0-py3-none-any.whl`, installed the built wheel into a fresh venv, verified installed metadata version `0.1.0`, launched that venv's installed `cal-mcp` executable over stdio, and verified server name/version plus the frozen 26-tool surface. No CAL-backed tool was invoked by normal CI.
 
 ## Live GREEN gate
 
@@ -99,7 +105,7 @@ Review the exact final PR head independently from implementation history and try
 - successful smoke results require provenance rather than accepting empty payloads;
 - smoke does not enumerate discovered rows/results;
 - failure classification does not turn parser drift into a normal empty result;
-- no CAL HTML/data fixture/page is bundled into release artifacts beyond existing minimal test fixtures;
+- runtime wheel does not bundle CAL fixtures/pages; source-distribution test fixtures remain only the repository's existing reduced regression fragments;
 - no Agora or hosted-service behavior has leaked into this ticket;
 - release/tag publication has not happened before merge.
 
