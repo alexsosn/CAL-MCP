@@ -1,0 +1,71 @@
+name: Research issue 42 concordance shape
+
+on:
+  push:
+    branches:
+      - fix/issue-42-text-concordance-parser-drift
+    paths:
+      - .github/workflows/research-issue-42.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    if: github.event.head_commit.message == 'research: probe CAL concordance shape'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Fetch one bounded current response and print structural evidence
+        shell: python
+        run: |
+          import html
+          import re
+          import urllib.request
+
+          url = "https://cal.huc.edu/newconcord.php?text=13250&cset=S"
+          request = urllib.request.Request(
+              url,
+              headers={"User-Agent": "CAL-MCP issue-42 bounded research probe"},
+              method="GET",
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              body = response.read(262145)
+              if len(body) > 262144:
+                  raise SystemExit("response exceeded 256 KiB research cap")
+              print(f"status={response.status}")
+              print(f"final_url={response.geturl()}")
+              print(f"content_type={response.headers.get('Content-Type')}")
+              print(f"bytes={len(body)}")
+
+          text = body.decode("utf-8", errors="replace")
+          compact = re.sub(r"\\s+", " ", text)
+          print(f"frequency_marker_count={len(re.findall(r'Frequencies of lemmas in text 13250', text, re.I))}")
+          for needle in ["showKWIC.php", "newconcord.php", "lemma=", "charset=", "cset=", "frequency", "gloss"]:
+              print(f"needle[{needle}]={text.lower().count(needle.lower())}")
+
+          hrefs = re.findall(r'''href\\s*=\\s*["']([^"']+)["']''', text, re.I)
+          kwic_hrefs = [href for href in hrefs if "kwic" in href.lower()]
+          print(f"href_count={len(hrefs)}")
+          print(f"kwic_href_count={len(kwic_hrefs)}")
+          for i, href in enumerate(kwic_hrefs[:8]):
+              print(f"kwic_href[{i}]={html.unescape(href)}")
+
+          patterns = [r"showKWIC\\.php", r"lemma=", r"Frequencies of lemmas in text 13250"]
+          seen = set()
+          snippet_no = 0
+          for pattern in patterns:
+              for match in re.finditer(pattern, compact, re.I):
+                  start = max(0, match.start() - 240)
+                  end = min(len(compact), match.end() + 320)
+                  snippet = compact[start:end]
+                  snippet = re.sub(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+", "[email]", snippet)
+                  if snippet in seen:
+                      continue
+                  seen.add(snippet)
+                  print(f"snippet[{snippet_no}]={snippet}")
+                  snippet_no += 1
+                  if snippet_no >= 10:
+                      break
+              if snippet_no >= 10:
+                  break
