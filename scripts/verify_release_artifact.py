@@ -72,8 +72,7 @@ def _find_distributions(dist_dir: Path) -> tuple[Path, Path, str]:
     expected_sdist = f"cal_mcp-{version}.tar.gz"
     if sdists[0].name != expected_sdist:
         raise RuntimeError(
-            f"sdist {sdists[0].name!r} does not match wheel version; "
-            f"expected {expected_sdist!r}"
+            f"sdist {sdists[0].name!r} does not match wheel version; expected {expected_sdist!r}"
         )
     return wheels[0], sdists[0], version
 
