@@ -23,7 +23,6 @@ jobs:
         run: |
           set -euo pipefail
           python -c "import base64, os; exec(base64.b64decode(os.environ['PATCH_B64']))"
-          ruff format src/cal_mcp/lexicon.py
           rm .github/workflows/issue-41-fix-structural-slices.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
