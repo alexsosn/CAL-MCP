@@ -379,3 +379,15 @@ Branch-only research made seven fixed, bounded CAL GETs across three runs (three
 
 **Implication:** expose caller-controlled dialect discovery, one-dialect source discovery, and one-source citation retrieval as separate bounded operations. Keep private endpoint/form fields hidden, do not invent pagination, never auto-follow lexical-entry links, and keep this result model distinct from both English citation-text search and online-corpus passage retrieval.
 
+
+## R-021 — Current full-entry citations expose structural item/separator semantics
+
+**Rechecked:** 2026-09-06.
+
+Issue #41's focused `br N` probe shows that current `cal_entry_web.php` citation groups wrap each citation in `span.cit-item` and wrap the punctuation *between* citations in `span.cit-sep`. Citation content itself may contain semicolons: the current `BT Yev 76a(40)` citation includes one inside its transliteration and another clause semicolon in the rendered translation. Current entries also pre-render hidden alternate `span.cit-script` representations and distinguish unlinked references with `span.cit-ref-plain`.
+
+The old semantic parser flattened those boundaries and then treated whitespace-adjacent semicolons as citation separators. That can inflate a rendered three-citation group to four or more parsed citations and trigger the otherwise-correct citation-count drift guard. It can also mix hidden alternate script text into the visible citation representation.
+
+Source: https://cal.huc.edu/cal_entry_web.php?lemma=br+N and `docs/research/issue-41-lexicon-citation-count-drift.md`, rechecked 2026-09-06 with three fixed requests to that single entry (final structural probe run `34024100169` used the production CAL-MCP User-Agent). No neighboring entries were enumerated.
+
+**Implication:** current structural `cit-sep` boundaries must take precedence over punctuation splitting; hidden alternate `cit-script` variants must not contaminate visible citation text; safely delimited `cit-ref-plain` references may be preserved with a null URL. Legacy/reduced markup without structural separators may retain the existing semicolon fallback. Rendered citation-count equality remains a strict fail-closed invariant.
