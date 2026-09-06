@@ -14,7 +14,7 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Fetch one br N entry and print bounded structural snippets
+      - name: Fetch one br N entry and print bounded structural metadata
         shell: bash
         run: |
           set -euo pipefail
@@ -26,13 +26,13 @@ jobs:
 
           text = Path('/tmp/br.html').read_text(encoding='utf-8', errors='replace')
           print('bytes=', len(text.encode('utf-8')))
-          for needle in ('BT Yev 76a(40)', 'EphCruc 2:3'):
-              idx = text.find(needle)
-              print('needle=', needle, 'index=', idx)
-              if idx < 0:
-                  continue
-              start = max(0, idx - 700)
-              end = min(len(text), idx + 1200)
-              snippet = re.sub(r'\s+', ' ', text[start:end])
-              print(snippet)
+          for pattern in (r'(?i)citations?', r'(?i)cal_entry', r'(?i)lemma', r'(?i)fetch\s*\(', r'(?i)\.php'):
+              matches = list(re.finditer(pattern, text))
+              print('pattern=', pattern, 'count=', len(matches))
+              for match in matches[:5]:
+                  start = max(0, match.start() - 250)
+                  end = min(len(text), match.end() + 450)
+                  print(re.sub(r'\s+', ' ', text[start:end]))
+          urls = sorted(set(re.findall(r'''(?:src|href)=["']([^"']+)["']''', text, flags=re.I)))
+          print('refs=', urls[:40])
           PY
