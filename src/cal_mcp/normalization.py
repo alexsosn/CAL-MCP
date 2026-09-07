@@ -19,6 +19,10 @@ class UnsupportedQueryError(NormalizationError):
     """Raised when input is outside the locally documented CAL query contract."""
 
 
+class ConversionExpansionError(NormalizationError):
+    """Raised when finite CAL-code ambiguity exceeds the documented candidate bound."""
+
+
 class InputRepresentation(StrEnum):
     """Representations accepted by CAL or detected without linguistic inference."""
 
@@ -54,25 +58,57 @@ class NormalizedQuery:
 
 
 @dataclass(frozen=True, slots=True)
-class CalCodeConversion:
+class CalCodeAmbiguity:
+    index: int
+    input: str
+    cal_codes: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "index": self.index,
+            "input": self.input,
+            "cal_codes": list(self.cal_codes),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CalCodeWordCandidates:
     original: str
-    cal_code: str
-    representation: InputRepresentation
-    strategy: CalCodeConversionStrategy
+    candidates: tuple[str, ...]
+    ambiguities: tuple[CalCodeAmbiguity, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
             "original": self.original,
-            "cal_code": self.cal_code,
-            "representation": self.representation.value,
-            "strategy": self.strategy.value,
+            "candidates": list(self.candidates),
+            "ambiguities": [item.to_dict() for item in self.ambiguities],
         }
 
 
-# Current CAL lexicon browser table, searching/fullbrowser.html (rechecked 2026-09-04).
-# Only this simple consonantal subset is converted locally. CAL code containing other
-# documented punctuation/diacritic syntax is sent through unchanged instead of being
-# combined with a partial Unicode conversion.
+@dataclass(frozen=True, slots=True)
+class CalCodeConversion:
+    original: str
+    representation: InputRepresentation
+    strategy: CalCodeConversionStrategy
+    words: tuple[CalCodeWordCandidates, ...]
+
+    @property
+    def cal_code(self) -> str:
+        """Return the single CAL-code surface when conversion is unambiguous."""
+
+        if any(len(word.candidates) != 1 for word in self.words):
+            raise AmbiguousQueryError("CAL conversion has more than one candidate")
+        return " ".join(word.candidates[0] for word in self.words)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "original": self.original,
+            "representation": self.representation.value,
+            "strategy": self.strategy.value,
+            "words": [word.to_dict() for word in self.words],
+        }
+
+
 _CAL_CODE_TO_UNICODE = {
     ")": "ˀ",
     "b": "b",
@@ -171,16 +207,11 @@ _SYRIAC_TO_CAL_CODE = {
     "ܬ": "t",
 }
 
-# Roman consonants whose CAL-code and current documented Unicode spellings are identical.
-# Plain input using only these characters is genuinely shared and must not be guessed.
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
 _SCRIPT_SEPARATORS = frozenset(" _")
-
-# CAL's broader Roman coding conventions (prova.html, rechecked 2026-09-04) add Jewish
-# Aramaic vowels, Syriac diacritic codes, Mandaic letters, and manuscript/editorial syntax.
-# Keep this whitelist explicit so arbitrary ASCII is never mislabeled as documented CAL code.
+_MAX_CANDIDATES_PER_WORD = 32
 _CAL_CODE_LETTERS = frozenset(")bgdhwzxTyklmns(pPcqr$&taAeEiuUoOFDHS")
 _CAL_CODE_SYNTAX = frozenset(":._~+',;%@\"-={}<>/#\\[]^|?*")
 _CAL_CODE_ALLOWED = _CAL_CODE_LETTERS | _CAL_CODE_SYNTAX | {" "}
@@ -195,8 +226,6 @@ def normalize_query(
     """Normalize one CAL query without guessing roots, spellings, or morphology."""
 
     _reject_controls(value)
-    # Only the ordinary ASCII space is a documented query separator. Do not let
-    # str.strip() silently erase NBSP or other Unicode whitespace before validation.
     candidate = value.strip(" ")
     if not candidate:
         raise UnsupportedQueryError("CAL query is empty after trimming surrounding spaces")
@@ -227,39 +256,51 @@ def convert_to_cal_code(
     *,
     representation: InputRepresentation | None = None,
 ) -> CalCodeConversion:
-    """Convert one supported representation to CAL Roman code without linguistic guessing."""
+    """Convert supported input to bounded, ambiguity-preserving CAL-code word candidates."""
 
     _reject_controls(value)
     candidate = value.strip(" ")
     if not candidate:
         raise UnsupportedQueryError("CAL input is empty after trimming surrounding spaces")
 
-    resolved = representation or _detect_representation(candidate)
+    try:
+        resolved = representation or _detect_representation(candidate)
+    except AmbiguousQueryError as exc:
+        raise UnsupportedQueryError(str(exc)) from exc
     _validate_representation(candidate, resolved)
 
     if resolved in {InputRepresentation.CAL_CODE, InputRepresentation.ROMAN_SHARED}:
-        cal_code = candidate
+        words = _pass_through_words(candidate)
         strategy = CalCodeConversionStrategy.PASS_THROUGH
     elif resolved is InputRepresentation.UNICODE_TRANSLITERATION:
-        cal_code = _convert_unicode_transliteration_to_cal_code(candidate)
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_unicode_transliteration_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
         strategy = CalCodeConversionStrategy.UNICODE_TRANSLITERATION_TO_CAL_CODE
     elif resolved is InputRepresentation.HEBREW:
-        cal_code = _convert_hebrew_to_cal_code(candidate)
+        words = tuple(_convert_hebrew_word(word) for word in _split_words(candidate))
         strategy = CalCodeConversionStrategy.HEBREW_TO_CAL_CODE
     elif resolved is InputRepresentation.SYRIAC:
-        cal_code = _convert_syriac_to_cal_code(candidate)
+        words = tuple(
+            CalCodeWordCandidates(original=word, candidates=(_convert_syriac_word(word),))
+            for word in _split_words(candidate)
+        )
         strategy = CalCodeConversionStrategy.SYRIAC_TO_CAL_CODE
     else:
         raise AssertionError(f"unhandled CAL input representation: {resolved}")
 
-    if not cal_code.strip(" "):
+    if not words:
         raise UnsupportedQueryError("CAL input is empty after conversion")
 
     return CalCodeConversion(
         original=value,
-        cal_code=cal_code,
         representation=resolved,
         strategy=strategy,
+        words=words,
     )
 
 
@@ -269,10 +310,20 @@ def encode_pairs(pairs: Iterable[tuple[str, str]]) -> str:
     return urlencode(list(pairs))
 
 
-def _convert_unicode_transliteration_to_cal_code(value: str) -> str:
+def _split_words(value: str) -> tuple[str, ...]:
+    return tuple(part for part in value.split(" ") if part)
+
+
+def _pass_through_words(value: str) -> tuple[CalCodeWordCandidates, ...]:
+    return tuple(
+        CalCodeWordCandidates(original=word, candidates=(word,)) for word in _split_words(value)
+    )
+
+
+def _convert_unicode_transliteration_word(value: str) -> str:
     converted: list[str] = []
     for char in value:
-        if char in _SHARED_ROMAN_LETTERS or char == " ":
+        if char in _SHARED_ROMAN_LETTERS:
             converted.append(char)
             continue
         mapped = _UNICODE_TRANSLITERATION_TO_CAL_CODE.get(char)
@@ -284,16 +335,12 @@ def _convert_unicode_transliteration_to_cal_code(value: str) -> str:
     return "".join(converted)
 
 
-def _convert_hebrew_to_cal_code(value: str) -> str:
-    converted: list[str] = []
+def _convert_hebrew_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
     index = 0
     while index < len(value):
         char = value[index]
-        if char == " ":
-            converted.append(char)
-            index += 1
-            continue
-
         if char == _HEBREW_SHIN:
             following_marks: list[str] = []
             mark_index = index + 1
@@ -303,18 +350,24 @@ def _convert_hebrew_to_cal_code(value: str) -> str:
                 following_marks.append(value[mark_index])
                 mark_index += 1
             if following_marks == [_HEBREW_SHIN_DOT]:
-                converted.append("$")
+                candidates = _append_alternatives(candidates, ("$",))
                 index = mark_index
                 continue
             if following_marks == [_HEBREW_SIN_DOT]:
-                converted.append("&")
+                candidates = _append_alternatives(candidates, ("&",))
                 index = mark_index
                 continue
-            if not following_marks:
-                raise AmbiguousQueryError("bare Hebrew ש is ambiguous between CAL shin and sin")
-            raise UnsupportedQueryError(
-                "Hebrew shin/sin conversion supports only one explicit shin or sin dot"
+            if following_marks:
+                raise UnsupportedQueryError(
+                    "Hebrew shin/sin conversion supports only one explicit shin or sin dot"
+                )
+            alternatives = ("$", "&")
+            ambiguities.append(
+                CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives)
             )
+            candidates = _append_alternatives(candidates, alternatives)
+            index += 1
+            continue
 
         mapped = _HEBREW_TO_CAL_CODE.get(char)
         if mapped is None:
@@ -322,7 +375,7 @@ def _convert_hebrew_to_cal_code(value: str) -> str:
                 "Hebrew input contains a mark, punctuation sign, or letter without a v0.1 "
                 "CAL-code mapping"
             )
-        converted.append(mapped)
+        candidates = _append_alternatives(candidates, (mapped,))
         index += 1
 
         if index < len(value) and unicodedata.category(value[index]).startswith("M"):
@@ -330,15 +383,25 @@ def _convert_hebrew_to_cal_code(value: str) -> str:
                 "Hebrew vowel, accent, or combining marks are not converted to CAL code in v0.1"
             )
 
-    return "".join(converted)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
 
 
-def _convert_syriac_to_cal_code(value: str) -> str:
+def _append_alternatives(candidates: list[str], alternatives: tuple[str, ...]) -> list[str]:
+    if len(candidates) * len(alternatives) > _MAX_CANDIDATES_PER_WORD:
+        raise ConversionExpansionError(
+            f"CAL candidate expansion exceeds {_MAX_CANDIDATES_PER_WORD} candidates per word"
+        )
+    expanded = [prefix + suffix for prefix in candidates for suffix in alternatives]
+    return list(dict.fromkeys(expanded))
+
+
+def _convert_syriac_word(value: str) -> str:
     converted: list[str] = []
     for char in value:
-        if char == " ":
-            converted.append(char)
-            continue
         mapped = _SYRIAC_TO_CAL_CODE.get(char)
         if mapped is None:
             raise UnsupportedQueryError(
@@ -438,8 +501,11 @@ def _is_syriac(char: str) -> bool:
 
 __all__ = [
     "AmbiguousQueryError",
+    "CalCodeAmbiguity",
     "CalCodeConversion",
     "CalCodeConversionStrategy",
+    "CalCodeWordCandidates",
+    "ConversionExpansionError",
     "InputRepresentation",
     "NormalizationError",
     "NormalizationStrategy",
