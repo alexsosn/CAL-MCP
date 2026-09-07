@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from types import SimpleNamespace
 
 import pytest
 
+import cal_mcp.lexicon as lexicon_module
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lexicon import LexiconLookupService, LexiconLookupStatus
+from cal_mcp.normalization import ConversionExpansionError
 
 
 def _browse_response(prefix: str, *entries: tuple[str, str]) -> CalResponse:
@@ -129,3 +132,93 @@ async def test_ambiguous_encoding_fetches_only_one_entry_after_explicit_selectio
     assert result.entry.lemma.lemma_key == "&lm N"
     assert [request.path for request in requests].count("browseSKEYheaders.php") == 2
     assert [request.path for request in requests].count("cal_entry_web.php") == 1
+
+
+@pytest.mark.anyio
+async def test_more_than_eight_unique_ambiguity_prefixes_fails_before_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal calls
+        del request, config
+        calls += 1
+        raise AssertionError("prefix fan-out limit must be checked before CAL I/O")
+
+    candidates = tuple(f"{letter}aa" for letter in "abcdefghi")
+    fake_conversion = SimpleNamespace(
+        words=(SimpleNamespace(candidates=candidates, ambiguities=(object(),)),)
+    )
+    monkeypatch.setattr(
+        lexicon_module,
+        "convert_to_cal_code",
+        lambda query: fake_conversion,
+        raising=False,
+    )
+
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(ConversionExpansionError, match="8|prefix|fan-out"):
+            await LexiconLookupService(client).lookup("mlk")
+    finally:
+        await client.aclose()
+
+    assert calls == 0
+
+
+@pytest.mark.anyio
+async def test_same_lemma_from_multiple_encoding_paths_is_returned_once() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        if request.path == "browseSKEYheaders.php":
+            prefix = dict(request.params)["first3"].strip('"')
+            if prefix == "$lm":
+                return _browse_response(prefix, ("shared N", "$lm"))
+            if prefix == "&lm":
+                return _browse_response(prefix, ("shared N", "&lm"))
+        if request.path == "cal_entry_web.php":
+            return _entry_response("shared N", "$lm")
+        raise AssertionError(f"unexpected CAL request: {request}")
+
+    client = CalHttpClient(transport=transport)
+    try:
+        result = await LexiconLookupService(client).lookup("שלם")
+    finally:
+        await client.aclose()
+
+    assert result.status is LexiconLookupStatus.FOUND
+    assert [item.lemma_key for item in result.matches] == ["shared N"]
+    assert [request.path for request in requests].count("browseSKEYheaders.php") == 2
+    assert [request.path for request in requests].count("cal_entry_web.php") == 1
+
+
+@pytest.mark.anyio
+async def test_cal_candidate_can_match_unicode_transliteration_headword() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        if request.path == "browseSKEYheaders.php":
+            prefix = dict(request.params)["first3"].strip('"')
+            if prefix == "$lm":
+                return _browse_response(prefix, ("shin N", "šlm"))
+            if prefix == "&lm":
+                return _browse_response(prefix)
+        if request.path == "cal_entry_web.php":
+            return _entry_response("shin N", "šlm")
+        raise AssertionError(f"unexpected CAL request: {request}")
+
+    client = CalHttpClient(transport=transport)
+    try:
+        result = await LexiconLookupService(client).lookup("שלם")
+    finally:
+        await client.aclose()
+
+    assert result.status is LexiconLookupStatus.FOUND
+    assert result.entry is not None
+    assert result.entry.lemma.lemma_key == "shin N"
