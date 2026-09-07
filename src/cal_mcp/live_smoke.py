@@ -260,9 +260,7 @@ async def run_live_smoke(
         for case in cases:
             try:
                 await case.operation(smoke_client)
-            except BaseException as exc:
-                if isinstance(exc, asyncio.CancelledError):
-                    raise
+            except Exception as exc:
                 raise LiveSmokeFailure(
                     case.name,
                     classify_smoke_exception(exc),
