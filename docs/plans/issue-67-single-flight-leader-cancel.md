@@ -75,6 +75,17 @@ Preserve existing leader cleanup and completed-result caching. Ensure leader `fi
 
 No new `asyncio.create_task()` or background work.
 
+### Implementation deviation after RED evidence
+
+The behavior-first RED made it possible to use a smaller implementation than the private-sentinel sketch above. The final implementation keeps the existing cancelled-Future representation and distinguishes the two sources of `CancelledError` at the follower boundary:
+
+- `Task.cancelling() > 0` means the follower's own caller requested cancellation, so that `CancelledError` is re-raised immediately;
+- a cancelled shared Future with no pending cancellation on the follower means the leader generation ended, so the follower re-enters guarded arbitration.
+
+This avoids adding a private exception type while preserving the same semantic boundary. The first implementation passed the single-follower case but exposed a second-order race with multiple followers and cache retention disabled: an immediately successful replacement could finish before the other awakened followers attached, producing one replacement per follower. The final implementation therefore installs the replacement Future under `_inflight_guard` and gives only a replacement leader one cooperative `await asyncio.sleep(0)` handoff before replacement I/O. Already-awakened surviving followers can then attach to that Future. The handoff is inside the existing leader `try/finally`, so cancellation during the handoff still cancels and removes that generation and creates no background task.
+
+This deviation changes the mechanism, not the planned external contract: caller cancellation remains authoritative, replacement generations remain demand-driven and single-flight, and no arbitrary retry counter or recursion is introduced.
+
 ## Gate 3 — GREEN
 
 Run full normal CI in deterministic/frozen and latest-compatible jobs:
