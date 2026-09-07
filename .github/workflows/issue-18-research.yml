@@ -1,0 +1,31 @@
+name: Issue 18 dependency research
+
+on:
+  push:
+    branches:
+      - issue-18-reproducible-ci
+    paths:
+      - .github/workflows/issue-18-research.yml
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Resolve current broad dependency ranges
+        run: |
+          python --version
+          python -m pip --version
+          python -m pip install -e ".[dev]"
+          echo '--- freeze ---'
+          python -m pip freeze --all
+          echo '--- dependency check ---'
+          python -m pip check
