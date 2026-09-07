@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import argparse
 import re
+from collections.abc import Mapping, Sequence
 from importlib import metadata
 from pathlib import Path
-from typing import Mapping, Sequence
 
 _CANONICALIZE_RE = re.compile(r"[-_.]+")
 
@@ -56,7 +56,8 @@ def compare_environment(
     for name in sorted(expected.keys() & actual.keys()):
         if actual[name] != expected[name]:
             problems.append(
-                f"version mismatch for {name}: installed {actual[name]!r}, expected {expected[name]!r}"
+                f"version mismatch for {name}: installed {actual[name]!r}, "
+                f"expected {expected[name]!r}"
             )
     return problems
 
