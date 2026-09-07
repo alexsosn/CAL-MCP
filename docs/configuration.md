@@ -11,12 +11,12 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Connect timeout | 5 s | finite, > 0 |
 | Read timeout | 10 s | finite, > 0 |
 | Total attempt timeout | 15 s | finite, > 0 |
-| Maximum concurrency | 2 | 1–8 |
-| Retry count | 1 | 0–3 |
+| Maximum concurrency | 2 | integer; 1–8 |
+| Retry count | 1 | integer; 0–3 |
 | Initial retry backoff | 0.25 s | finite, 0–1 s; exponential per retry |
 | Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
 | Cache enabled | yes | completed-result retention can be disabled completely |
-| Cache entries | 128 | 0–4096; 0 retains nothing |
+| Cache entries | 128 | integer; 0–4096; 0 retains nothing |
 | Cache TTL | 900 s (15 min) | > 0 and <= 86400 s |
 | User-Agent | `CAL-MCP/<version> (+https://github.com/alexsosn/CAL-MCP)` | non-empty |
 
