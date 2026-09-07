@@ -10,11 +10,15 @@ from cal_mcp.lexicon import LexiconLookupService, LexiconLookupStatus
 
 def _browse_response(prefix: str, *entries: tuple[str, str]) -> CalResponse:
     if entries:
-        body = "<html><body>" + "".join(
-            f'<div><a href="/oneentry.php?lemma={lemma_key}">{headword} n.m.</a></div>'
-            f"<div>test gloss</div>"
-            for lemma_key, headword in entries
-        ) + "</body></html>"
+        body = (
+            "<html><body>"
+            + "".join(
+                f'<div><a href="/oneentry.php?lemma={lemma_key}">{headword} n.m.</a></div>'
+                f"<div>test gloss</div>"
+                for lemma_key, headword in entries
+            )
+            + "</body></html>"
+        )
     else:
         body = "<html><body>No matching lexical entries were found</body></html>"
     return CalResponse(
