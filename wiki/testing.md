@@ -178,9 +178,11 @@ The primary `deterministic` CI job uses Python 3.11 with two committed constrain
 - `constraints/ci-py311.txt` pins the complete runtime/development target environment used for Ruff, mypy, pytest, and release validation;
 - `constraints/build-py311.txt` separately pins the isolated Hatchling/editable build environment. Current pip treats build constraints separately from ordinary target constraints.
 
-The job explicitly bootstraps its reviewed pip/setuptools versions, installs `.[dev]` through both constraint files, prints `pip freeze --all`, and runs `pip check` before the repository checks. The v0.1 release `build-and-test` job consumes the same deterministic policy so release validation and normal deterministic CI do not drift apart.
+The job explicitly bootstraps its reviewed pip/setuptools versions, installs `.[dev]` through both constraint files, prints `pip freeze --all`, and runs `pip check`. It then runs `scripts/verify_ci_environment.py constraints/ci-py311.txt`, excluding only the local editable `cal-mcp` distribution and the separately exact-pinned `pip`/`setuptools` bootstrap packages. That verifier fails on any missing pin, unexpected installed distribution, or version mismatch, so adding an unlisted transitive dependency cannot silently make the supposedly deterministic environment drift.
 
-A separate `latest-compatible` CI job intentionally does **not** use either committed project constraint file. It resolves `.[dev]` from the broad ranges in `pyproject.toml`, reports the exact resolution with `pip freeze --all`, runs `pip check`, and executes the same Ruff/format/mypy/pytest checks. A failure there is compatibility-drift evidence; do not make the job reproducible by accidentally applying the frozen constraint set to it.
+The v0.1 release `build-and-test` job consumes the same target verifier. Its actual `python -m build` step also sets `PIP_BUILD_CONSTRAINT=constraints/build-py311.txt`, so the wheel/sdist isolated build environment is constrained separately from the already-installed validation environment.
+
+A separate `latest-compatible` CI job intentionally does **not** use either committed project constraint file or the exact-environment verifier. It resolves `.[dev]` from the broad ranges in `pyproject.toml`, reports the exact resolution with `pip freeze --all`, runs `pip check`, and executes the same Ruff/format/mypy/pytest checks. A failure there is compatibility-drift evidence; do not make the job reproducible by accidentally applying the frozen constraint set to it.
 
 ### Refreshing the Python 3.11 constraints
 
@@ -191,8 +193,9 @@ Constraint refreshes must be explicit, paired, and reviewable:
 3. capture the full target environment with `pip freeze --all`, excluding the local editable CAL-MCP line and handling the explicitly bootstrapped pip/setuptools versions separately;
 4. resolve the isolated Hatchling build/editable closure separately, including dynamic editable requirements such as `editables`;
 5. update both `constraints/ci-py311.txt` and `constraints/build-py311.txt` in the same reviewed PR;
-6. run both the constrained `deterministic` job and the unconstrained `latest-compatible` job;
-7. review the dependency/version diff and any changed transitive requirements before merge.
+6. run `scripts/verify_ci_environment.py constraints/ci-py311.txt --exclude cal-mcp --exclude pip --exclude setuptools` and require exact agreement with the installed deterministic environment;
+7. run both the constrained `deterministic` job and the unconstrained `latest-compatible` job;
+8. review the dependency/version diff and any changed transitive requirements before merge.
 
 Automation may propose constraint updates later, but it must do so through a normal reviewable PR. It must not rewrite the committed constraint files directly on `main`.
 
