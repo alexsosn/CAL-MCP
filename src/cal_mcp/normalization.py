@@ -31,6 +31,7 @@ class InputRepresentation(StrEnum):
     HEBREW = "hebrew"
     SYRIAC = "syriac"
     IMPERIAL_ARAMAIC = "imperial_aramaic"
+    PALMYRENE = "palmyrene"
     ROMAN_SHARED = "roman_shared"
 
 
@@ -49,6 +50,7 @@ class CalCodeConversionStrategy(StrEnum):
     HEBREW_TO_CAL_CODE = "hebrew_to_cal_code"
     SYRIAC_TO_CAL_CODE = "syriac_to_cal_code"
     IMPERIAL_ARAMAIC_TO_CAL_CODE = "imperial_aramaic_to_cal_code"
+    PALMYRENE_TO_CAL_CODE = "palmyrene_to_cal_code"
 
 
 @dataclass(frozen=True, slots=True)
@@ -237,6 +239,34 @@ _IMPERIAL_ARAMAIC_TO_CAL_CODE = {
 _IMPERIAL_ARAMAIC_BLOCK_START = "\U00010840"
 _IMPERIAL_ARAMAIC_BLOCK_END = "\U0001085f"
 
+_PALMYRENE_TO_CAL_CODE = {
+    "𐡠": ")",
+    "𐡡": "b",
+    "𐡢": "g",
+    "𐡣": "d",
+    "𐡤": "h",
+    "𐡥": "w",
+    "𐡦": "z",
+    "𐡧": "x",
+    "𐡨": "T",
+    "𐡩": "y",
+    "𐡪": "k",
+    "𐡫": "l",
+    "𐡬": "m",
+    "𐡭": "n",
+    "𐡮": "n",
+    "𐡯": "s",
+    "𐡰": "(",
+    "𐡱": "p",
+    "𐡲": "c",
+    "𐡳": "q",
+    "𐡴": "r",
+    "𐡵": "$",
+    "𐡶": "t",
+}
+_PALMYRENE_BLOCK_START = "\U00010860"
+_PALMYRENE_BLOCK_END = "\U0001087f"
+
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
@@ -329,6 +359,15 @@ def convert_to_cal_code(
             for word in _split_words(candidate)
         )
         strategy = CalCodeConversionStrategy.IMPERIAL_ARAMAIC_TO_CAL_CODE
+    elif resolved is InputRepresentation.PALMYRENE:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_palmyrene_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.PALMYRENE_TO_CAL_CODE
     else:
         raise AssertionError(f"unhandled CAL input representation: {resolved}")
 
@@ -461,6 +500,18 @@ def _convert_imperial_aramaic_word(value: str) -> str:
     return "".join(converted)
 
 
+def _convert_palmyrene_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _PALMYRENE_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Palmyrene input contains a non-consonantal or unverified character"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
 def _reject_controls(value: str) -> None:
     if any(unicodedata.category(char) in {"Cc", "Cs"} for char in value):
         raise UnsupportedQueryError("CAL query contains control or surrogate characters")
@@ -470,7 +521,8 @@ def _detect_representation(value: str) -> InputRepresentation:
     has_hebrew = any(_is_hebrew(char) for char in value)
     has_syriac = any(_is_syriac(char) for char in value)
     has_imperial_aramaic = any(_is_imperial_aramaic_block(char) for char in value)
-    script_count = sum((has_hebrew, has_syriac, has_imperial_aramaic))
+    has_palmyrene = any(_is_palmyrene_block(char) for char in value)
+    script_count = sum((has_hebrew, has_syriac, has_imperial_aramaic, has_palmyrene))
 
     if script_count > 1:
         raise AmbiguousQueryError("mixed Aramaic script query input is ambiguous")
@@ -480,6 +532,8 @@ def _detect_representation(value: str) -> InputRepresentation:
         return InputRepresentation.SYRIAC
     if has_imperial_aramaic:
         return InputRepresentation.IMPERIAL_ARAMAIC
+    if has_palmyrene:
+        return InputRepresentation.PALMYRENE
 
     if any(ord(char) > 127 for char in value):
         if _is_unicode_transliteration(value):
@@ -514,6 +568,13 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
             char in _IMPERIAL_ARAMAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid Imperial Aramaic consonantal input")
+        return
+
+    if representation is InputRepresentation.PALMYRENE:
+        if not any(char in _PALMYRENE_TO_CAL_CODE for char in value) or not all(
+            char in _PALMYRENE_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Palmyrene consonantal input")
         return
 
     if representation is InputRepresentation.UNICODE_TRANSLITERATION:
@@ -561,6 +622,10 @@ def _is_syriac(char: str) -> bool:
 
 def _is_imperial_aramaic_block(char: str) -> bool:
     return _IMPERIAL_ARAMAIC_BLOCK_START <= char <= _IMPERIAL_ARAMAIC_BLOCK_END
+
+
+def _is_palmyrene_block(char: str) -> bool:
+    return _PALMYRENE_BLOCK_START <= char <= _PALMYRENE_BLOCK_END
 
 
 __all__ = [
