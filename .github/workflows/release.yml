@@ -18,8 +18,21 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install development validation dependencies
-        run: python -m pip install -e ".[dev]"
+          cache-dependency-path: |
+            pyproject.toml
+            constraints/ci-py311.txt
+            constraints/build-py311.txt
+      - name: Bootstrap frozen installer
+        run: python -m pip install "pip==26.2.1" "setuptools==79.0.1"
+      - name: Install frozen development validation dependencies
+        run: >-
+          python -m pip install -e ".[dev]"
+          -c constraints/ci-py311.txt
+          --build-constraint constraints/build-py311.txt
+      - name: Report frozen dependency set
+        run: |
+          python -m pip freeze --all
+          python -m pip check
       - name: Ruff lint
         run: ruff check .
       - name: Ruff format
