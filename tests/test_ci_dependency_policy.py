@@ -119,11 +119,14 @@ def test_environment_verifier_rejects_extra_missing_and_mismatched_packages(tmp_
     constraints = tmp_path / "constraints.txt"
     constraints.write_text("alpha==1.0\nbeta-package==2.0\n", encoding="utf-8")
 
-    assert module.compare_environment(
-        constraints,
-        {"alpha": "1.0", "beta_package": "2.0"},
-        excluded_names=(),
-    ) == []
+    assert (
+        module.compare_environment(
+            constraints,
+            {"alpha": "1.0", "beta_package": "2.0"},
+            excluded_names=(),
+        )
+        == []
+    )
 
     problems = module.compare_environment(
         constraints,
