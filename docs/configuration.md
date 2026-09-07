@@ -68,6 +68,8 @@ The v0.1 completed-result cache is **process-local memory only**. It is a bounde
 
 In addition, simultaneous requests with the same normalized request identity and parser/cache namespace are coalesced into one in-flight operation. One caller performs the request directly; matching callers await that same operation. Because the MCP server shares one client, identical overlapping tool calls participate in the same single-flight map rather than creating separate CAL requests. This is single-flight coordination only: it creates no background task and retains no extra CAL content. If completed-result caching is disabled, a later request after the in-flight operation has finished performs a new request normally.
 
+Cancellation is caller-local where possible. Cancelling a follower does not cancel the active leader or the shared in-flight result. If the active leader itself is cancelled, that request stops promptly and its shared generation is cancelled and removed; independent matching followers do not inherit that cancellation. Surviving followers re-enter the same guarded single-flight election, coalesce onto at most one replacement generation, and only that replacement leader performs new CAL I/O. The replacement is still owned by a live caller—CAL-MCP does not spawn a background retry task—and cancellation of the replacement leader follows the same bounded handoff behavior.
+
 The completed-result cache is intended only to suppress duplicate requests during a running CAL-MCP process. It is not an offline CAL store.
 
 CAL-MCP does not provide:
@@ -115,7 +117,7 @@ The namespace prevents two parsers/models from accidentally reusing the same rep
 
 A cache hit preserves the original CAL retrieval timestamp and source URL. The hit exposes cache metadata separately; it must not rewrite `retrieved_at` to the time the cached value was reused.
 
-An in-flight follower receives the result of the active request rather than a fabricated fresh retrieval. It does not cause a second CAL request.
+An in-flight follower receives the result of the active request rather than a fabricated fresh retrieval. It does not cause a second CAL request while that generation remains active. If the active leader is cancelled, surviving followers may cause exactly one replacement generation as described above.
 
 ## Request boundary
 
