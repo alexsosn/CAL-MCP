@@ -135,10 +135,7 @@ def test_imperial_aramaic_consonants_map_by_researched_character_identity() -> N
     assert result.words[0].candidates == (")bgdhwzxTyklmns(pcqr$t",)
     assert result.words[0].ambiguities == ()
     assert result.representation is InputRepresentation.IMPERIAL_ARAMAIC
-    assert (
-        result.strategy
-        is CalCodeConversionStrategy.IMPERIAL_ARAMAIC_TO_CAL_CODE
-    )
+    assert result.strategy is CalCodeConversionStrategy.IMPERIAL_ARAMAIC_TO_CAL_CODE
 
 
 def test_imperial_aramaic_tad_c1_1_ahiqar_fixture_maps_to_cal_mn() -> None:
@@ -243,7 +240,5 @@ async def test_public_conversion_tool_exposes_imperial_aramaic_without_network(
         "original": "𐡌𐡍",
         "representation": "imperial_aramaic",
         "strategy": "imperial_aramaic_to_cal_code",
-        "words": [
-            {"original": "𐡌𐡍", "candidates": ["mn"], "ambiguities": []}
-        ],
+        "words": [{"original": "𐡌𐡍", "candidates": ["mn"], "ambiguities": []}],
     }
