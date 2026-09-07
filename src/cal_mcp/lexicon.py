@@ -86,6 +86,10 @@ class Provenance:
     normalized_query: str
     representation: str
     normalization_strategy: str
+    cal_code_word_candidates: tuple[tuple[str, ...], ...] = ()
+    cal_code_query_candidates: tuple[str, ...] = ()
+    browse_prefixes: tuple[str, ...] = ()
+    selected_cal_code_candidates: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -586,6 +590,8 @@ class LexiconLookupService:
 
         if requires_cal_code_search:
             query_candidates = _conversion_query_candidates(conversion)
+            cal_code_word_candidates = tuple(word.candidates for word in conversion.words)
+            cal_code_query_candidates = query_candidates
             browse_prefixes = tuple(
                 dict.fromkeys(_browse_prefix(candidate) for candidate in query_candidates)
             )
@@ -596,6 +602,8 @@ class LexiconLookupService:
             match_surfaces = _candidate_match_surfaces(query_candidates)
         else:
             query_candidates = (normalized.normalized,)
+            cal_code_word_candidates = ()
+            cal_code_query_candidates = ()
             browse_prefixes = (_browse_prefix(normalized.normalized),)
             match_surfaces = query_candidates
 
@@ -619,18 +627,32 @@ class LexiconLookupService:
 
         if first_source_url is None or first_retrieved_at is None:
             raise AssertionError("CAL lexicon lookup produced no browse request")
+
+        matching_by_key: dict[str, LemmaRef] = {}
+        matching_candidates_by_key: dict[str, set[str]] = {}
+        for item in browse_entries:
+            if not any(_query_matches(surface, item) for surface in match_surfaces):
+                continue
+            matching_by_key.setdefault(item.lemma_key, item)
+            if requires_cal_code_search:
+                candidate_matches = matching_candidates_by_key.setdefault(item.lemma_key, set())
+                for candidate in query_candidates:
+                    if any(
+                        _query_matches(surface, item)
+                        for surface in _candidate_match_surfaces((candidate,))
+                    ):
+                        candidate_matches.add(candidate)
+        matches = tuple(matching_by_key.values())
+
         browse_provenance = _make_provenance(
             normalized,
             source_url=first_source_url,
             retrieved_at=first_retrieved_at,
             upstream_id=None,
+            cal_code_word_candidates=cal_code_word_candidates,
+            cal_code_query_candidates=cal_code_query_candidates,
+            browse_prefixes=browse_prefixes,
         )
-
-        matching_by_key: dict[str, LemmaRef] = {}
-        for item in browse_entries:
-            if any(_query_matches(surface, item) for surface in match_surfaces):
-                matching_by_key.setdefault(item.lemma_key, item)
-        matches = tuple(matching_by_key.values())
 
         if not matches:
             return LexiconLookupResult(
@@ -652,6 +674,15 @@ class LexiconLookupService:
             selected = matches[0]
 
         selected_key = selected.lemma_key
+        selected_cal_code_candidates = (
+            tuple(
+                candidate
+                for candidate in query_candidates
+                if candidate in matching_candidates_by_key.get(selected_key, set())
+            )
+            if requires_cal_code_search
+            else ()
+        )
 
         def parse_selected(response: CalResponse) -> LexiconEntry:
             return parse_lexicon_entry(response, lemma_key=selected_key)
@@ -674,6 +705,10 @@ class LexiconLookupService:
                 source_url=entry_result.source_url,
                 retrieved_at=entry_result.retrieved_at,
                 upstream_id=selected_key,
+                cal_code_word_candidates=cal_code_word_candidates,
+                cal_code_query_candidates=cal_code_query_candidates,
+                browse_prefixes=browse_prefixes,
+                selected_cal_code_candidates=selected_cal_code_candidates,
             ),
         )
 
@@ -1020,6 +1055,10 @@ def _make_provenance(
     source_url: str,
     retrieved_at: datetime,
     upstream_id: str | None,
+    cal_code_word_candidates: tuple[tuple[str, ...], ...] = (),
+    cal_code_query_candidates: tuple[str, ...] = (),
+    browse_prefixes: tuple[str, ...] = (),
+    selected_cal_code_candidates: tuple[str, ...] = (),
 ) -> Provenance:
     return Provenance(
         source="CAL",
@@ -1030,6 +1069,10 @@ def _make_provenance(
         normalized_query=normalized.normalized,
         representation=normalized.representation.value,
         normalization_strategy=normalized.strategy.value,
+        cal_code_word_candidates=cal_code_word_candidates,
+        cal_code_query_candidates=cal_code_query_candidates,
+        browse_prefixes=browse_prefixes,
+        selected_cal_code_candidates=selected_cal_code_candidates,
     )
 
 
@@ -1094,6 +1137,10 @@ def _provenance_to_dict(provenance: Provenance) -> dict[str, object]:
         "normalized_query": provenance.normalized_query,
         "representation": provenance.representation,
         "normalization_strategy": provenance.normalization_strategy,
+        "cal_code_word_candidates": [list(items) for items in provenance.cal_code_word_candidates],
+        "cal_code_query_candidates": list(provenance.cal_code_query_candidates),
+        "browse_prefixes": list(provenance.browse_prefixes),
+        "selected_cal_code_candidates": list(provenance.selected_cal_code_candidates),
     }
 
 
