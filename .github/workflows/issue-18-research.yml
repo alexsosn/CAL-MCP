@@ -25,7 +25,16 @@ jobs:
           python --version
           python -m pip --version
           python -m pip install -e ".[dev]"
-          echo '--- freeze ---'
+          echo '--- runtime/dev freeze ---'
           python -m pip freeze --all
           echo '--- dependency check ---'
           python -m pip check
+      - name: Resolve isolated Hatchling build closure
+        run: |
+          python -m venv .issue18-build-env
+          .issue18-build-env/bin/python -m pip install --upgrade pip
+          .issue18-build-env/bin/python -m pip install "hatchling>=1.27"
+          echo '--- build freeze ---'
+          .issue18-build-env/bin/python -m pip freeze --all
+          echo '--- build dependency check ---'
+          .issue18-build-env/bin/python -m pip check
