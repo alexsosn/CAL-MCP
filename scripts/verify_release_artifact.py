@@ -4,11 +4,12 @@ import argparse
 import asyncio
 import os
 import subprocess
+import tarfile
 import tempfile
 import venv
 import zipfile
 from email.parser import Parser
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from mcp import Client, StdioServerParameters
 
@@ -60,6 +61,65 @@ def _distribution_version(wheel: Path) -> str:
     return version
 
 
+def _sdist_version(sdist: Path, expected_version: str) -> str:
+    expected_root = sdist.name.removesuffix(".tar.gz")
+    try:
+        with tarfile.open(sdist, "r:gz") as archive:
+            members = archive.getmembers()
+            paths: list[PurePosixPath] = []
+            for member in members:
+                path = PurePosixPath(member.name)
+                if path.is_absolute() or ".." in path.parts or not path.parts:
+                    raise RuntimeError(f"sdist contains unsafe member path {member.name!r}")
+                paths.append(path)
+
+            roots = {path.parts[0] for path in paths}
+            if roots != {expected_root}:
+                raise RuntimeError(
+                    f"sdist root mismatch: expected {expected_root!r}, found {sorted(roots)!r}"
+                )
+
+            pkg_info_path = PurePosixPath(expected_root, "PKG-INFO")
+            pyproject_path = PurePosixPath(expected_root, "pyproject.toml")
+            pkg_info_members = [
+                member
+                for member, path in zip(members, paths, strict=True)
+                if path == pkg_info_path and member.isfile()
+            ]
+            pyproject_members = [
+                member
+                for member, path in zip(members, paths, strict=True)
+                if path == pyproject_path and member.isfile()
+            ]
+            if len(pkg_info_members) != 1:
+                raise RuntimeError(
+                    f"expected one root sdist PKG-INFO file, found {len(pkg_info_members)}"
+                )
+            if len(pyproject_members) != 1:
+                raise RuntimeError(
+                    f"expected one root sdist pyproject.toml file, found {len(pyproject_members)}"
+                )
+
+            metadata_file = archive.extractfile(pkg_info_members[0])
+            if metadata_file is None:
+                raise RuntimeError("could not read root sdist PKG-INFO")
+            metadata = Parser().parsestr(metadata_file.read().decode("utf-8"))
+    except RuntimeError:
+        raise
+    except (OSError, tarfile.TarError, UnicodeDecodeError) as exc:
+        raise RuntimeError(f"could not read sdist {sdist.name!r}: {exc}") from exc
+
+    name = metadata.get("Name")
+    version = metadata.get("Version")
+    if name != "cal-mcp":
+        raise RuntimeError(f"unexpected sdist metadata name: {name!r}")
+    if version != expected_version:
+        raise RuntimeError(
+            f"sdist metadata version {version!r} does not match wheel version {expected_version!r}"
+        )
+    return expected_version
+
+
 def _find_distributions(dist_dir: Path) -> tuple[Path, Path, str]:
     wheels = sorted(dist_dir.glob("*.whl"))
     sdists = sorted(dist_dir.glob("*.tar.gz"))
@@ -74,6 +134,7 @@ def _find_distributions(dist_dir: Path) -> tuple[Path, Path, str]:
         raise RuntimeError(
             f"sdist {sdists[0].name!r} does not match wheel version; expected {expected_sdist!r}"
         )
+    _sdist_version(sdists[0], version)
     return wheels[0], sdists[0], version
 
 
@@ -92,7 +153,7 @@ async def _verify_stdio(executable: Path, expected_version: str, cwd: Path) -> N
             raise RuntimeError(f"unexpected MCP server name {client.server_info.name!r}")
         if client.server_info.version != expected_version:
             raise RuntimeError(
-                "installed MCP server version does not match wheel metadata: "
+                "installed MCP server version does not match distribution metadata: "
                 f"{client.server_info.version!r} != {expected_version!r}"
             )
         tool_names = {tool.name for tool in (await client.list_tools()).tools}
@@ -104,15 +165,7 @@ async def _verify_stdio(executable: Path, expected_version: str, cwd: Path) -> N
             )
 
 
-def verify_release_artifact(dist_dir: Path, *, tag: str | None = None) -> str:
-    wheel, _sdist, version = _find_distributions(dist_dir)
-    if tag is not None:
-        normalized_tag = tag.removeprefix("v")
-        if normalized_tag != version:
-            raise RuntimeError(
-                f"release tag {tag!r} does not match distribution version {version!r}"
-            )
-
+def _verify_installable_distribution(distribution: Path, expected_version: str) -> None:
     with tempfile.TemporaryDirectory(prefix="cal-mcp-release-") as temporary:
         root = Path(temporary)
         venv_dir = root / "venv"
@@ -126,21 +179,34 @@ def verify_release_artifact(dist_dir: Path, *, tag: str | None = None) -> str:
                 "install",
                 "--disable-pip-version-check",
                 "--no-cache-dir",
-                str(wheel.resolve()),
+                str(distribution.resolve()),
             ],
             cwd=root,
             check=True,
         )
         if not cal_mcp_executable.is_file():
             raise RuntimeError(f"installed console script not found at {cal_mcp_executable}")
-        asyncio.run(_verify_stdio(cal_mcp_executable, version, root))
+        asyncio.run(_verify_stdio(cal_mcp_executable, expected_version, root))
+
+
+def verify_release_artifact(dist_dir: Path, *, tag: str | None = None) -> str:
+    wheel, sdist, version = _find_distributions(dist_dir)
+    if tag is not None:
+        normalized_tag = tag.removeprefix("v")
+        if normalized_tag != version:
+            raise RuntimeError(
+                f"release tag {tag!r} does not match distribution version {version!r}"
+            )
+
+    _verify_installable_distribution(wheel, version)
+    _verify_installable_distribution(sdist, version)
     return version
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Verify built CAL-MCP release distributions")
     parser.add_argument("dist_dir", type=Path, help="directory containing one wheel and one sdist")
-    parser.add_argument("--tag", help="optional release tag that must match wheel metadata")
+    parser.add_argument("--tag", help="optional release tag that must match distribution metadata")
     return parser.parse_args()
 
 
