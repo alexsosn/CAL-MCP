@@ -120,6 +120,52 @@ def test_numeric_scalar_fields_preserve_valid_integer_and_float_inputs(
     assert getattr(config, field) == value
 
 
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        (
+            "connect_timeout_seconds",
+            float("nan"),
+            "connect_timeout_seconds must be finite and > 0",
+        ),
+        (
+            "read_timeout_seconds",
+            float("inf"),
+            "read_timeout_seconds must be finite and > 0",
+        ),
+        (
+            "total_timeout_seconds",
+            float("-inf"),
+            "total_timeout_seconds must be finite and > 0",
+        ),
+        (
+            "cache_ttl_seconds",
+            float("nan"),
+            "cache_ttl_seconds must be finite and > 0",
+        ),
+        (
+            "retry_backoff_seconds",
+            float("inf"),
+            "retry_backoff_seconds must be finite and between 0 and 1",
+        ),
+        (
+            "retry_backoff_seconds",
+            float("nan"),
+            "retry_backoff_seconds must be finite and between 0 and 1",
+        ),
+    ],
+)
+def test_numeric_scalar_non_finite_errors_remain_stable(
+    field: str,
+    value: float,
+    message: str,
+) -> None:
+    kwargs = cast(Any, {field: value})
+
+    with pytest.raises(ValueError, match=rf"^{message}$"):
+        CalClientConfig(**kwargs)
+
+
 @pytest.mark.parametrize("value", [0, 1, "true"])
 def test_cache_enabled_requires_actual_boolean(value: object) -> None:
     with pytest.raises(ValueError, match=r"^cache_enabled must be a boolean$"):
