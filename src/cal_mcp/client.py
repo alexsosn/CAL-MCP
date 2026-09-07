@@ -65,6 +65,10 @@ class CalResponseTooLargeError(CalContentError):
         )
 
 
+class _SingleFlightLeaderCancelled(Exception):
+    """Internal signal that a shared request generation lost its owning caller."""
+
+
 @dataclass(frozen=True, slots=True)
 class CalRequest:
     method: str
@@ -280,33 +284,44 @@ class CalHttpClient:
         if not cache_namespace.strip():
             raise CalRequestValidationError("cache_namespace must not be empty")
         key = self._cache_key(cache_namespace, normalized)
+        replacement_leader = False
 
-        cached = self._cached_result(key)
-        if cached is not None:
-            return cast(CalFetchResult[T], cached)
-
-        async with self._inflight_guard:
+        while True:
             cached = self._cached_result(key)
             if cached is not None:
                 return cast(CalFetchResult[T], cached)
 
-            future = self._inflight.get(key)
-            if future is None:
-                future = asyncio.get_running_loop().create_future()
-                future.add_done_callback(self._consume_unobserved_future_exception)
-                self._inflight[key] = future
-                leader = True
-            else:
-                leader = False
+            async with self._inflight_guard:
+                cached = self._cached_result(key)
+                if cached is not None:
+                    return cast(CalFetchResult[T], cached)
 
-        if not leader:
-            return cast(CalFetchResult[T], await asyncio.shield(future))
+                future = self._inflight.get(key)
+                if future is None:
+                    future = asyncio.get_running_loop().create_future()
+                    future.add_done_callback(self._consume_unobserved_future_exception)
+                    self._inflight[key] = future
+                    leader = True
+                else:
+                    leader = False
+
+            if leader:
+                break
+
+            try:
+                return cast(CalFetchResult[T], await asyncio.shield(future))
+            except _SingleFlightLeaderCancelled:
+                replacement_leader = True
+                continue
 
         try:
+            if replacement_leader:
+                await asyncio.sleep(0)
             result = await self._fetch_uncached(normalized, parser=parser, cache_key=key)
         except BaseException as exc:
             if isinstance(exc, asyncio.CancelledError):
-                future.cancel()
+                if not future.done():
+                    future.set_exception(_SingleFlightLeaderCancelled())
             elif not future.done():
                 future.set_exception(exc)
             raise
