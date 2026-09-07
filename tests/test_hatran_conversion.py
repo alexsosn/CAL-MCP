@@ -23,9 +23,7 @@ def test_hatran_letters_map_with_daleth_resh_ambiguity() -> None:
         ")bgdhwzxTyklmns(pcq$t",
         ")bgrhwzxTyklmns(pcq$t",
     )
-    assert result.words[0].ambiguities == (
-        result.words[0].ambiguities[0],
-    )
+    assert result.words[0].ambiguities == (result.words[0].ambiguities[0],)
     ambiguity = result.words[0].ambiguities[0]
     assert ambiguity.index == 3
     assert ambiguity.input == "𐣣"
