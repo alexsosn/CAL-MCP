@@ -15,6 +15,7 @@ DOCS_INDEX = DOCS / "index.md"
 RESEARCH_AUDIT = DOCS / "research" / "issue-12-v0.1-contract-docs.md"
 ARCHITECTURE = ROOT / "wiki" / "architecture.md"
 LEXICON_DOC = TOOLS_DIR / "lexicon.md"
+INPUT_DOC = DOCS / "concepts" / "input-and-transliteration.md"
 
 REQUIRED_V01_DOCS = (
     "docs/index.md",
@@ -76,6 +77,46 @@ def test_cross_cutting_request_bounds_preserve_lexicon_two_request_exception() -
     assert "one explicit HTTP request" not in architecture
     assert "cal_lexicon_lookup" in research
     assert "two CAL requests" in research
+
+
+def test_converter_docs_name_every_supported_v01_input_representation() -> None:
+    text = INPUT_DOC.read_text(encoding="utf-8")
+
+    for representation in (
+        "unicode_transliteration",
+        "hebrew",
+        "syriac",
+        "imperial_aramaic",
+        "palmyrene",
+        "nabataean",
+        "hatran",
+        "samaritan",
+        "mandaic",
+    ):
+        assert f"`{representation}`" in text
+
+    assert "does not transliterate Hebrew to Syriac" not in text
+    assert "or either script to Roman code in v0.1" not in text
+
+
+def test_converter_docs_explain_researched_finite_ambiguities() -> None:
+    text = INPUT_DOC.read_text(encoding="utf-8")
+
+    for grapheme in ("ש", "𐣣", "ࠔ", "ܖ"):
+        assert f"`{grapheme}`" in text
+    assert "32 candidates" in text
+    assert "never" in text.lower() and "truncate" in text.lower()
+
+
+def test_converter_docs_record_script_specific_edges_and_fail_closed_boundary() -> None:
+    text = INPUT_DOC.read_text(encoding="utf-8")
+
+    assert "`ࡖ`" in text and "`D`" in text
+    assert "`ࡗ`" in text and "`kD`" in text
+    assert "`ܧ`" in text and "`P`" in text
+    assert "`ܞ`" in text and "unsupported" in text.lower()
+    assert "combining marks" in text.lower()
+    assert "fail" in text.lower() and "closed" in text.lower()
 
 
 def test_relative_markdown_links_resolve() -> None:
