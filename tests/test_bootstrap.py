@@ -17,6 +17,7 @@ from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalRespon
 async def _assert_public_tools(client: Client) -> None:
     tools = {tool.name: tool for tool in (await client.list_tools()).tools}
     assert set(tools) == {
+        "cal_convert_to_code",
         "cal_lexicon_lookup",
         "cal_gloss_search",
         "cal_citation_text_search",
@@ -44,6 +45,10 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_syriac_missing_words",
         "cal_syriac_peshitta_parallel",
     }
+
+    conversion_schema = tools["cal_convert_to_code"].input_schema
+    assert set(conversion_schema["properties"]) == {"value", "representation"}
+    assert conversion_schema["required"] == ["value"]
 
     lexicon_schema = tools["cal_lexicon_lookup"].input_schema
     assert set(lexicon_schema["properties"]) == {"query", "lemma_key"}
@@ -156,6 +161,7 @@ async def _assert_public_tools(client: Client) -> None:
     assert syriac_peshitta_schema["required"] == ["book", "chapter", "verse"]
 
     for schema in (
+        conversion_schema,
         lexicon_schema,
         gloss_schema,
         citation_schema,
