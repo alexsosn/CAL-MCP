@@ -123,6 +123,13 @@ class CalClientConfig:
                 "retry_backoff_seconds must be finite and between 0 and "
                 f"{_MAX_RETRY_BACKOFF_SECONDS:g}"
             )
+        for name, value in (
+            ("max_concurrency", self.max_concurrency),
+            ("max_retries", self.max_retries),
+            ("cache_max_entries", self.cache_max_entries),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"{name} must be an integer")
         if not 1 <= self.max_concurrency <= 8:
             raise ValueError("max_concurrency must be between 1 and 8")
         if not 0 <= self.max_retries <= 3:
