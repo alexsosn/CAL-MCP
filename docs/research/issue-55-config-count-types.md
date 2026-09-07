@@ -17,18 +17,19 @@ Issue #2 established one bounded request-policy layer with configuration validat
 `CalClientConfig.__post_init__` explicitly type-checks `max_response_bytes`:
 
 ```python
-if isinstance(self.max_response_bytes, bool) or not isinstance(
-    self.max_response_bytes, int
-):
+if isinstance(self.max_response_bytes, bool) or not isinstance(self.max_response_bytes, int):
     raise ValueError(...)
 ```
 
 The three other count-valued fields only receive numeric range comparisons:
 
 ```python
-if not 1 <= self.max_concurrency <= 8: ...
-if not 0 <= self.max_retries <= 3: ...
-if not 0 <= self.cache_max_entries <= 4096: ...
+if not 1 <= self.max_concurrency <= 8:
+    ...
+if not 0 <= self.max_retries <= 3:
+    ...
+if not 0 <= self.cache_max_entries <= 4096:
+    ...
 ```
 
 Consequences under normal Python runtime semantics:
