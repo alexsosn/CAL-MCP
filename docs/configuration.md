@@ -20,7 +20,7 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Cache TTL | 900 s (15 min) | number (`int`/`float`, not boolean); > 0 and <= 86400 s |
 | User-Agent | `CAL-MCP/<version> (+https://github.com/alexsosn/CAL-MCP)` | non-empty printable-ASCII string (`0x20`–`0x7E`) |
 
-Timeout, TTL, and retry-backoff settings accept ordinary numeric `int` or `float` values; booleans and non-numeric values are rejected at `CalClientConfig` construction rather than coerced or allowed to fail later inside transport operations. `cache_enabled` must be an actual boolean. User-Agent must be a non-empty printable-ASCII string: non-string values, whitespace-empty values, non-ASCII Unicode, and control characters are rejected at `CalClientConfig` construction before HTTPX2 transport creation. These runtime checks complement Python type annotations, which do not validate constructor arguments by themselves.
+Timeout, TTL, and retry-backoff settings accept ordinary numeric `int` or `float` values; booleans and non-numeric values are rejected at `CalClientConfig` construction rather than coerced or allowed to fail later inside transport operations. `cache_enabled` must be an actual boolean. User-Agent must be a non-empty string and may contain only printable ASCII characters (`0x20`–`0x7E`); non-string values, whitespace-empty values, non-ASCII Unicode, and control characters are rejected at `CalClientConfig` construction before HTTPX2 transport creation. These runtime checks complement Python type annotations, which do not validate constructor arguments by themselves.
 
 HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout.
 
