@@ -14,6 +14,7 @@ from cal_mcp.concordance import ConcordanceService
 from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
 from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
+from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
 from cal_mcp.search import EnglishSearchService
 from cal_mcp.syriac import SyriacService
 from cal_mcp.targum import TargumService
@@ -39,7 +40,11 @@ mcp = MCPServer(
     "cal-mcp",
     description="Read-only MCP adapter for the Comprehensive Aramaic Lexicon.",
     instructions=(
-        "Use cal_lexicon_lookup for bounded live CAL lexicon lookup. "
+        "Use cal_convert_to_code for local-only conversion of supported Aramaic Unicode or "
+        "transliteration input into explicit bounded CAL-code candidates; this tool performs "
+        "no CAL request. Use cal_lexicon_lookup for bounded live CAL lexicon lookup; finite "
+        "orthographic ambiguity is searched across all bounded CAL-code variants rather than "
+        "guessed. "
         "Use cal_gloss_search for CAL English-gloss search and cal_citation_text_search "
         "for English words inside CAL citations. Use cal_text_catalogue to discover CAL "
         "text/category identifiers, cal_text_search to find texts by topic, and cal_text_page "
@@ -76,6 +81,24 @@ mcp = MCPServer(
     version=__version__,
     lifespan=app_lifespan,
 )
+
+
+@mcp.tool(
+    name="cal_convert_to_code",
+    title="Convert Aramaic input to CAL code candidates",
+    structured_output=True,
+)
+async def cal_convert_to_code(
+    value: str,
+    representation: InputRepresentation | None = None,
+) -> dict[str, object]:
+    """Convert supported Aramaic input locally without any CAL network request.
+
+    Finite orthographic ambiguity is returned as ordered CAL-code candidates per word.
+    Unsupported or unverified marks fail explicitly rather than being stripped or guessed.
+    """
+
+    return convert_to_cal_code(value, representation=representation).to_dict()
 
 
 @mcp.tool(
