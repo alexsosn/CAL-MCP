@@ -280,6 +280,7 @@ class CalHttpClient:
         if not cache_namespace.strip():
             raise CalRequestValidationError("cache_namespace must not be empty")
         key = self._cache_key(cache_namespace, normalized)
+        replacement_leader = False
 
         while True:
             cached = self._cached_result(key)
@@ -309,8 +310,11 @@ class CalHttpClient:
                 task = asyncio.current_task()
                 if task is None or task.cancelling() or not future.cancelled():
                     raise
+                replacement_leader = True
 
         try:
+            if replacement_leader:
+                await asyncio.sleep(0)
             result = await self._fetch_uncached(normalized, parser=parser, cache_key=key)
         except BaseException as exc:
             if isinstance(exc, asyncio.CancelledError):
