@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import sys
 import tarfile
 import zipfile
@@ -35,8 +36,6 @@ def _add_tar_file(archive: tarfile.TarFile, path: str, content: str) -> None:
     payload = content.encode("utf-8")
     info = tarfile.TarInfo(path)
     info.size = len(payload)
-    import io
-
     archive.addfile(info, io.BytesIO(payload))
 
 
@@ -49,13 +48,9 @@ def _write_sdist(
 ) -> Path:
     sdist = dist_dir / f"cal_mcp-{filename_version}.tar.gz"
     root = f"cal_mcp-{filename_version}"
-    pkg_info = (
-        f"Metadata-Version: 2.4\nName: {name}\nVersion: {metadata_version}\n\n"
-    )
+    pkg_info = f"Metadata-Version: 2.4\nName: {name}\nVersion: {metadata_version}\n\n"
     pyproject = (
-        "[build-system]\n"
-        'requires = ["hatchling>=1.27"]\n'
-        'build-backend = "hatchling.build"\n'
+        '[build-system]\nrequires = ["hatchling>=1.27"]\nbuild-backend = "hatchling.build"\n'
     )
     with tarfile.open(sdist, "w:gz") as archive:
         _add_tar_file(archive, f"{root}/PKG-INFO", pkg_info)
