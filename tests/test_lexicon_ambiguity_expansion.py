@@ -223,3 +223,106 @@ async def test_cal_candidate_can_match_unicode_transliteration_headword() -> Non
     assert result.status is LexiconLookupStatus.FOUND
     assert result.entry is not None
     assert result.entry.lemma.lemma_key == "shin N"
+
+
+@pytest.mark.anyio
+async def test_deterministic_imperial_aramaic_lookup_uses_cal_code_prefix() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        if request.path == "browseSKEYheaders.php":
+            prefix = dict(request.params)["first3"].strip('"')
+            assert prefix == "mn"
+            return _browse_response(prefix, ("mn N", "mn"))
+        if request.path == "cal_entry_web.php":
+            assert dict(request.params)["lemma"] == "mn N"
+            return _entry_response("mn N", "mn")
+        raise AssertionError(f"unexpected CAL request: {request}")
+
+    client = CalHttpClient(transport=transport)
+    try:
+        result = await LexiconLookupService(client).lookup("𐡌𐡍")
+    finally:
+        await client.aclose()
+
+    assert result.status is LexiconLookupStatus.FOUND
+    assert result.entry is not None
+    assert result.entry.lemma.lemma_key == "mn N"
+    assert [request.path for request in requests] == [
+        "browseSKEYheaders.php",
+        "cal_entry_web.php",
+    ]
+
+
+@pytest.mark.anyio
+async def test_deterministic_mandaic_lookup_uses_cal_code_prefix() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        assert request.path == "browseSKEYheaders.php"
+        prefix = dict(request.params)["first3"].strip('"')
+        assert prefix == "$um"
+        return _browse_response(prefix)
+
+    client = CalHttpClient(transport=transport)
+    try:
+        result = await LexiconLookupService(client).lookup("ࡔࡅࡌࡇ")
+    finally:
+        await client.aclose()
+
+    assert result.status is LexiconLookupStatus.NOT_FOUND
+    assert len(requests) == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("query", "expected_prefix"),
+    [("מלך", "מלך"), ("ܡܠܟ", "ܡܠܟ")],
+)
+async def test_deterministic_hebrew_and_syriac_keep_legacy_browse_prefix(
+    query: str,
+    expected_prefix: str,
+) -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        assert request.path == "browseSKEYheaders.php"
+        assert dict(request.params)["first3"] == f'"{expected_prefix}"'
+        return _browse_response(expected_prefix)
+
+    client = CalHttpClient(transport=transport)
+    try:
+        result = await LexiconLookupService(client).lookup(query)
+    finally:
+        await client.aclose()
+
+    assert result.status is LexiconLookupStatus.NOT_FOUND
+    assert len(requests) == 1
+
+
+@pytest.mark.anyio
+async def test_ambiguous_hatran_lookup_keeps_bounded_candidate_fanout() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        assert request.path == "browseSKEYheaders.php"
+        prefix = dict(request.params)["first3"].strip('"')
+        assert prefix in {"d", "r"}
+        return _browse_response(prefix)
+
+    client = CalHttpClient(transport=transport)
+    try:
+        result = await LexiconLookupService(client).lookup("𐣣")
+    finally:
+        await client.aclose()
+
+    assert result.status is LexiconLookupStatus.NOT_FOUND
+    assert [dict(request.params)["first3"] for request in requests] == ['"d"', '"r"']
