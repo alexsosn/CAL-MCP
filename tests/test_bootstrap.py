@@ -108,7 +108,10 @@ async def _assert_public_tools(client: Client) -> None:
 
     bibliography_recent_schema = tools["cal_bibliography_recent"].input_schema
     assert set(bibliography_recent_schema["properties"]) == set()
-    assert "required" not in bibliography_recent_schema or bibliography_recent_schema["required"] == []
+    assert (
+        "required" not in bibliography_recent_schema
+        or bibliography_recent_schema["required"] == []
+    )
 
     dictionary_collation_schema = tools["cal_dictionary_collation"].input_schema
     assert set(dictionary_collation_schema["properties"]) == {"source", "page"}
