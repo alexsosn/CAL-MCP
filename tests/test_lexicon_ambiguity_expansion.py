@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from urllib.parse import quote
 
 import pytest
 
@@ -16,7 +17,7 @@ def _browse_response(prefix: str, *entries: tuple[str, str]) -> CalResponse:
         body = (
             "<html><body>"
             + "".join(
-                f'<div><a href="/oneentry.php?lemma={lemma_key}">{headword} n.m.</a></div>'
+                f'<div><a href="/oneentry.php?lemma={quote(lemma_key)}">{headword} n.m.</a></div>'
                 f"<div>test gloss</div>"
                 for lemma_key, headword in entries
             )
@@ -36,7 +37,7 @@ def _browse_response(prefix: str, *entries: tuple[str, str]) -> CalResponse:
 def _entry_response(lemma_key: str, headword: str) -> CalResponse:
     return CalResponse(
         status_code=200,
-        url=f"https://cal.huc.edu/cal_entry_web.php?lemma={lemma_key}",
+        url=f"https://cal.huc.edu/cal_entry_web.php?lemma={quote(lemma_key)}",
         body=(
             "<html><body>"
             f"<div>{headword} n.m. selected gloss</div>"
