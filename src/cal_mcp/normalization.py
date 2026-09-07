@@ -35,6 +35,7 @@ class InputRepresentation(StrEnum):
     NABATAEAN = "nabataean"
     HATRAN = "hatran"
     SAMARITAN = "samaritan"
+    MANDAIC = "mandaic"
     ROMAN_SHARED = "roman_shared"
 
 
@@ -57,6 +58,7 @@ class CalCodeConversionStrategy(StrEnum):
     NABATAEAN_TO_CAL_CODE = "nabataean_to_cal_code"
     HATRAN_TO_CAL_CODE = "hatran_to_cal_code"
     SAMARITAN_TO_CAL_CODE = "samaritan_to_cal_code"
+    MANDAIC_TO_CAL_CODE = "mandaic_to_cal_code"
 
 
 @dataclass(frozen=True, slots=True)
@@ -362,6 +364,35 @@ _SAMARITAN_TO_CAL_CODES = {
 _SAMARITAN_BLOCK_START = "\u0800"
 _SAMARITAN_BLOCK_END = "\u083f"
 
+_MANDAIC_TO_CAL_CODE = {
+    "ࡀ": "a",
+    "ࡁ": "b",
+    "ࡂ": "g",
+    "ࡃ": "d",
+    "ࡄ": "h",
+    "ࡅ": "u",
+    "ࡆ": "z",
+    "ࡇ": "H",
+    "ࡈ": "T",
+    "ࡉ": "i",
+    "ࡊ": "k",
+    "ࡋ": "l",
+    "ࡌ": "m",
+    "ࡍ": "n",
+    "ࡎ": "s",
+    "ࡏ": "(",
+    "ࡐ": "p",
+    "ࡑ": "S",
+    "ࡒ": "q",
+    "ࡓ": "r",
+    "ࡔ": "$",
+    "ࡕ": "t",
+    "ࡖ": "D",
+    "ࡗ": "kD",
+}
+_MANDAIC_BLOCK_START = "\u0840"
+_MANDAIC_BLOCK_END = "\u085f"
+
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
@@ -478,6 +509,15 @@ def convert_to_cal_code(
     elif resolved is InputRepresentation.SAMARITAN:
         words = tuple(_convert_samaritan_word(word) for word in _split_words(candidate))
         strategy = CalCodeConversionStrategy.SAMARITAN_TO_CAL_CODE
+    elif resolved is InputRepresentation.MANDAIC:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_mandaic_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.MANDAIC_TO_CAL_CODE
     else:
         raise AssertionError(f"unhandled CAL input representation: {resolved}")
 
@@ -672,6 +712,18 @@ def _convert_samaritan_word(value: str) -> CalCodeWordCandidates:
     )
 
 
+def _convert_mandaic_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _MANDAIC_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Mandaic input contains a character without a verified current CAL-code mapping"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
 def _reject_controls(value: str) -> None:
     if any(unicodedata.category(char) in {"Cc", "Cs"} for char in value):
         raise UnsupportedQueryError("CAL query contains control or surrogate characters")
@@ -685,6 +737,7 @@ def _detect_representation(value: str) -> InputRepresentation:
     has_nabataean = any(_is_nabataean_block(char) for char in value)
     has_hatran = any(_is_hatran_block(char) for char in value)
     has_samaritan = any(_is_samaritan_block(char) for char in value)
+    has_mandaic = any(_is_mandaic_block(char) for char in value)
     script_count = sum(
         (
             has_hebrew,
@@ -694,6 +747,7 @@ def _detect_representation(value: str) -> InputRepresentation:
             has_nabataean,
             has_hatran,
             has_samaritan,
+            has_mandaic,
         )
     )
 
@@ -713,6 +767,8 @@ def _detect_representation(value: str) -> InputRepresentation:
         return InputRepresentation.HATRAN
     if has_samaritan:
         return InputRepresentation.SAMARITAN
+    if has_mandaic:
+        return InputRepresentation.MANDAIC
 
     if any(ord(char) > 127 for char in value):
         if _is_unicode_transliteration(value):
@@ -777,6 +833,13 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
             raise UnsupportedQueryError("query is not valid Samaritan consonantal input")
         return
 
+    if representation is InputRepresentation.MANDAIC:
+        if not any(char in _MANDAIC_TO_CAL_CODE for char in value) or not all(
+            char in _MANDAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Mandaic input with verified CAL codes")
+        return
+
     if representation is InputRepresentation.UNICODE_TRANSLITERATION:
         if not _is_unicode_transliteration(value):
             raise UnsupportedQueryError("query is not documented unicode_transliteration input")
@@ -838,6 +901,10 @@ def _is_hatran_block(char: str) -> bool:
 
 def _is_samaritan_block(char: str) -> bool:
     return _SAMARITAN_BLOCK_START <= char <= _SAMARITAN_BLOCK_END
+
+
+def _is_mandaic_block(char: str) -> bool:
+    return _MANDAIC_BLOCK_START <= char <= _MANDAIC_BLOCK_END
 
 
 __all__ = [
