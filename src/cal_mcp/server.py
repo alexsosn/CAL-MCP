@@ -51,9 +51,7 @@ mcp = MCPServer(
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
-        "CAL lemma key. Use cal_bibliography_recent for CAL's current upstream-selected "
-        "recent bibliography snapshot; it is parameterless and does not infer a local year "
-        "window. Use cal_dictionary_collation for CAL's stored lemma "
+        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma "
         "correspondences for one explicit dictionary page reference. Use "
         "cal_targum_parallel for one biblical verse across current CAL "
         "Targum readings, cal_targum_concordance for Targum-specific lemma counts, and the "
@@ -394,25 +392,6 @@ async def cal_bibliography_lemma(
 
     client = ctx.request_context.lifespan_context.client
     result = await BibliographyService(client).lemma(lemma_key)
-    return result.to_dict()
-
-
-@mcp.tool(
-    name="cal_bibliography_recent",
-    title="List CAL's recent bibliography snapshot",
-    structured_output=True,
-)
-async def cal_bibliography_recent(
-    ctx: Context[AppContext],
-) -> dict[str, object]:
-    """Return CAL's current recent-bibliography snapshot in source order.
-
-    CAL selects the moving recent window upstream. One call performs exactly one bounded
-    CAL request and does not infer year groups, paginate, or follow record links.
-    """
-
-    client = ctx.request_context.lifespan_context.client
-    result = await BibliographyService(client).recent()
     return result.to_dict()
 
 
