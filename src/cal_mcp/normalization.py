@@ -33,6 +33,7 @@ class InputRepresentation(StrEnum):
     IMPERIAL_ARAMAIC = "imperial_aramaic"
     PALMYRENE = "palmyrene"
     NABATAEAN = "nabataean"
+    HATRAN = "hatran"
     ROMAN_SHARED = "roman_shared"
 
 
@@ -53,6 +54,7 @@ class CalCodeConversionStrategy(StrEnum):
     IMPERIAL_ARAMAIC_TO_CAL_CODE = "imperial_aramaic_to_cal_code"
     PALMYRENE_TO_CAL_CODE = "palmyrene_to_cal_code"
     NABATAEAN_TO_CAL_CODE = "nabataean_to_cal_code"
+    HATRAN_TO_CAL_CODE = "hatran_to_cal_code"
 
 
 @dataclass(frozen=True, slots=True)
@@ -305,6 +307,32 @@ _NABATAEAN_TO_CAL_CODE = {
 _NABATAEAN_BLOCK_START = "\U00010880"
 _NABATAEAN_BLOCK_END = "\U000108af"
 
+_HATRAN_TO_CAL_CODES = {
+    "𐣠": (")",),
+    "𐣡": ("b",),
+    "𐣢": ("g",),
+    "𐣣": ("d", "r"),
+    "𐣤": ("h",),
+    "𐣥": ("w",),
+    "𐣦": ("z",),
+    "𐣧": ("x",),
+    "𐣨": ("T",),
+    "𐣩": ("y",),
+    "𐣪": ("k",),
+    "𐣫": ("l",),
+    "𐣬": ("m",),
+    "𐣭": ("n",),
+    "𐣮": ("s",),
+    "𐣯": ("(",),
+    "𐣰": ("p",),
+    "𐣱": ("c",),
+    "𐣲": ("q",),
+    "𐣴": ("$",),
+    "𐣵": ("t",),
+}
+_HATRAN_BLOCK_START = "\U000108e0"
+_HATRAN_BLOCK_END = "\U000108ff"
+
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
@@ -415,6 +443,9 @@ def convert_to_cal_code(
             for word in _split_words(candidate)
         )
         strategy = CalCodeConversionStrategy.NABATAEAN_TO_CAL_CODE
+    elif resolved is InputRepresentation.HATRAN:
+        words = tuple(_convert_hatran_word(word) for word in _split_words(candidate))
+        strategy = CalCodeConversionStrategy.HATRAN_TO_CAL_CODE
     else:
         raise AssertionError(f"unhandled CAL input representation: {resolved}")
 
@@ -571,6 +602,27 @@ def _convert_nabataean_word(value: str) -> str:
     return "".join(converted)
 
 
+def _convert_hatran_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    for index, char in enumerate(value):
+        alternatives = _HATRAN_TO_CAL_CODES.get(char)
+        if alternatives is None:
+            raise UnsupportedQueryError(
+                "Hatran input contains a non-consonantal or unverified character"
+            )
+        if len(alternatives) > 1:
+            ambiguities.append(
+                CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives)
+            )
+        candidates = _append_alternatives(candidates, alternatives)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
+
+
 def _reject_controls(value: str) -> None:
     if any(unicodedata.category(char) in {"Cc", "Cs"} for char in value):
         raise UnsupportedQueryError("CAL query contains control or surrogate characters")
@@ -582,7 +634,17 @@ def _detect_representation(value: str) -> InputRepresentation:
     has_imperial_aramaic = any(_is_imperial_aramaic_block(char) for char in value)
     has_palmyrene = any(_is_palmyrene_block(char) for char in value)
     has_nabataean = any(_is_nabataean_block(char) for char in value)
-    script_count = sum((has_hebrew, has_syriac, has_imperial_aramaic, has_palmyrene, has_nabataean))
+    has_hatran = any(_is_hatran_block(char) for char in value)
+    script_count = sum(
+        (
+            has_hebrew,
+            has_syriac,
+            has_imperial_aramaic,
+            has_palmyrene,
+            has_nabataean,
+            has_hatran,
+        )
+    )
 
     if script_count > 1:
         raise AmbiguousQueryError("mixed Aramaic script query input is ambiguous")
@@ -596,6 +658,8 @@ def _detect_representation(value: str) -> InputRepresentation:
         return InputRepresentation.PALMYRENE
     if has_nabataean:
         return InputRepresentation.NABATAEAN
+    if has_hatran:
+        return InputRepresentation.HATRAN
 
     if any(ord(char) > 127 for char in value):
         if _is_unicode_transliteration(value):
@@ -644,6 +708,13 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
             char in _NABATAEAN_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid Nabataean consonantal input")
+        return
+
+    if representation is InputRepresentation.HATRAN:
+        if not any(char in _HATRAN_TO_CAL_CODES for char in value) or not all(
+            char in _HATRAN_TO_CAL_CODES or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Hatran consonantal input")
         return
 
     if representation is InputRepresentation.UNICODE_TRANSLITERATION:
@@ -699,6 +770,10 @@ def _is_palmyrene_block(char: str) -> bool:
 
 def _is_nabataean_block(char: str) -> bool:
     return _NABATAEAN_BLOCK_START <= char <= _NABATAEAN_BLOCK_END
+
+
+def _is_hatran_block(char: str) -> bool:
+    return _HATRAN_BLOCK_START <= char <= _HATRAN_BLOCK_END
 
 
 __all__ = [
