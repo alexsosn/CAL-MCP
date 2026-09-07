@@ -129,6 +129,31 @@ def test_syriac_marks_and_punctuation_are_not_silently_stripped(value: str) -> N
         convert_to_cal_code(value)
 
 
+def test_imperial_aramaic_consonants_map_by_researched_character_identity() -> None:
+    result = convert_to_cal_code("𐡀𐡁𐡂𐡃𐡄𐡅𐡆𐡇𐡈𐡉𐡊𐡋𐡌𐡍𐡎𐡏𐡐𐡑𐡒𐡓𐡔𐡕")
+
+    assert result.words[0].candidates == (")bgdhwzxTyklmns(pcqr$t",)
+    assert result.words[0].ambiguities == ()
+    assert result.representation is InputRepresentation.IMPERIAL_ARAMAIC
+    assert (
+        result.strategy
+        is CalCodeConversionStrategy.IMPERIAL_ARAMAIC_TO_CAL_CODE
+    )
+
+
+def test_imperial_aramaic_tad_c1_1_ahiqar_fixture_maps_to_cal_mn() -> None:
+    result = convert_to_cal_code("𐡌𐡍")
+
+    assert result.words[0].candidates == ("mn",)
+    assert result.words[0].ambiguities == ()
+
+
+@pytest.mark.parametrize("value", ["𐡗", "𐡘"])
+def test_imperial_aramaic_section_sign_and_number_fail_closed(value: str) -> None:
+    with pytest.raises(UnsupportedQueryError):
+        convert_to_cal_code(value)
+
+
 def test_valid_explicit_cal_code_passes_through_as_one_candidate() -> None:
     result = convert_to_cal_code(
         "mlk%",
@@ -155,7 +180,7 @@ def test_simple_cal_code_round_trips_through_existing_unicode_normalization() ->
     assert result.words[0].candidates == (cal_code,)
 
 
-@pytest.mark.parametrize("value", ["מלܟ", "mlk🙂", "mlk\n"])
+@pytest.mark.parametrize("value", ["מלܟ", "mlk🙂", "mlk\n", "𐡌נ"])
 def test_unsupported_or_control_input_fails_closed(value: str) -> None:
     with pytest.raises(UnsupportedQueryError):
         convert_to_cal_code(value)
@@ -196,5 +221,29 @@ async def test_public_conversion_tool_exposes_candidates_and_is_local_only(
                     }
                 ],
             }
+        ],
+    }
+
+
+@pytest.mark.anyio
+async def test_public_conversion_tool_exposes_imperial_aramaic_without_network(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def deny_connect(*args: object, **kwargs: object) -> None:
+        raise AssertionError("cal_convert_to_code must stay local-only")
+
+    monkeypatch.setattr(socket.socket, "connect", deny_connect)
+    sys.modules.pop("cal_mcp.server", None)
+    server_module = importlib.import_module("cal_mcp.server")
+
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        response = await client.call_tool("cal_convert_to_code", {"value": "𐡌𐡍"})
+
+    assert response.structured_content == {
+        "original": "𐡌𐡍",
+        "representation": "imperial_aramaic",
+        "strategy": "imperial_aramaic_to_cal_code",
+        "words": [
+            {"original": "𐡌𐡍", "candidates": ["mn"], "ambiguities": []}
         ],
     }
