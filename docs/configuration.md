@@ -13,7 +13,7 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Total attempt timeout | 15 s | finite, > 0 |
 | Maximum concurrency | 2 | integer; 1–8 |
 | Retry count | 1 | integer; 0–3 |
-| Initial retry backoff | 0.25 s | finite, 0–1 s; exponential per retry |
+| Initial retry backoff | 0.25 s | finite, 0–1 s; exponential, capped at 1 second per retry sleep |
 | Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
 | Cache enabled | yes | completed-result retention can be disabled completely |
 | Cache entries | 128 | integer; 0–4096; 0 retains nothing |
@@ -50,7 +50,7 @@ Other HTTPX2 errors, including local/protocol-type errors, are surfaced after on
 
 Other HTTP statuses are returned as typed upstream errors without blind retry. In particular, CAL-MCP does not automatically retry HTTP 429; a rate/overload response should reduce request pressure rather than create another immediate request.
 
-The initial backoff is capped at 1 second and the retry count at 3. Backoff is exponential (`base * 2**attempt`), so the configured retry sleep budget is finite and cannot be made arbitrarily large by configuration.
+The initial backoff is capped at 1 second and the retry count at 3. Each retry sleep uses `min(base * 2**attempt, 1.0)`, preserving exponential growth until the absolute 1-second per-sleep ceiling is reached. The configured retry sleep budget is therefore finite and cannot be made arbitrarily large by configuration.
 
 HTTP redirects are not followed automatically. A 3xx response is returned as a typed upstream error before parsing or caching. If a later CAL endpoint demonstrably requires redirects, support should be added explicitly with a same-origin, bounded redirect policy rather than enabling arbitrary automatic redirect following.
 
