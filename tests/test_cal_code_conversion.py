@@ -9,7 +9,6 @@ from mcp import Client
 
 from cal_mcp.normalization import (
     CalCodeConversionStrategy,
-    ConversionExpansionError,
     InputRepresentation,
     UnsupportedQueryError,
     convert_to_cal_code,
@@ -102,8 +101,11 @@ def test_hebrew_marks_are_not_silently_stripped(value: str) -> None:
 
 
 def test_candidate_expansion_over_limit_fails_instead_of_truncating() -> None:
-    with pytest.raises(ConversionExpansionError, match="32|candidate|expansion"):
+    with pytest.raises(Exception) as exc_info:
         convert_to_cal_code("שששששש")
+
+    assert exc_info.type.__name__ == "ConversionExpansionError"
+    assert any(token in str(exc_info.value) for token in ("32", "candidate", "expansion"))
 
 
 def test_syriac_consonants_map_to_cal_code() -> None:
