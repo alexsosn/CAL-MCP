@@ -139,7 +139,7 @@ When CAL renders a citation-count marker, the parsed citation count must agree w
 
 ## Provenance
 
-`provenance` is adapter metadata describing the live CAL retrieval:
+`provenance` is adapter metadata describing the live CAL retrieval and, when conversion-driven search is used, the exact bounded conversion path that led to the result:
 
 | Field | Meaning |
 | --- | --- |
@@ -151,6 +151,12 @@ When CAL renders a citation-count marker, the parsed citation count must agree w
 | `normalized_query` | deterministic normalized query |
 | `representation` | detected/selected input representation |
 | `normalization_strategy` | normalization strategy used by CAL-MCP |
+| `cal_code_word_candidates` | ordered CAL-code candidate list for each input word when lookup uses the converter; empty for the legacy pass-through lookup path |
+| `cal_code_query_candidates` | ordered complete CAL-code query candidates used for conversion-driven matching; empty for the legacy pass-through lookup path |
+| `browse_prefixes` | exact ordered unique CAL browser prefixes actually requested for this lookup |
+| `selected_cal_code_candidates` | conversion candidates that matched the selected lemma when one entry is fetched; empty for `not_found`, unresolved `ambiguous`, and legacy pass-through results |
+
+The four conversion-path keys are always present in serialized provenance, even when their values are empty. This keeps the v0.1 result schema stable across deterministic, ambiguous, found, and not-found results. When multiple encoding candidates resolve to one canonical CAL lemma, the lemma is returned once while `selected_cal_code_candidates` retains every matching encoding path in stable candidate order.
 
 CAL describes its database as a live work in progress, so scholarly use should retain the source URL and retrieval date. Cache hits preserve the timestamp of the actual CAL retrieval rather than fabricating a newer one.
 
