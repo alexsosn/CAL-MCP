@@ -251,7 +251,9 @@ async def test_cancelled_single_flight_leader_does_not_cancel_independent_follow
 
     leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
     await transport.first_started.wait()
-    follower = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    follower = asyncio.create_task(
+        client.fetch(request, parser=parse_text, cache_namespace="entry")
+    )
     await asyncio.sleep(0)
     assert len(transport.requests) == 1
 
@@ -304,7 +306,9 @@ async def test_cancelled_follower_does_not_cancel_active_single_flight_leader() 
 
     leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
     await transport.started.wait()
-    follower = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    follower = asyncio.create_task(
+        client.fetch(request, parser=parse_text, cache_namespace="entry")
+    )
     await asyncio.sleep(0)
     assert len(transport.requests) == 1
 
