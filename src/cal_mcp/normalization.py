@@ -362,9 +362,7 @@ def _convert_hebrew_word(value: str) -> CalCodeWordCandidates:
                     "Hebrew shin/sin conversion supports only one explicit shin or sin dot"
                 )
             alternatives = ("$", "&")
-            ambiguities.append(
-                CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives)
-            )
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
             candidates = _append_alternatives(candidates, alternatives)
             index += 1
             continue
