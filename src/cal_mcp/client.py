@@ -196,6 +196,15 @@ class _Httpx2Transport:
             content=form_content,
             headers=headers,
         ) as response:
+            if response.status_code >= 300:
+                return CalResponse(
+                    status_code=response.status_code,
+                    url=str(response.url),
+                    body=b"",
+                    content_type=response.headers.get("content-type"),
+                    retrieved_at=datetime.now(UTC),
+                )
+
             body = bytearray()
             async for chunk in response.aiter_bytes(chunk_size=chunk_size):
                 if len(body) + len(chunk) > config.max_response_bytes:
