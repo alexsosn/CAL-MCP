@@ -110,6 +110,16 @@ class CalClientConfig:
             ("connect_timeout_seconds", self.connect_timeout_seconds),
             ("read_timeout_seconds", self.read_timeout_seconds),
             ("total_timeout_seconds", self.total_timeout_seconds),
+            ("retry_backoff_seconds", self.retry_backoff_seconds),
+            ("cache_ttl_seconds", self.cache_ttl_seconds),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"{name} must be a number")
+
+        for name, value in (
+            ("connect_timeout_seconds", self.connect_timeout_seconds),
+            ("read_timeout_seconds", self.read_timeout_seconds),
+            ("total_timeout_seconds", self.total_timeout_seconds),
             ("cache_ttl_seconds", self.cache_ttl_seconds),
         ):
             if not math.isfinite(value) or value <= 0:
@@ -123,6 +133,8 @@ class CalClientConfig:
                 "retry_backoff_seconds must be finite and between 0 and "
                 f"{_MAX_RETRY_BACKOFF_SECONDS:g}"
             )
+        if not isinstance(self.cache_enabled, bool):
+            raise ValueError("cache_enabled must be a boolean")
         for name, value in (
             ("max_concurrency", self.max_concurrency),
             ("max_retries", self.max_retries),
@@ -144,6 +156,8 @@ class CalClientConfig:
             raise ValueError("cache_max_entries must be between 0 and 4096")
         if self.cache_ttl_seconds > 86400:
             raise ValueError("cache_ttl_seconds must not exceed 86400")
+        if not isinstance(self.user_agent, str):
+            raise ValueError("user_agent must be a string")
         if not self.user_agent.strip():
             raise ValueError("user_agent must not be empty")
 
