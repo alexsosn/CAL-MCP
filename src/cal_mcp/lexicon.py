@@ -674,8 +674,7 @@ def _conversion_query_candidates(conversion: CalCodeConversion) -> tuple[str, ..
                 "CAL lexicon ambiguity expansion exceeds 64 complete-query candidates"
             )
     return tuple(
-        " ".join(parts)
-        for parts in product(*(word.candidates for word in conversion.words))
+        " ".join(parts) for parts in product(*(word.candidates for word in conversion.words))
     )
 
 
