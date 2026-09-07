@@ -299,6 +299,45 @@ async def test_multiple_followers_coalesce_onto_one_replacement_after_leader_can
 
 
 @pytest.mark.anyio
+async def test_prior_suppressed_cancellation_does_not_misclassify_leader_turnover() -> None:
+    transport = CancelFirstTransport(html_response())
+    client = CalHttpClient(
+        config=CalClientConfig(cache_enabled=False),
+        transport=transport,
+    )
+    request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
+    follower_joining = asyncio.Event()
+
+    async def follower_after_suppressed_cancellation() -> str:
+        task = asyncio.current_task()
+        assert task is not None
+        task.cancel()
+        try:
+            await asyncio.sleep(0)
+        except asyncio.CancelledError:
+            pass
+        assert task.cancelling() > 0
+        follower_joining.set()
+        result = await client.fetch(request, parser=parse_text, cache_namespace="entry")
+        return result.value
+
+    leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    await transport.first_started.wait()
+    follower = asyncio.create_task(follower_after_suppressed_cancellation())
+    await follower_joining.wait()
+    await asyncio.sleep(0)
+    assert len(transport.requests) == 1
+
+    leader.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await leader
+
+    value = await asyncio.wait_for(follower, timeout=1)
+    assert value == html_response().body.decode()
+    assert len(transport.requests) == 2
+
+
+@pytest.mark.anyio
 async def test_cancelled_follower_does_not_cancel_active_single_flight_leader() -> None:
     transport = BlockingTransport(html_response())
     client = CalHttpClient(transport=transport)
