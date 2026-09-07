@@ -169,7 +169,34 @@ Smoke failures are classified diagnostically as `drift`, `upstream`, `content`, 
 
 Representative queries are chosen for structural stability rather than exhaustive scholarly coverage. The workflow does not crawl, prefetch continuation pages, poll CAL, or expand links beyond the explicit service operation being checked.
 
-## 10. Data-quality boundary
+## 10. Dependency resolution policy
+
+The package metadata in `pyproject.toml` intentionally keeps reviewed compatibility ranges broad for downstream users. CI reproducibility is a separate validation concern and must not be implemented by silently narrowing those runtime or development ranges.
+
+The primary `deterministic` CI job uses Python 3.11 with two committed constraint sets:
+
+- `constraints/ci-py311.txt` pins the complete runtime/development target environment used for Ruff, mypy, pytest, and release validation;
+- `constraints/build-py311.txt` separately pins the isolated Hatchling/editable build environment. Current pip treats build constraints separately from ordinary target constraints.
+
+The job explicitly bootstraps its reviewed pip/setuptools versions, installs `.[dev]` through both constraint files, prints `pip freeze --all`, and runs `pip check` before the repository checks. The v0.1 release `build-and-test` job consumes the same deterministic policy so release validation and normal deterministic CI do not drift apart.
+
+A separate `latest-compatible` CI job intentionally does **not** use either committed project constraint file. It resolves `.[dev]` from the broad ranges in `pyproject.toml`, reports the exact resolution with `pip freeze --all`, runs `pip check`, and executes the same Ruff/format/mypy/pytest checks. A failure there is compatibility-drift evidence; do not make the job reproducible by accidentally applying the frozen constraint set to it.
+
+### Refreshing the Python 3.11 constraints
+
+Constraint refreshes must be explicit, paired, and reviewable:
+
+1. start from a clean Python 3.11 environment and the current broad `pyproject.toml` ranges;
+2. resolve/install `.[dev]` without the project constraint files and require `pip check` to pass;
+3. capture the full target environment with `pip freeze --all`, excluding the local editable CAL-MCP line and handling the explicitly bootstrapped pip/setuptools versions separately;
+4. resolve the isolated Hatchling build/editable closure separately, including dynamic editable requirements such as `editables`;
+5. update both `constraints/ci-py311.txt` and `constraints/build-py311.txt` in the same reviewed PR;
+6. run both the constrained `deterministic` job and the unconstrained `latest-compatible` job;
+7. review the dependency/version diff and any changed transitive requirements before merge.
+
+Automation may propose constraint updates later, but it must do so through a normal reviewable PR. It must not rewrite the committed constraint files directly on `main`.
+
+## 11. Data-quality boundary
 
 Tests prove CAL-MCP faithfully represents CAL's response. They do not establish that CAL's linguistic analysis is correct.
 
@@ -182,7 +209,7 @@ For example:
 
 Potential upstream scholarly errors should be reported upstream and, if necessary, documented as an upstream limitation rather than patched silently.
 
-## 11. Regression fixtures for upstream drift
+## 12. Regression fixtures for upstream drift
 
 When a live smoke detects a CAL markup change:
 
@@ -193,7 +220,7 @@ When a live smoke detects a CAL markup change:
 5. update `research.md` if the upstream interface assumption changed;
 6. update `decisions.md` only if the architecture/contract must change.
 
-## 12. Documentation tests
+## 13. Documentation tests
 
 As `docs/` grows, CI should validate:
 
