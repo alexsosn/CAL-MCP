@@ -139,6 +139,8 @@ Fixture rules:
 6. Test `Unicode-script → CAL code` and, where the supported mapping is bijective, the local reverse round trip.
 7. Do not create a live test dependency on CAL: corpus samples become tiny offline fixtures after research verification.
 
+This is deliberately a citation-sized fixture policy. It does not require or justify bulk extraction, corpus redistribution, or a derived local CAL corpus. The tests should contain only the minimum attested forms needed to establish mapping correctness.
+
 Candidate corpus families for fixtures, subject to exact mapping verification:
 
 - Imperial Aramaic / Official Aramaic;
