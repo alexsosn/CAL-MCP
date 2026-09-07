@@ -12,6 +12,7 @@ from cal_mcp.client import (
     CalRequest,
     CalResponse,
     CalResponseTooLargeError,
+    CalUpstreamError,
 )
 
 
@@ -113,6 +114,87 @@ async def test_production_transport_stops_stream_when_response_exceeds_limit(
     assert exc_info.value.max_response_bytes == 6
     assert stream.yielded == 3
     assert stream.closed is True
+
+
+@pytest.mark.parametrize("status_code", [302, 404, 429])
+@pytest.mark.anyio
+async def test_production_transport_does_not_read_nonretry_response_body(
+    monkeypatch: pytest.MonkeyPatch,
+    status_code: int,
+) -> None:
+    stream = CountingStream((b"error body must not be read",))
+    upstream_calls = 0
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        nonlocal upstream_calls
+        upstream_calls += 1
+        return httpx2.Response(
+            status_code,
+            headers={"content-type": "text/html", "location": "https://example.org/escape"},
+            stream=stream,
+            request=request,
+        )
+
+    patch_httpx2_transport(monkeypatch, handler)
+    client = CalHttpClient(
+        config=CalClientConfig(max_retries=3, retry_backoff_seconds=0),
+    )
+
+    try:
+        with pytest.raises(CalUpstreamError) as exc_info:
+            await client.fetch(
+                CalRequest(method="GET", path="entry.php"),
+                parser=lambda response: response.body,
+                cache_namespace=f"status-{status_code}",
+            )
+    finally:
+        await client.aclose()
+
+    assert exc_info.value.status_code == status_code
+    assert upstream_calls == 1
+    assert stream.yielded == 0
+    assert stream.closed is True
+
+
+@pytest.mark.anyio
+async def test_production_transport_retries_503_without_reading_failed_bodies(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    streams: list[CountingStream] = []
+    upstream_calls = 0
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        nonlocal upstream_calls
+        upstream_calls += 1
+        stream = CountingStream((f"503 body {upstream_calls}".encode(),))
+        streams.append(stream)
+        return httpx2.Response(
+            503,
+            headers={"content-type": "text/html"},
+            stream=stream,
+            request=request,
+        )
+
+    patch_httpx2_transport(monkeypatch, handler)
+    client = CalHttpClient(
+        config=CalClientConfig(max_retries=1, retry_backoff_seconds=0),
+    )
+
+    try:
+        with pytest.raises(CalUpstreamError) as exc_info:
+            await client.fetch(
+                CalRequest(method="GET", path="entry.php"),
+                parser=lambda response: response.body,
+                cache_namespace="status-503",
+            )
+    finally:
+        await client.aclose()
+
+    assert exc_info.value.status_code == 503
+    assert upstream_calls == 2
+    assert len(streams) == 2
+    assert all(stream.yielded == 0 for stream in streams)
+    assert all(stream.closed for stream in streams)
 
 
 @pytest.mark.anyio
