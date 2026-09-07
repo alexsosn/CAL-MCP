@@ -167,6 +167,8 @@ The smoke client deliberately uses **concurrency 1**, **retries 0**, and **cache
 
 Smoke failures are classified diagnostically as `drift`, `upstream`, `content`, or `harness`. Parser/semantic-shape failures belong to `drift`; network failures and upstream HTTP failures belong to `upstream`; other CAL content-policy failures remain distinct from harness/programming failures. A failed live smoke must not be reinterpreted as a valid empty CAL result.
 
+On success, the CLI writes one JSON report to stdout containing the completed cases, consumed `request_count`, and `max_cal_requests`. An expected classified `LiveSmokeFailure` writes one JSON object to stderr with `status: "failed"`, the failed case, category, cause text, consumed request count, and maximum request count, then exits with status 1 without a Python traceback. Unrelated harness/programming exceptions are not converted into that normal failure record; they continue to propagate so the smoke harness itself cannot fail silently.
+
 Representative queries are chosen for structural stability rather than exhaustive scholarly coverage. The workflow does not crawl, prefetch continuation pages, poll CAL, or expand links beyond the explicit service operation being checked.
 
 ## 10. Dependency resolution policy

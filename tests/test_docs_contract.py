@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 TOOLS_DIR = DOCS / "tools"
 DOCS_INDEX = DOCS / "index.md"
+CONFIGURATION = DOCS / "configuration.md"
 RESEARCH_AUDIT = DOCS / "research" / "issue-12-v0.1-contract-docs.md"
 ARCHITECTURE = ROOT / "wiki" / "architecture.md"
 LEXICON_DOC = TOOLS_DIR / "lexicon.md"
@@ -64,6 +65,14 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
     assert missing_links == []
     assert "#39" in index
     assert "defer" in index.lower()
+
+
+def test_configuration_documents_scalar_runtime_type_contract() -> None:
+    configuration = CONFIGURATION.read_text(encoding="utf-8")
+
+    assert "booleans and non-numeric values are rejected" in configuration
+    assert "`cache_enabled` must be an actual boolean" in configuration
+    assert "User-Agent must be a non-empty string" in configuration
 
 
 def test_cross_cutting_request_bounds_preserve_lexicon_two_request_exception() -> None:

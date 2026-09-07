@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Literal, TypeVar, cast
@@ -54,11 +55,23 @@ class LiveSmokeFailure(RuntimeError):
         case_name: str,
         category: SmokeFailureCategory,
         cause: BaseException,
+        request_count: int = 0,
     ) -> None:
         self.case_name = case_name
         self.category = category
         self.cause = cause
+        self.request_count = request_count
         super().__init__(f"live smoke {case_name!r} failed [{category}]: {cause}")
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "status": "failed",
+            "case": self.case_name,
+            "category": self.category,
+            "cause": str(self.cause),
+            "request_count": self.request_count,
+            "max_cal_requests": MAX_CAL_REQUESTS,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,13 +260,12 @@ async def run_live_smoke(
         for case in cases:
             try:
                 await case.operation(smoke_client)
-            except BaseException as exc:
-                if isinstance(exc, asyncio.CancelledError):
-                    raise
+            except Exception as exc:
                 raise LiveSmokeFailure(
                     case.name,
                     classify_smoke_exception(exc),
                     exc,
+                    request_count=smoke_client.request_count,
                 ) from exc
             completed.append(case.name)
         return LiveSmokeReport(tuple(completed), smoke_client.request_count)
@@ -270,7 +282,11 @@ async def _async_main() -> None:
 def main() -> None:
     """Run the capped live smoke from the command line."""
 
-    asyncio.run(_async_main())
+    try:
+        asyncio.run(_async_main())
+    except LiveSmokeFailure as exc:
+        print(json.dumps(exc.to_dict(), sort_keys=True), file=sys.stderr)
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

@@ -110,6 +110,16 @@ class CalClientConfig:
             ("connect_timeout_seconds", self.connect_timeout_seconds),
             ("read_timeout_seconds", self.read_timeout_seconds),
             ("total_timeout_seconds", self.total_timeout_seconds),
+            ("retry_backoff_seconds", self.retry_backoff_seconds),
+            ("cache_ttl_seconds", self.cache_ttl_seconds),
+        ):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise ValueError(f"{name} must be a number")
+
+        for name, value in (
+            ("connect_timeout_seconds", self.connect_timeout_seconds),
+            ("read_timeout_seconds", self.read_timeout_seconds),
+            ("total_timeout_seconds", self.total_timeout_seconds),
             ("cache_ttl_seconds", self.cache_ttl_seconds),
         ):
             if not math.isfinite(value) or value <= 0:
@@ -123,6 +133,15 @@ class CalClientConfig:
                 "retry_backoff_seconds must be finite and between 0 and "
                 f"{_MAX_RETRY_BACKOFF_SECONDS:g}"
             )
+        if not isinstance(self.cache_enabled, bool):
+            raise ValueError("cache_enabled must be a boolean")
+        for name, value in (
+            ("max_concurrency", self.max_concurrency),
+            ("max_retries", self.max_retries),
+            ("cache_max_entries", self.cache_max_entries),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int):
+                raise ValueError(f"{name} must be an integer")
         if not 1 <= self.max_concurrency <= 8:
             raise ValueError("max_concurrency must be between 1 and 8")
         if not 0 <= self.max_retries <= 3:
@@ -137,6 +156,8 @@ class CalClientConfig:
             raise ValueError("cache_max_entries must be between 0 and 4096")
         if self.cache_ttl_seconds > 86400:
             raise ValueError("cache_ttl_seconds must not exceed 86400")
+        if not isinstance(self.user_agent, str):
+            raise ValueError("user_agent must be a string")
         if not self.user_agent.strip():
             raise ValueError("user_agent must not be empty")
 
@@ -175,6 +196,15 @@ class _Httpx2Transport:
             content=form_content,
             headers=headers,
         ) as response:
+            if response.status_code >= 300:
+                return CalResponse(
+                    status_code=response.status_code,
+                    url=str(response.url),
+                    body=b"",
+                    content_type=response.headers.get("content-type"),
+                    retrieved_at=datetime.now(UTC),
+                )
+
             body = bytearray()
             async for chunk in response.aiter_bytes(chunk_size=chunk_size):
                 if len(body) + len(chunk) > config.max_response_bytes:
@@ -387,7 +417,10 @@ class CalHttpClient:
                 return await self._transport(request, self.config)
 
     async def _backoff(self, attempt: int) -> None:
-        delay = self.config.retry_backoff_seconds * (2**attempt)
+        delay = min(
+            self.config.retry_backoff_seconds * (2**attempt),
+            _MAX_RETRY_BACKOFF_SECONDS,
+        )
         if delay > 0:
             await asyncio.sleep(delay)
 

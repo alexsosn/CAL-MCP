@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import asyncio
 import importlib
+import json
 import tomllib
 from datetime import UTC, datetime
 from pathlib import Path
@@ -204,3 +206,151 @@ async def test_live_smoke_runner_turns_case_failure_into_non_success() -> None:
         assert client.request_count == 0
     finally:
         await client.aclose()
+
+
+@pytest.mark.anyio
+async def test_live_smoke_failure_records_consumed_request_count() -> None:
+    module = _live_smoke_module()
+
+    async def transport(request: CalRequest, config: object) -> CalResponse:
+        del request, config
+        return CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/test",
+            body=b"ok",
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 7, tzinfo=UTC),
+        )
+
+    async def consume_then_fail(client: object) -> None:
+        typed_client = client
+        await typed_client.fetch(
+            CalRequest(method="GET", path="test"),
+            parser=lambda response: response.body,
+            cache_namespace="release-failure-count-test",
+        )
+        raise ConcordanceParseError("changed markup after one request")
+
+    client = module.BudgetCalHttpClient(transport=transport)
+    case = module.SmokeCase(name="synthetic_after_request", operation=consume_then_fail)
+    try:
+        with pytest.raises(module.LiveSmokeFailure) as exc_info:
+            await module.run_live_smoke(cases=(case,), client=client)
+        assert exc_info.value.request_count == 1
+        assert client.request_count == 1
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.parametrize(
+    "interruption_type",
+    [KeyboardInterrupt, SystemExit, asyncio.CancelledError],
+)
+@pytest.mark.anyio
+async def test_live_smoke_runner_preserves_process_interruptions(
+    interruption_type: type[BaseException],
+) -> None:
+    module = _live_smoke_module()
+
+    async def interrupt(client: object) -> None:
+        del client
+        raise interruption_type()
+
+    client = module.BudgetCalHttpClient(
+        transport=lambda request, config: pytest.fail("transport must not be reached")
+    )
+    case = module.SmokeCase(name="synthetic_interrupt", operation=interrupt)
+    try:
+        with pytest.raises(interruption_type):
+            await module.run_live_smoke(cases=(case,), client=client)
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.anyio
+async def test_live_smoke_budget_failure_records_nine_consumed_requests() -> None:
+    module = _live_smoke_module()
+    upstream_calls = 0
+
+    async def transport(request: CalRequest, config: object) -> CalResponse:
+        nonlocal upstream_calls
+        del request, config
+        upstream_calls += 1
+        return CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/test",
+            body=b"ok",
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 7, tzinfo=UTC),
+        )
+
+    async def exhaust_budget(client: object) -> None:
+        typed_client = client
+        for index in range(module.MAX_CAL_REQUESTS + 1):
+            await typed_client.fetch(
+                CalRequest(method="GET", path="test", params=(("n", str(index)),)),
+                parser=lambda response: response.body,
+                cache_namespace="release-budget-failure-test",
+            )
+
+    client = module.BudgetCalHttpClient(transport=transport)
+    case = module.SmokeCase(name="synthetic_budget", operation=exhaust_budget)
+    try:
+        with pytest.raises(module.LiveSmokeFailure) as exc_info:
+            await module.run_live_smoke(cases=(case,), client=client)
+        assert isinstance(exc_info.value.cause, module.LiveSmokeBudgetExceeded)
+        assert exc_info.value.request_count == module.MAX_CAL_REQUESTS
+        assert upstream_calls == module.MAX_CAL_REQUESTS
+    finally:
+        await client.aclose()
+
+
+def test_live_smoke_cli_reports_expected_failure_as_json(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module = _live_smoke_module()
+    failure = module.LiveSmokeFailure(
+        "synthetic_drift",
+        "drift",
+        ConcordanceParseError("changed markup"),
+    )
+
+    async def fail_async_main() -> None:
+        raise failure
+
+    monkeypatch.setattr(module, "_async_main", fail_async_main)
+
+    with pytest.raises(SystemExit) as exc_info:
+        module.main()
+
+    assert exc_info.value.code == 1
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert json.loads(captured.err) == {
+        "case": "synthetic_drift",
+        "category": "drift",
+        "cause": "changed markup",
+        "max_cal_requests": module.MAX_CAL_REQUESTS,
+        "request_count": 0,
+        "status": "failed",
+    }
+
+
+def test_live_smoke_cli_does_not_hide_unrelated_harness_exception(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    module = _live_smoke_module()
+
+    async def fail_async_main() -> None:
+        raise ValueError("unexpected harness bug")
+
+    monkeypatch.setattr(module, "_async_main", fail_async_main)
+
+    with pytest.raises(ValueError, match="unexpected harness bug"):
+        module.main()
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""
