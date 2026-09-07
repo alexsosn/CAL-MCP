@@ -297,9 +297,8 @@ def _convert_hebrew_to_cal_code(value: str) -> str:
         if char == _HEBREW_SHIN:
             following_marks: list[str] = []
             mark_index = index + 1
-            while (
-                mark_index < len(value)
-                and unicodedata.category(value[mark_index]).startswith("M")
+            while mark_index < len(value) and unicodedata.category(value[mark_index]).startswith(
+                "M"
             ):
                 following_marks.append(value[mark_index])
                 mark_index += 1
