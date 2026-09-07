@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import typing
-
 import pytest
 
 from cal_mcp.client import CalClientConfig
@@ -22,10 +20,8 @@ def test_numeric_policy_fields_reject_boolean_and_non_numeric_values(
     field: str,
     value: object,
 ) -> None:
-    kwargs = typing.cast(typing.Any, {field: value})
-
     with pytest.raises(ValueError, match=rf"^{field} must be a number$"):
-        CalClientConfig(**kwargs)
+        CalClientConfig(**{field: value})
 
 
 @pytest.mark.parametrize(
@@ -47,8 +43,7 @@ def test_numeric_policy_fields_preserve_valid_integer_and_float_inputs(
     field: str,
     value: int | float,
 ) -> None:
-    kwargs = typing.cast(typing.Any, {field: value})
-    config = CalClientConfig(**kwargs)
+    config = CalClientConfig(**{field: value})
 
     assert getattr(config, field) == value
 
@@ -56,7 +51,7 @@ def test_numeric_policy_fields_preserve_valid_integer_and_float_inputs(
 @pytest.mark.parametrize("value", [0, 1, "true"])
 def test_cache_enabled_requires_actual_boolean(value: object) -> None:
     with pytest.raises(ValueError, match=r"^cache_enabled must be a boolean$"):
-        CalClientConfig(cache_enabled=typing.cast(typing.Any, value))
+        CalClientConfig(cache_enabled=value)
 
 
 @pytest.mark.parametrize("value", [True, False])
@@ -69,7 +64,7 @@ def test_cache_enabled_preserves_boolean_values(value: bool) -> None:
 @pytest.mark.parametrize("value", [1, ["CAL-MCP"]])
 def test_user_agent_requires_string(value: object) -> None:
     with pytest.raises(ValueError, match=r"^user_agent must be a string$"):
-        CalClientConfig(user_agent=typing.cast(typing.Any, value))
+        CalClientConfig(user_agent=value)
 
 
 def test_user_agent_preserves_existing_empty_string_rule() -> None:
