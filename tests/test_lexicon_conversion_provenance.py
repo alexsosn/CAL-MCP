@@ -7,7 +7,7 @@ from urllib.parse import quote
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.lexicon import LexiconLookupService, LexiconLookupStatus
+from cal_mcp.lexicon import LexiconLookupResult, LexiconLookupService, LexiconLookupStatus
 
 
 def _browse_response(prefix: str, *entries: tuple[str, str]) -> CalResponse:
@@ -47,8 +47,8 @@ def _entry_response(lemma_key: str, headword: str) -> CalResponse:
     )
 
 
-def _provenance_tuple(result: object, field: str) -> object:
-    provenance = getattr(result, "provenance")
+def _provenance_tuple(result: LexiconLookupResult, field: str) -> object:
+    provenance = result.provenance
     assert provenance is not None
     return getattr(provenance, field, None)
 
