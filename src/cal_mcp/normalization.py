@@ -30,6 +30,7 @@ class InputRepresentation(StrEnum):
     UNICODE_TRANSLITERATION = "unicode_transliteration"
     HEBREW = "hebrew"
     SYRIAC = "syriac"
+    IMPERIAL_ARAMAIC = "imperial_aramaic"
     ROMAN_SHARED = "roman_shared"
 
 
@@ -47,6 +48,7 @@ class CalCodeConversionStrategy(StrEnum):
     UNICODE_TRANSLITERATION_TO_CAL_CODE = "unicode_transliteration_to_cal_code"
     HEBREW_TO_CAL_CODE = "hebrew_to_cal_code"
     SYRIAC_TO_CAL_CODE = "syriac_to_cal_code"
+    IMPERIAL_ARAMAIC_TO_CAL_CODE = "imperial_aramaic_to_cal_code"
 
 
 @dataclass(frozen=True, slots=True)
@@ -208,6 +210,33 @@ _SYRIAC_TO_CAL_CODE = {
     "ܬ": "t",
 }
 
+_IMPERIAL_ARAMAIC_TO_CAL_CODE = {
+    "𐡀": ")",
+    "𐡁": "b",
+    "𐡂": "g",
+    "𐡃": "d",
+    "𐡄": "h",
+    "𐡅": "w",
+    "𐡆": "z",
+    "𐡇": "x",
+    "𐡈": "T",
+    "𐡉": "y",
+    "𐡊": "k",
+    "𐡋": "l",
+    "𐡌": "m",
+    "𐡍": "n",
+    "𐡎": "s",
+    "𐡏": "(",
+    "𐡐": "p",
+    "𐡑": "c",
+    "𐡒": "q",
+    "𐡓": "r",
+    "𐡔": "$",
+    "𐡕": "t",
+}
+_IMPERIAL_ARAMAIC_BLOCK_START = "\U00010840"
+_IMPERIAL_ARAMAIC_BLOCK_END = "\U0001085f"
+
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
@@ -291,6 +320,15 @@ def convert_to_cal_code(
             for word in _split_words(candidate)
         )
         strategy = CalCodeConversionStrategy.SYRIAC_TO_CAL_CODE
+    elif resolved is InputRepresentation.IMPERIAL_ARAMAIC:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_imperial_aramaic_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.IMPERIAL_ARAMAIC_TO_CAL_CODE
     else:
         raise AssertionError(f"unhandled CAL input representation: {resolved}")
 
@@ -411,6 +449,18 @@ def _convert_syriac_word(value: str) -> str:
     return "".join(converted)
 
 
+def _convert_imperial_aramaic_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _IMPERIAL_ARAMAIC_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Imperial Aramaic input contains a non-consonantal or unverified character"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
 def _reject_controls(value: str) -> None:
     if any(unicodedata.category(char) in {"Cc", "Cs"} for char in value):
         raise UnsupportedQueryError("CAL query contains control or surrogate characters")
@@ -419,13 +469,17 @@ def _reject_controls(value: str) -> None:
 def _detect_representation(value: str) -> InputRepresentation:
     has_hebrew = any(_is_hebrew(char) for char in value)
     has_syriac = any(_is_syriac(char) for char in value)
+    has_imperial_aramaic = any(_is_imperial_aramaic_block(char) for char in value)
+    script_count = sum((has_hebrew, has_syriac, has_imperial_aramaic))
 
-    if has_hebrew and has_syriac:
-        raise AmbiguousQueryError("mixed Hebrew and Syriac query input is ambiguous")
+    if script_count > 1:
+        raise AmbiguousQueryError("mixed Aramaic script query input is ambiguous")
     if has_hebrew:
         return InputRepresentation.HEBREW
     if has_syriac:
         return InputRepresentation.SYRIAC
+    if has_imperial_aramaic:
+        return InputRepresentation.IMPERIAL_ARAMAIC
 
     if any(ord(char) > 127 for char in value):
         if _is_unicode_transliteration(value):
@@ -453,6 +507,14 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
             _is_syriac(char) or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid syriac-script CAL input")
+        return
+
+    if representation is InputRepresentation.IMPERIAL_ARAMAIC:
+        if not any(char in _IMPERIAL_ARAMAIC_TO_CAL_CODE for char in value) or not all(
+            char in _IMPERIAL_ARAMAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS
+            for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Imperial Aramaic consonantal input")
         return
 
     if representation is InputRepresentation.UNICODE_TRANSLITERATION:
@@ -496,6 +558,10 @@ def _is_hebrew(char: str) -> bool:
 
 def _is_syriac(char: str) -> bool:
     return "\u0700" <= char <= "\u074f"
+
+
+def _is_imperial_aramaic_block(char: str) -> bool:
+    return _IMPERIAL_ARAMAIC_BLOCK_START <= char <= _IMPERIAL_ARAMAIC_BLOCK_END
 
 
 __all__ = [
