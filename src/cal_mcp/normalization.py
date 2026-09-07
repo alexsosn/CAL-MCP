@@ -612,9 +612,7 @@ def _convert_hatran_word(value: str) -> CalCodeWordCandidates:
                 "Hatran input contains a non-consonantal or unverified character"
             )
         if len(alternatives) > 1:
-            ambiguities.append(
-                CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives)
-            )
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
         candidates = _append_alternatives(candidates, alternatives)
     return CalCodeWordCandidates(
         original=value,
