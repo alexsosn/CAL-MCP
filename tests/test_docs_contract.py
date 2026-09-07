@@ -119,6 +119,18 @@ def test_converter_docs_record_script_specific_edges_and_fail_closed_boundary() 
     assert "fail" in text.lower() and "closed" in text.lower()
 
 
+def test_lexicon_docs_name_conversion_path_provenance_fields() -> None:
+    text = LEXICON_DOC.read_text(encoding="utf-8")
+
+    for field in (
+        "cal_code_word_candidates",
+        "cal_code_query_candidates",
+        "browse_prefixes",
+        "selected_cal_code_candidates",
+    ):
+        assert f"`{field}`" in text
+
+
 def test_relative_markdown_links_resolve() -> None:
     markdown_files = [ROOT / "README.md", *sorted(DOCS.rglob("*.md"))]
     broken: list[str] = []
