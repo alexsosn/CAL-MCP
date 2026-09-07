@@ -312,10 +312,8 @@ async def test_prior_suppressed_cancellation_does_not_misclassify_leader_turnove
         task = asyncio.current_task()
         assert task is not None
         task.cancel()
-        try:
+        with suppress(asyncio.CancelledError):
             await asyncio.sleep(0)
-        except asyncio.CancelledError:
-            pass
         assert task.cancelling() > 0
         follower_joining.set()
         result = await client.fetch(request, parser=parse_text, cache_namespace="entry")
