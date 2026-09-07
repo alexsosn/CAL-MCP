@@ -194,30 +194,32 @@ _HEBREW_SHIN = "ש"
 _HEBREW_SHIN_DOT = "\u05c1"
 _HEBREW_SIN_DOT = "\u05c2"
 
-_SYRIAC_TO_CAL_CODE = {
-    "ܐ": ")",
-    "ܒ": "b",
-    "ܓ": "g",
-    "ܕ": "d",
-    "ܗ": "h",
-    "ܘ": "w",
-    "ܙ": "z",
-    "ܚ": "x",
-    "ܛ": "T",
-    "ܝ": "y",
-    "ܟ": "k",
-    "ܠ": "l",
-    "ܡ": "m",
-    "ܢ": "n",
-    "ܣ": "s",
-    "ܥ": "(",
-    "ܦ": "p",
-    "ܧ": "P",
-    "ܨ": "c",
-    "ܩ": "q",
-    "ܪ": "r",
-    "ܫ": "$",
-    "ܬ": "t",
+_SYRIAC_TO_CAL_CODES = {
+    "ܐ": (")",),
+    "ܒ": ("b",),
+    "ܓ": ("g",),
+    "ܕ": ("d",),
+    "ܖ": ("d", "r"),
+    "ܗ": ("h",),
+    "ܘ": ("w",),
+    "ܙ": ("z",),
+    "ܚ": ("x",),
+    "ܛ": ("T",),
+    "ܝ": ("y",),
+    "ܟ": ("k",),
+    "ܠ": ("l",),
+    "ܡ": ("m",),
+    "ܢ": ("n",),
+    "ܣ": ("s",),
+    "ܤ": ("s",),
+    "ܥ": ("(",),
+    "ܦ": ("p",),
+    "ܧ": ("P",),
+    "ܨ": ("c",),
+    "ܩ": ("q",),
+    "ܪ": ("r",),
+    "ܫ": ("$",),
+    "ܬ": ("t",),
 }
 
 _IMPERIAL_ARAMAIC_TO_CAL_CODE = {
@@ -471,10 +473,7 @@ def convert_to_cal_code(
         words = tuple(_convert_hebrew_word(word) for word in _split_words(candidate))
         strategy = CalCodeConversionStrategy.HEBREW_TO_CAL_CODE
     elif resolved is InputRepresentation.SYRIAC:
-        words = tuple(
-            CalCodeWordCandidates(original=word, candidates=(_convert_syriac_word(word),))
-            for word in _split_words(candidate)
-        )
+        words = tuple(_convert_syriac_word(word) for word in _split_words(candidate))
         strategy = CalCodeConversionStrategy.SYRIAC_TO_CAL_CODE
     elif resolved is InputRepresentation.IMPERIAL_ARAMAIC:
         words = tuple(
@@ -625,17 +624,24 @@ def _append_alternatives(candidates: list[str], alternatives: tuple[str, ...]) -
     return list(dict.fromkeys(expanded))
 
 
-def _convert_syriac_word(value: str) -> str:
-    converted: list[str] = []
-    for char in value:
-        mapped = _SYRIAC_TO_CAL_CODE.get(char)
-        if mapped is None:
+def _convert_syriac_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    for index, char in enumerate(value):
+        alternatives = _SYRIAC_TO_CAL_CODES.get(char)
+        if alternatives is None:
             raise UnsupportedQueryError(
                 "Syriac input contains a mark, punctuation sign, or letter without a v0.1 "
                 "CAL-code mapping"
             )
-        converted.append(mapped)
-    return "".join(converted)
+        if len(alternatives) > 1:
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
+        candidates = _append_alternatives(candidates, alternatives)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
 
 
 def _convert_imperial_aramaic_word(value: str) -> str:
