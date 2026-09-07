@@ -355,7 +355,9 @@ def parse_recent_bibliography_page(response: CalResponse) -> BibliographyPage:
     if parser._record is not None or parser._heading_parts is not None:
         raise BibliographyParseError("CAL recent bibliography contains incomplete semantic markup")
     if parser.headings != [_RECENT_HEADING]:
-        raise BibliographyParseError("CAL recent bibliography lacks one recognizable result heading")
+        raise BibliographyParseError(
+            "CAL recent bibliography lacks one recognizable result heading"
+        )
     if not parser.records:
         raise BibliographyParseError("CAL recent bibliography contains no records")
     return BibliographyPage(heading=_RECENT_HEADING, records=tuple(parser.records))
