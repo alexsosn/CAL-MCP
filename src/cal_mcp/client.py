@@ -65,6 +65,10 @@ class CalResponseTooLargeError(CalContentError):
         )
 
 
+class _SingleFlightLeaderCancelled(Exception):
+    """Internal signal that a shared request generation lost its owning caller."""
+
+
 @dataclass(frozen=True, slots=True)
 class CalRequest:
     method: str
@@ -306,11 +310,9 @@ class CalHttpClient:
 
             try:
                 return cast(CalFetchResult[T], await asyncio.shield(future))
-            except asyncio.CancelledError:
-                task = asyncio.current_task()
-                if task is None or task.cancelling() or not future.cancelled():
-                    raise
+            except _SingleFlightLeaderCancelled:
                 replacement_leader = True
+                continue
 
         try:
             if replacement_leader:
@@ -318,7 +320,8 @@ class CalHttpClient:
             result = await self._fetch_uncached(normalized, parser=parser, cache_key=key)
         except BaseException as exc:
             if isinstance(exc, asyncio.CancelledError):
-                future.cancel()
+                if not future.done():
+                    future.set_exception(_SingleFlightLeaderCancelled())
             elif not future.done():
                 future.set_exception(exc)
             raise
