@@ -65,14 +65,92 @@ https://cal.huc.edu/pdfs/CalManualIntrol.pdf
 
 states that texts may now be submitted in standard browser-recognizable fonts, explicitly including Unicode Hebrew and Syriac. It also says modern-font diacritics may be submitted directly and gives `tF` vs Syriac feminine-dot Unicode as an example. Therefore CAL's Unicode display/input conventions and its historical Roman storage/coding conventions must not be treated as globally lossless equivalents.
 
-### Current search UI accepts several representations
+### CAL corpus inventory is broader than Hebrew/Syriac
 
-CAL's live lexicon browser states that users may enter initial letters in Roman, Hebrew, or Syriac. Its current jump alphabet distinguishes both shin and sin. CAL's advantages page likewise says searching may use Roman transliteration, Unicode, Square/Hebrew script, or Syriac keyboards.
+The current CAL dialect/text inventory is materially broader than the first draft of this issue assumed.
 
-Relevant live pages rechecked 2026-09-07:
+CAL's current dialect taxonomy includes:
 
-- https://cal.huc.edu/browseJLAKEYheaders.php
+- Old Aramaic;
+- Imperial Aramaic;
+- Biblical Aramaic;
+- Middle Aramaic, including Palmyrene, Nabataean, Hatran, and Qumran;
+- Palestinian Aramaic, including CPA and Samaritan;
+- Syriac;
+- Babylonian Aramaic, including Mandaic;
+- Late Jewish Literary Aramaic.
+
+Current sources rechecked 2026-09-07:
+
+- https://cal.huc.edu/pdfs/CalManualIntrol.pdf
+- https://cal.huc.edu/Cal_dialect_codes.html
+- https://cal.huc.edu/searching/basic_concordance.html
+
+The live Middle Aramaic catalogue currently exposes substantial Palmyrene, Nabataean, Hatran, and Qumran corpora:
+
+- https://cal.huc.edu/newshow_browsedialects.php?R1=4
+
+The live Mandaic surface exposes canonical texts, prayers, ritual texts, and magic material:
+
+- https://cal.huc.edu/show_Mandaic.php?R1=74
+
+CAL also explicitly says active work continues on less-studied dialects including Mandaic, Samaritan, and Nabataean:
+
 - https://cal.huc.edu/advantages.htm
+
+### Dedicated Unicode scripts exist for several CAL corpus families
+
+The current Unicode script inventory includes dedicated encodings for at least:
+
+- Imperial Aramaic;
+- Palmyrene;
+- Nabataean;
+- Hatran;
+- Mandaic;
+- Samaritan;
+- Syriac and Hebrew.
+
+Unicode also separately encodes other Aramaic-derived scripts (for example Elymaic and Manichaean). Their existence does **not** by itself put them into the v0.1 contract; CAL corpus evidence must decide relevance.
+
+Authoritative Unicode sources:
+
+- https://www.unicode.org/Public/draft/charts/
+- https://unicode.org/versions/Unicode17.0.0/core-spec/chapter-10/
+
+CPA does not require a distinct Unicode block for the ordinary CAL use case: its manuscript tradition is represented through Syriac-script characters, so CPA belongs under the Syriac-script conversion path unless corpus research demonstrates a distinct encoded requirement.
+
+### CAL display script is not necessarily source palaeographic script
+
+Do not infer source-script coverage from CAL HTML rendering alone. CAL often renders one attested Aramaic citation in Roman transliteration plus normalized Hebrew and Syriac forms even when the dialect is Palmyrene or another epigraphic variety. For example current Palmyrene entries display normalized transliteration/Hebrew/Syriac rather than requiring Palmyrene Unicode.
+
+Therefore the converter's dedicated-script support must be based on Unicode character identity + historically corresponding consonantal value, while corpus-derived fixtures supply **attested lexical sequences**, not a claim that CAL itself stores those lines in the palaeographic Unicode block.
+
+## Corpus-derived round-trip fixture policy
+
+Synthetic alphabet tests remain necessary, but they are not enough. Add a small, fixed, reviewable set of attested CAL words/sequences from representative corpus families and use them as regression fixtures.
+
+Fixture rules:
+
+1. Use only a handful of short words or very short sequences per script family — ordinary scholarly quotation, not corpus replication.
+2. Record CAL source/dialect + stable locator (text ID/coordinate/entry URL where available) and retrieval date.
+3. Store only the minimal text required to exercise conversion; do not copy pages or bulk text.
+4. Preserve the CAL Roman/transliteration form as the expected canonical code basis.
+5. Independently encode the same consonantal sequence in the relevant Unicode script for the test input.
+6. Test `Unicode-script → CAL code` and, where the supported mapping is bijective, the local reverse round trip.
+7. Do not create a live test dependency on CAL: corpus samples become tiny offline fixtures after research verification.
+
+Candidate corpus families for fixtures, subject to exact mapping verification:
+
+- Imperial Aramaic / Official Aramaic;
+- Palmyrene;
+- Nabataean;
+- Hatran;
+- Samaritan Aramaic;
+- Mandaic;
+- CPA/Syriac;
+- Jewish Aramaic/Hebrew script.
+
+If a corpus family uses characters outside a clean one-to-one consonantal map, document and reject those cases rather than inventing a lossy transliteration policy.
 
 ## Safe v0.1 conversion contract
 
@@ -116,9 +194,21 @@ For ordinary Syriac consonantal letters, the following is deterministic:
 
 These map to the same core CAL consonant codes as the Hebrew/transliteration inventory; Syriac `ܫ` maps to `$` (shin).
 
-Syriac vowel points, quššāyā/rukkāḵā marks, syame, feminine dot, punctuation, and other combining/editorial marks are deliberately unsupported in this first conversion contract. CAL has explicit Roman codes for several of them, but a correct comprehensive Unicode→CAL transcription layer requires a separate reviewed mapping rather than silent mark deletion.
+Syriac vowel points, quššāyā/rukkāḵā marks, syame, feminine dot, punctuation, and other combining/editorial marks are deliberately unsupported until an exact CAL mapping is independently verified. CPA ordinary consonantal input follows this Syriac-script path.
 
-### 4. CAL code and shared Roman input
+### 4. Other dedicated Aramaic Unicode scripts
+
+For Imperial Aramaic, Palmyrene, Nabataean, Hatran, Samaritan, and Mandaic, do not assume a mapping merely from alphabet order. Before implementation for each script:
+
+- verify the Unicode character inventory and character names;
+- verify the CAL Roman correspondence against an attested corpus sample;
+- identify extra letters/orthographic distinctions (especially Mandaic) and their CAL codes;
+- identify punctuation/combining marks and reject them unless CAL's mapping is exact and documented;
+- add a table-driven script map only after the above evidence is committed.
+
+The release target is **coverage of every dedicated Unicode script that is both relevant to an actual CAL Aramaic corpus family and safely convertible under a deterministic code table**. A script may be explicitly unsupported in v0.1 only if research records why conversion is not deterministic or CAL does not actually expose a corresponding corpus/use case.
+
+### 5. CAL code and shared Roman input
 
 - Explicit/detected simple CAL code is passed through unchanged by the converter.
 - Plain shared Roman consonants such as `mlk` are materially unambiguous for conversion because their CAL spelling is identical; they also pass through unchanged.
@@ -128,9 +218,9 @@ Syriac vowel points, quššāyā/rukkāḵā marks, syame, feminine dot, punctua
 
 Fail closed with `UnsupportedQueryError` or `AmbiguousQueryError` when conversion would require information not present in the input. In particular:
 
-- mixed Hebrew/Syriac input remains ambiguous;
+- mixed scripts remain ambiguous;
 - bare Hebrew `ש` is ambiguous between `$` and `&`;
-- Hebrew or Syriac vowel/diacritic/editorial marks are not silently stripped;
+- vowel/diacritic/editorial marks are not silently stripped;
 - unsupported Unicode transliteration characters are rejected;
 - morphology, roots, historical spelling, vowel restoration, and `@` connector inference are never attempted.
 
@@ -143,14 +233,9 @@ Add a pure local result type with at least:
 - `representation`
 - `strategy`
 
-Suggested strategies:
+The representation vocabulary must grow from the first draft's Hebrew/Syriac-only view to explicit script identifiers for every supported dedicated Unicode script. Strategy values should remain transformation-oriented (`*_to_cal_code`) rather than dialect claims.
 
-- `pass_through`
-- `unicode_transliteration_to_cal_code`
-- `hebrew_to_cal_code`
-- `syriac_to_cal_code`
-
-Expose one MCP tool, `cal_convert_to_code`, that performs no CAL request and returns the typed conversion result. An optional explicit representation selector may be accepted for cases where auto-detection is insufficient, but it must reuse the existing `InputRepresentation` vocabulary.
+Expose one MCP tool, `cal_convert_to_code`, that performs no CAL request and returns the typed conversion result. An optional explicit representation selector may be accepted for cases where auto-detection is insufficient.
 
 ## Compatibility / request-volume decision
 
@@ -158,18 +243,19 @@ Do **not** route existing lookup/search tools through the new converter in issue
 
 ## Testing implications
 
-Test-first coverage should prove:
+Test-first coverage must prove:
 
 1. scholarly transliteration special letters map to exact CAL characters;
 2. Hebrew medial/final consonants map correctly;
 3. `שׁ`/`שׂ` map distinctly and bare `ש` fails;
 4. Syriac consonants map correctly;
-5. supported simple CAL code/shared Roman input passes through;
-6. Hebrew/Syriac vocalization or unsupported marks fail rather than disappear;
-7. supported CAL-code → Unicode → CAL-code round trips are exact where the mapping is bijective (excluding semantic `@`/space collapse);
-8. the public MCP tool is present, typed, structured, and local-only;
-9. existing normalization tests remain unchanged and green.
+5. each researched additional Unicode script has alphabet-edge tests and at least one corpus-derived attested fixture;
+6. supported simple CAL code/shared Roman input passes through;
+7. unsupported marks fail rather than disappear;
+8. supported CAL-code → Unicode/script → CAL-code round trips are exact where the mapping is bijective;
+9. the public MCP tool is present, typed, structured, and local-only;
+10. existing normalization tests remain unchanged and green.
 
 ## Conclusion
 
-A useful v0.1 converter is feasible without linguistic guessing: support the core consonantal inventories and the existing scholarly transliteration alphabet, preserve valid CAL code, distinguish Hebrew shin/sin only when the script encodes the distinction, and reject marks whose CAL coding would require a larger transcription policy. Comprehensive vowel/diacritic/editorial transcription should be a later feature, not an implicit lossy extension of this must-have converter.
+The initial Hebrew/Syriac-only scope is too narrow for a release-blocking CAL converter. CAL's own corpus taxonomy spans several Aramaic traditions with dedicated Unicode scripts. Before v0.1, issue #52 must inventory those scripts, support every safely deterministic corpus-relevant mapping, and prove them with a small offline set of attested CAL examples. The converter must still remain conservative: no silent mark deletion, no palaeographic guesswork, and no claim that CAL's normalized display script is the original script of an inscription.
