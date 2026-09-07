@@ -164,6 +164,8 @@ class CalClientConfig:
             raise ValueError("user_agent must be a string")
         if not self.user_agent.strip():
             raise ValueError("user_agent must not be empty")
+        if any(not 0x20 <= ord(char) <= 0x7E for char in self.user_agent):
+            raise ValueError("user_agent must contain only printable ASCII characters")
 
 
 Transport = Callable[[CalRequest, CalClientConfig], Awaitable[CalResponse]]
