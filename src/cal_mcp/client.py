@@ -394,7 +394,10 @@ class CalHttpClient:
                 return await self._transport(request, self.config)
 
     async def _backoff(self, attempt: int) -> None:
-        delay = self.config.retry_backoff_seconds * (2**attempt)
+        delay = min(
+            self.config.retry_backoff_seconds * (2**attempt),
+            _MAX_RETRY_BACKOFF_SECONDS,
+        )
         if delay > 0:
             await asyncio.sleep(delay)
 
