@@ -51,6 +51,22 @@ class CountingTransport:
         return self.outcome
 
 
+class CancelFirstTransport:
+    def __init__(self, outcome: CalResponse) -> None:
+        self.outcome = outcome
+        self.requests: list[CalRequest] = []
+        self.first_started = asyncio.Event()
+
+    async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        self.requests.append(request)
+        if len(self.requests) == 1:
+            self.first_started.set()
+            await asyncio.Event().wait()
+            raise AssertionError("cancelled first request unexpectedly resumed")
+        return self.outcome
+
+
 def html_response() -> CalResponse:
     return CalResponse(
         status_code=200,
@@ -222,3 +238,84 @@ async def test_cancelled_leader_cannot_retain_completed_single_flight_when_cache
     await client.fetch(request, parser=parse_text, cache_namespace="entry")
 
     assert len(transport.requests) == 2
+
+
+@pytest.mark.anyio
+async def test_cancelled_single_flight_leader_does_not_cancel_independent_follower() -> None:
+    transport = CancelFirstTransport(html_response())
+    client = CalHttpClient(
+        config=CalClientConfig(cache_enabled=False),
+        transport=transport,
+    )
+    request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
+
+    leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    await transport.first_started.wait()
+    follower = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    await asyncio.sleep(0)
+    assert len(transport.requests) == 1
+
+    leader.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await leader
+
+    follower_result = await asyncio.wait_for(follower, timeout=1)
+    assert follower_result.value == html_response().body.decode()
+    assert len(transport.requests) == 2
+
+    later_result = await client.fetch(request, parser=parse_text, cache_namespace="entry")
+    assert later_result.value == follower_result.value
+    assert len(transport.requests) == 3
+
+
+@pytest.mark.anyio
+async def test_multiple_followers_coalesce_onto_one_replacement_after_leader_cancel() -> None:
+    transport = CancelFirstTransport(html_response())
+    client = CalHttpClient(
+        config=CalClientConfig(cache_enabled=False),
+        transport=transport,
+    )
+    request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
+
+    leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    await transport.first_started.wait()
+    followers = [
+        asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+        for _ in range(3)
+    ]
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert len(transport.requests) == 1
+
+    leader.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await leader
+
+    results = await asyncio.wait_for(asyncio.gather(*followers), timeout=1)
+    assert [result.value for result in results] == [html_response().body.decode()] * 3
+    assert len(transport.requests) == 2
+
+
+@pytest.mark.anyio
+async def test_cancelled_follower_does_not_cancel_active_single_flight_leader() -> None:
+    transport = BlockingTransport(html_response())
+    client = CalHttpClient(transport=transport)
+    request = CalRequest(method="GET", path="entry.php", params=(("lemma", "br N"),))
+
+    leader = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    await transport.started.wait()
+    follower = asyncio.create_task(client.fetch(request, parser=parse_text, cache_namespace="entry"))
+    await asyncio.sleep(0)
+    assert len(transport.requests) == 1
+
+    follower.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await follower
+
+    assert not leader.done()
+    assert len(transport.requests) == 1
+
+    transport.release.set()
+    leader_result = await asyncio.wait_for(leader, timeout=1)
+    assert leader_result.value == html_response().body.decode()
+    assert len(transport.requests) == 1
