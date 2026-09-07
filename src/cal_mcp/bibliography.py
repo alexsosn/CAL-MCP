@@ -59,8 +59,8 @@ class BibliographyProvenance:
     source_url: str
     retrieved_at: datetime
     operation: str
-    original_query: str
-    submitted_query: str
+    original_query: str | None
+    submitted_query: str | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,6 +89,20 @@ class BibliographyResult:
         return {
             "query_kind": self.query_kind.value,
             "query": self.query,
+            "heading": self.heading,
+            "records": [_record_to_dict(item) for item in self.records],
+            "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class RecentBibliographyResult:
+    heading: str
+    records: tuple[BibliographyRecord, ...]
+    provenance: BibliographyProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        return {
             "heading": self.heading,
             "records": [_record_to_dict(item) for item in self.records],
             "provenance": _provenance_to_dict(self.provenance),
@@ -268,6 +282,7 @@ _AUTHOR_MAX_LENGTH = 160
 _KEYWORD_MAX_LENGTH = 128
 _LEMMA_MAX_LENGTH = 128
 _RESULT_HEADING_PREFIX = "CAL Bibliography for "
+_RECENT_HEADING = "CAL Recent Bibliography"
 
 
 def parse_author_options_page(response: CalResponse) -> BibliographyAuthorOptionsPage:
@@ -330,6 +345,20 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
             "CAL bibliography page contains neither records nor explicit no-data"
         )
     return BibliographyPage(heading=heading, records=tuple(parser.records))
+
+
+def parse_recent_bibliography_page(response: CalResponse) -> BibliographyPage:
+    parser = _BibliographyHTMLParser(response.url)
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+
+    if parser._record is not None or parser._heading_parts is not None:
+        raise BibliographyParseError("CAL recent bibliography contains incomplete semantic markup")
+    if parser.headings != [_RECENT_HEADING]:
+        raise BibliographyParseError("CAL recent bibliography lacks one recognizable result heading")
+    if not parser.records:
+        raise BibliographyParseError("CAL recent bibliography contains no records")
+    return BibliographyPage(heading=_RECENT_HEADING, records=tuple(parser.records))
 
 
 class BibliographyService:
@@ -395,6 +424,24 @@ class BibliographyService:
             path="getbiblemma.php",
             operation="bibliography_lemma",
             cache_namespace="bibliography-lemma-v1",
+        )
+
+    async def recent(self) -> RecentBibliographyResult:
+        result = await self._client.fetch(
+            CalRequest(method="GET", path="getrecentbib.php"),
+            parser=parse_recent_bibliography_page,
+            cache_namespace="bibliography-recent-v1",
+        )
+        return RecentBibliographyResult(
+            heading=result.value.heading,
+            records=result.value.records,
+            provenance=_make_provenance(
+                result.source_url,
+                result.retrieved_at,
+                operation="bibliography_recent",
+                original_query=None,
+                submitted_query=None,
+            ),
         )
 
     async def _result(
@@ -506,8 +553,8 @@ def _make_provenance(
     retrieved_at: datetime,
     *,
     operation: str,
-    original_query: str,
-    submitted_query: str,
+    original_query: str | None,
+    submitted_query: str | None,
 ) -> BibliographyProvenance:
     return BibliographyProvenance(
         source="CAL",
