@@ -8,17 +8,19 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 
 | Setting | Default | Enforced bound / behavior |
 | --- | ---: | --- |
-| Connect timeout | 5 s | finite, > 0 |
-| Read timeout | 10 s | finite, > 0 |
-| Total attempt timeout | 15 s | finite, > 0 |
+| Connect timeout | 5 s | number (`int`/`float`, not boolean); finite, > 0 |
+| Read timeout | 10 s | number (`int`/`float`, not boolean); finite, > 0 |
+| Total attempt timeout | 15 s | number (`int`/`float`, not boolean); finite, > 0 |
 | Maximum concurrency | 2 | integer; 1–8 |
 | Retry count | 1 | integer; 0–3 |
-| Initial retry backoff | 0.25 s | finite, 0–1 s; exponential, capped at 1 second per retry sleep |
+| Initial retry backoff | 0.25 s | number (`int`/`float`, not boolean); finite, 0–1 s; exponential, capped at 1 second per retry sleep |
 | Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
-| Cache enabled | yes | completed-result retention can be disabled completely |
+| Cache enabled | yes | boolean; completed-result retention can be disabled completely |
 | Cache entries | 128 | integer; 0–4096; 0 retains nothing |
-| Cache TTL | 900 s (15 min) | > 0 and <= 86400 s |
-| User-Agent | `CAL-MCP/<version> (+https://github.com/alexsosn/CAL-MCP)` | non-empty |
+| Cache TTL | 900 s (15 min) | number (`int`/`float`, not boolean); > 0 and <= 86400 s |
+| User-Agent | `CAL-MCP/<version> (+https://github.com/alexsosn/CAL-MCP)` | non-empty string |
+
+Timeout, TTL, and retry-backoff settings accept ordinary numeric `int` or `float` values; booleans and non-numeric values are rejected at `CalClientConfig` construction rather than coerced or allowed to fail later inside transport operations. `cache_enabled` must be an actual boolean. User-Agent must be a non-empty string; non-string values are rejected before the existing whitespace-empty check. These runtime checks complement Python type annotations, which do not validate constructor arguments by themselves.
 
 HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout.
 
