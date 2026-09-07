@@ -32,6 +32,7 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_bibliography_author",
         "cal_bibliography_keyword",
         "cal_bibliography_lemma",
+        "cal_bibliography_recent",
         "cal_dictionary_collation",
         "cal_targum_parallel",
         "cal_targum_concordance",
@@ -105,6 +106,10 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}
     assert bibliography_lemma_schema["required"] == ["lemma_key"]
 
+    bibliography_recent_schema = tools["cal_bibliography_recent"].input_schema
+    assert set(bibliography_recent_schema["properties"]) == set()
+    assert "required" not in bibliography_recent_schema or bibliography_recent_schema["required"] == []
+
     dictionary_collation_schema = tools["cal_dictionary_collation"].input_schema
     assert set(dictionary_collation_schema["properties"]) == {"source", "page"}
     assert dictionary_collation_schema["required"] == ["source", "page"]
@@ -171,6 +176,7 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        bibliography_recent_schema,
         dictionary_collation_schema,
         targum_parallel_schema,
         targum_concordance_schema,
@@ -212,6 +218,7 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        bibliography_recent_schema,
     ):
         for unsupported_bound in ("page", "offset", "limit"):
             assert unsupported_bound not in schema["properties"]
