@@ -582,9 +582,7 @@ def _detect_representation(value: str) -> InputRepresentation:
     has_imperial_aramaic = any(_is_imperial_aramaic_block(char) for char in value)
     has_palmyrene = any(_is_palmyrene_block(char) for char in value)
     has_nabataean = any(_is_nabataean_block(char) for char in value)
-    script_count = sum(
-        (has_hebrew, has_syriac, has_imperial_aramaic, has_palmyrene, has_nabataean)
-    )
+    script_count = sum((has_hebrew, has_syriac, has_imperial_aramaic, has_palmyrene, has_nabataean))
 
     if script_count > 1:
         raise AmbiguousQueryError("mixed Aramaic script query input is ambiguous")
