@@ -84,21 +84,25 @@ def _sdist_version(sdist: Path, expected_version: str) -> str:
             pkg_info_members = [
                 member
                 for member, path in zip(members, paths, strict=True)
-                if path == pkg_info_path and member.isfile()
+                if path == pkg_info_path
             ]
             pyproject_members = [
                 member
                 for member, path in zip(members, paths, strict=True)
-                if path == pyproject_path and member.isfile()
+                if path == pyproject_path
             ]
             if len(pkg_info_members) != 1:
                 raise RuntimeError(
                     f"expected one root sdist PKG-INFO file, found {len(pkg_info_members)}"
                 )
+            if not pkg_info_members[0].isfile():
+                raise RuntimeError("root sdist PKG-INFO is not a regular file")
             if len(pyproject_members) != 1:
                 raise RuntimeError(
                     f"expected one root sdist pyproject.toml file, found {len(pyproject_members)}"
                 )
+            if not pyproject_members[0].isfile():
+                raise RuntimeError("root sdist pyproject.toml is not a regular file")
 
             metadata_file = archive.extractfile(pkg_info_members[0])
             if metadata_file is None:
