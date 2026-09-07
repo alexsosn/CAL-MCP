@@ -61,7 +61,6 @@ Refactor the cache/inflight arbitration portion of `fetch()` into a bounded-by-e
 
 - validate request/key once;
 - on each arbitration iteration, check completed cache before and inside `_inflight_guard` as today;
-- if `_inflight[key]` refers to a done Future whose outcome is the private leader-cancelled signal, remove that stale generation while holding the guard;
 - if no active Future remains, create a new Future and become replacement leader;
 - otherwise await the active Future with `asyncio.shield()`;
 - if that await raises the private turnover signal, loop to arbitrate again;
@@ -75,16 +74,17 @@ Preserve existing leader cleanup and completed-result caching. Ensure leader `fi
 
 No new `asyncio.create_task()` or background work.
 
-### Implementation deviation after RED evidence
+### Implementation evolution after RED and review evidence
 
-The behavior-first RED made it possible to use a smaller implementation than the private-sentinel sketch above. The final implementation keeps the existing cancelled-Future representation and distinguishes the two sources of `CancelledError` at the follower boundary:
+The primary RED established the leader-to-follower cancellation leak. An initial implementation tried a smaller mechanism: it kept the shared Future cancelled and used `Task.cancelling()` at the follower boundary to distinguish caller cancellation from leader turnover. That fixed the single-follower case, but CI `34149165309` exposed a second-order request-amplification race with multiple followers and completed caching disabled: an immediately successful replacement could finish before the other awakened followers attached, producing four total requests instead of two.
 
-- `Task.cancelling() > 0` means the follower's own caller requested cancellation, so that `CancelledError` is re-raised immediately;
-- a cancelled shared Future with no pending cancellation on the follower means the leader generation ended, so the follower re-enters guarded arbitration.
+To close that empirically demonstrated race, the replacement Future is installed under `_inflight_guard` and only a replacement leader performs one cooperative `await asyncio.sleep(0)` handoff before replacement I/O. Already-awakened surviving followers can attach to the same generation before even an immediately successful transport completes. The handoff remains inside the existing leader `try/finally`, so cancellation during the handoff terminates that caller/generation and creates no background task.
 
-This avoids adding a private exception type while preserving the same semantic boundary. The first implementation passed the single-follower case but exposed a second-order race with multiple followers and cache retention disabled: an immediately successful replacement could finish before the other awakened followers attached, producing one replacement per follower. The final implementation therefore installs the replacement Future under `_inflight_guard` and gives only a replacement leader one cooperative `await asyncio.sleep(0)` handoff before replacement I/O. Already-awakened surviving followers can then attach to that Future. The handoff is inside the existing leader `try/finally`, so cancellation during the handoff still cancels and removes that generation and creates no background task.
+The first exact-head adversarial review then rejected `Task.cancelling()` as the turnover discriminator. Python's cancellation-request counter can remain nonzero after user code catches and suppresses an earlier `CancelledError` without calling `uncancel()`. Review-regression head `3ee086b8794f650b83a4dfcac5dda8c4c1db8eaf`, CI `34149897427`, kept install/lint/format/mypy green and finished **492 passed / exactly 1 failed**, proving that such a still-live follower incorrectly inherited a later leader's cancellation.
 
-This deviation changes the mechanism, not the planned external contract: caller cancellation remains authoritative, replacement generations remain demand-driven and single-flight, and no arbitrary retry counter or recursion is introduced.
+The final implementation therefore returns to the planned private `_SingleFlightLeaderCancelled` ordinary exception. Leader cancellation sets that private exception on the pending shared Future and immediately re-raises the leader's real `CancelledError`; followers catch only the private turnover signal and re-enter arbitration. Follower-own `CancelledError` is not caught or interpreted at all. The cooperative replacement handoff is retained because it solves the independently proven multi-follower race.
+
+This final mechanism preserves the planned external contract: cancellation remains caller-local, surviving demand may create at most one replacement generation at a time, replacement work is owned by a live caller, and there is no recursion, arbitrary retry counter, or background task.
 
 ## Gate 3 — GREEN
 
@@ -115,8 +115,9 @@ Review exact final SHA against issue #67, research, plan, whole diff, current `m
 
 - follower incorrectly inherits `CancelledError` from leader;
 - own follower cancellation accidentally gets swallowed/retried;
+- prior suppressed cancellation state contaminates turnover handling;
 - replacement creates one request per follower;
-- stale cancelled generation causes a spin loop;
+- stale turnover generation causes a spin loop;
 - original leader cleanup deletes a replacement Future;
 - no-followers case accidentally starts background replacement work;
 - ordinary parser/network/upstream exceptions accidentally trigger re-arbitration;
