@@ -82,9 +82,7 @@ def _sdist_version(sdist: Path, expected_version: str) -> str:
             pkg_info_path = PurePosixPath(expected_root, "PKG-INFO")
             pyproject_path = PurePosixPath(expected_root, "pyproject.toml")
             pkg_info_members = [
-                member
-                for member, path in zip(members, paths, strict=True)
-                if path == pkg_info_path
+                member for member, path in zip(members, paths, strict=True) if path == pkg_info_path
             ]
             pyproject_members = [
                 member
