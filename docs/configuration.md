@@ -28,6 +28,8 @@ HTTPX2 also receives explicit connection/read timeouts and connection-pool limit
 
 The production HTTPX2 transport streams decoded response bytes instead of using an eager `response.content` read. `max_response_bytes` defaults to 2 MiB and cannot be configured above 16 MiB. It must be an actual integer value: booleans, floats, strings, and other non-integer values are rejected by `CalClientConfig` construction before a transport is created.
 
+For a production response with status 300 or higher, CAL-MCP keeps the status, URL, content type, and retrieval timestamp but does not iterate the application response body. The surrounding HTTPX2 streaming context closes that response, and the shared request layer then applies its existing redirect/4xx/5xx retry or error policy. Bodies are streamed only for responses below 300 that continue toward normal content validation and parsing; this optimization therefore does not weaken the successful-response byte limit.
+
 CAL-MCP accumulates only chunks that keep the retained response body at or below the configured limit. The decoded streaming iterator is requested in bounded chunks of at most 64 KiB (or `max_response_bytes + 1` for smaller limits), so the transport needs only one bounded look-ahead chunk to detect an over-limit response. An exactly-at-limit body is accepted; the first chunk that would make the retained body exceed the limit raises `CalResponseTooLargeError`, a `CalContentError` subclass, and the response stream is closed.
 
 An oversized response:
@@ -51,6 +53,8 @@ Retries are explicitly whitelisted rather than applied to every transport except
 Other HTTPX2 errors, including local/protocol-type errors, are surfaced after one attempt as typed CAL-MCP transport failures. A bare `OSError` from an injected/custom transport is also treated as non-retryable rather than being assumed transient. This keeps retries tied to the explicit production HTTPX2 transient categories instead of a broad base exception class.
 
 Other HTTP statuses are returned as typed upstream errors without blind retry. In particular, CAL-MCP does not automatically retry HTTP 429; a rate/overload response should reduce request pressure rather than create another immediate request.
+
+Production HTTP responses that are going to be retried or rejected on status are closed without consuming their application body. For a transient 500/502/503/504, each failed attempt is therefore status-classified before the retry sleep rather than downloading an error page that CAL-MCP will never parse. This does not alter the retry count or status-code whitelist.
 
 The initial backoff is capped at 1 second and the retry count at 3. Each retry sleep uses `min(base * 2**attempt, 1.0)`, preserving exponential growth until the absolute 1-second per-sleep ceiling is reached. The configured retry sleep budget is therefore finite and cannot be made arbitrarily large by configuration.
 
