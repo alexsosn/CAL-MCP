@@ -511,8 +511,7 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
 
     if representation is InputRepresentation.IMPERIAL_ARAMAIC:
         if not any(char in _IMPERIAL_ARAMAIC_TO_CAL_CODE for char in value) or not all(
-            char in _IMPERIAL_ARAMAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS
-            for char in value
+            char in _IMPERIAL_ARAMAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid Imperial Aramaic consonantal input")
         return
