@@ -4,154 +4,99 @@ Date: 2026-09-07
 
 ## Goal
 
-Add a local, explicit `cal_convert_to_code` MCP capability for the v0.1 contract without changing existing live-query normalization behavior or CAL request volume.
+Add a local `cal_convert_to_code` capability for the v0.1 contract plus bounded ambiguity-aware lexical search, without changing exact-ID tool semantics.
 
-Research gate: `docs/research/issue-52-cal-code-conversion.md`.
+Research gates:
 
-This plan supersedes the initial Hebrew/Syriac-only implementation scope after corpus/script inventory showed that CAL also covers corpus families with dedicated Unicode scripts (Imperial Aramaic, Palmyrene, Nabataean, Hatran, Samaritan, Mandaic, plus CPA under Syriac). Existing implementation work completed under the earlier research remains valid only for the already-researched subset; no additional script mapping may be implemented until its evidence/test gate below is complete.
+- `docs/research/issue-52-cal-code-conversion.md`
+- `docs/research/issue-52-ambiguity-expansion.md`
 
-## Gate 1 — script inventory before new implementation
+Execution addendum:
 
-For every candidate dedicated Unicode script relevant to a CAL corpus family:
+- `docs/plans/issue-52-ambiguity-expansion.md`
 
-1. verify the Unicode block/character inventory from Unicode;
-2. verify the CAL corpus/dialect exists and select one or more tiny attested words/sequences;
-3. establish the exact CAL Roman-code correspondence from CAL's own displayed Roman/transliteration data;
-4. document extra letters, combining marks, punctuation, or ambiguous values;
-5. classify the script as:
-   - supported deterministic mapping for v0.1; or
-   - explicitly unsupported with a concrete reason.
+## Gate order
 
-Candidate inventory to resolve:
+1. Research every corpus-relevant script and ambiguity boundary before implementing it.
+2. Commit plan updates before new tests/implementation.
+3. Add focused RED tests for converter/public schema/search fan-out.
+4. Implement the minimum mapping/candidate/search behavior required by those tests.
+5. Add tiny attested CAL corpus fixtures for each supported script family.
+6. Run deterministic + latest-compatible full CI.
+7. Freeze exact SHA and perform logically independent adversarial review.
+8. Any review blocker requires a regression RED, fix, fresh GREEN, and new exact-head review.
 
+## Conversion contract
+
+The converter returns ordered candidate sets **per word**, not a guessed scalar CAL code.
+
+- Deterministic input -> exactly one candidate.
+- Researched finite ambiguity -> every justified candidate.
+- Unsupported/unverified transcription -> explicit error.
+- No silent mark stripping, morphology, spelling reconstruction, or `@` inference.
+- Candidate expansion is bounded as specified in the ambiguity addendum.
+
+Scripts to research and either support or explicitly exclude with evidence before v0.1:
+
+- scholarly Unicode transliteration;
+- Hebrew/square Aramaic;
+- Syriac, including CPA use;
 - Imperial Aramaic;
 - Palmyrene;
 - Nabataean;
 - Hatran;
 - Samaritan;
 - Mandaic;
-- CPA/Syriac;
-- Hebrew-script Jewish Aramaic;
-- any additional CAL corpus family whose ordinary source script has a dedicated Unicode block and a deterministic CAL-code mapping.
+- any additional dedicated Unicode script shown to correspond to an actual CAL Aramaic corpus family.
 
-Do not add Elymaic/Manichaean/etc. merely because Unicode has a block; require actual CAL relevance first.
+## Search contract
 
-## Gate 2 — corpus-derived fixtures
+`cal_lexicon_lookup` is the v0.1 arbitrary Aramaic lexical-query surface. Where conversion produces multiple CAL candidates, lookup must search all bounded variants.
 
-Build a tiny offline fixture set from CAL itself. For each supported script family, store only enough data for deterministic regression tests:
+Implementation must:
 
-- dialect/corpus family;
-- CAL locator (text ID, coordinate, or stable entry URL);
-- retrieval date;
-- short attested CAL Roman/transliteration form;
-- corresponding Unicode-script form used as input;
-- expected CAL code.
+- group candidates by unique CAL browse prefix;
+- fetch each prefix once;
+- reject >8 required prefixes before network I/O;
+- aggregate and deduplicate matches by canonical lemma key;
+- preserve existing not-found/ambiguous/explicit `lemma_key` selection behavior;
+- fetch at most one selected entry;
+- preserve legacy request counts for deterministic inputs where conversion fan-out is unnecessary.
 
-The fixtures must be ordinary short scholarly quotations, never a corpus dump. No test should access CAL live.
+Exact-ID tools (`lemma_key`, text IDs, dialect IDs, etc.) do not gain hidden fan-out.
 
-## Gate 3 — test-first RED for expanded scope
+## Corpus fixtures
 
-Before implementing each newly supported script, add focused tests that fail because the mapping is absent.
+For each supported script family, use a small fixed set of attested CAL words/very short sequences. Record dialect/corpus, stable locator, retrieval date, CAL Roman form, Unicode-script input, and expected candidate set. Fixtures are citation-sized and offline; no bulk extraction or live CI dependency.
 
-### Pure conversion tests
+## Public MCP schema
 
-`tests/test_cal_code_conversion.py` must cover:
+`cal_convert_to_code` remains local-only and structured. It exposes at least:
 
-1. Unicode scholarly transliteration exact mapping;
-2. Hebrew consonants/finals, `שׁ` vs `שׂ`, bare `ש` ambiguity;
-3. Syriac consonants and fail-closed marks;
-4. every additionally supported dedicated script with:
-   - first/middle/last alphabet-edge mapping cases;
-   - at least one attested corpus-derived fixture;
-   - rejection of unsupported marks/punctuation;
-5. Mandaic-specific extra letters/codes separately rather than pretending it is a 22-letter Aramaic alphabet if CAL documents additional distinctions;
-6. valid CAL/shared-Roman pass-through;
-7. supported round trips where bijective;
-8. mixed-script/control/unsupported Unicode failures.
+- original input;
+- detected/explicit representation;
+- conversion strategy;
+- per-word original text;
+- ordered CAL-code candidates;
+- ambiguity metadata for positions with multiple justified codes.
 
-A valid RED must reach behavioral pytest failures. Formatting/lint-only failures do not count.
+## Review checklist
 
-### MCP contract tests
+Independent review must challenge:
 
-Require:
+- every mapping against committed evidence;
+- omitted corpus-relevant scripts;
+- false ambiguity vs unsupported distinctions;
+- candidate ordering/deduplication/completeness;
+- expansion limits and no silent truncation;
+- browse-prefix grouping and 8-request cap before I/O;
+- one-entry-fetch invariant;
+- deterministic legacy request counts;
+- provenance of candidate encodings;
+- tiny CAL fixtures and their locators;
+- docs claims vs actual supported subset;
+- no accidental CAL traffic from the standalone converter.
 
-- public tool `cal_convert_to_code` exists;
-- input schema contains `value` and optional `representation` only;
-- representation enum includes every supported input script;
-- structured result contains `original`, `cal_code`, `representation`, `strategy`;
-- calling the tool is local-only and opens no socket / creates no CAL request.
+## Release gate
 
-## Gate 4 — minimal implementation
-
-### `src/cal_mcp/normalization.py`
-
-Add or extend only table-driven deterministic conversion machinery proven by RED tests:
-
-- explicit representation enum values for supported Unicode scripts;
-- transformation strategy values;
-- frozen/slotted conversion result;
-- explicit per-script code tables;
-- `convert_to_cal_code(value, *, representation=None)`.
-
-Rules:
-
-- do not modify `normalize_query()` semantics unless a separate regression proves that is required;
-- trim only ordinary ASCII boundary spaces;
-- preserve internal spaces;
-- never infer CAL `@` from whitespace;
-- never strip combining marks silently;
-- reject ambiguities rather than infer phonology or historical spelling;
-- preserve explicit valid CAL code unchanged;
-- script detection must be based on Unicode ranges/characters, not dialect guessing.
-
-### `src/cal_mcp/server.py`
-
-Register `cal_convert_to_code` as structured output and keep it independent of `Context`, `CalHttpClient`, or any CAL request.
-
-Update server instructions to advertise the converter as a local helper, not a live CAL operation.
-
-## Gate 5 — docs
-
-Document:
-
-- supported representations/scripts;
-- representative corpus-derived examples;
-- zero-network behavior;
-- explicit ambiguity/rejection policy;
-- distinction between script conversion and CAL query normalization;
-- exact unsupported scripts/marks and why.
-
-Do not claim complete coverage of every historical Aramaic writing system unless the inventory actually proves it.
-
-## Gate 6 — GREEN
-
-Require both permanent CI jobs GREEN:
-
-- deterministic/frozen;
-- latest-compatible.
-
-Existing normalization/query/request-count contracts must remain green. No live CAL CI is required for this local feature.
-
-## Gate 7 — exact-head logically independent adversarial review
-
-Freeze the exact candidate SHA and challenge at least:
-
-- completeness of the CAL corpus/script inventory;
-- correctness of every per-script alphabet table;
-- whether any script was omitted merely because CAL normalizes its display to Hebrew/Syriac;
-- whether corpus fixtures truly correspond to attested CAL forms;
-- Mandaic extra-letter handling;
-- Hebrew shin/sin ambiguity;
-- combining-mark/punctuation loss;
-- mixed-script detection;
-- accidental `@` inference;
-- round-trip validity claims;
-- MCP schema/error surface/local-only behavior;
-- regressions to existing query normalization/request counts;
-- documentation overclaiming.
-
-Any blocker requires a new regression RED, fix, GREEN, and fresh exact-head review.
-
-## Merge/release gate
-
-After independent PASS, mark the PR ready and merge only the reviewed exact head. Then resolve remaining release-blocking maintenance PRs (currently #51/#50) against the new main. `v0.1.0` remains blocked until #52, #50, and the final release-readiness audit all pass.
+Issue #52 is a must-have blocker for #15/v0.1.0. Do not tag or publish v0.1.0 until #52 and acknowledged release-blocking maintenance defects (currently #50/#51) are merged and a final release-readiness audit passes.
