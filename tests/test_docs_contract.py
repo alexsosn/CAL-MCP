@@ -49,7 +49,7 @@ async def test_every_public_tool_is_covered_by_tool_docs() -> None:
     tool_docs = "\n".join(path.read_text(encoding="utf-8") for path in TOOLS_DIR.glob("*.md"))
     missing = [tool_name for tool_name in tool_names if f"`{tool_name}`" not in tool_docs]
 
-    assert len(tool_names) == 26
+    assert len(tool_names) == 27
     assert missing == []
 
 
