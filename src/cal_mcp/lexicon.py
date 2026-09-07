@@ -353,6 +353,16 @@ _NOUN_POS_QUALIFIERS = frozenset({"c.", "coll.", "du.", "f.", "m.", "pl.", "sg."
 _STEM_TOKENS = frozenset({"G", "D", "C", "N", "Gt", "Dt", "Ct", "Et", "It", "Š", "Št"})
 _MAX_AMBIGUOUS_BROWSE_PREFIXES = 8
 _MAX_AMBIGUOUS_QUERY_CANDIDATES = 64
+_DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS = frozenset(
+    {
+        InputRepresentation.IMPERIAL_ARAMAIC,
+        InputRepresentation.PALMYRENE,
+        InputRepresentation.NABATAEAN,
+        InputRepresentation.HATRAN,
+        InputRepresentation.SAMARITAN,
+        InputRepresentation.MANDAIC,
+    }
+)
 
 
 @dataclass(slots=True)
@@ -570,8 +580,12 @@ class LexiconLookupService:
         normalized = normalize_query(query)
         conversion = convert_to_cal_code(query)
         has_ambiguity = any(word.ambiguities for word in conversion.words)
+        requires_cal_code_search = (
+            has_ambiguity
+            or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
+        )
 
-        if has_ambiguity:
+        if requires_cal_code_search:
             query_candidates = _conversion_query_candidates(conversion)
             browse_prefixes = tuple(
                 dict.fromkeys(_browse_prefix(candidate) for candidate in query_candidates)
