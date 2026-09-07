@@ -581,8 +581,7 @@ class LexiconLookupService:
         conversion = convert_to_cal_code(query)
         has_ambiguity = any(word.ambiguities for word in conversion.words)
         requires_cal_code_search = (
-            has_ambiguity
-            or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
+            has_ambiguity or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
         )
 
         if requires_cal_code_search:
