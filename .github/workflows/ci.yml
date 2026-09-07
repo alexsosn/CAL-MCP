@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  test:
+  deterministic:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -17,8 +17,45 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install
+          cache-dependency-path: |
+            pyproject.toml
+            constraints/ci-py311.txt
+            constraints/build-py311.txt
+      - name: Bootstrap frozen installer
+        run: python -m pip install "pip==26.2.1" "setuptools==79.0.1"
+      - name: Install frozen validation environment
+        run: >-
+          python -m pip install -e ".[dev]"
+          -c constraints/ci-py311.txt
+          --build-constraint constraints/build-py311.txt
+      - name: Report frozen dependency set
+        run: |
+          python -m pip freeze --all
+          python -m pip check
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format
+        run: ruff format --check .
+      - name: Mypy
+        run: mypy
+      - name: Pytest
+        run: pytest
+
+  latest-compatible:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Install latest allowed validation environment
         run: python -m pip install -e ".[dev]"
+      - name: Report latest-compatible dependency set
+        run: |
+          python -m pip freeze --all
+          python -m pip check
       - name: Ruff lint
         run: ruff check .
       - name: Ruff format
