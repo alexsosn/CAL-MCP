@@ -406,3 +406,19 @@ Source:
 - https://cal.huc.edu/newconcord.php?text=13250&cset=S
 
 **Implication:** the single-text concordance parser recognizes the current BR-delimited semantic rows while retaining the earlier table parser as a strict compatibility fallback. Required frequency/link/gloss semantics and link/request consistency checks remain fail-closed. The public MCP schema, request contract, provenance, and one-request bound do not change.
+
+## R-023 — v0.1 release validation separates built-artifact proof from capped live drift smoke
+
+**Rechecked:** 2026-09-06.
+
+Issue #15 release research established two distinct validation boundaries. The existing `tests/test_bootstrap.py` proves the editable development install can launch `cal-mcp` over stdio and expose the frozen 26-tool schema without CAL traffic, but current CI does not yet build a wheel/sdist and install that wheel into a fresh environment. Release evidence therefore requires a built-artifact clean-install/stdio check rather than reusing editable-install success as proof of publishability.
+
+A previous branch-only release probe (workflow run `33995822616`) exercised eight representative released service families under concurrency 1, retries disabled, cache disabled, and a hard **9 CAL-request** budget. It exposed genuine current-CAL parser drift in lexicon and one-text concordance (#41/#42), both now fixed through their own research/TDD/review loops. The same probe showed that the MCP client may return a tool result with `is_error=true` for server-side parser failure, so a returned result object cannot be treated as smoke success without inspecting that flag.
+
+Current shared-client exceptions distinguish network/upstream failures from `CalContentError`, while each domain exposes a dedicated parser-error subclass. Permanent live smoke can therefore diagnose domain parser exceptions as drift and network/upstream exceptions as availability/HTTP failures without changing the public MCP error contract. The researched smoke set remains nine requests total: one two-request exact lexicon success plus one request each for text search, text concordance, bibliography, dictionary collation, external citations, Targum comparison, and Syriac Peshitta comparison. No result links or pagination are followed.
+
+PyPI's current official Trusted Publishing documentation recommends GitHub Actions OIDC with job-level `id-token: write` and the PyPA publishing action. PyPI must separately trust the repository/workflow (and optionally a GitHub `pypi` environment); repository code cannot infer or create that account-side trust. A pending publisher can create a new project on first upload but does not reserve its name before publication.
+
+Sources and full evidence: `docs/research/issue-15-v0.1-release.md`; https://docs.pypi.org/trusted-publishers/; release research workflow run `33995822616`.
+
+**Implication:** v0.1 ships an offline built-wheel/stdio gate and a separate opt-in/scheduled nine-request drift smoke. Publishing automation is compatible with PyPI Trusted Publishing, but documentation must not claim a successful PyPI release until the external trust prerequisite and actual upload have succeeded.
