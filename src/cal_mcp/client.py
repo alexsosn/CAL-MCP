@@ -281,26 +281,34 @@ class CalHttpClient:
             raise CalRequestValidationError("cache_namespace must not be empty")
         key = self._cache_key(cache_namespace, normalized)
 
-        cached = self._cached_result(key)
-        if cached is not None:
-            return cast(CalFetchResult[T], cached)
-
-        async with self._inflight_guard:
+        while True:
             cached = self._cached_result(key)
             if cached is not None:
                 return cast(CalFetchResult[T], cached)
 
-            future = self._inflight.get(key)
-            if future is None:
-                future = asyncio.get_running_loop().create_future()
-                future.add_done_callback(self._consume_unobserved_future_exception)
-                self._inflight[key] = future
-                leader = True
-            else:
-                leader = False
+            async with self._inflight_guard:
+                cached = self._cached_result(key)
+                if cached is not None:
+                    return cast(CalFetchResult[T], cached)
 
-        if not leader:
-            return cast(CalFetchResult[T], await asyncio.shield(future))
+                future = self._inflight.get(key)
+                if future is None:
+                    future = asyncio.get_running_loop().create_future()
+                    future.add_done_callback(self._consume_unobserved_future_exception)
+                    self._inflight[key] = future
+                    leader = True
+                else:
+                    leader = False
+
+            if leader:
+                break
+
+            try:
+                return cast(CalFetchResult[T], await asyncio.shield(future))
+            except asyncio.CancelledError:
+                task = asyncio.current_task()
+                if task is None or task.cancelling() or not future.cancelled():
+                    raise
 
         try:
             result = await self._fetch_uncached(normalized, parser=parser, cache_key=key)
