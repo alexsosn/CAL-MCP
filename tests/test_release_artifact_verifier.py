@@ -45,15 +45,22 @@ def _write_sdist(
     filename_version: str = "0.1.0",
     metadata_version: str = "0.1.0",
     name: str = "cal-mcp",
+    duplicate_pkg_info_symlink: bool = False,
 ) -> Path:
     sdist = dist_dir / f"cal_mcp-{filename_version}.tar.gz"
     root = f"cal_mcp-{filename_version}"
+    pkg_info_path = f"{root}/PKG-INFO"
     pkg_info = f"Metadata-Version: 2.4\nName: {name}\nVersion: {metadata_version}\n\n"
     pyproject = (
         '[build-system]\nrequires = ["hatchling>=1.27"]\nbuild-backend = "hatchling.build"\n'
     )
     with tarfile.open(sdist, "w:gz") as archive:
-        _add_tar_file(archive, f"{root}/PKG-INFO", pkg_info)
+        _add_tar_file(archive, pkg_info_path, pkg_info)
+        if duplicate_pkg_info_symlink:
+            duplicate = tarfile.TarInfo(pkg_info_path)
+            duplicate.type = tarfile.SYMTYPE
+            duplicate.linkname = "elsewhere"
+            archive.addfile(duplicate)
         _add_tar_file(archive, f"{root}/pyproject.toml", pyproject)
     return sdist
 
@@ -64,6 +71,15 @@ def test_distribution_discovery_rejects_sdist_embedded_version_mismatch(tmp_path
     _write_sdist(tmp_path, metadata_version="9.9.9")
 
     with pytest.raises(RuntimeError, match="sdist.*version|source.*version"):
+        module._find_distributions(tmp_path)
+
+
+def test_distribution_discovery_rejects_duplicate_sdist_pkg_info_path(tmp_path: Path) -> None:
+    module = _load_verifier()
+    _write_wheel(tmp_path)
+    _write_sdist(tmp_path, duplicate_pkg_info_symlink=True)
+
+    with pytest.raises(RuntimeError, match="one root sdist PKG-INFO"):
         module._find_distributions(tmp_path)
 
 
