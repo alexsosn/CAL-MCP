@@ -8,119 +8,150 @@ Add a local, explicit `cal_convert_to_code` MCP capability for the v0.1 contract
 
 Research gate: `docs/research/issue-52-cal-code-conversion.md`.
 
-## Gate 1 — test-first RED
+This plan supersedes the initial Hebrew/Syriac-only implementation scope after corpus/script inventory showed that CAL also covers corpus families with dedicated Unicode scripts (Imperial Aramaic, Palmyrene, Nabataean, Hatran, Samaritan, Mandaic, plus CPA under Syriac). Existing implementation work completed under the earlier research remains valid only for the already-researched subset; no additional script mapping may be implemented until its evidence/test gate below is complete.
 
-Add focused tests before production code.
+## Gate 1 — script inventory before new implementation
+
+For every candidate dedicated Unicode script relevant to a CAL corpus family:
+
+1. verify the Unicode block/character inventory from Unicode;
+2. verify the CAL corpus/dialect exists and select one or more tiny attested words/sequences;
+3. establish the exact CAL Roman-code correspondence from CAL's own displayed Roman/transliteration data;
+4. document extra letters, combining marks, punctuation, or ambiguous values;
+5. classify the script as:
+   - supported deterministic mapping for v0.1; or
+   - explicitly unsupported with a concrete reason.
+
+Candidate inventory to resolve:
+
+- Imperial Aramaic;
+- Palmyrene;
+- Nabataean;
+- Hatran;
+- Samaritan;
+- Mandaic;
+- CPA/Syriac;
+- Hebrew-script Jewish Aramaic;
+- any additional CAL corpus family whose ordinary source script has a dedicated Unicode block and a deterministic CAL-code mapping.
+
+Do not add Elymaic/Manichaean/etc. merely because Unicode has a block; require actual CAL relevance first.
+
+## Gate 2 — corpus-derived fixtures
+
+Build a tiny offline fixture set from CAL itself. For each supported script family, store only enough data for deterministic regression tests:
+
+- dialect/corpus family;
+- CAL locator (text ID, coordinate, or stable entry URL);
+- retrieval date;
+- short attested CAL Roman/transliteration form;
+- corresponding Unicode-script form used as input;
+- expected CAL code.
+
+The fixtures must be ordinary short scholarly quotations, never a corpus dump. No test should access CAL live.
+
+## Gate 3 — test-first RED for expanded scope
+
+Before implementing each newly supported script, add focused tests that fail because the mapping is absent.
 
 ### Pure conversion tests
 
-Create `tests/test_cal_code_conversion.py` covering:
+`tests/test_cal_code_conversion.py` must cover:
 
-1. Unicode scholarly transliteration:
-   - `šˀl ḥṭˁ ṗṣś` → `$)l xT( Pc&` using exact table-driven mapping;
-   - shared Roman consonants remain byte-for-byte identical;
-   - surrounding ordinary spaces are trimmed consistently with current normalization while internal spaces remain spaces.
-2. Hebrew consonants:
-   - medial/final letters map to the same CAL code;
-   - `שׁ` → `$`, `שׂ` → `&`;
-   - bare `ש` raises `AmbiguousQueryError`;
-   - vowel points, dagesh, accents, punctuation, and unsupported combining marks raise `UnsupportedQueryError` rather than being removed.
-3. Syriac consonants:
-   - the ordinary 22-letter consonantal inventory maps exactly;
-   - vowel/diacritic/punctuation marks raise `UnsupportedQueryError` rather than disappearing.
-4. Existing CAL/shared-Roman inputs:
-   - explicit simple CAL code passes through unchanged;
-   - broader currently valid CAL-code syntax remains pass-through rather than being reinterpreted;
-   - plain `mlk` converts to `mlk` without requiring a guessed representation.
-5. Round-trip invariant:
-   - for the bijective simple consonantal CAL subset (excluding `@` because it collapses to a space in the existing CAL→Unicode helper), `CAL code → existing Unicode normalization → new converter` returns the original code.
-6. Mixed scripts/control/unsupported Unicode fail under the same fail-closed policy as normalization.
+1. Unicode scholarly transliteration exact mapping;
+2. Hebrew consonants/finals, `שׁ` vs `שׂ`, bare `ש` ambiguity;
+3. Syriac consonants and fail-closed marks;
+4. every additionally supported dedicated script with:
+   - first/middle/last alphabet-edge mapping cases;
+   - at least one attested corpus-derived fixture;
+   - rejection of unsupported marks/punctuation;
+5. Mandaic-specific extra letters/codes separately rather than pretending it is a 22-letter Aramaic alphabet if CAL documents additional distinctions;
+6. valid CAL/shared-Roman pass-through;
+7. supported round trips where bijective;
+8. mixed-script/control/unsupported Unicode failures.
+
+A valid RED must reach behavioral pytest failures. Formatting/lint-only failures do not count.
 
 ### MCP contract tests
 
-Extend `tests/test_bootstrap.py` and/or add a focused MCP contract test to require:
+Require:
 
 - public tool `cal_convert_to_code` exists;
 - input schema contains `value` and optional `representation` only;
+- representation enum includes every supported input script;
 - structured result contains `original`, `cal_code`, `representation`, `strategy`;
-- calling it opens no network socket and does not construct/use a CAL request.
+- calling the tool is local-only and opens no socket / creates no CAL request.
 
-Run CI on the test-only commit. Valid RED means behavioral failures due to the missing conversion primitive/tool. Formatting/lint-only failures do not count as RED and must be corrected before implementation.
-
-## Gate 2 — minimal implementation
-
-Implement only what the RED tests require.
+## Gate 4 — minimal implementation
 
 ### `src/cal_mcp/normalization.py`
 
-Add:
+Add or extend only table-driven deterministic conversion machinery proven by RED tests:
 
-- a conversion strategy enum (or extend the existing strategy enum only if doing so keeps the normalization contract clear);
-- a frozen/slotted conversion result dataclass with `to_dict()`;
-- explicit inverse scholarly-transliteration map;
-- explicit Hebrew consonant map including finals;
-- explicit Syriac consonant map;
+- explicit representation enum values for supported Unicode scripts;
+- transformation strategy values;
+- frozen/slotted conversion result;
+- explicit per-script code tables;
 - `convert_to_cal_code(value, *, representation=None)`.
 
 Rules:
 
-- reuse `_reject_controls`, representation detection concepts, and current CAL-code whitelist where safe;
-- do not modify `normalize_query()` semantics;
-- trim only ordinary ASCII boundary spaces, preserve internal spaces;
-- do not synthesize `@` from spaces;
-- treat bare Hebrew `ש` as ambiguous;
-- accept only shin/sin dot as Hebrew combining marks in the v0.1 conversion path; reject all other Hebrew combining marks;
-- reject all Syriac combining marks/punctuation in v0.1 conversion;
-- preserve valid explicit CAL code unchanged;
-- plain shared Roman consonants pass through because conversion output is identical.
+- do not modify `normalize_query()` semantics unless a separate regression proves that is required;
+- trim only ordinary ASCII boundary spaces;
+- preserve internal spaces;
+- never infer CAL `@` from whitespace;
+- never strip combining marks silently;
+- reject ambiguities rather than infer phonology or historical spelling;
+- preserve explicit valid CAL code unchanged;
+- script detection must be based on Unicode ranges/characters, not dialect guessing.
 
 ### `src/cal_mcp/server.py`
 
-Register `cal_convert_to_code` as a structured-output MCP tool that calls only the pure local converter. Optional representation input uses the existing representation vocabulary. The tool must not access `ctx`, the shared HTTP client, or CAL.
+Register `cal_convert_to_code` as structured output and keep it independent of `Context`, `CalHttpClient`, or any CAL request.
 
-Update server instructions so clients know to use the converter when they need CAL Roman code.
+Update server instructions to advertise the converter as a local helper, not a live CAL operation.
 
-## Gate 3 — docs
+## Gate 5 — docs
 
-Document in the smallest existing user-facing location(s):
+Document:
 
-- purpose and examples;
-- supported representations;
-- zero-network/local-only behavior;
-- Hebrew shin/sin ambiguity rule;
-- explicit rejection of unsupported vocalization/diacritics/editorial syntax;
-- distinction between conversion and normal CAL queries, which already accept Unicode.
+- supported representations/scripts;
+- representative corpus-derived examples;
+- zero-network behavior;
+- explicit ambiguity/rejection policy;
+- distinction between script conversion and CAL query normalization;
+- exact unsupported scripts/marks and why.
 
-Do not claim complete transliteration of all CAL historical codes.
+Do not claim complete coverage of every historical Aramaic writing system unless the inventory actually proves it.
 
-## Gate 4 — GREEN
+## Gate 6 — GREEN
 
-Run full permanent CI and require both:
+Require both permanent CI jobs GREEN:
 
-- deterministic/frozen environment GREEN;
-- latest-compatible environment GREEN.
+- deterministic/frozen;
+- latest-compatible.
 
-Existing normalization/query tests must remain unchanged and green. No live CAL workflow is needed because this feature is purely local.
+Existing normalization/query/request-count contracts must remain green. No live CAL CI is required for this local feature.
 
-## Gate 5 — exact-head logically independent adversarial review
+## Gate 7 — exact-head logically independent adversarial review
 
-Freeze the exact candidate SHA and review it skeptically against the research, issue, and actual patch. Challenge at least:
+Freeze the exact candidate SHA and challenge at least:
 
-- whether every documented core consonant maps correctly;
-- Hebrew final-letter handling;
-- whether bare `ש` can be silently misencoded;
-- whether any vowel/diacritic is silently dropped;
-- Syriac punctuation/combining marks;
+- completeness of the CAL corpus/script inventory;
+- correctness of every per-script alphabet table;
+- whether any script was omitted merely because CAL normalizes its display to Hebrew/Syriac;
+- whether corpus fixtures truly correspond to attested CAL forms;
+- Mandaic extra-letter handling;
+- Hebrew shin/sin ambiguity;
+- combining-mark/punctuation loss;
+- mixed-script detection;
 - accidental `@` inference;
-- CAL-code pass-through validation and round trips;
-- mixed-script and control handling;
-- MCP schema stability and error surface;
-- whether the local tool can accidentally instantiate/use the HTTP client;
-- whether existing query normalization/request-count contracts changed;
-- docs overclaiming beyond the supported subset.
+- round-trip validity claims;
+- MCP schema/error surface/local-only behavior;
+- regressions to existing query normalization/request counts;
+- documentation overclaiming.
 
-Any blocker discovered in review requires a new regression RED before the fix, a fresh GREEN run, and a new exact-head review.
+Any blocker requires a new regression RED, fix, GREEN, and fresh exact-head review.
 
 ## Merge/release gate
 
-After independent PASS, mark the PR ready and merge only the reviewed exact head. Then rebase/resolve any remaining release-blocking maintenance PR (currently #51/#50) as needed. `v0.1.0` remains blocked until both #52 and all other acknowledged release-blocking defects are merged and the final release-readiness audit passes.
+After independent PASS, mark the PR ready and merge only the reviewed exact head. Then resolve remaining release-blocking maintenance PRs (currently #51/#50) against the new main. `v0.1.0` remains blocked until #52, #50, and the final release-readiness audit all pass.
