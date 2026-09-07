@@ -34,6 +34,7 @@ class InputRepresentation(StrEnum):
     PALMYRENE = "palmyrene"
     NABATAEAN = "nabataean"
     HATRAN = "hatran"
+    SAMARITAN = "samaritan"
     ROMAN_SHARED = "roman_shared"
 
 
@@ -55,6 +56,7 @@ class CalCodeConversionStrategy(StrEnum):
     PALMYRENE_TO_CAL_CODE = "palmyrene_to_cal_code"
     NABATAEAN_TO_CAL_CODE = "nabataean_to_cal_code"
     HATRAN_TO_CAL_CODE = "hatran_to_cal_code"
+    SAMARITAN_TO_CAL_CODE = "samaritan_to_cal_code"
 
 
 @dataclass(frozen=True, slots=True)
@@ -333,6 +335,33 @@ _HATRAN_TO_CAL_CODES = {
 _HATRAN_BLOCK_START = "\U000108e0"
 _HATRAN_BLOCK_END = "\U000108ff"
 
+_SAMARITAN_TO_CAL_CODES = {
+    "ࠀ": (")",),
+    "ࠁ": ("b",),
+    "ࠂ": ("g",),
+    "ࠃ": ("d",),
+    "ࠄ": ("h",),
+    "ࠅ": ("w",),
+    "ࠆ": ("z",),
+    "ࠇ": ("x",),
+    "ࠈ": ("T",),
+    "ࠉ": ("y",),
+    "ࠊ": ("k",),
+    "ࠋ": ("l",),
+    "ࠌ": ("m",),
+    "ࠍ": ("n",),
+    "ࠎ": ("s",),
+    "ࠏ": ("(",),
+    "ࠐ": ("p",),
+    "ࠑ": ("c",),
+    "ࠒ": ("q",),
+    "ࠓ": ("r",),
+    "ࠔ": ("$", "&"),
+    "ࠕ": ("t",),
+}
+_SAMARITAN_BLOCK_START = "\u0800"
+_SAMARITAN_BLOCK_END = "\u083f"
+
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
@@ -446,6 +475,9 @@ def convert_to_cal_code(
     elif resolved is InputRepresentation.HATRAN:
         words = tuple(_convert_hatran_word(word) for word in _split_words(candidate))
         strategy = CalCodeConversionStrategy.HATRAN_TO_CAL_CODE
+    elif resolved is InputRepresentation.SAMARITAN:
+        words = tuple(_convert_samaritan_word(word) for word in _split_words(candidate))
+        strategy = CalCodeConversionStrategy.SAMARITAN_TO_CAL_CODE
     else:
         raise AssertionError(f"unhandled CAL input representation: {resolved}")
 
@@ -621,6 +653,25 @@ def _convert_hatran_word(value: str) -> CalCodeWordCandidates:
     )
 
 
+def _convert_samaritan_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    for index, char in enumerate(value):
+        alternatives = _SAMARITAN_TO_CAL_CODES.get(char)
+        if alternatives is None:
+            raise UnsupportedQueryError(
+                "Samaritan input contains a non-consonantal or unverified character"
+            )
+        if len(alternatives) > 1:
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
+        candidates = _append_alternatives(candidates, alternatives)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
+
+
 def _reject_controls(value: str) -> None:
     if any(unicodedata.category(char) in {"Cc", "Cs"} for char in value):
         raise UnsupportedQueryError("CAL query contains control or surrogate characters")
@@ -633,6 +684,7 @@ def _detect_representation(value: str) -> InputRepresentation:
     has_palmyrene = any(_is_palmyrene_block(char) for char in value)
     has_nabataean = any(_is_nabataean_block(char) for char in value)
     has_hatran = any(_is_hatran_block(char) for char in value)
+    has_samaritan = any(_is_samaritan_block(char) for char in value)
     script_count = sum(
         (
             has_hebrew,
@@ -641,6 +693,7 @@ def _detect_representation(value: str) -> InputRepresentation:
             has_palmyrene,
             has_nabataean,
             has_hatran,
+            has_samaritan,
         )
     )
 
@@ -658,6 +711,8 @@ def _detect_representation(value: str) -> InputRepresentation:
         return InputRepresentation.NABATAEAN
     if has_hatran:
         return InputRepresentation.HATRAN
+    if has_samaritan:
+        return InputRepresentation.SAMARITAN
 
     if any(ord(char) > 127 for char in value):
         if _is_unicode_transliteration(value):
@@ -713,6 +768,13 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
             char in _HATRAN_TO_CAL_CODES or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid Hatran consonantal input")
+        return
+
+    if representation is InputRepresentation.SAMARITAN:
+        if not any(char in _SAMARITAN_TO_CAL_CODES for char in value) or not all(
+            char in _SAMARITAN_TO_CAL_CODES or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Samaritan consonantal input")
         return
 
     if representation is InputRepresentation.UNICODE_TRANSLITERATION:
@@ -772,6 +834,10 @@ def _is_nabataean_block(char: str) -> bool:
 
 def _is_hatran_block(char: str) -> bool:
     return _HATRAN_BLOCK_START <= char <= _HATRAN_BLOCK_END
+
+
+def _is_samaritan_block(char: str) -> bool:
+    return _SAMARITAN_BLOCK_START <= char <= _SAMARITAN_BLOCK_END
 
 
 __all__ = [
