@@ -25,7 +25,7 @@ accept non-boolean `int`/`float` values only, then retain existing finite/range 
 
 ## Gate 1 — test-only RED
 
-Add a dedicated table-driven constructor test module with production unchanged.
+Extend the existing table-driven constructor type-validation module, `tests/test_client_config_count_types.py`, with production unchanged. This keeps all `CalClientConfig` runtime-type boundary regressions together and avoids duplicating test scaffolding.
 
 For each numeric scalar, cover:
 
