@@ -15,6 +15,14 @@ from cal_mcp.client import (
 PairTuple = tuple[tuple[str, str], ...]
 
 
+class PairContainerSubclass(tuple[tuple[str, str], ...]):
+    pass
+
+
+class StringPairSubclass(tuple[str, str]):
+    pass
+
+
 async def unreachable_transport(
     request: CalRequest,
     config: CalClientConfig,
@@ -70,6 +78,30 @@ async def test_method_and_path_boundary_errors_precede_pair_shape_errors(
     with pytest.raises(CalRequestValidationError, match=rf"^{message}$"):
         await client.fetch(
             cal_request,
+            parser=lambda response: response.body,
+            cache_namespace="entry",
+        )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "params",
+    [
+        PairContainerSubclass((("q", "one"),)),
+        (StringPairSubclass(("q", "one")),),
+    ],
+)
+async def test_tuple_subclasses_are_rejected_as_mutable_identity_escape_hatches(
+    params: PairTuple,
+) -> None:
+    client = CalHttpClient(transport=unreachable_transport)
+
+    with pytest.raises(
+        CalRequestValidationError,
+        match=r"^CAL request params must be a tuple of string pairs$",
+    ):
+        await client.fetch(
+            CalRequest(method="GET", path="entry.php", params=params),
             parser=lambda response: response.body,
             cache_namespace="entry",
         )
