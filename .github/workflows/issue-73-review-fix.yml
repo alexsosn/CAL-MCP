@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           ref: issue-73-native-unicode-lexicon-pass-through
-      - name: Narrow CAL-native fallback to verified base letters
+      - name: Narrow CAL-native fallback to verified marked letters
         shell: python
         run: |
           from pathlib import Path
@@ -26,7 +26,7 @@ jobs:
           path = Path("src/cal_mcp/lexicon.py")
           text = path.read_text()
           old = """        except UnsupportedQueryError:\n            if normalized.representation not in {\n                InputRepresentation.HEBREW,\n                InputRepresentation.SYRIAC,\n            }:\n                raise\n            conversion = None\n"""
-          new = """        except UnsupportedQueryError as conversion_error:\n            if normalized.representation not in {\n                InputRepresentation.HEBREW,\n                InputRepresentation.SYRIAC,\n            }:\n                raise\n            try:\n                for char in normalized.normalized:\n                    if unicodedata.category(char).startswith(\"L\"):\n                        convert_to_cal_code(char, representation=normalized.representation)\n            except UnsupportedQueryError:\n                raise conversion_error\n            conversion = None\n"""
+          new = """        except UnsupportedQueryError as conversion_error:\n            if normalized.representation not in {\n                InputRepresentation.HEBREW,\n                InputRepresentation.SYRIAC,\n            }:\n                raise\n            fallback_supported = True\n            mark_anchor = False\n            for char in normalized.normalized:\n                if char in {\" \", \"_\"}:\n                    mark_anchor = False\n                    continue\n                category = unicodedata.category(char)\n                if category.startswith(\"M\"):\n                    if not mark_anchor:\n                        fallback_supported = False\n                        break\n                    continue\n                if not category.startswith(\"L\"):\n                    fallback_supported = False\n                    break\n                try:\n                    convert_to_cal_code(char, representation=normalized.representation)\n                except UnsupportedQueryError:\n                    fallback_supported = False\n                    break\n                mark_anchor = True\n            if not fallback_supported:\n                raise conversion_error from None\n            conversion = None\n"""
           if old not in text:
               raise SystemExit("lookup fallback anchor missing")
           path.write_text(text.replace(old, new, 1))
@@ -46,5 +46,5 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           rm .github/workflows/issue-73-review-fix.yml
           git add src/cal_mcp/lexicon.py .github/workflows/issue-73-review-fix.yml
-          git commit -m "Narrow native Unicode fallback to verified letters"
+          git commit -m "Narrow native Unicode fallback to verified marked letters"
           git push origin HEAD:issue-73-native-unicode-lexicon-pass-through
