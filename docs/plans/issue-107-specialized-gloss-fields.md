@@ -174,3 +174,11 @@ Immediately before merge:
 ## CAL load impact
 
 Research is restricted to the current navigation page and representative field links/results. Production is exactly one request for one explicit selected field; no operation enumerates all field result sets.
+
+## Execution record
+
+- Test-only RED head `91b90a7cadab51dc32d4f74d02b26c37a3e2b55d`, CI `34265133157`: both matrices passed installation, Ruff lint/format, and strict mypy; deterministic pytest finished **687 passed / exactly 4 intended failures** covering the absent field service/tool/schema.
+- Minimal implementation adds only the readable 20-value enum, private current CAL token mapping, one-request field service, public MCP wrapper, focused tests, and synchronized user documentation; ordinary `cal_gloss_search` remains unchanged.
+- Pre-sync implementation/docs head `e8a3b5b60314279ecded4e1e297718439544afe1`, CI `34282757568`: both dependency matrices green.
+- After #104 merged, this branch was non-destructively synchronized with current `main` at `756529c99f92fe1b4f0dba5bb3314a3a826f8c4d`. The temporary sync helper removed itself and is absent from the PR diff.
+- This execution-record commit exists to trigger the required exact-head CI after the bot-authored merge commit was administratively marked `action_required`; no production behavior changes here.
