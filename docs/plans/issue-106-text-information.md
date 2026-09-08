@@ -37,17 +37,22 @@ GET get_file_info.php?coord=<composed selector>
 
 Keep the heterogeneous scholarly metadata faithful instead of inventing a normalized bibliography schema.
 
-Proposed result:
-
 ```text
+TextInformationStatus
+  FOUND = "found"
+  NOT_FOUND = "not_found"
+
 TextInformationResult
+  status: TextInformationStatus
   file_id: str
   subtext_id: str | null
   metadata: ordered tuple[str, ...]
   provenance: TextProvenance-compatible metadata
 ```
 
-`metadata` contains the ordered nonempty semantic text lines/paragraphs rendered below CAL's `Text Information` heading after deterministic whitespace cleanup. Preserve CAL wording and ordering.
+For `found`, `metadata` contains the ordered nonempty semantic text lines/paragraphs rendered below CAL's `Text Information` heading after deterministic whitespace cleanup. Preserve CAL wording and ordering.
+
+For CAL's explicit `No information on record for this text.` marker, return `not_found` with `metadata=()`.
 
 Do not create fields such as `edition`, `findspot`, `manuscript`, `bibliography`, or `warning` unless future research establishes stable explicit CAL markup for them.
 
@@ -55,14 +60,23 @@ Returned URLs inside free-form CAL metadata are text/navigation evidence only; t
 
 ## Missing / drift boundary
 
-The research probe demonstrated that plain automated requests can return CAL's generic anti-scrape page with HTTP 200 for both known-valid and invalid selectors. Therefore HTTP success alone is never a metadata success.
+The direct research probe demonstrated that plain automated requests can return CAL's generic anti-scrape page with HTTP 200 for both known-valid and invalid selectors. HTTP success alone is never a metadata success.
+
+The subsequent indexed-current-page recheck established an explicit missing marker at `get_file_info.php?coord=00000639`:
+
+```text
+Text Information
+No information on record for this text.
+```
 
 Parser rules:
 
-- require the semantic `Text Information` heading plus at least one nonempty metadata line;
-- a generic anti-scrape/maintenance/unrecognized page is parser/content failure;
-- do not invent `not_found` from an empty/unrecognized HTTP-200 page;
-- add typed `not_found` only if a current explicit CAL missing-information marker is later observed and pinned by a fixture.
+- require the semantic `Text Information` heading;
+- exact current missing marker maps to `not_found` with empty metadata;
+- otherwise require at least one nonempty metadata line for `found`;
+- heading with neither metadata nor the explicit marker is `TextParseError`;
+- generic anti-scrape/maintenance/unrecognized successful HTML is parser/content failure, never `not_found`;
+- do not infer missing state from HTTP status, body size, selector shape, or an unrecognized body.
 
 ## TDD RED gate
 
@@ -76,7 +90,7 @@ For `file_id="6042013"`, assert exactly one request:
 GET get_file_info.php?coord=6042013
 ```
 
-Parse a reduced semantic Ephrem fixture and preserve its ordered metadata lines and provenance.
+Parse a reduced semantic Ephrem fixture, return `status="found"`, and preserve its ordered metadata lines and provenance.
 
 ### Subdivided selector RED
 
@@ -88,22 +102,23 @@ GET get_file_info.php?coord=43200336
 
 Use a reduced Hatran fixture preserving corpus-level and item-level lines in order. This pins string concatenation without numeric normalization or inferred padding.
 
-Add a second composition edge such as `file_id="56000", subtext_id="128"` at request-construction level to prevent a Hatran-specific implementation.
+Add a second composition edge such as `file_id="56000", subtext_id="128"` at request-construction level to prevent a Hatran-specific implementation. Preserve leading zeroes in a synthetic request-construction case.
 
 ### Validation RED
 
-Malformed/blank/non-decimal `file_id` or `subtext_id` fails locally before transport. Preserve leading zeroes in valid strings.
+Malformed/blank/non-decimal `file_id` or `subtext_id` fails locally before transport.
 
-### Parser drift RED
+### Missing / parser-drift RED
 
 Reduced fixtures must cover:
 
-- genuine `Text Information` page with ordered metadata;
-- page with heading but no metadata -> `TextParseError`;
+- genuine `Text Information` page with ordered metadata -> `found`;
+- genuine `Text Information` page containing exactly `No information on record for this text.` -> `not_found`, empty metadata;
+- page with heading but no metadata/missing marker -> `TextParseError`;
 - generic CAL anti-scrape body -> `TextParseError` or the shared content error path;
 - unrelated successful HTML -> `TextParseError`.
 
-Do not add a fabricated missing-state fixture.
+The missing fixture is now evidence-backed by current CAL indexed output and is no longer fabricated.
 
 ### Public MCP schema RED
 
@@ -117,10 +132,10 @@ Prefer a focused text-information parser/service in `texts.py` unless source siz
 
 Implementation steps:
 
-1. add immutable result model and serialization;
+1. add `TextInformationStatus`, immutable page/result model(s), and serialization;
 2. add helper that composes the private decimal `coord` from validated public identifiers;
-3. add parser requiring the `Text Information` semantic heading and nonempty ordered metadata;
-4. add `TextService.information(...)` or a narrowly named service method making one request;
+3. add parser requiring the `Text Information` semantic heading, recognizing only the exact current missing marker as `not_found`, and otherwise requiring nonempty ordered metadata;
+4. add `TextService.information(...)` making one request;
 5. expose `cal_text_information` in `server.py`;
 6. update exact public-tool bootstrap/docs contracts from 28 to 29 tools;
 7. keep all existing text catalogue/search/page behavior unchanged unless a separate regression proves otherwise.
@@ -129,9 +144,9 @@ Implementation steps:
 
 Update:
 
-- `docs/tools/texts.md` with text -> explicit metadata follow-up, selector composition, free-form metadata semantics, request bound, and failure boundary;
+- `docs/tools/texts.md` with text -> explicit metadata follow-up, selector composition, free-form metadata semantics, explicit `found`/`not_found`, request bound, and drift boundary;
 - `docs/index.md` / README current tool count and text capability description;
-- provenance/error docs only if the new operation introduces a genuinely new public state.
+- provenance/error docs only if the new explicit missing state needs cross-linking.
 
 Explicitly state that CAL's metadata can contain source/edition/editorial/bibliographic/quality notes but CAL-MCP preserves the rendered information rather than normalizing it into inferred fields.
 
@@ -161,6 +176,7 @@ Freeze the final SHA and independently challenge:
 - public selector can be derived from returned `TextRef` identifiers without private `coord` knowledge;
 - direct and subdivided selector composition is deterministic and string-preserving;
 - no arbitrary URL/coord execution is exposed;
+- explicit CAL missing-information markup is distinct from generic/anti-scrape/parser drift;
 - parser does not accept CAL anti-scrape/generic HTTP-200 pages;
 - heterogeneous metadata is preserved in order without invented bibliographic categories;
 - metadata links are not followed;
@@ -185,4 +201,4 @@ Immediately before merge:
 
 ## CAL load impact
 
-No further live probe is required for initial TDD. The completed research used four fixed, capped requests and the probe workflow has been removed. Production remains one request per explicit metadata lookup with no follow-up traversal.
+No further direct live probe is required for initial TDD. The completed research used four fixed, capped automated requests; the indexed missing-state follow-up did not add another automated CAL request. The probe workflow has been removed. Production remains one request per explicit metadata lookup with no follow-up traversal.
