@@ -97,3 +97,23 @@ async def test_syriac_punctuation_or_unattached_mark_still_fails_before_cal_io(q
         await client.aclose()
 
     assert calls == 0
+
+
+@pytest.mark.anyio
+async def test_mark_free_script_separator_does_not_enable_native_fallback() -> None:
+    calls = 0
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal calls
+        del request, config
+        calls += 1
+        raise AssertionError("mark-free converter failure must not enable CAL-native fallback")
+
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(UnsupportedQueryError):
+            await LexiconLookupService(client).lookup("מ_ל")
+    finally:
+        await client.aclose()
+
+    assert calls == 0
