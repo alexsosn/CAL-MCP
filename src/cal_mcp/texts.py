@@ -396,10 +396,14 @@ def _prepare_text_search_query(value: str) -> str:
 
 def _category_from_link(link: _Link) -> TextCategoryRef | None:
     label = link.text.strip()
+    parsed = urlsplit(link.href)
+    if parsed.path.endswith(_ONKELOS_JONATHAN_PATH):
+        if parsed.query:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+        if not label:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue link has no label")
+        return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
     if label == _ONKELOS_JONATHAN_LABEL:
-        parsed = urlsplit(link.href)
-        if parsed.path.endswith(_ONKELOS_JONATHAN_PATH) and not parsed.query:
-            return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
         raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
 
     if not _is_path(link.href, "showsubtexts.php"):
