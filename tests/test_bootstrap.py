@@ -20,6 +20,7 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_convert_to_code",
         "cal_lexicon_lookup",
         "cal_gloss_search",
+        "cal_gloss_field",
         "cal_citation_text_search",
         "cal_text_catalogue",
         "cal_text_search",
