@@ -108,7 +108,7 @@ class CurrentPeshittaTransport:
 
 
 @pytest.mark.anyio
-async def test_syriac_peshitta_category_remains_one_request_and_does_not_prefetch_chapters() -> None:
+async def test_peshitta_category_is_one_request_without_chapter_prefetch() -> None:
     transport = CurrentPeshittaTransport()
     client = CalHttpClient(transport=transport)
     try:
