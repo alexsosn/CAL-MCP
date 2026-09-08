@@ -137,6 +137,9 @@ After exact-head dual-matrix GREEN and independent approval, merge with `Closes 
 - Original test-only RED: `55ae3c50a372083398c227740a90a279b6c7058c`; both static/type matrices green and pytest failed only on the three missing #101 behaviors.
 - Initial implementation and documentation reached GREEN, then exact-head adversarial review found a label-drift completeness blocker: recognition depended on the current rendered label before the dedicated route.
 - Review-regression RED: `6ef1597bd04837f8663828234742ed4b95525bbd`; both matrices passed install, Ruff, formatting, and mypy, with deterministic pytest **692 passed / exactly 1 intended failure**.
-- The minimal correction now recognizes the exact dedicated route first, preserves any nonempty rendered label, and retains the old/current label as a fail-closed sentinel if it points to an unknown route.
-- Temporary write-enabled implementation/sync helpers were removed from the final diff.
+- The first review correction made route recognition authoritative and preserved a changed nonempty label while retaining the current label as a fail-closed drift sentinel.
+- After synchronizing with `main`, a second adversarial pass found that suffix matching accepted `legacy/targum_onkelos_jonathan.html`; the review RED was expanded to a foreign absolute same-filename lookalike as well.
+- Expanded exact-route review RED at `a223b21cd3c9ee03534e4e343dae94cb28379ce3`: both matrices passed install, Ruff, formatting, and mypy; deterministic pytest finished **693 passed / exactly 2 intended failures** for the nested-path and foreign-origin lookalikes.
+- The minimal correction now accepts only the researched relative/root-absolute dedicated path with no scheme/netloc, preserves its nonempty rendered label, and rejects nested/foreign lookalikes through the existing current-label drift sentinel.
+- Temporary write-enabled implementation/sync helpers are removed from the final diff.
 - The branch was non-destructively synchronized with current `main` at `381fb95725322640ed81302f8ca5bfa092920d4d` before the final CI/review gate.
