@@ -48,9 +48,7 @@ def test_mandaic_getlex_links_are_preserved_as_text_tokens() -> None:
         (3, "dakia"),
     ]
     assert first.tokens[0].coordinate == "7441000101"
-    assert first.tokens[0].lexical_url == (
-        "https://cal.huc.edu/getlex.php?coord=7441000101&word=0"
-    )
+    assert first.tokens[0].lexical_url == "https://cal.huc.edu/getlex.php?coord=7441000101&word=0"
 
 
 class GinzaTransport:
