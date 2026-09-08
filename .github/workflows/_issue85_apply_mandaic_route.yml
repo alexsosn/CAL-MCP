@@ -1,0 +1,72 @@
+name: Apply issue 85 Mandaic route
+
+on:
+  push:
+    branches: [issue-85-mandaic-text-page-route]
+    paths: [.github/workflows/_issue85_apply_mandaic_route.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-85-mandaic-text-page-route
+      - name: Apply exact production changes
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/cal_mcp/texts.py')
+          text = path.read_text()
+
+          replacements = [
+              (
+                  '''def parse_text_page(\n    response: CalResponse,\n    *,\n    requested_file_id: str,\n    requested_subtext_id: str | None,\n    requested_page: int | None = None,\n) -> TextPage | None:\n''',
+                  '''def parse_text_page(\n    response: CalResponse,\n    *,\n    requested_file_id: str,\n    requested_subtext_id: str | None,\n    requested_page: int | None = None,\n    mandaic_page_selector: bool = False,\n) -> TextPage | None:\n''',
+              ),
+              (
+                  '''    page_number, page_count, total_lines = _page_metadata(lines)\n    if requested_page is not None and page_number != requested_page:\n        raise TextParseError("CAL text page number differs from the requested page")\n    previous_page, next_page = _page_navigation(\n        lines,\n        requested_file_id=requested_file_id,\n        requested_subtext_id=requested_subtext_id,\n    )\n    _validate_page_navigation(\n        page_number=page_number,\n        page_count=page_count,\n        previous_page=previous_page,\n        next_page=next_page,\n    )\n''',
+                  '''    page_number, page_count, total_lines = _page_metadata(lines)\n    if mandaic_page_selector and page_count is None:\n        if requested_page is None:\n            raise TextParseError("Mandaic text-page parsing requires the requested page")\n        page_number = requested_page\n    if requested_page is not None and page_number != requested_page:\n        raise TextParseError("CAL text page number differs from the requested page")\n    previous_page, next_page = _page_navigation(\n        lines,\n        requested_file_id=requested_file_id,\n        requested_subtext_id=requested_subtext_id,\n        mandaic_page_selector=mandaic_page_selector,\n    )\n    _validate_page_navigation(\n        page_number=page_number,\n        page_count=page_count,\n        previous_page=previous_page,\n        next_page=next_page,\n        allow_navigation_without_page_count=mandaic_page_selector,\n    )\n''',
+              ),
+              (
+                  '''        params: list[tuple[str, str]] = [("file", normalized_file)]\n        if normalized_subtext is not None:\n            params.append(("sub", normalized_subtext))\n        params.append(("page", str(page - 1)))\n\n        def parse_requested(response: CalResponse) -> TextPage | None:\n            return parse_text_page(\n                response,\n                requested_file_id=normalized_file,\n                requested_subtext_id=normalized_subtext,\n                requested_page=page,\n            )\n''',
+                  '''        mandaic_page_selector = normalized_subtext is None and normalized_file.startswith("74")\n        if mandaic_page_selector:\n            params = [("cset", "M"), ("file", normalized_file), ("sub", f"{page:03d}")]\n        else:\n            params = [("file", normalized_file)]\n            if normalized_subtext is not None:\n                params.append(("sub", normalized_subtext))\n            params.append(("page", str(page - 1)))\n\n        def parse_requested(response: CalResponse) -> TextPage | None:\n            return parse_text_page(\n                response,\n                requested_file_id=normalized_file,\n                requested_subtext_id=normalized_subtext,\n                requested_page=page,\n                mandaic_page_selector=mandaic_page_selector,\n            )\n''',
+              ),
+              (
+                  '''def _page_navigation(\n    lines: list[_Line],\n    *,\n    requested_file_id: str,\n    requested_subtext_id: str | None,\n) -> tuple[int | None, int | None]:\n''',
+                  '''def _page_navigation(\n    lines: list[_Line],\n    *,\n    requested_file_id: str,\n    requested_subtext_id: str | None,\n    mandaic_page_selector: bool,\n) -> tuple[int | None, int | None]:\n''',
+              ),
+              (
+                  '''            subtext_id: str | None = None\n            sub_values = query.get("sub")\n            if sub_values is not None:\n                if len(sub_values) != 1:\n                    raise TextParseError("CAL text page navigation has repeated sub identifiers")\n                if sub_values[0]:\n                    subtext_id = _parse_id(sub_values[0], "subtext_id")\n            if subtext_id != requested_subtext_id:\n                raise TextParseError(\n                    "CAL text page navigation subtext differs from requested subtext"\n                )\n\n            upstream_page = _single_query_value(query, "page", "page-navigation")\n            if not upstream_page.isdigit():\n                raise TextParseError("CAL text page navigation has a nonnumeric page")\n            public_page = int(upstream_page) + 1\n''',
+                  '''            if mandaic_page_selector:\n                cset = _single_query_value(query, "cset", "page-navigation")\n                if cset != "M":\n                    raise TextParseError("CAL Mandaic text page navigation cset differs from M")\n                upstream_sub = _single_query_value(query, "sub", "page-navigation")\n                if not upstream_sub.isdigit():\n                    raise TextParseError("CAL Mandaic text page navigation has a nonnumeric sub")\n                public_page = int(upstream_sub)\n            else:\n                subtext_id: str | None = None\n                sub_values = query.get("sub")\n                if sub_values is not None:\n                    if len(sub_values) != 1:\n                        raise TextParseError("CAL text page navigation has repeated sub identifiers")\n                    if sub_values[0]:\n                        subtext_id = _parse_id(sub_values[0], "subtext_id")\n                if subtext_id != requested_subtext_id:\n                    raise TextParseError(\n                        "CAL text page navigation subtext differs from requested subtext"\n                    )\n\n                upstream_page = _single_query_value(query, "page", "page-navigation")\n                if not upstream_page.isdigit():\n                    raise TextParseError("CAL text page navigation has a nonnumeric page")\n                public_page = int(upstream_page) + 1\n''',
+              ),
+              (
+                  '''def _validate_page_navigation(\n    *,\n    page_number: int,\n    page_count: int | None,\n    previous_page: int | None,\n    next_page: int | None,\n) -> None:\n    if page_count is None:\n        if previous_page is not None or next_page is not None:\n            raise TextParseError("CAL text page has navigation without pagination metadata")\n        return\n\n    if previous_page is not None and previous_page != page_number - 1:\n''',
+                  '''def _validate_page_navigation(\n    *,\n    page_number: int,\n    page_count: int | None,\n    previous_page: int | None,\n    next_page: int | None,\n    allow_navigation_without_page_count: bool = False,\n) -> None:\n    if page_count is None and not allow_navigation_without_page_count:\n        if previous_page is not None or next_page is not None:\n            raise TextParseError("CAL text page has navigation without pagination metadata")\n        return\n\n    if previous_page is not None and previous_page != page_number - 1:\n''',
+              ),
+              (
+                  '''    if next_page is not None and next_page > page_count:\n        raise TextParseError("CAL text page next-page navigation is out of range")\n''',
+                  '''    if page_count is not None and next_page is not None and next_page > page_count:\n        raise TextParseError("CAL text page next-page navigation is out of range")\n''',
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'expected exactly one replacement target, found {count}')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+          PY
+      - name: Commit production change and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/_issue85_apply_mandaic_route.yml
+          git add src/cal_mcp/texts.py
+          git commit -m "fix: route Mandaic text pages through CAL selector"
+          git push origin HEAD:issue-85-mandaic-text-page-route
