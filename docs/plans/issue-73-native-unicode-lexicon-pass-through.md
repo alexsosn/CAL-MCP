@@ -56,6 +56,8 @@ When `convert_to_cal_code(query)` raises `UnsupportedQueryError`:
 6. reject any unsupported punctuation, unattached mark, unverified base letter, or other syntax by re-raising the original `UnsupportedQueryError`;
 7. if the scan is eligible, set `conversion = None` and use the existing Unicode browse path with the original normalized query unchanged.
 
+The CAL-native bound-form `_` separator is explicitly preserved by this gate: it is documented by CAL's current lexicon browser and is allowed only alongside verified Hebrew/Syriac base content.
+
 Do not require an actual combining mark. CAL's current lexicon browser explicitly documents underscore bound forms (`w_`) and accepts Unicode Hebrew/Syriac on the same browser surface. A review-time `has_mark` proposal was therefore rejected before production modification; positive `ו_` / `ܘ_` regressions freeze the documented bound-form behavior.
 
 The eligibility scan is a safety predicate only. Do not strip marks, reinterpret separators, send a probe to CAL, or modify `convert_to_cal_code()` / normalization.
