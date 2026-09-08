@@ -25,12 +25,8 @@ jobs:
 
           path = Path("src/cal_mcp/texts.py")
           text = path.read_text()
-          old = '''    if parsed.path.endswith(_ONKELOS_JONATHAN_PATH):
-              if parsed.query:
-          '''
-          new = '''    if parsed.path in {_ONKELOS_JONATHAN_PATH, f"/{_ONKELOS_JONATHAN_PATH}"}:
-              if parsed.query:
-          '''
+          old = "if parsed.path.endswith(_ONKELOS_JONATHAN_PATH):"
+          new = 'if parsed.path in {_ONKELOS_JONATHAN_PATH, f"/{_ONKELOS_JONATHAN_PATH}"}:'
           if text.count(old) != 1:
               raise SystemExit("expected route predicate exactly once")
           path.write_text(text.replace(old, new))
