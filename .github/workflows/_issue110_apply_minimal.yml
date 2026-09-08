@@ -1,0 +1,90 @@
+name: issue110 minimal parser patch
+
+on:
+  push:
+    branches:
+      - fix/issue-110-syriac-peshitta-routing
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-110-syriac-peshitta-routing
+          fetch-depth: 0
+      - name: Apply minimal Peshitta route fix
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/syriac.py")
+          text = path.read_text(encoding="utf-8")
+
+          old_enum = '''class SyriacTextNavigationKind(StrEnum):
+              TEXT = "text"
+              GROUP = "group"
+          '''
+          new_enum = '''class SyriacTextNavigationKind(StrEnum):
+              TEXT = "text"
+              GROUP = "group"
+              CATALOGUE = "catalogue"
+          '''
+          if text.count(old_enum) != 1:
+              raise SystemExit("navigation enum shape did not match exactly once")
+          text = text.replace(old_enum, new_enum)
+
+          old_route = '''            elif endpoint == "showsubtexts.php":
+                          resolved = _validated_same_origin_url(response.url, link.href, endpoint)
+                          upstream_id = _single_query_value(
+                              parse_qs(urlsplit(resolved).query, keep_blank_values=True),
+                              "keyword",
+                              "Syriac grouped-text navigation",
+                          )
+                          _require_decimal_identifier(upstream_id, "Syriac grouped-text keyword")
+                          navigation.append((SyriacTextNavigationKind.GROUP, upstream_id, resolved, link))
+          '''
+          new_route = '''            elif endpoint == "showsubtexts.php":
+                          resolved = _validated_same_origin_url(response.url, link.href, endpoint)
+                          query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
+                          selectors: list[tuple[SyriacTextNavigationKind, str]] = []
+                          if "keyword" in query:
+                              keyword = _single_query_value(
+                                  query,
+                                  "keyword",
+                                  "Syriac grouped-text navigation",
+                              )
+                              _require_decimal_identifier(keyword, "Syriac grouped-text keyword")
+                              selectors.append((SyriacTextNavigationKind.GROUP, keyword))
+                          if "subtext" in query:
+                              subtext = _single_query_value(
+                                  query,
+                                  "subtext",
+                                  "Syriac catalogue navigation",
+                              )
+                              _require_decimal_identifier(subtext, "Syriac catalogue identifier")
+                              selectors.append((SyriacTextNavigationKind.CATALOGUE, subtext))
+                          if len(selectors) != 1:
+                              raise SyriacParseError(
+                                  "CAL Syriac subtext navigation must expose exactly one semantic selector"
+                              )
+                          kind, upstream_id = selectors[0]
+                          navigation.append((kind, upstream_id, resolved, link))
+          '''
+          if text.count(old_route) != 1:
+              raise SystemExit("showsubtexts parser shape did not match exactly once")
+          path.write_text(text.replace(old_route, new_route), encoding="utf-8")
+      - name: Commit production fix and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/syriac.py
+          git rm .github/workflows/_issue110_apply_minimal.yml
+          git diff --cached --check
+          git commit -m "fix: distinguish Syriac Peshitta catalogue navigation"
+          git push origin HEAD:fix/issue-110-syriac-peshitta-routing
