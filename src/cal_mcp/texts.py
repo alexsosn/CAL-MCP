@@ -18,6 +18,7 @@ _PAGE_MARKER_RE = re.compile(
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
+_MANDAIC_COLLECTION_PREFIX = "74"
 
 
 class TextParseError(CalContentError):
@@ -190,6 +191,23 @@ def parse_text_page(
     requested_subtext_id: str | None,
     requested_page: int | None = None,
 ) -> TextPage | None:
+    return _parse_text_page(
+        response,
+        requested_file_id=requested_file_id,
+        requested_subtext_id=requested_subtext_id,
+        requested_page=requested_page,
+        mandaic_page_route=False,
+    )
+
+
+def _parse_text_page(
+    response: CalResponse,
+    *,
+    requested_file_id: str,
+    requested_subtext_id: str | None,
+    requested_page: int | None,
+    mandaic_page_route: bool,
+) -> TextPage | None:
     lines = _parse_lines(response)
     page_text = " ".join(line.text for line in lines)
     if _NO_LINES_RE.search(page_text) is not None:
@@ -197,18 +215,22 @@ def parse_text_page(
 
     text_ref = _page_text_ref(lines, requested_file_id, requested_subtext_id)
     page_number, page_count, total_lines = _page_metadata(lines)
+    if mandaic_page_route and page_count is None and requested_page is not None:
+        page_number = requested_page
     if requested_page is not None and page_number != requested_page:
         raise TextParseError("CAL text page number differs from the requested page")
     previous_page, next_page = _page_navigation(
         lines,
         requested_file_id=requested_file_id,
         requested_subtext_id=requested_subtext_id,
+        mandaic_page_route=mandaic_page_route,
     )
     _validate_page_navigation(
         page_number=page_number,
         page_count=page_count,
         previous_page=previous_page,
         next_page=next_page,
+        allow_navigation_without_page_count=mandaic_page_route,
     )
     text_lines = tuple(
         parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
@@ -296,17 +318,28 @@ class TextService:
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise ValueError("page must be a positive integer")
 
-        params: list[tuple[str, str]] = [("file", normalized_file)]
-        if normalized_subtext is not None:
-            params.append(("sub", normalized_subtext))
-        params.append(("page", str(page - 1)))
+        mandaic_page_route = normalized_subtext is None and normalized_file.startswith(
+            _MANDAIC_COLLECTION_PREFIX
+        )
+        if mandaic_page_route:
+            params = [
+                ("cset", "M"),
+                ("file", normalized_file),
+                ("sub", f"{page:03d}"),
+            ]
+        else:
+            params = [("file", normalized_file)]
+            if normalized_subtext is not None:
+                params.append(("sub", normalized_subtext))
+            params.append(("page", str(page - 1)))
 
         def parse_requested(response: CalResponse) -> TextPage | None:
-            return parse_text_page(
+            return _parse_text_page(
                 response,
                 requested_file_id=normalized_file,
                 requested_subtext_id=normalized_subtext,
                 requested_page=page,
+                mandaic_page_route=mandaic_page_route,
             )
 
         result = await self._client.fetch(
@@ -467,6 +500,7 @@ def _page_navigation(
     *,
     requested_file_id: str,
     requested_subtext_id: str | None,
+    mandaic_page_route: bool = False,
 ) -> tuple[int | None, int | None]:
     previous: int | None = None
     next_page: int | None = None
@@ -483,22 +517,33 @@ def _page_navigation(
             if file_id != requested_file_id:
                 raise TextParseError("CAL text page navigation file differs from requested file")
 
-            subtext_id: str | None = None
-            sub_values = query.get("sub")
-            if sub_values is not None:
-                if len(sub_values) != 1:
-                    raise TextParseError("CAL text page navigation has repeated sub identifiers")
-                if sub_values[0]:
-                    subtext_id = _parse_id(sub_values[0], "subtext_id")
-            if subtext_id != requested_subtext_id:
-                raise TextParseError(
-                    "CAL text page navigation subtext differs from requested subtext"
-                )
+            if mandaic_page_route:
+                cset = _single_query_value(query, "cset", "page-navigation")
+                if cset != "M":
+                    raise TextParseError("CAL text page navigation cset differs from Mandaic route")
+                upstream_sub = _single_query_value(query, "sub", "page-navigation")
+                _parse_id(upstream_sub, "subtext_id")
+                public_page = int(upstream_sub)
+            else:
+                subtext_id: str | None = None
+                sub_values = query.get("sub")
+                if sub_values is not None:
+                    if len(sub_values) != 1:
+                        raise TextParseError(
+                            "CAL text page navigation has repeated sub identifiers"
+                        )
+                    if sub_values[0]:
+                        subtext_id = _parse_id(sub_values[0], "subtext_id")
+                if subtext_id != requested_subtext_id:
+                    raise TextParseError(
+                        "CAL text page navigation subtext differs from requested subtext"
+                    )
 
-            upstream_page = _single_query_value(query, "page", "page-navigation")
-            if not upstream_page.isdigit():
-                raise TextParseError("CAL text page navigation has a nonnumeric page")
-            public_page = int(upstream_page) + 1
+                upstream_page = _single_query_value(query, "page", "page-navigation")
+                if not upstream_page.isdigit():
+                    raise TextParseError("CAL text page navigation has a nonnumeric page")
+                public_page = int(upstream_page) + 1
+
             if "previous page" in label:
                 previous = _same_or_unset(previous, public_page, "previous")
             if "next page" in label:
@@ -512,8 +557,9 @@ def _validate_page_navigation(
     page_count: int | None,
     previous_page: int | None,
     next_page: int | None,
+    allow_navigation_without_page_count: bool = False,
 ) -> None:
-    if page_count is None:
+    if page_count is None and not allow_navigation_without_page_count:
         if previous_page is not None or next_page is not None:
             raise TextParseError("CAL text page has navigation without pagination metadata")
         return
@@ -524,7 +570,7 @@ def _validate_page_navigation(
         raise TextParseError("CAL text page has inconsistent next-page navigation")
     if previous_page is not None and previous_page < 1:
         raise TextParseError("CAL text page previous-page navigation is out of range")
-    if next_page is not None and next_page > page_count:
+    if page_count is not None and next_page is not None and next_page > page_count:
         raise TextParseError("CAL text page next-page navigation is out of range")
 
 
