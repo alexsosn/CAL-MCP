@@ -1,0 +1,77 @@
+name: Research issue 80 Ginza search
+
+on:
+  push:
+    branches:
+      - fix/issue-80-ginza-text-search
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe one current CAL Ginza text search
+        shell: python
+        run: |
+          from html.parser import HTMLParser
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          class AnchorParser(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.href = None
+                  self.text = []
+                  self.anchors = []
+                  self.page_text = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      self.href = dict(attrs).get("href")
+                      self.text = []
+
+              def handle_data(self, data):
+                  self.page_text.append(data)
+                  if self.href is not None:
+                      self.text.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.href is not None:
+                      self.anchors.append((self.href, " ".join(self.text).strip()))
+                      self.href = None
+                      self.text = []
+
+          data = urlencode({"search": "Ginza"}).encode()
+          request = Request(
+              "https://cal.huc.edu/newsearchtxts.php",
+              data=data,
+              method="POST",
+              headers={
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  "User-Agent": "CAL-MCP/0.1.0 (+https://github.com/alexsosn/CAL-MCP)",
+              },
+          )
+          with urlopen(request, timeout=15) as response:
+              body = response.read(2 * 1024 * 1024 + 1)
+              print("status", response.status)
+              print("content_type", response.headers.get("Content-Type"))
+              print("bytes", len(body))
+              print("url", response.geturl())
+
+          parser = AnchorParser()
+          parser.feed(body.decode("utf-8", errors="replace"))
+          rendered = " ".join(" ".join(parser.page_text).split())
+          print("has_search_marker", "CAL search for texts like:" in rendered)
+          print("has_no_files_marker", "There are no files associated with the search term" in rendered)
+          relevant = [
+              (href, text)
+              for href, text in parser.anchors
+              if "ginza" in text.lower()
+              or "get_a_chapter.php" in href
+              or "showsubtexts.php" in href
+          ]
+          print("relevant_anchor_count", len(relevant))
+          for href, text in relevant[:20]:
+              print("anchor", repr(href), repr(text[:200]))
