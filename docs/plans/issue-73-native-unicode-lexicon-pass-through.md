@@ -51,15 +51,16 @@ This prevents a superficial “fallback if a mark exists” fix.
 On `UnsupportedQueryError` from `convert_to_cal_code(query)`:
 
 1. fallback eligibility remains restricted to normalized Hebrew/Syriac;
-2. require the original query to contain at least one Unicode mark (`unicodedata.category(char).startswith("M")`);
-3. build a **local eligibility probe only** by removing Unicode mark characters from the normalized query;
-4. require `convert_to_cal_code(mark_stripped_probe)` to succeed;
-5. if the probe is unsupported, re-raise the original `UnsupportedQueryError`;
-6. if eligible, set `conversion = None` and use the existing legacy Unicode browse path with the original normalized pointed/vocalized query unchanged.
+2. require the original normalized query to contain at least one Unicode combining mark;
+3. scan the original normalized query locally, without changing the string that will be sent to CAL;
+4. allow only spaces/underscores as separators, verified Hebrew/Syriac base letters, and combining marks attached to a preceding verified base letter;
+5. validate each base letter through `convert_to_cal_code(char, representation=normalized.representation)` so the fallback reuses the converter's researched base-letter inventory instead of Unicode-block membership;
+6. reject unsupported punctuation, unattached marks, and unverified base letters by re-raising the original `UnsupportedQueryError`;
+7. if eligible, set `conversion = None` and use the existing legacy Unicode browse path with the original normalized pointed/vocalized query unchanged.
 
-Do not send the stripped probe to CAL. Do not modify `convert_to_cal_code()` or normalization.
+The eligibility scan is only a local safety predicate. Do not strip marks from the actual lookup, do not send a probe to CAL, and do not modify `convert_to_cal_code()` or normalization.
 
-Do not catch `ConversionExpansionError` or arbitrary exceptions. A mark-stripped probe that does not cleanly pass the existing converter is not positive fallback evidence and must remain fail-closed.
+Do not catch `ConversionExpansionError` or arbitrary exceptions. The original whole-query converter still runs first; only its `UnsupportedQueryError` can enter this fallback check.
 
 Behavior requirements:
 
@@ -67,7 +68,7 @@ Behavior requirements:
 - Hebrew/Syriac conversion succeeds with no ambiguity -> existing normalized Unicode browse path;
 - Hebrew/Syriac conversion succeeds with finite ambiguity -> bounded CAL-code fan-out;
 - unverified base letter, with or without marks -> fail before I/O;
-- unsupported punctuation -> fail before I/O;
+- unsupported punctuation or unattached combining marks -> fail before I/O;
 - dedicated-script conversion remains required;
 - standalone converter behavior unchanged.
 
@@ -110,10 +111,10 @@ Review the exact final SHA from scratch against issue #73, corrected research, i
 Challenge at least:
 
 - fallback restricted to Hebrew/Syriac only;
-- fallback requires actual marks and converter-supported mark-stripped bases;
+- fallback requires at least one actual mark and only converter-supported base letters;
 - `ܞ` and `ܞܲ` remain zero-I/O failures;
-- unsupported punctuation cannot be stripped into acceptance;
-- original pointed/vocalized query, not the probe, is sent to CAL;
+- unsupported punctuation and unattached marks cannot gain pass-through;
+- original pointed/vocalized query is sent to CAL unchanged;
 - `ConversionExpansionError` and arbitrary converter bugs are not swallowed;
 - pointed Hebrew/Syriac perform exactly one browse request;
 - bare-shin / dotless-dalath ambiguity still expands;
