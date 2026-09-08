@@ -6,8 +6,9 @@ First standalone release candidate for CAL-MCP, a read-only MCP adapter over the
 
 ### Public MCP surface
 
-v0.1.0 freezes **26 public tools** across these research families:
+v0.1.0 freezes **27 public tools** across these research families:
 
+- deterministic conversion from supported Aramaic-script/Unicode inputs to CAL code;
 - lexicon lookup;
 - English gloss and citation-text search;
 - text catalogue/topic discovery and one-page retrieval;
@@ -39,7 +40,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 
 ### Release and drift validation
 
-- The release pipeline builds wheel and sdist once, validates the built wheel in a fresh virtual environment, launches its installed `cal-mcp` entry point over stdio, and checks version + the frozen 26-tool schema without contacting CAL.
+- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 27-tool schema without contacting CAL.
 - A separate live drift smoke is opt-in/scheduled and capped at **9 CAL requests**, concurrency 1, retries 0, cache disabled.
 - The live smoke covers eight representative parser/service families and distinguishes parser drift from network/upstream and other content/policy failures.
 
