@@ -2,19 +2,19 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** pre-release. The current v0.1 public tool contract contains 27 tools: the issue-#12 audit's 26 CAL-backed tools plus the release-blocking deterministic conversion tool added by issue #52. A versioned package release and Agora registration are separate follow-up work.
+> **Status:** pre-release. The current public contract contains 28 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
 ## Public capability matrix
 
-**Audited against CAL's current public research surfaces: 2026-09-06.**
+**Audited against CAL's current public research surfaces: 2026-09-08.**
 
 | CAL research area | v0.1 status | CAL-MCP surface |
 | --- | --- | --- |
 | Deterministic supported-script / Unicode input conversion to CAL code | **Implemented as adapter-owned deterministic preprocessing** | [`cal_convert_to_code`](concepts/input-and-transliteration.md); performs no CAL request |
 | Lexicon/root/headword/full-form lookup | **Implemented** | [`cal_lexicon_lookup`](tools/lexicon.md) |
-| English gloss and citation-text search | **Implemented** | [`cal_gloss_search`, `cal_citation_text_search`](tools/search.md) |
+| English gloss, specialized indexed gloss-field, and citation-text search | **Implemented** | [`cal_gloss_search`, `cal_gloss_field`, `cal_citation_text_search`](tools/search.md) |
 | Online text discovery, topic search, and bounded page reading | **Implemented** | [`cal_text_catalogue`, `cal_text_search`, `cal_text_page`](tools/texts.md) |
 | Lexical analysis of one token from a returned text coordinate | **Implemented as explicit composition** | [`cal_token_analysis`](tools/token-analysis.md) after a caller-selected text page/token |
 | Basic text concordance and text/dialect KWIC | **Implemented** | [`cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect`](tools/concordance.md) |
@@ -61,6 +61,6 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 The v0.1 surface is task-oriented rather than a mirror of CAL's PHP forms. Endpoint names, form controls, and HTML structure are private adapter details. Returned CAL identifiers are preserved where useful, but CAL-MCP does not decode opaque IDs into invented semantics. The local `cal_convert_to_code` tool is adapter-owned deterministic preprocessing and does not claim to be a CAL research endpoint.
 
-A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, or bibliography archives.
+A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, specialized gloss fields, or bibliography archives.
 
 Successful CAL-backed results preserve an actual CAL source URL and retrieval timestamp. See [Provenance and citation](concepts/provenance-and-citation.md) and [Errors and upstream drift](concepts/errors-and-upstream-drift.md) for the cross-cutting result contract.
