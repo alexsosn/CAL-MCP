@@ -54,7 +54,10 @@ async def test_direct_mandaic_additional_page_fails_before_transport() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("file_id", ["74401", "74411", "74700", "74701"])
+@pytest.mark.parametrize(
+    "file_id",
+    ["74401", "74411", "74700", "74701", "74702", "74711", "74714"],
+)
 async def test_researched_subdivided_mandaic_files_keep_sub_page_route(file_id: str) -> None:
     transport = RecordingStopTransport()
     client = CalHttpClient(transport=transport)
