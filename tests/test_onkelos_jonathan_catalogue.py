@@ -38,6 +38,22 @@ def test_root_catalogue_preserves_onkelos_jonathan_collection_in_order() -> None
     ]
 
 
+def test_dedicated_onkelos_jonathan_route_preserves_changed_nonempty_label() -> None:
+    page = parse_text_catalogue_page(
+        _response(
+            b"<html><body>"
+            b'<a href="showsubtexts.php?subtext=3">Biblical Aramaic</a>'
+            b'<a href="targum_onkelos_jonathan.html">Onkelos and Jonathan Targums</a>'
+            b"</body></html>"
+        )
+    )
+
+    assert [(item.category_id, item.label) for item in page.categories] == [
+        ("3", "Biblical Aramaic"),
+        ("51", "Onkelos and Jonathan Targums"),
+    ]
+
+
 def test_changed_onkelos_jonathan_root_route_fails_closed() -> None:
     response = _response(
         b"<html><body>"
