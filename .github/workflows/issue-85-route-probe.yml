@@ -1,4 +1,4 @@
-name: Issue 85 bounded route probe
+name: Issue 85 production reproduction
 
 on:
   push:
@@ -11,53 +11,41 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  reproduce:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install probe dependency
-        run: python -m pip install "httpx2==2.12.0"
-      - name: Compare four fixed CAL route variants
+      - name: Install exact branch package
+        run: python -m pip install .
+      - name: Reproduce one production request
         shell: python
         run: |
           import asyncio
-          import httpx2
 
-          CASES = (
-              ("current", {"file": "74410", "page": "0"}),
-              ("sub_only", {"file": "74410", "sub": "001", "page": "0"}),
-              ("cset_sub_page", {"cset": "M", "file": "74410", "sub": "001", "page": "0"}),
-              ("cset_sub", {"cset": "M", "file": "74410", "sub": "001"}),
-          )
+          from cal_mcp.client import CalClientConfig, CalHttpClient
+          from cal_mcp.texts import TextService
 
           async def main() -> None:
-              timeout = httpx2.Timeout(10.0, connect=5.0)
-              async with httpx2.AsyncClient(
-                  base_url="https://cal.huc.edu/",
-                  timeout=timeout,
-                  follow_redirects=False,
-                  headers={"User-Agent": "CAL-MCP bounded issue-85 research probe"},
-              ) as client:
-                  for name, params in CASES:
-                      async with client.stream("GET", "get_a_chapter.php", params=params) as response:
-                          body = bytearray()
-                          async for chunk in response.aiter_bytes():
-                              body.extend(chunk)
-                              if len(body) > 131072:
-                                  raise RuntimeError("probe response exceeded 128 KiB research cap")
-                      text = body.decode("utf-8", errors="replace")
-                      print(
-                          name,
-                          "status=", response.status_code,
-                          "url=", response.url,
-                          "bytes=", len(body),
-                          "ginza=", "Ginza Rabba" in text,
-                          "line001=", "001:01" in text,
-                          "no_lines=", "NO LINES FOR" in text.upper(),
-                          "chapter_form=", "get_a_chapter.php" in text,
-                      )
+              client = CalHttpClient(
+                  config=CalClientConfig(
+                      max_retries=0,
+                      max_concurrency=1,
+                      cache_enabled=False,
+                  )
+              )
+              try:
+                  try:
+                      result = await TextService(client).page("74410", page=1)
+                  except Exception as exc:
+                      print(type(exc).__name__ + ": " + str(exc))
+                      raise
+                  else:
+                      print(result.to_dict())
+              finally:
+                  await client.aclose()
 
           asyncio.run(main())
