@@ -158,9 +158,17 @@ async def test_namespace_string_subclass_is_rejected_before_transport() -> None:
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("field", ["params", "data"])
-async def test_pair_string_subclasses_are_rejected_before_transport(field: str) -> None:
+@pytest.mark.parametrize("member", ["key", "value"])
+async def test_pair_string_subclasses_are_rejected_before_transport(
+    field: str,
+    member: str,
+) -> None:
     client = CalHttpClient(transport=unreachable_transport)
-    pairs = ((StringSubclass("q"), "one"),)
+    pairs = (
+        ((StringSubclass("q"), "one"),)
+        if member == "key"
+        else (("q", StringSubclass("one")),)
+    )
     request = (
         CalRequest(method="GET", path="entry.php", params=pairs)
         if field == "params"
