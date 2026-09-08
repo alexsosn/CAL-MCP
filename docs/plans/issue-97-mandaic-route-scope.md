@@ -148,3 +148,13 @@ Immediately before merge:
 ## CAL access / load impact
 
 Research used four fixed menu GETs total while resolving raw rendering/link-shape ambiguity, each capped at 512 KiB and 15 seconds. Production remains one CAL request per supported `cal_text_page` call and adds no discovery, fallback probing, prefetch, traversal, or background work.
+
+## Execution record
+
+- Research and routing classification were committed before the plan and implementation.
+- Valid test-only RED: `64c40fcd100e9278c22687e1605f5668db8f55b4`, CI run `34243957093`. Both dependency matrices passed installation/environment validation, Ruff lint, Ruff format, and strict mypy before pytest. The deterministic matrix finished **677 passed / exactly 3 failed**, all three new route-scope regressions: direct `74501`/`74717` incorrectly received `sub=001`, and direct page 2 reached transport instead of failing locally.
+- Minimal production routing fix: `f091528ad40a46dc005981a51b642a3b0b36c060`.
+- Direct-parser-mode regression coverage was then added at `d4bbc9db25dc085eefd51e923b019001e592cf80` to prove a direct Mandaic page uses ordinary/unpaginated semantics rather than specialized page synthesis.
+- Post-fix GREEN at `d4bbc9db25dc085eefd51e923b019001e592cf80`: CI run `34244501560`, both deterministic and latest-compatible matrices green; deterministic pytest **691 passed**.
+- Earlier issue #85 research independently records a current direct Mandaic page (`74713`) using `get_a_chapter.php?cset=M&file=74713`, so retaining `cset=M` for direct Mandaic page retrieval is grounded in upstream evidence rather than inherited solely from the Ginza subdivided route.
+- This execution-record commit intentionally changes no production behavior. Exact-head CI and logically independent adversarial review remain required before merge.
