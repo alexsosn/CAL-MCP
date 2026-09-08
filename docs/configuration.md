@@ -121,7 +121,7 @@ An in-flight follower receives the result of the active request rather than a fa
 
 ## Request boundary
 
-`CalHttpClient` accepts only relative CAL paths and GET/POST requests. Absolute URLs, external hosts, embedded query strings/fragments, and path traversal are rejected before the transport is invoked. Query/form fields must be represented explicitly by `CalRequest.params` and `CalRequest.data` so request identity remains deterministic.
+`CalHttpClient` accepts only relative CAL paths and GET/POST requests. Absolute URLs, external hosts, embedded query strings/fragments, and path traversal are rejected before the transport is invoked. Low-level programmatic requests must use an actual `CalRequest` with string method/path fields; `params` and `data` must be immutable tuples of two-string tuples, and the cache/parser namespace must be a non-empty string. Invalid runtime shapes are rejected with `CalRequestValidationError` before cache-key construction or transport rather than being coerced. Ordered repeated query/form pairs remain intact, so request, cache, and single-flight identity use the same immutable representation.
 
 The production transport does not follow redirects. This keeps the validated `cal.huc.edu` origin as the actual network boundary rather than validating only the first URL and allowing a redirect to move the request elsewhere.
 

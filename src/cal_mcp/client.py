@@ -283,6 +283,8 @@ class CalHttpClient:
         cache_namespace: str,
     ) -> CalFetchResult[T]:
         normalized = self._validate_and_normalize_request(request)
+        if type(cache_namespace) is not str:
+            raise CalRequestValidationError("cache_namespace must be a string")
         if not cache_namespace.strip():
             raise CalRequestValidationError("cache_namespace must not be empty")
         key = self._cache_key(cache_namespace, normalized)
@@ -380,6 +382,13 @@ class CalHttpClient:
             future.exception()
 
     def _validate_and_normalize_request(self, request: CalRequest) -> CalRequest:
+        if type(request) is not CalRequest:
+            raise CalRequestValidationError("CAL request must be a CalRequest")
+        if type(request.method) is not str:
+            raise CalRequestValidationError("CAL request method must be a string")
+        if type(request.path) is not str:
+            raise CalRequestValidationError("CAL request path must be a string")
+
         method = request.method.upper().strip()
         if method not in {"GET", "POST"}:
             raise CalRequestValidationError("CAL requests must use GET or POST")
@@ -398,7 +407,28 @@ class CalHttpClient:
         if not path or path == ".." or path.startswith("../") or "/../" in path:
             raise CalRequestValidationError("CAL request path must stay within the CAL site")
 
-        return CalRequest(method=method, path=path, params=request.params, data=request.data)
+        params = self._validate_request_pairs("params", request.params)
+        data = self._validate_request_pairs("data", request.data)
+        return CalRequest(method=method, path=path, params=params, data=data)
+
+    @staticmethod
+    def _validate_request_pairs(
+        name: str,
+        value: object,
+    ) -> tuple[tuple[str, str], ...]:
+        if type(value) is not tuple:
+            raise CalRequestValidationError(f"CAL request {name} must be a tuple of string pairs")
+        for pair in value:
+            if (
+                type(pair) is not tuple
+                or len(pair) != 2
+                or type(pair[0]) is not str
+                or type(pair[1]) is not str
+            ):
+                raise CalRequestValidationError(
+                    f"CAL request {name} must be a tuple of string pairs"
+                )
+        return cast(tuple[tuple[str, str], ...], value)
 
     def _cache_key(self, namespace: str, request: CalRequest) -> str:
         return repr((namespace, request.method, request.path, request.params, request.data))
