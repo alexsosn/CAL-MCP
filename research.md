@@ -433,3 +433,16 @@ Issue #79's bounded Tel Dan probe established that current `get_a_chapter.php?fi
 Detailed evidence and probe load are recorded in `docs/research/issue-79-tel-dan-text-page.md`. The branch-only probe made four fixed Tel Dan GETs total and was removed before planning; no linked token analysis or neighboring text/page traversal occurred.
 
 **Implication:** text-page parsing must recognize both current CAL lexical-token endpoint families while preserving the exact returned URL and existing coordinate/index validation. Do not infer tokens from unlinked text, replace one endpoint globally with the other, or expose CAL-private link parameters in the MCP schema.
+
+
+## R-025 — Mandaic collection 74 mixes subdivided and direct text routes
+
+**Rechecked:** 2026-09-08.
+
+Issue #97 corrects the route assumption introduced by #95. Current CAL does not expose every `74...` Mandaic file through the same `showsubtexts.php` / `get_a_chapter.php?...&sub=NNN` workflow. A bounded live menu audit found both route kinds inside the same collection and even inside the same numeric subfamilies.
+
+The current live menu snapshot exposes these files through `showsubtexts.php`: `74401`, `74402`, `74410`, `74411`, `74421`, `74422`, `74423`, `74428`, `74430`, `74432`, `74701`, and `74923`. It exposes `74420`, `74424`, `74425`, `74426`, `74427`, `74429`, `74431`, and `74501` directly through `get_a_chapter.php`. Independent browser/index evidence also shows direct `74716`/`74717` and subdivided `74700`. Therefore neither `74`, `744`, nor `747` is a valid route discriminator.
+
+Four fixed branch-only menu GETs were used while resolving CAL's raw rendering/`cset` variation; each had a 15-second timeout and 512 KiB cap. No text, subtext, token, page, or result link was followed. Detailed evidence is in `docs/research/issue-97-mandaic-route-scope.md`.
+
+**Implication:** `cal_text_page` keeps one public schema and one-request behavior, but private Mandaic route selection must be per-file. A current allowlist selects only CAL files explicitly observed as subdivided; all other `74...` files use the direct Mandaic page-1 route rather than inventing `sub=NNN`. Explicit public `subtext_id` and non-Mandaic routing remain unchanged. New subdivided files require researched allowlist updates rather than prefix inference or runtime discovery.
