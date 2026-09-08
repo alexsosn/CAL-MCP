@@ -1,0 +1,64 @@
+name: issue-101 apply review fix
+
+on:
+  push:
+    branches:
+      - issue-101-onkelos-jonathan-catalogue
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-101-onkelos-jonathan-catalogue
+          fetch-depth: 0
+      - name: Apply exact route-first correction
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/texts.py")
+          text = path.read_text()
+          old = '''def _category_from_link(link: _Link) -> TextCategoryRef | None:
+              label = link.text.strip()
+              if label == _ONKELOS_JONATHAN_LABEL:
+                  parsed = urlsplit(link.href)
+                  if parsed.path.endswith(_ONKELOS_JONATHAN_PATH) and not parsed.query:
+                      return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
+                  raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+
+              if not _is_path(link.href, "showsubtexts.php"):
+                  return None
+          '''
+          new = '''def _category_from_link(link: _Link) -> TextCategoryRef | None:
+              label = link.text.strip()
+              parsed = urlsplit(link.href)
+              if parsed.path.endswith(_ONKELOS_JONATHAN_PATH):
+                  if parsed.query:
+                      raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+                  if not label:
+                      raise TextParseError("CAL Onkelos/Jonathan catalogue link has no label")
+                  return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
+              if label == _ONKELOS_JONATHAN_LABEL:
+                  raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+
+              if not _is_path(link.href, "showsubtexts.php"):
+                  return None
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("expected issue-101 parser snippet exactly once")
+          path.write_text(text.replace(old, new))
+      - name: Commit production correction
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/texts.py
+          git diff --cached --check
+          git commit -m "Fix dedicated Targum route recognition"
+          git push origin HEAD:issue-101-onkelos-jonathan-catalogue
