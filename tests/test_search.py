@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import cal_mcp.search as search_module
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.search import (
     EnglishSearchService,
@@ -127,6 +128,45 @@ async def test_gloss_search_uses_current_post_contract_and_preserves_provenance(
     assert result.provenance.original_query == " camel# "
     assert result.provenance.submitted_query == "camel#"
     assert result.provenance.search_kind == "gloss"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("field_slug", "label", "token"),
+    [
+        ("alchemy", "alchemy", "(alchem"),
+        ("geology", "geology, gemology", "(geol"),
+        ("zoology", "zoology, fauna", "(zool"),
+    ],
+)
+async def test_specialized_gloss_field_uses_current_get_contract_once(
+    field_slug: str,
+    label: str,
+    token: str,
+) -> None:
+    field_type = getattr(search_module, "GlossField", None)
+    assert field_type is not None, "GlossField public selector is not implemented"
+
+    transport = FixtureSearchTransport()
+    service = EnglishSearchService(CalHttpClient(transport=transport))
+    search_field = getattr(service, "search_gloss_field", None)
+    assert callable(search_field), "specialized gloss-field service operation is not implemented"
+
+    result = await search_field(field_type(field_slug))
+
+    assert transport.requests == [
+        CalRequest(
+            method="GET",
+            path="newsearchmngs.php",
+            params=(("English", token), ("secondary", "true")),
+        )
+    ]
+    assert result.field.value == field_slug
+    assert result.label == label
+    assert [item.lemma_key for item in result.matches] == ["bwkty N", "gml N", "ynqh N"]
+    assert result.provenance.original_query == field_slug
+    assert result.provenance.submitted_query == token
+    assert result.provenance.search_kind == "gloss_field"
 
 
 @pytest.mark.anyio
