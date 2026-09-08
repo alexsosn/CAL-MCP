@@ -1,0 +1,45 @@
+name: Issue 97 update text docs
+
+on:
+  push:
+    branches: [fix/issue-97-mandaic-route-scope]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-97-mandaic-route-scope
+      - name: Update exact Mandaic routing prose and remove helper
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("docs/tools/texts.md")
+          text = path.read_text(encoding="utf-8")
+          replacements = {
+              "This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's different ordinary and Mandaic page-routing forms behind the same public operation.":
+              "This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's ordinary route and the current mixed direct/subdivided Mandaic collection-74 routes behind the same public operation. Route classification is private adapter metadata derived from current CAL navigation; it is not inferred from the `74` prefix at request time.",
+              "The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current Mandaic collection-74 pages instead use CAL's `cset=M` route with a one-based `sub` page selector such as `001`, `002`, or `1000`. Both forms remain adapter-private, and one public call still makes exactly one CAL request.":
+              "The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current CAL Mandaic navigation is heterogeneous: known subdivided files such as Ginza Rabba Right/Left (`74410`/`74411`) use the specialized `cset=M` route with a one-based `sub` selector such as `001`, `002`, or `1000`, while direct files such as `74501` and `74717` use a direct page-1 request with no `sub` or ordinary `page` field. A direct Mandaic request for `page>1` is rejected locally until CAL exposes a researched pagination contract for that route. These upstream forms remain adapter-private, and each supported public call still makes exactly one CAL request.",
+              "Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For the internal Mandaic route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. It does not invent `page_count` or `total_lines` when CAL does not provide them.":
+              "Subdivided Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For that private specialized route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. Direct Mandaic page-1 responses use the ordinary/unpaginated parser semantics instead; they do not receive synthetic page numbering or relaxed specialized navigation. CAL-MCP does not invent `page_count` or `total_lines` when CAL does not provide them.",
+              "For ordinary pagination, previous/next links must address the same `file_id` and `subtext_id` as the requested page and point to the adjacent in-range page implied by CAL's pagination marker. For the Mandaic route, navigation must retain `cset=M`, target the same file, and select the adjacent decimal `sub` page. Foreign files/subtexts, foreign Mandaic collection selectors, malformed selectors, and non-adjacent targets are parser drift. Missing previous/next links are not invented.":
+              "For ordinary pagination, previous/next links must address the same `file_id` and `subtext_id` as the requested page and point to the adjacent in-range page implied by CAL's pagination marker. For the subdivided Mandaic route, navigation must retain `cset=M`, target the same file, and select the adjacent decimal `sub` page. Direct Mandaic page-1 responses do not opt into that specialized navigation contract. Foreign files/subtexts, foreign Mandaic collection selectors, malformed selectors, and non-adjacent targets are parser drift. Missing previous/next links are not invented."
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f"unexpected docs shape for: {old[:60]}")
+              text = text.replace(old, new)
+          path.write_text(text, encoding="utf-8")
+          PY
+          rm .github/workflows/issue-97-update-docs.yml
+          git config user.name "Oleksandr (Alex) Sosnovshchenko"
+          git config user.email "alex.sosn88@gmail.com"
+          git add docs/tools/texts.md .github/workflows/issue-97-update-docs.yml
+          git commit -m "docs: explain mixed Mandaic text routes"
+          git push origin HEAD:fix/issue-97-mandaic-route-scope
