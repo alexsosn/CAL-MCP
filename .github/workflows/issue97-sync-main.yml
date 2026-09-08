@@ -18,12 +18,85 @@ jobs:
         with:
           ref: fix/issue-97-mandaic-route-scope
           fetch-depth: 0
-      - name: Merge current main and self-remove
+      - name: Merge current main and resolve tested texts overlap
         run: |
+          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git merge --no-commit --no-ff origin/main
+          if ! git merge --no-commit --no-ff origin/main; then
+            conflicts="$(git diff --name-only --diff-filter=U)"
+            test "$conflicts" = "src/cal_mcp/texts.py"
+            git checkout --theirs src/cal_mcp/texts.py
+            git add src/cal_mcp/texts.py
+          fi
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/texts.py")
+          text = path.read_text()
+          anchor = '_MANDAIC_COLLECTION_PREFIX = "74"\n'
+          allowlist = '''_MANDAIC_COLLECTION_PREFIX = "74"
+          _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
+              {
+                  "74401",
+                  "74402",
+                  "74410",
+                  "74411",
+                  "74421",
+                  "74422",
+                  "74423",
+                  "74428",
+                  "74430",
+                  "74432",
+                  "74700",
+                  "74701",
+                  "74923",
+              }
+          )
+          '''
+          if "_MANDAIC_SUBDIVIDED_FILE_IDS" not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit("unexpected Mandaic constant anchor")
+              text = text.replace(anchor, allowlist, 1)
+
+          old = '''        mandaic_page_route = normalized_subtext is None and normalized_file.startswith(
+                      _MANDAIC_COLLECTION_PREFIX
+                  )
+                  if mandaic_page_route:
+                      params = [
+                          ("cset", "M"),
+                          ("file", normalized_file),
+                          ("sub", f"{page:03d}"),
+                      ]
+                  else:
+          '''
+          new = '''        mandaic_collection_route = normalized_subtext is None and normalized_file.startswith(
+                      _MANDAIC_COLLECTION_PREFIX
+                  )
+                  mandaic_page_route = (
+                      mandaic_collection_route and normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS
+                  )
+                  mandaic_direct_route = mandaic_collection_route and not mandaic_page_route
+                  if mandaic_page_route:
+                      params = [
+                          ("cset", "M"),
+                          ("file", normalized_file),
+                          ("sub", f"{page:03d}"),
+                      ]
+                  elif mandaic_direct_route:
+                      if page != 1:
+                          raise ValueError("direct Mandaic texts currently support only page 1")
+                      params = [("cset", "M"), ("file", normalized_file)]
+                  else:
+          '''
+          if "mandaic_direct_route" not in text:
+              if text.count(old) != 1:
+                  raise SystemExit("unexpected Mandaic page-routing block")
+              text = text.replace(old, new, 1)
+          path.write_text(text)
+          PY
+          git add src/cal_mcp/texts.py
           git rm .github/workflows/issue97-sync-main.yml
           git diff --cached --check
           git commit -m "Merge current main into issue-97 branch"
