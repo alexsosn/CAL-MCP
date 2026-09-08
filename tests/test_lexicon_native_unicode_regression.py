@@ -76,3 +76,24 @@ async def test_unverified_syriac_base_still_fails_before_cal_io(query: str) -> N
         await client.aclose()
 
     assert calls == 0
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("query", ["ܡܲܠܟܐ܀", "ܲܡ"])
+async def test_syriac_punctuation_or_unattached_mark_still_fails_before_cal_io(query: str) -> None:
+    calls = 0
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal calls
+        del request, config
+        calls += 1
+        raise AssertionError("unsupported Syriac syntax must fail before CAL I/O")
+
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(UnsupportedQueryError):
+            await LexiconLookupService(client).lookup(query)
+    finally:
+        await client.aclose()
+
+    assert calls == 0
