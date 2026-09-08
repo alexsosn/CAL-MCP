@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.texts import TextParseError, TextService, parse_text_catalogue_page, parse_text_search_page
+from cal_mcp.texts import (
+    TextParseError,
+    TextService,
+    parse_text_catalogue_page,
+    parse_text_search_page,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "cal" / "text_search_ginza.html"
 
@@ -38,7 +43,10 @@ def test_ginza_search_preserves_specialized_mandaic_results_in_cal_order() -> No
             "74411",
             None,
             "Ginza Rabba (Great Treasury) Left Side",
-            "Ginza Smala prepared from the Petermann edition and known manuscripts by M. Morgenstern.",
+            (
+                "Ginza Smala prepared from the Petermann edition and known manuscripts "
+                "by M. Morgenstern."
+            ),
         ),
     ]
 
