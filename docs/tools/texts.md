@@ -9,7 +9,7 @@ CAL-MCP exposes three bounded tools for discovering CAL texts and retrieving one
 | Browse the root CAL text catalogue | `cal_text_catalogue()` |
 | Expand one catalogue category returned by CAL | `cal_text_catalogue(category_id=...)` |
 | Find CAL texts by the topic/search phrase accepted by CAL | `cal_text_search(query)` |
-| Retrieve one normal CAL text page | `cal_text_page(file_id, subtext_id=None, page=1)` |
+| Retrieve one CAL text page | `cal_text_page(file_id, subtext_id=None, page=1)` |
 
 The identifiers returned by these tools are CAL identifiers, not CAL-MCP identifiers. See [`../concepts/cal-identifiers.md`](../concepts/cal-identifiers.md).
 
@@ -59,24 +59,26 @@ cal_text_page(
 )
 ```
 
-This tool retrieves exactly one normal page from CAL's text browser.
+This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's different ordinary and Mandaic page-routing forms behind the same public operation.
 
 ### Page numbering
 
-The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. CAL's current internal page parameter is zero-based; that detail remains adapter-private.
+The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current Mandaic collection-74 pages instead use CAL's `cset=M` route with a one-based `sub` page selector such as `001`, `002`, or `1000`. Both forms remain adapter-private, and one public call still makes exactly one CAL request.
 
 For a paginated text, the result may contain:
 
 - `page`: displayed one-based page number;
-- `page_count`: total number of rendered CAL pages;
+- `page_count`: total number of rendered CAL pages when CAL reports one;
 - `total_lines`: total line count CAL reports;
 - `previous_page` and `next_page`: explicit one-based navigation targets when CAL renders them.
 
-Some short CAL texts are not rendered with a page-count marker. In that case CAL-MCP does not invent pagination metadata: the observed page is returned as page 1 and `page_count`, `total_lines`, `previous_page`, and `next_page` are `null`.
+Some short CAL texts are not rendered with a page-count marker. Ordinary unpaginated pages are returned as page 1 with `page_count`, `total_lines`, `previous_page`, and `next_page` set to `null`.
 
-For a successful requested-page operation, the page CAL renders must match the caller's one-based `page`. If CAL returns a different displayed page, or returns an unpaginated page-1 shape for a request after page 1, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
+Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For the internal Mandaic route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. It does not invent `page_count` or `total_lines` when CAL does not provide them.
 
-When CAL renders a previous/next link, CAL-MCP also requires that link to address the same `file_id` and `subtext_id` as the requested page and to point to the adjacent in-range page implied by CAL's pagination marker. Navigation without a pagination marker, foreign text/subtext targets, or non-adjacent/out-of-range targets are parser drift. Missing previous/next links are not invented.
+For a successful requested-page operation, the page CAL renders or explicitly selects must remain consistent with the caller's one-based `page`. If CAL supplies contradictory page metadata or non-adjacent navigation, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
+
+For ordinary pagination, previous/next links must address the same `file_id` and `subtext_id` as the requested page and point to the adjacent in-range page implied by CAL's pagination marker. For the Mandaic route, navigation must retain `cset=M`, target the same file, and select the adjacent decimal `sub` page. Foreign files/subtexts, foreign Mandaic collection selectors, malformed selectors, and non-adjacent targets are parser drift. Missing previous/next links are not invented.
 
 CAL's current browser also exposes a `show all` navigation path. CAL-MCP **does not expose it** because it defeats the bounded-request contract. Moving to another page requires another explicit `cal_text_page` call.
 
@@ -90,7 +92,7 @@ A found page has a `text` reference plus ordered `lines`. Each line preserves th
 - `tokens`: ordered linked tokens, each with the CAL machine coordinate, zero-based CAL `word_index`, rendered token text, and absolute `lexical_url`;
 - `comment_url`: CAL's line-comment URL when CAL renders one.
 
-CAL-MCP does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
+CAL currently exposes lexical token links through more than one endpoint family, including `bablex.php` and `getlex.php`. CAL-MCP preserves whichever lexical URL the page supplies and applies the same coordinate/word-index validation to both. It does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
 
 ### Missing text and parser drift
 
@@ -109,6 +111,7 @@ Every public text tool performs exactly one user-initiated CAL request:
 
 - no recursive catalogue expansion;
 - no automatic traversal to previous/next pages;
+- no route-discovery request before Mandaic page retrieval;
 - no `show all` request;
 - no prefetch of text-search matches;
 - no token lexical-analysis requests;
@@ -124,11 +127,12 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 
 ## Fixture-backed examples
 
-Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04. Representative cases include:
+Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08. Representative cases include:
 
 - a topic search for `Tel Dan` returning CAL file `13250`;
 - a paginated `BT AZ` page exposing page and machine-coordinate metadata;
-- the short Tel Dan text, which has valid text lines but no page-count marker;
+- the short Tel Dan text, which has valid `getlex.php` token links but no page-count marker;
+- a Ginza Rabba Right Side page using the current Mandaic `cset=M` / `sub=NNN` route and adjacent navigation without a rendered total page count;
 - CAL's explicit no-lines page for a nonexistent subtext.
 
 The fixtures are parser contracts, not archived CAL pages. Normal CI performs zero CAL requests.
