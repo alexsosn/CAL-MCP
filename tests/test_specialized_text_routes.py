@@ -42,9 +42,7 @@ def test_root_catalogue_preserves_current_specialized_collection_routes() -> Non
     assert [(item.category_id, item.label) for item in page.categories] == [
         ("3", "Biblical Aramaic")
     ]
-    assert [(item.file_id, item.label) for item in page.texts] == [
-        ("13250", "Tel Dan Stele")
-    ]
+    assert [(item.file_id, item.label) for item in page.texts] == [("13250", "Tel Dan Stele")]
     assert [
         (item.collection_id, item.label, item.follow_up_tool, item.category_id)
         for item in page.collections
