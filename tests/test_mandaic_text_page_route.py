@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.texts import TextPageStatus, TextService, parse_text_page
+from cal_mcp.texts import TextPageStatus, TextParseError, TextService, parse_text_page
 
 FIXTURE = Path(__file__).parent / "fixtures" / "cal" / "text_page_ginza_right_001.html"
 
@@ -115,3 +115,73 @@ async def test_mandaic_public_page_two_maps_to_sub_002_without_discovery() -> No
         ("file", "74410"),
         ("sub", "002"),
     )
+
+
+class StopAfterRequest(Exception):
+    pass
+
+
+class StopTransport:
+    def __init__(self) -> None:
+        self.requests: list[CalRequest] = []
+
+    async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        self.requests.append(request)
+        raise StopAfterRequest
+
+
+@pytest.mark.anyio
+async def test_large_mandaic_page_number_is_not_truncated() -> None:
+    transport = StopTransport()
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(StopAfterRequest):
+            await TextService(client).page("74410", page=1000)
+    finally:
+        await client.aclose()
+
+    assert transport.requests == [
+        CalRequest(
+            method="GET",
+            path="get_a_chapter.php",
+            params=(("cset", "M"), ("file", "74410"), ("sub", "1000")),
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_explicit_subtext_keeps_ordinary_file_sub_page_route() -> None:
+    transport = StopTransport()
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(StopAfterRequest):
+            await TextService(client).page("74410", subtext_id="17", page=2)
+    finally:
+        await client.aclose()
+
+    assert transport.requests == [
+        CalRequest(
+            method="GET",
+            path="get_a_chapter.php",
+            params=(("file", "74410"), ("sub", "17"), ("page", "1")),
+        )
+    ]
+
+
+class ForeignNavigationTransport:
+    async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        assert request.params == (("cset", "M"), ("file", "74410"), ("sub", "001"))
+        body = FIXTURE.read_bytes().replace(b"file=74410&amp;sub=002", b"file=74411&amp;sub=002")
+        return _response(body)
+
+
+@pytest.mark.anyio
+async def test_mandaic_navigation_to_foreign_file_fails_closed() -> None:
+    client = CalHttpClient(transport=ForeignNavigationTransport())
+    try:
+        with pytest.raises(TextParseError, match="navigation file differs"):
+            await TextService(client).page("74410", page=1)
+    finally:
+        await client.aclose()
