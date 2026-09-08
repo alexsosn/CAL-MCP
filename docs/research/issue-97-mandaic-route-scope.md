@@ -98,7 +98,16 @@ Therefore the narrowest deterministic policy is:
 3. keep explicit public `subtext_id` behavior on the pre-existing ordinary route, unchanged;
 4. keep all non-`74...` files on the ordinary route, unchanged.
 
-The initial allowlist should contain the complete 12-file live-menu set above plus `74700`, whose indexed/browser menu link is explicitly subdivided. The allowlist is adapter routing metadata, not a new public identifier taxonomy.
+The first implementation used the 12-file live-runner set above plus indexed/browser evidence for `74700`. A later exact-head adversarial review re-read the same current menu more completely and found three additional subdivided `747xx` rows omitted by that partial observation: `74702`, `74711`, and `74714`. The complete current `747xx` route classification observed in that review is recorded in `docs/research/issue-97-review-747xx-route-addendum.md`.
+
+The current private subdivided set therefore includes:
+
+```text
+74401 74402 74410 74411 74421 74422 74423
+74428 74430 74432 74700 74701 74702 74711 74714 74923
+```
+
+The allowlist is adapter routing metadata, not a new public identifier taxonomy. Current neighboring `74703`–`74710`, `74712`–`74713`, and `74715`–`74723` are direct menu links, so the review strengthens rather than weakens the conclusion that a `747` prefix rule would be wrong.
 
 This policy intentionally prefers a direct request for an unknown/new `74...` file over inventing a `sub=NNN` selector. If CAL later adds a new subdivided Mandaic file, the adapter may fail to retrieve it until the menu evidence is researched and the private allowlist is updated; that is safer than silently sending an ungrounded specialized request.
 
@@ -123,7 +132,7 @@ For an allowlisted subdivided file with no public `subtext_id`, preserve #95's r
 - specialized previous/next links remain same-file / `cset=M` / adjacent-`sub` validated;
 - no total page count is invented.
 
-Ginza Rabba Right (`74410`) and Left (`74411`) remain explicitly covered.
+Ginza Rabba Right (`74410`) and Left (`74411`) remain explicitly covered. The review-regression suite also pins the current subdivided `74702`, `74711`, and `74714` routes so a partial menu observation cannot silently regress them again.
 
 ## Public contract and non-goals
 
@@ -140,17 +149,21 @@ Out of scope:
 
 ## TDD target
 
-The test-only RED must prove at least:
+The initial test-only RED proved at least:
 
 1. `TextService.page("74501", page=1)` sends exactly one direct Mandaic request containing `cset=M` + `file=74501` and **no** `sub` or ordinary `page` parameter;
-2. another representative direct `74...` ID not on the allowlist (for example `74717`) follows the same direct classification;
+2. another representative direct `74...` ID not on the allowlist (`74717`) follows the same direct classification;
 3. direct Mandaic `page=2` fails before transport;
 4. `74410` and `74411` still use `sub=001` / specialized routing;
-5. a non-Ginza subdivided allowlist member (for example `74401` or `74701`) also remains specialized, preventing a title-specific hack;
+5. a non-Ginza subdivided allowlist member (`74401` / `74701`) also remains specialized, preventing a title-specific hack;
 6. explicit public `subtext_id` and ordinary non-Mandaic request shapes remain unchanged.
+
+The exact-head review then added a second test-only RED for the three omitted current subdivided routes `74702`, `74711`, and `74714`. Both dependency matrices passed installation/environment checks, Ruff lint, Ruff format, and strict mypy; pytest failed only those three routing expectations (latest-compatible: 712 passed / exactly 3 failed).
 
 Normal CI remains offline.
 
 ## Research load
 
-Five fixed branch-only CAL GETs were made in total: four menu/rendering requests while resolving route classification and one post-review direct-page request for `74717`. Each had a 15-second timeout and 512 KiB cap. No token, comment, next-page, catalogue-child, or other returned navigation link was followed. Temporary research workflows were removed after their evidence was recorded.
+The implementation research used five fixed branch-only CAL GETs total: four menu/rendering requests while resolving route classification and one post-review direct-page request for `74717`. Each had a 15-second timeout and 512 KiB cap. No token, comment, next-page, catalogue-child, or other returned navigation link was followed.
+
+The later exact-head review classified the previously omitted `747xx` rows from the same current menu's destination hrefs without traversing their text contents. Detailed review evidence is in `docs/research/issue-97-review-747xx-route-addendum.md`. Temporary research/helper workflows were removed after use.
