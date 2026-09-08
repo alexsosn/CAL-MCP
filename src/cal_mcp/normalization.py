@@ -160,6 +160,7 @@ _UNICODE_TRANSLITERATION_TO_CAL_CODE = {
     "ṣ": "c",
     "š": "$",
     "ś": "&",
+    "_": "_",
 }
 
 _HEBREW_TO_CAL_CODE = {
