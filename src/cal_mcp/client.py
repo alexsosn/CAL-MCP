@@ -389,8 +389,6 @@ class CalHttpClient:
         if not isinstance(request.path, str):
             raise CalRequestValidationError("CAL request path must be a string")
 
-        params = self._validate_request_pairs("params", request.params)
-        data = self._validate_request_pairs("data", request.data)
         method = request.method.upper().strip()
         if method not in {"GET", "POST"}:
             raise CalRequestValidationError("CAL requests must use GET or POST")
@@ -409,6 +407,8 @@ class CalHttpClient:
         if not path or path == ".." or path.startswith("../") or "/../" in path:
             raise CalRequestValidationError("CAL request path must stay within the CAL site")
 
+        params = self._validate_request_pairs("params", request.params)
+        data = self._validate_request_pairs("data", request.data)
         return CalRequest(method=method, path=path, params=params, data=data)
 
     @staticmethod
