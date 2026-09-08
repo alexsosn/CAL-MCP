@@ -58,7 +58,8 @@ async def test_cal_native_pointed_unicode_keeps_legacy_single_browse_path(
 
 
 @pytest.mark.anyio
-async def test_unverified_syriac_letter_still_fails_before_cal_io() -> None:
+@pytest.mark.parametrize("query", ["ܞ", "ܞܲ"])
+async def test_unverified_syriac_base_still_fails_before_cal_io(query: str) -> None:
     calls = 0
 
     async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
@@ -70,7 +71,7 @@ async def test_unverified_syriac_letter_still_fails_before_cal_io() -> None:
     client = CalHttpClient(transport=transport)
     try:
         with pytest.raises(UnsupportedQueryError):
-            await LexiconLookupService(client).lookup("ܞ")
+            await LexiconLookupService(client).lookup(query)
     finally:
         await client.aclose()
 
