@@ -1,0 +1,63 @@
+name: Issue 85 bounded route probe
+
+on:
+  push:
+    branches:
+      - issue-85-ginza-rabba-text-page
+    paths:
+      - .github/workflows/issue-85-route-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install probe dependency
+        run: python -m pip install "httpx2==2.12.0"
+      - name: Compare four fixed CAL route variants
+        shell: python
+        run: |
+          import asyncio
+          import httpx2
+
+          CASES = (
+              ("current", {"file": "74410", "page": "0"}),
+              ("sub_only", {"file": "74410", "sub": "001", "page": "0"}),
+              ("cset_sub_page", {"cset": "M", "file": "74410", "sub": "001", "page": "0"}),
+              ("cset_sub", {"cset": "M", "file": "74410", "sub": "001"}),
+          )
+
+          async def main() -> None:
+              timeout = httpx2.Timeout(10.0, connect=5.0)
+              async with httpx2.AsyncClient(
+                  base_url="https://cal.huc.edu/",
+                  timeout=timeout,
+                  follow_redirects=False,
+                  headers={"User-Agent": "CAL-MCP bounded issue-85 research probe"},
+              ) as client:
+                  for name, params in CASES:
+                      async with client.stream("GET", "get_a_chapter.php", params=params) as response:
+                          body = bytearray()
+                          async for chunk in response.aiter_bytes():
+                              body.extend(chunk)
+                              if len(body) > 131072:
+                                  raise RuntimeError("probe response exceeded 128 KiB research cap")
+                      text = body.decode("utf-8", errors="replace")
+                      print(
+                          name,
+                          "status=", response.status_code,
+                          "url=", response.url,
+                          "bytes=", len(body),
+                          "ginza=", "Ginza Rabba" in text,
+                          "line001=", "001:01" in text,
+                          "no_lines=", "NO LINES FOR" in text.upper(),
+                          "chapter_form=", "get_a_chapter.php" in text,
+                      )
+
+          asyncio.run(main())
