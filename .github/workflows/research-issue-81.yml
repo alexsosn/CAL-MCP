@@ -1,0 +1,89 @@
+name: Research issue 81 Tel Dan token analysis
+
+on:
+  push:
+    branches: [fix/issue-81-token-analysis-tel-dan]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe three fixed current CAL token positions
+        shell: python
+        run: |
+          from html.parser import HTMLParser
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          class SemanticParser(HTMLParser):
+              BLOCKS = {"div", "p", "li", "td", "th", "tr", "h1", "h2", "h3", "h4"}
+
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.parts = []
+                  self.lines = []
+                  self.href = None
+                  self.link_parts = []
+                  self.links = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag in self.BLOCKS or tag == "br":
+                      self.flush()
+                  if tag == "a" and self.href is None:
+                      self.href = dict(attrs).get("href", "")
+                      self.link_parts = []
+
+              def handle_data(self, data):
+                  self.parts.append(data)
+                  if self.href is not None:
+                      self.link_parts.append(data)
+
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.href is not None:
+                      text = " ".join("".join(self.link_parts).split())
+                      self.links.append((self.href, text))
+                      self.href = None
+                      self.link_parts = []
+                  if tag in self.BLOCKS or tag == "br":
+                      self.flush()
+
+              def flush(self):
+                  text = " ".join("".join(self.parts).split())
+                  if text:
+                      self.lines.append((text, tuple(self.links)))
+                  self.parts = []
+                  self.links = []
+
+          for word in (0, 1, 2):
+              query = urlencode({"coord": "1325007", "word": str(word)})
+              request = Request(
+                  f"https://cal.huc.edu/getlex.php?{query}",
+                  headers={"User-Agent": "CAL-MCP/0.1.0 (+https://github.com/alexsosn/CAL-MCP)"},
+              )
+              with urlopen(request, timeout=15) as response:
+                  body = response.read(512 * 1024 + 1)
+                  print("CASE", word, "status", response.status, "bytes", len(body), "url", response.geturl())
+                  print("content_type", response.headers.get("Content-Type"))
+              parser = SemanticParser()
+              parser.feed(body.decode("utf-8", errors="replace"))
+              parser.flush()
+              rendered = " ".join(text for text, _ in parser.lines).lower()
+              print("markers", {
+                  "analysis": "click on a headword to see a complete lexicon entry" in rendered,
+                  "no_data": "there is no data for this word" in rendered,
+              })
+              for text, links in parser.lines:
+                  lowered = text.lower()
+                  if (
+                      "headword" in lowered
+                      or "data" in lowered
+                      or "analysis" in lowered
+                      or any("oneentry.php" in href or "cal_entry_web.php" in href for href, _ in links)
+                  ):
+                      print("line", repr(text[:300]))
+                      for href, label in links:
+                          if "oneentry.php" in href or "cal_entry_web.php" in href:
+                              print("lemma_link", repr(href), repr(label[:160]))
