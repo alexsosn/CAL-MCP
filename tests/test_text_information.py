@@ -28,6 +28,10 @@ _HATRAN_BODY = b"""<html><body>
 <p>Item and findspot note</p>
 <p>Bibliography note</p>
 </body></html>"""
+_MISSING_BODY = b"""<html><body>
+<h1>Text Information</h1>
+<p>No information on record for this text.</p>
+</body></html>"""
 
 
 def _response(
@@ -52,12 +56,25 @@ def _parser() -> Any:
 def test_text_information_parser_preserves_ordered_metadata() -> None:
     page = _parser()(_response(_VALID_BODY))
 
+    assert page.status.value == "found"
     assert page.metadata == (
         "Ephrem Hymns on Paradise",
         "Beck / CSCO edition information",
         "CAL corrections are ongoing",
         "Transcription and vocalization warning",
     )
+
+
+def test_text_information_explicit_missing_marker_is_not_found() -> None:
+    page = _parser()(
+        _response(
+            _MISSING_BODY,
+            "https://cal.huc.edu/get_file_info.php?coord=00000639",
+        )
+    )
+
+    assert page.status.value == "not_found"
+    assert page.metadata == ()
 
 
 def test_text_information_heading_without_metadata_fails_closed() -> None:
@@ -120,6 +137,7 @@ async def test_text_information_direct_selector_uses_one_request_and_provenance(
             params=(("coord", "6042013"),),
         )
     ]
+    assert result.status.value == "found"
     assert result.file_id == "6042013"
     assert result.subtext_id is None
     assert result.metadata == (
@@ -132,6 +150,26 @@ async def test_text_information_direct_selector_uses_one_request_and_provenance(
     assert result.provenance.upstream_id == "6042013"
     assert result.provenance.subtext_id is None
     assert result.provenance.source_url.endswith("get_file_info.php?coord=6042013")
+
+
+@pytest.mark.anyio
+async def test_text_information_service_preserves_explicit_not_found_state() -> None:
+    transport = InformationTransport(body=_MISSING_BODY)
+    service = TextService(CalHttpClient(transport=transport))
+
+    result = await _information_method(service)("00000639")
+
+    assert result.status.value == "not_found"
+    assert result.file_id == "00000639"
+    assert result.subtext_id is None
+    assert result.metadata == ()
+    assert transport.requests == [
+        CalRequest(
+            method="GET",
+            path="get_file_info.php",
+            params=(("coord", "00000639"),),
+        )
+    ]
 
 
 @pytest.mark.anyio
