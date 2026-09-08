@@ -5,132 +5,124 @@ Research prerequisite: `docs/research/issue-73-native-unicode-lexicon-pass-throu
 
 ## Goal
 
-Restore the pre-converter `cal_lexicon_lookup` compatibility contract for documented CAL-native pointed/vocalized Hebrew and Syriac, without weakening the standalone converter, admitting unverified base letters, or weakening the bounded ambiguity search added in issue #52.
+Restore the pre-converter `cal_lexicon_lookup` compatibility contract for documented CAL-native Hebrew/Syriac Unicode, including pointing/vocalization and bound-form separators, without weakening the standalone converter, admitting unverified base letters, or weakening issue #52's bounded ambiguity search.
 
 ## Gate 1 — behavior-first RED
 
-Add one focused offline test module, `tests/test_lexicon_native_unicode_regression.py`.
+Add focused offline regressions around `LexiconLookupService` with an injected transport and synthetic explicit no-match browse page.
 
-Use an injected transport returning a synthetic explicit no-match browse page. Parameterize at least:
+Positive CAL-native compatibility cases must include:
 
 - pointed Hebrew `מֶלֶךְ`;
-- vocalized Syriac `ܡܲܠܟܵܐ`.
+- vocalized Syriac `ܡܲܠܟܵܐ`;
+- Hebrew bound form `ו_`;
+- Syriac bound form `ܘ_`.
 
-For each case assert the intended legacy behavior:
+For each positive case assert:
 
-1. lookup returns `LexiconLookupStatus.NOT_FOUND` rather than raising local conversion error;
+1. lookup returns `LexiconLookupStatus.NOT_FOUND` rather than a local conversion error;
 2. exactly one request is made;
 3. request path is `browseSKEYheaders.php`;
-4. `first3` contains the Unicode browse prefix derived from the normalized query;
+4. `first3` contains the Unicode browse prefix from the normalized query;
 5. no entry request is made;
-6. provenance has no CAL-code candidate fan-out fields for this legacy path.
+6. provenance contains no CAL-code candidate fan-out fields for the legacy path.
 
-Do not modify production in the initial RED commit.
-
-### RED acceptance
-
-Both deterministic and latest-compatible CI must reach pytest with dependency/install, Ruff lint, Ruff format, and strict mypy GREEN and failures confined to the new native-Unicode regression expectations.
+The initial RED preceded production changes and established the pointed/vocalized compatibility regression in both CI matrices.
 
 ## Gate 2 — initial minimal implementation
 
-Keep the change local to `src/cal_mcp/lexicon.py`. Make conversion optional for Hebrew/Syriac only, while preserving successful ambiguity conversion and mandatory dedicated-script conversion.
+Keep production changes local to `src/cal_mcp/lexicon.py`. Make whole-query CAL-code conversion optional only for CAL-native Hebrew/Syriac while preserving successful conversion, finite ambiguity expansion, and mandatory dedicated-script conversion.
 
 ## Review-regression gate — representation-only fallback is too broad
 
-The initial implementation used `normalized.representation in {HEBREW, SYRIAC}` as the entire fallback test. Review-regression CI `34221362183` reached pytest with all static gates GREEN and finished with exactly 1 failure / 652 passes: unverified Syriac `ܞ` incorrectly reached the injected CAL transport.
+The first implementation used Hebrew/Syriac representation alone as the fallback predicate. Review-regression CI `34221362183` reached pytest with dependency/static/type gates GREEN and failed exactly the new zero-I/O case: unverified Syriac `ܞ` incorrectly reached transport.
 
-Before revising production, strengthen the test-only regression to require **both**:
+Strengthen the regression boundary before the corrected implementation:
 
-- `ܞ` fails with `UnsupportedQueryError` before CAL I/O;
-- `ܞܲ` (the same unverified base plus a Syriac mark) also fails before CAL I/O.
+- `ܞ` fails with `UnsupportedQueryError` before I/O;
+- `ܞܲ` also fails before I/O, proving that a mark does not legitimize an unverified base;
+- unsupported Syriac punctuation fails before I/O;
+- an unattached Syriac combining mark fails before I/O.
 
-This prevents a superficial “fallback if a mark exists” fix.
+## Gate 3 — corrected component-level eligibility
 
-## Gate 3 — corrected minimal implementation
+When `convert_to_cal_code(query)` raises `UnsupportedQueryError`:
 
-On `UnsupportedQueryError` from `convert_to_cal_code(query)`:
+1. fallback eligibility is limited to `InputRepresentation.HEBREW` / `SYRIAC`;
+2. scan `normalized.normalized` locally without changing it;
+3. allow space and underscore as documented CAL-native separators;
+4. allow a Hebrew/Syriac base letter only if `convert_to_cal_code(char, representation=normalized.representation)` succeeds;
+5. allow Unicode marks only when attached to a preceding verified base letter;
+6. reject any unsupported punctuation, unattached mark, unverified base letter, or other syntax by re-raising the original `UnsupportedQueryError`;
+7. if the scan is eligible, set `conversion = None` and use the existing Unicode browse path with the original normalized query unchanged.
 
-1. fallback eligibility remains restricted to normalized Hebrew/Syriac;
-2. require the original normalized query to contain at least one Unicode combining mark;
-3. scan the original normalized query locally, without changing the string that will be sent to CAL;
-4. allow only spaces/underscores as separators, verified Hebrew/Syriac base letters, and combining marks attached to a preceding verified base letter;
-5. validate each base letter through `convert_to_cal_code(char, representation=normalized.representation)` so the fallback reuses the converter's researched base-letter inventory instead of Unicode-block membership;
-6. reject unsupported punctuation, unattached marks, and unverified base letters by re-raising the original `UnsupportedQueryError`;
-7. if eligible, set `conversion = None` and use the existing legacy Unicode browse path with the original normalized pointed/vocalized query unchanged.
+Do not require an actual combining mark. CAL's current lexicon browser explicitly documents underscore bound forms (`w_`) and accepts Unicode Hebrew/Syriac on the same browser surface. A review-time `has_mark` proposal was therefore rejected before production modification; positive `ו_` / `ܘ_` regressions freeze the documented bound-form behavior.
 
-The eligibility scan is only a local safety predicate. Do not strip marks from the actual lookup, do not send a probe to CAL, and do not modify `convert_to_cal_code()` or normalization.
+The eligibility scan is a safety predicate only. Do not strip marks, reinterpret separators, send a probe to CAL, or modify `convert_to_cal_code()` / normalization.
 
-Do not catch `ConversionExpansionError` or arbitrary exceptions. The original whole-query converter still runs first; only its `UnsupportedQueryError` can enter this fallback check.
-
-Behavior requirements:
-
-- documented pointed/vocalized Hebrew/Syriac with converter-supported bases -> existing normalized Unicode browse path;
-- Hebrew/Syriac conversion succeeds with no ambiguity -> existing normalized Unicode browse path;
-- Hebrew/Syriac conversion succeeds with finite ambiguity -> bounded CAL-code fan-out;
-- unverified base letter, with or without marks -> fail before I/O;
-- unsupported punctuation or unattached combining marks -> fail before I/O;
-- dedicated-script conversion remains required;
-- standalone converter behavior unchanged.
+Do not catch `ConversionExpansionError` or arbitrary exceptions.
 
 ## Gate 4 — full GREEN
 
-Run permanent CI in both dependency matrices.
+Require both permanent CI jobs on the exact implementation candidate:
 
-Explicitly recheck existing tests for:
+- deterministic Python 3.11 constraints + exact-environment verification + Ruff/format/mypy/pytest;
+- latest-compatible resolution + `pip check` + Ruff/format/mypy/pytest.
 
-- pointed Hebrew/vocalized Syriac one-request legacy path;
-- unverified Syriac with and without a mark, zero I/O;
+Explicitly recheck:
+
+- four positive native-Unicode cases above;
+- `ܞ`, `ܞܲ`, punctuation, and unattached-mark zero-I/O failures;
 - bare Hebrew shin ambiguity expansion;
 - Syriac dotless dalath/resh ambiguity;
 - dedicated Imperial/Palmyrene/Nabataean/Hatran/Samaritan/Mandaic lookup;
 - 8-prefix pre-I/O cap and 64 complete-query cap;
 - deterministic Hebrew/Syriac one-request behavior;
-- lexicon provenance;
-- converter fail-closed marks;
-- release surface/tool count.
+- lexicon conversion provenance;
+- standalone converter fail-closed behavior;
+- frozen release surface/tool count.
 
-No live CAL traffic.
+No live CAL traffic in normal CI.
 
-## Gate 5 — documentation
+## Gate 5 — user documentation
 
-Review `docs/concepts/input-and-transliteration.md` and `docs/tools/lexicon.md`.
+Update `docs/concepts/input-and-transliteration.md` and `docs/tools/lexicon.md` if needed so users can see the distinction:
 
-If current wording could imply that lexicon lookup requires local conversion for every Hebrew/Syriac query, update it to state:
-
-- documented CAL-native Hebrew/Syriac pointing/vocalization can pass through unchanged when the base content is converter-supported;
-- local conversion is used where needed for finite ambiguity or dedicated-script bridging;
-- standalone conversion remains stricter and may reject marks that CAL-native lookup can pass through;
-- unverified base characters do not gain pass-through merely by belonging to the Hebrew/Syriac Unicode blocks.
-
-If docs already state this distinction accurately, avoid unnecessary changes.
+- `cal_lexicon_lookup` can preserve documented CAL-native Hebrew/Syriac marks and bound-form separator syntax when all base letters are verified;
+- conversion remains responsible for finite ambiguity and dedicated-script bridging;
+- `cal_convert_to_code` remains stricter and may reject native-query syntax that lookup can safely pass through;
+- unverified base letters, unsupported punctuation, and unattached marks remain local errors before CAL I/O.
 
 ## Gate 6 — logically independent adversarial review
 
-Review the exact final SHA from scratch against issue #73, corrected research, issue #52 compatibility guarantees, whole diff, and exact-head CI.
+Freeze the exact final SHA and review the whole diff from scratch against current `main`, issue #73 research, issue #52 compatibility guarantees, and exact-head CI.
 
 Challenge at least:
 
 - fallback restricted to Hebrew/Syriac only;
-- fallback requires at least one actual mark and only converter-supported base letters;
-- `ܞ` and `ܞܲ` remain zero-I/O failures;
-- unsupported punctuation and unattached marks cannot gain pass-through;
-- original pointed/vocalized query is sent to CAL unchanged;
+- every fallback base letter comes from the researched converter inventory;
+- space/underscore are the only native separators admitted by this fallback;
+- marks must remain attached to a verified base;
+- `ܞ`, `ܞܲ`, unsupported punctuation, and unattached marks remain zero-I/O failures;
+- `ו_` and `ܘ_` remain one-request native browse cases;
+- original pointed/vocalized/bound-form query is sent to CAL unchanged;
 - `ConversionExpansionError` and arbitrary converter bugs are not swallowed;
-- pointed Hebrew/Syriac perform exactly one browse request;
 - bare-shin / dotless-dalath ambiguity still expands;
-- dedicated-script conversion cannot fall through to CAL;
-- legacy match/provenance behavior remains unchanged;
-- converter tool strictness remains unchanged;
-- no CAL access in tests.
+- dedicated scripts cannot fall through to native browse;
+- provenance and request cardinality remain correct;
+- standalone converter strictness remains unchanged;
+- no temporary workflow/helper survives in the final diff;
+- normal tests make no CAL requests.
 
-Any blocker requires a new review-regression RED → minimal fix → full GREEN → fresh exact-head review.
+Any blocker requires a new test-first review regression, minimal fix, full exact-head GREEN, and fresh exact-head review.
 
 ## Merge gate
 
 Immediately before merge:
 
 1. refetch `main` and PR head;
-2. if `main` advanced, synchronize non-destructively and rerun exact-head CI/review where necessary;
-3. record RED/GREEN/review evidence in PR body;
-4. mark ready only after the exact-head review passes;
-5. merge using `expected_head_sha` equal to the reviewed head.
+2. synchronize non-destructively if `main` advanced;
+3. require exact-head dual-matrix GREEN;
+4. record the RED/GREEN/review evidence and superseded review correction in the PR body;
+5. mark ready only after the fresh adversarial PASS;
+6. merge using `expected_head_sha` equal to the reviewed head.
