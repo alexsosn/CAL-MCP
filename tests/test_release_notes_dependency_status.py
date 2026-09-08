@@ -15,6 +15,5 @@ def test_v01_release_notes_describe_implemented_dependency_validation() -> None:
     )
     assert (
         "a separate latest-compatible job checks the broad dependency ranges declared for "
-        "downstream users"
-        in changelog
+        "downstream users" in changelog
     )
