@@ -170,8 +170,7 @@ def parse_text_search_page(response: CalResponse) -> TextSearchPage:
     for line in lines:
         for link in line.links:
             if not (
-                _is_path(link.href, "get_a_chapter.php")
-                or _is_path(link.href, "showsubtexts.php")
+                _is_path(link.href, "get_a_chapter.php") or _is_path(link.href, "showsubtexts.php")
             ):
                 continue
             label, description = _search_label_and_description(line, link)
