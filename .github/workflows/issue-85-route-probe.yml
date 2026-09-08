@@ -1,4 +1,4 @@
-name: Issue 85 pagination semantics probe
+name: Issue 85 pagination marker probe
 
 on:
   push:
@@ -20,45 +20,29 @@ jobs:
           python-version: "3.11"
       - name: Install probe dependency
         run: python -m pip install "httpx2==2.12.0"
-      - name: Inspect one fixed current page
+      - name: Print only the current pagination marker
         shell: python
         run: |
           import asyncio
+          import re
           from html.parser import HTMLParser
-          from urllib.parse import urlsplit
 
           import httpx2
 
-          class Links(HTMLParser):
+          class Text(HTMLParser):
               def __init__(self) -> None:
                   super().__init__(convert_charrefs=True)
-                  self.href = None
                   self.parts = []
-                  self.links = []
-                  self.text_parts = []
-
-              def handle_starttag(self, tag, attrs):
-                  if tag == "a":
-                      self.href = dict(attrs).get("href", "")
-                      self.parts = []
 
               def handle_data(self, data):
-                  self.text_parts.append(data)
-                  if self.href is not None:
-                      self.parts.append(data)
-
-              def handle_endtag(self, tag):
-                  if tag == "a" and self.href is not None:
-                      self.links.append((self.href, " ".join("".join(self.parts).split())))
-                      self.href = None
-                      self.parts = []
+                  self.parts.append(data)
 
           async def main() -> None:
               async with httpx2.AsyncClient(
                   base_url="https://cal.huc.edu/",
                   timeout=httpx2.Timeout(10.0, connect=5.0),
                   follow_redirects=False,
-                  headers={"User-Agent": "CAL-MCP bounded issue-85 pagination research"},
+                  headers={"User-Agent": "CAL-MCP bounded issue-85 marker research"},
               ) as client:
                   async with client.stream(
                       "GET", "get_a_chapter.php", params={"file": "74410", "page": "0"}
@@ -69,15 +53,12 @@ jobs:
                           if len(body) > 131072:
                               raise RuntimeError("probe response exceeded 128 KiB research cap")
 
-              html = body.decode("utf-8", errors="replace")
-              parser = Links()
-              parser.feed(html)
-              page_text = " ".join(" ".join(parser.text_parts).split())
-              print("status=", response.status_code, "url=", response.url, "bytes=", len(body))
-              print("has_page_marker=", "Page 1 of" in page_text)
-              for href, label in parser.links:
-                  lower = label.lower()
-                  if "previous page" in lower or "next page" in lower:
-                      print("NAV", label, href, "path=", urlsplit(href).path)
+              parser = Text()
+              parser.feed(body.decode("utf-8", errors="replace"))
+              page_text = " ".join(" ".join(parser.parts).split())
+              match = re.search(r"Page\s+1\s+of\s+.{0,120}", page_text, re.IGNORECASE)
+              if match is None:
+                  raise RuntimeError("current page marker not found")
+              print(match.group(0))
 
           asyncio.run(main())
