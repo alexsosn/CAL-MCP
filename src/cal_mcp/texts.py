@@ -318,8 +318,8 @@ class TextService:
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise ValueError("page must be a positive integer")
 
-        mandaic_page_route = (
-            normalized_subtext is None and normalized_file.startswith(_MANDAIC_COLLECTION_PREFIX)
+        mandaic_page_route = normalized_subtext is None and normalized_file.startswith(
+            _MANDAIC_COLLECTION_PREFIX
         )
         if mandaic_page_route:
             params = [
