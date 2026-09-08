@@ -36,6 +36,8 @@ jobs:
           if old not in text:
               raise SystemExit("lookup conversion anchor missing")
           path.write_text(text.replace(old, new, 1))
+      - name: Bootstrap frozen installer
+        run: python -m pip install "pip==26.2.1" "setuptools==79.0.1"
       - name: Focused verification
         run: |
           python -m pip install -e '.[dev]' -c constraints/ci-py311.txt --build-constraint constraints/build-py311.txt
