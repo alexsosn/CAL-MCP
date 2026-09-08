@@ -45,6 +45,8 @@ The result contains:
 - `provenance.submitted_query`: the bounded query sent to CAL after deterministic ASCII-space cleanup;
 - CAL source URL and retrieval timestamp.
 
+Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic page route internally. Search still performs only the original single CAL request and never follows a returned result link automatically.
+
 CAL currently renders an explicit no-files message when a topic search has no matches. CAL-MCP maps that recognized upstream state to `matches: []`. A successful HTML page that has neither recognizable text results nor CAL's explicit no-files marker is treated as parser drift rather than silently interpreted as an empty result.
 
 Blank queries and unsupported non-ASCII whitespace fail locally before any CAL request is made.
@@ -130,6 +132,7 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08. Representative cases include:
 
 - a topic search for `Tel Dan` returning CAL file `13250`;
+- a topic search for `Ginza` returning the current specialized Mandaic file references `74410` and `74411` without following those links;
 - a paginated `BT AZ` page exposing page and machine-coordinate metadata;
 - the short Tel Dan text, which has valid `getlex.php` token links but no page-count marker;
 - a Ginza Rabba Right Side page using the current Mandaic `cset=M` / `sub=NNN` route and adjacent navigation without a rendered total page count;
