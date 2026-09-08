@@ -9,6 +9,7 @@ import pytest
 from mcp import Client
 
 ROOT = Path(__file__).resolve().parents[1]
+README = ROOT / "README.md"
 DOCS = ROOT / "docs"
 TOOLS_DIR = DOCS / "tools"
 DOCS_INDEX = DOCS / "index.md"
@@ -53,6 +54,14 @@ async def test_every_public_tool_is_covered_by_tool_docs() -> None:
 
     assert len(tool_names) == 27
     assert missing == []
+
+
+def test_readme_release_surface_tracks_conversion_tool() -> None:
+    readme = README.read_text(encoding="utf-8")
+
+    assert "27 public tools" in readme
+    assert "27-tool surface" in readme
+    assert "`cal_convert_to_code`" in readme
 
 
 def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> None:
@@ -141,7 +150,7 @@ def test_lexicon_docs_name_conversion_path_provenance_fields() -> None:
 
 
 def test_relative_markdown_links_resolve() -> None:
-    markdown_files = [ROOT / "README.md", *sorted(DOCS.rglob("*.md"))]
+    markdown_files = [README, *sorted(DOCS.rglob("*.md"))]
     broken: list[str] = []
 
     for markdown_file in markdown_files:
