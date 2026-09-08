@@ -1,0 +1,63 @@
+name: Issue 97 Mandaic routing research
+
+on:
+  push:
+    branches:
+      - fix/issue-97-mandaic-route-scope
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Inspect one current CAL Mandaic menu response
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlsplit
+          from urllib.request import Request, urlopen
+
+          URL = "https://cal.huc.edu/show_Mandaic.php?R1=74"
+          request = Request(URL, headers={"User-Agent": "CAL-MCP/issue-97-research (+https://github.com/alexsosn/CAL-MCP)"})
+          with urlopen(request, timeout=15) as response:
+              body = response.read(512 * 1024 + 1)
+          if len(body) > 512 * 1024:
+              raise SystemExit("menu response exceeded 512 KiB research cap")
+          html = body.decode("utf-8", errors="replace")
+
+          class Links(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.hrefs = []
+              def handle_starttag(self, tag, attrs):
+                  if tag.lower() == "a":
+                      href = dict(attrs).get("href")
+                      if href:
+                          self.hrefs.append(href)
+
+          parser = Links()
+          parser.feed(html)
+          routes = {}
+          for href in parser.hrefs:
+              parsed = urlsplit(href)
+              query = parse_qs(parsed.query)
+              path = parsed.path.rsplit("/", 1)[-1]
+              if path == "showsubtexts.php" and query.get("cset") == ["M"] and len(query.get("subtext", [])) == 1:
+                  file_id = query["subtext"][0]
+                  routes[file_id] = "subdivided"
+              elif path == "get_a_chapter.php" and query.get("cset") == ["M"] and len(query.get("file", [])) == 1:
+                  file_id = query["file"][0]
+                  routes[file_id] = "direct"
+
+          subdivided = sorted(file_id for file_id, route in routes.items() if route == "subdivided")
+          direct = sorted(file_id for file_id, route in routes.items() if route == "direct")
+          print("MENU_URL", URL)
+          print("ROUTE_COUNT", len(routes))
+          print("SUBDIVIDED", ",".join(subdivided))
+          print("DIRECT", ",".join(direct))
+          if not subdivided or not direct:
+              raise SystemExit("expected both subdivided and direct Mandaic menu routes")
+          PY
