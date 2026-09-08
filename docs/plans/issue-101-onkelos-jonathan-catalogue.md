@@ -131,3 +131,12 @@ Any blocker gets a regression RED and another exact-head review.
 ## Merge
 
 After exact-head dual-matrix GREEN and independent approval, merge with `Closes #101`. #83 remains open for cross-collection discovery; #78/#97 remain separate Mandaic tickets.
+
+## Execution record
+
+- Original test-only RED: `55ae3c50a372083398c227740a90a279b6c7058c`; both static/type matrices green and pytest failed only on the three missing #101 behaviors.
+- Initial implementation and documentation reached GREEN, then exact-head adversarial review found a label-drift completeness blocker: recognition depended on the current rendered label before the dedicated route.
+- Review-regression RED: `6ef1597bd04837f8663828234742ed4b95525bbd`; both matrices passed install, Ruff, formatting, and mypy, with deterministic pytest **692 passed / exactly 1 intended failure**.
+- The minimal correction now recognizes the exact dedicated route first, preserves any nonempty rendered label, and retains the old/current label as a fail-closed sentinel if it points to an unknown route.
+- Temporary write-enabled implementation/sync helpers were removed from the final diff.
+- The branch was non-destructively synchronized with current `main` at `381fb95725322640ed81302f8ca5bfa092920d4d` before the final CI/review gate.
