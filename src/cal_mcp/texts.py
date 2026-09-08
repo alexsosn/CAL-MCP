@@ -19,6 +19,23 @@ _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNO
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _MANDAIC_COLLECTION_PREFIX = "74"
+_MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
+    {
+        "74401",
+        "74402",
+        "74410",
+        "74411",
+        "74421",
+        "74422",
+        "74423",
+        "74428",
+        "74430",
+        "74432",
+        "74700",
+        "74701",
+        "74923",
+    }
+)
 
 
 class TextParseError(CalContentError):
@@ -318,15 +335,23 @@ class TextService:
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise ValueError("page must be a positive integer")
 
-        mandaic_page_route = normalized_subtext is None and normalized_file.startswith(
+        mandaic_collection_route = normalized_subtext is None and normalized_file.startswith(
             _MANDAIC_COLLECTION_PREFIX
         )
+        mandaic_page_route = (
+            mandaic_collection_route and normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS
+        )
+        mandaic_direct_route = mandaic_collection_route and not mandaic_page_route
         if mandaic_page_route:
             params = [
                 ("cset", "M"),
                 ("file", normalized_file),
                 ("sub", f"{page:03d}"),
             ]
+        elif mandaic_direct_route:
+            if page != 1:
+                raise ValueError("direct Mandaic texts currently support only page 1")
+            params = [("cset", "M"), ("file", normalized_file)]
         else:
             params = [("file", normalized_file)]
             if normalized_subtext is not None:
