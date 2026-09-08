@@ -68,6 +68,20 @@ def test_changed_onkelos_jonathan_root_route_fails_closed() -> None:
         parse_text_catalogue_page(response)
 
 
+def test_suffix_matching_nonexact_onkelos_route_fails_closed() -> None:
+    response = _response(
+        b"<html><body>"
+        b'<a href="showsubtexts.php?subtext=3">Biblical Aramaic</a>'
+        b'<a href="legacy/targum_onkelos_jonathan.html">'
+        b"Targums Onkelos and Jonathan to the Prophets"
+        b"</a>"
+        b"</body></html>"
+    )
+
+    with pytest.raises(TextParseError):
+        parse_text_catalogue_page(response)
+
+
 def test_dedicated_collection_keeps_subdivided_and_direct_children_distinct() -> None:
     page = parse_text_catalogue_page(
         _response(
