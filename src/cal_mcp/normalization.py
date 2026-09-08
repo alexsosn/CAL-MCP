@@ -19,6 +19,10 @@ class UnsupportedQueryError(NormalizationError):
     """Raised when input is outside the locally documented CAL query contract."""
 
 
+class ConversionExpansionError(NormalizationError):
+    """Raised when finite CAL-code ambiguity exceeds the documented candidate bound."""
+
+
 class InputRepresentation(StrEnum):
     """Representations accepted by CAL or detected without linguistic inference."""
 
@@ -26,6 +30,12 @@ class InputRepresentation(StrEnum):
     UNICODE_TRANSLITERATION = "unicode_transliteration"
     HEBREW = "hebrew"
     SYRIAC = "syriac"
+    IMPERIAL_ARAMAIC = "imperial_aramaic"
+    PALMYRENE = "palmyrene"
+    NABATAEAN = "nabataean"
+    HATRAN = "hatran"
+    SAMARITAN = "samaritan"
+    MANDAIC = "mandaic"
     ROMAN_SHARED = "roman_shared"
 
 
@@ -36,6 +46,21 @@ class NormalizationStrategy(StrEnum):
     CAL_CODE_TO_UNICODE = "cal_code_to_unicode"
 
 
+class CalCodeConversionStrategy(StrEnum):
+    """Deterministic transformation used to produce CAL Roman code."""
+
+    PASS_THROUGH = "pass_through"
+    UNICODE_TRANSLITERATION_TO_CAL_CODE = "unicode_transliteration_to_cal_code"
+    HEBREW_TO_CAL_CODE = "hebrew_to_cal_code"
+    SYRIAC_TO_CAL_CODE = "syriac_to_cal_code"
+    IMPERIAL_ARAMAIC_TO_CAL_CODE = "imperial_aramaic_to_cal_code"
+    PALMYRENE_TO_CAL_CODE = "palmyrene_to_cal_code"
+    NABATAEAN_TO_CAL_CODE = "nabataean_to_cal_code"
+    HATRAN_TO_CAL_CODE = "hatran_to_cal_code"
+    SAMARITAN_TO_CAL_CODE = "samaritan_to_cal_code"
+    MANDAIC_TO_CAL_CODE = "mandaic_to_cal_code"
+
+
 @dataclass(frozen=True, slots=True)
 class NormalizedQuery:
     original: str
@@ -44,10 +69,58 @@ class NormalizedQuery:
     strategy: NormalizationStrategy
 
 
-# Current CAL lexicon browser table, searching/fullbrowser.html (rechecked 2026-09-04).
-# Only this simple consonantal subset is converted locally. CAL code containing other
-# documented punctuation/diacritic syntax is sent through unchanged instead of being
-# combined with a partial Unicode conversion.
+@dataclass(frozen=True, slots=True)
+class CalCodeAmbiguity:
+    index: int
+    input: str
+    cal_codes: tuple[str, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "index": self.index,
+            "input": self.input,
+            "cal_codes": list(self.cal_codes),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CalCodeWordCandidates:
+    original: str
+    candidates: tuple[str, ...]
+    ambiguities: tuple[CalCodeAmbiguity, ...] = ()
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "original": self.original,
+            "candidates": list(self.candidates),
+            "ambiguities": [item.to_dict() for item in self.ambiguities],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class CalCodeConversion:
+    original: str
+    representation: InputRepresentation
+    strategy: CalCodeConversionStrategy
+    words: tuple[CalCodeWordCandidates, ...]
+
+    @property
+    def cal_code(self) -> str:
+        """Return the single CAL-code surface when conversion is unambiguous."""
+
+        if any(len(word.candidates) != 1 for word in self.words):
+            raise AmbiguousQueryError("CAL conversion has more than one candidate")
+        return " ".join(word.candidates[0] for word in self.words)
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "original": self.original,
+            "representation": self.representation.value,
+            "strategy": self.strategy.value,
+            "words": [word.to_dict() for word in self.words],
+        }
+
+
 _CAL_CODE_TO_UNICODE = {
     ")": "ˀ",
     "b": "b",
@@ -78,16 +151,256 @@ _CAL_CODE_TO_UNICODE = {
     " ": " ",
 }
 
-# Roman consonants whose CAL-code and current documented Unicode spellings are identical.
-# Plain input using only these characters is genuinely shared and must not be guessed.
+_UNICODE_TRANSLITERATION_TO_CAL_CODE = {
+    "ˀ": ")",
+    "ˁ": "(",
+    "ḥ": "x",
+    "ṭ": "T",
+    "ṗ": "P",
+    "ṣ": "c",
+    "š": "$",
+    "ś": "&",
+    "_": "_",
+}
+
+_HEBREW_TO_CAL_CODE = {
+    "א": ")",
+    "ב": "b",
+    "ג": "g",
+    "ד": "d",
+    "ה": "h",
+    "ו": "w",
+    "ז": "z",
+    "ח": "x",
+    "ט": "T",
+    "י": "y",
+    "כ": "k",
+    "ך": "k",
+    "ל": "l",
+    "מ": "m",
+    "ם": "m",
+    "נ": "n",
+    "ן": "n",
+    "ס": "s",
+    "ע": "(",
+    "פ": "p",
+    "ף": "p",
+    "צ": "c",
+    "ץ": "c",
+    "ק": "q",
+    "ר": "r",
+    "ת": "t",
+}
+_HEBREW_SHIN = "ש"
+_HEBREW_SHIN_DOT = "\u05c1"
+_HEBREW_SIN_DOT = "\u05c2"
+
+_SYRIAC_TO_CAL_CODES = {
+    "ܐ": (")",),
+    "ܒ": ("b",),
+    "ܓ": ("g",),
+    "ܕ": ("d",),
+    "ܖ": ("d", "r"),
+    "ܗ": ("h",),
+    "ܘ": ("w",),
+    "ܙ": ("z",),
+    "ܚ": ("x",),
+    "ܛ": ("T",),
+    "ܝ": ("y",),
+    "ܟ": ("k",),
+    "ܠ": ("l",),
+    "ܡ": ("m",),
+    "ܢ": ("n",),
+    "ܣ": ("s",),
+    "ܤ": ("s",),
+    "ܥ": ("(",),
+    "ܦ": ("p",),
+    "ܧ": ("P",),
+    "ܨ": ("c",),
+    "ܩ": ("q",),
+    "ܪ": ("r",),
+    "ܫ": ("$",),
+    "ܬ": ("t",),
+}
+
+_IMPERIAL_ARAMAIC_TO_CAL_CODE = {
+    "𐡀": ")",
+    "𐡁": "b",
+    "𐡂": "g",
+    "𐡃": "d",
+    "𐡄": "h",
+    "𐡅": "w",
+    "𐡆": "z",
+    "𐡇": "x",
+    "𐡈": "T",
+    "𐡉": "y",
+    "𐡊": "k",
+    "𐡋": "l",
+    "𐡌": "m",
+    "𐡍": "n",
+    "𐡎": "s",
+    "𐡏": "(",
+    "𐡐": "p",
+    "𐡑": "c",
+    "𐡒": "q",
+    "𐡓": "r",
+    "𐡔": "$",
+    "𐡕": "t",
+}
+_IMPERIAL_ARAMAIC_BLOCK_START = "\U00010840"
+_IMPERIAL_ARAMAIC_BLOCK_END = "\U0001085f"
+
+_PALMYRENE_TO_CAL_CODE = {
+    "𐡠": ")",
+    "𐡡": "b",
+    "𐡢": "g",
+    "𐡣": "d",
+    "𐡤": "h",
+    "𐡥": "w",
+    "𐡦": "z",
+    "𐡧": "x",
+    "𐡨": "T",
+    "𐡩": "y",
+    "𐡪": "k",
+    "𐡫": "l",
+    "𐡬": "m",
+    "𐡭": "n",
+    "𐡮": "n",
+    "𐡯": "s",
+    "𐡰": "(",
+    "𐡱": "p",
+    "𐡲": "c",
+    "𐡳": "q",
+    "𐡴": "r",
+    "𐡵": "$",
+    "𐡶": "t",
+}
+_PALMYRENE_BLOCK_START = "\U00010860"
+_PALMYRENE_BLOCK_END = "\U0001087f"
+
+_NABATAEAN_TO_CAL_CODE = {
+    "𐢀": ")",
+    "𐢁": ")",
+    "𐢂": "b",
+    "𐢃": "b",
+    "𐢄": "g",
+    "𐢅": "d",
+    "𐢆": "h",
+    "𐢇": "h",
+    "𐢈": "w",
+    "𐢉": "z",
+    "𐢊": "x",
+    "𐢋": "T",
+    "𐢌": "y",
+    "𐢍": "y",
+    "𐢎": "k",
+    "𐢏": "k",
+    "𐢐": "l",
+    "𐢑": "l",
+    "𐢒": "m",
+    "𐢓": "m",
+    "𐢔": "n",
+    "𐢕": "n",
+    "𐢖": "s",
+    "𐢗": "(",
+    "𐢘": "p",
+    "𐢙": "c",
+    "𐢚": "q",
+    "𐢛": "r",
+    "𐢜": "$",
+    "𐢝": "$",
+    "𐢞": "t",
+}
+_NABATAEAN_BLOCK_START = "\U00010880"
+_NABATAEAN_BLOCK_END = "\U000108af"
+
+_HATRAN_TO_CAL_CODES = {
+    "𐣠": (")",),
+    "𐣡": ("b",),
+    "𐣢": ("g",),
+    "𐣣": ("d", "r"),
+    "𐣤": ("h",),
+    "𐣥": ("w",),
+    "𐣦": ("z",),
+    "𐣧": ("x",),
+    "𐣨": ("T",),
+    "𐣩": ("y",),
+    "𐣪": ("k",),
+    "𐣫": ("l",),
+    "𐣬": ("m",),
+    "𐣭": ("n",),
+    "𐣮": ("s",),
+    "𐣯": ("(",),
+    "𐣰": ("p",),
+    "𐣱": ("c",),
+    "𐣲": ("q",),
+    "𐣴": ("$",),
+    "𐣵": ("t",),
+}
+_HATRAN_BLOCK_START = "\U000108e0"
+_HATRAN_BLOCK_END = "\U000108ff"
+
+_SAMARITAN_TO_CAL_CODES = {
+    "ࠀ": (")",),
+    "ࠁ": ("b",),
+    "ࠂ": ("g",),
+    "ࠃ": ("d",),
+    "ࠄ": ("h",),
+    "ࠅ": ("w",),
+    "ࠆ": ("z",),
+    "ࠇ": ("x",),
+    "ࠈ": ("T",),
+    "ࠉ": ("y",),
+    "ࠊ": ("k",),
+    "ࠋ": ("l",),
+    "ࠌ": ("m",),
+    "ࠍ": ("n",),
+    "ࠎ": ("s",),
+    "ࠏ": ("(",),
+    "ࠐ": ("p",),
+    "ࠑ": ("c",),
+    "ࠒ": ("q",),
+    "ࠓ": ("r",),
+    "ࠔ": ("$", "&"),
+    "ࠕ": ("t",),
+}
+_SAMARITAN_BLOCK_START = "\u0800"
+_SAMARITAN_BLOCK_END = "\u083f"
+
+_MANDAIC_TO_CAL_CODE = {
+    "ࡀ": "a",
+    "ࡁ": "b",
+    "ࡂ": "g",
+    "ࡃ": "d",
+    "ࡄ": "h",
+    "ࡅ": "u",
+    "ࡆ": "z",
+    "ࡇ": "H",
+    "ࡈ": "T",
+    "ࡉ": "i",
+    "ࡊ": "k",
+    "ࡋ": "l",
+    "ࡌ": "m",
+    "ࡍ": "n",
+    "ࡎ": "s",
+    "ࡏ": "(",
+    "ࡐ": "p",
+    "ࡑ": "S",
+    "ࡒ": "q",
+    "ࡓ": "r",
+    "ࡔ": "$",
+    "ࡕ": "t",
+    "ࡖ": "D",
+    "ࡗ": "kD",
+}
+_MANDAIC_BLOCK_START = "\u0840"
+_MANDAIC_BLOCK_END = "\u085f"
+
 _SHARED_ROMAN_LETTERS = frozenset("bgdhwzyklmnspqrt")
 _UNICODE_TRANSLITERATION_SPECIAL = frozenset("ˀˁḥṭṗṣšś")
 _UNICODE_SEPARATORS = frozenset(" _")
 _SCRIPT_SEPARATORS = frozenset(" _")
-
-# CAL's broader Roman coding conventions (prova.html, rechecked 2026-09-04) add Jewish
-# Aramaic vowels, Syriac diacritic codes, Mandaic letters, and manuscript/editorial syntax.
-# Keep this whitelist explicit so arbitrary ASCII is never mislabeled as documented CAL code.
+_MAX_CANDIDATES_PER_WORD = 32
 _CAL_CODE_LETTERS = frozenset(")bgdhwzxTyklmns(pPcqr$&taAeEiuUoOFDHS")
 _CAL_CODE_SYNTAX = frozenset(":._~+',;%@\"-={}<>/#\\[]^|?*")
 _CAL_CODE_ALLOWED = _CAL_CODE_LETTERS | _CAL_CODE_SYNTAX | {" "}
@@ -102,8 +415,6 @@ def normalize_query(
     """Normalize one CAL query without guessing roots, spellings, or morphology."""
 
     _reject_controls(value)
-    # Only the ordinary ASCII space is a documented query separator. Do not let
-    # str.strip() silently erase NBSP or other Unicode whitespace before validation.
     candidate = value.strip(" ")
     if not candidate:
         raise UnsupportedQueryError("CAL query is empty after trimming surrounding spaces")
@@ -129,10 +440,295 @@ def normalize_query(
     )
 
 
+def convert_to_cal_code(
+    value: str,
+    *,
+    representation: InputRepresentation | None = None,
+) -> CalCodeConversion:
+    """Convert supported input to bounded, ambiguity-preserving CAL-code word candidates."""
+
+    _reject_controls(value)
+    candidate = value.strip(" ")
+    if not candidate:
+        raise UnsupportedQueryError("CAL input is empty after trimming surrounding spaces")
+
+    try:
+        resolved = representation or _detect_representation(candidate)
+    except AmbiguousQueryError as exc:
+        raise UnsupportedQueryError(str(exc)) from exc
+    _validate_representation(candidate, resolved)
+
+    if resolved in {InputRepresentation.CAL_CODE, InputRepresentation.ROMAN_SHARED}:
+        words = _pass_through_words(candidate)
+        strategy = CalCodeConversionStrategy.PASS_THROUGH
+    elif resolved is InputRepresentation.UNICODE_TRANSLITERATION:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_unicode_transliteration_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.UNICODE_TRANSLITERATION_TO_CAL_CODE
+    elif resolved is InputRepresentation.HEBREW:
+        words = tuple(_convert_hebrew_word(word) for word in _split_words(candidate))
+        strategy = CalCodeConversionStrategy.HEBREW_TO_CAL_CODE
+    elif resolved is InputRepresentation.SYRIAC:
+        words = tuple(_convert_syriac_word(word) for word in _split_words(candidate))
+        strategy = CalCodeConversionStrategy.SYRIAC_TO_CAL_CODE
+    elif resolved is InputRepresentation.IMPERIAL_ARAMAIC:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_imperial_aramaic_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.IMPERIAL_ARAMAIC_TO_CAL_CODE
+    elif resolved is InputRepresentation.PALMYRENE:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_palmyrene_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.PALMYRENE_TO_CAL_CODE
+    elif resolved is InputRepresentation.NABATAEAN:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_nabataean_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.NABATAEAN_TO_CAL_CODE
+    elif resolved is InputRepresentation.HATRAN:
+        words = tuple(_convert_hatran_word(word) for word in _split_words(candidate))
+        strategy = CalCodeConversionStrategy.HATRAN_TO_CAL_CODE
+    elif resolved is InputRepresentation.SAMARITAN:
+        words = tuple(_convert_samaritan_word(word) for word in _split_words(candidate))
+        strategy = CalCodeConversionStrategy.SAMARITAN_TO_CAL_CODE
+    elif resolved is InputRepresentation.MANDAIC:
+        words = tuple(
+            CalCodeWordCandidates(
+                original=word,
+                candidates=(_convert_mandaic_word(word),),
+            )
+            for word in _split_words(candidate)
+        )
+        strategy = CalCodeConversionStrategy.MANDAIC_TO_CAL_CODE
+    else:
+        raise AssertionError(f"unhandled CAL input representation: {resolved}")
+
+    if not words:
+        raise UnsupportedQueryError("CAL input is empty after conversion")
+
+    return CalCodeConversion(
+        original=value,
+        representation=resolved,
+        strategy=strategy,
+        words=words,
+    )
+
+
 def encode_pairs(pairs: Iterable[tuple[str, str]]) -> str:
     """Encode ordered/repeated query or form pairs using UTF-8 percent encoding."""
 
     return urlencode(list(pairs))
+
+
+def _split_words(value: str) -> tuple[str, ...]:
+    return tuple(part for part in value.split(" ") if part)
+
+
+def _pass_through_words(value: str) -> tuple[CalCodeWordCandidates, ...]:
+    return tuple(
+        CalCodeWordCandidates(original=word, candidates=(word,)) for word in _split_words(value)
+    )
+
+
+def _convert_unicode_transliteration_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        if char in _SHARED_ROMAN_LETTERS:
+            converted.append(char)
+            continue
+        mapped = _UNICODE_TRANSLITERATION_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "unicode_transliteration contains a character without a v0.1 CAL-code mapping"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
+def _convert_hebrew_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    index = 0
+    while index < len(value):
+        char = value[index]
+        if char == _HEBREW_SHIN:
+            following_marks: list[str] = []
+            mark_index = index + 1
+            while mark_index < len(value) and unicodedata.category(value[mark_index]).startswith(
+                "M"
+            ):
+                following_marks.append(value[mark_index])
+                mark_index += 1
+            if following_marks == [_HEBREW_SHIN_DOT]:
+                candidates = _append_alternatives(candidates, ("$",))
+                index = mark_index
+                continue
+            if following_marks == [_HEBREW_SIN_DOT]:
+                candidates = _append_alternatives(candidates, ("&",))
+                index = mark_index
+                continue
+            if following_marks:
+                raise UnsupportedQueryError(
+                    "Hebrew shin/sin conversion supports only one explicit shin or sin dot"
+                )
+            alternatives = ("$", "&")
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
+            candidates = _append_alternatives(candidates, alternatives)
+            index += 1
+            continue
+
+        mapped = _HEBREW_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Hebrew input contains a mark, punctuation sign, or letter without a v0.1 "
+                "CAL-code mapping"
+            )
+        candidates = _append_alternatives(candidates, (mapped,))
+        index += 1
+
+        if index < len(value) and unicodedata.category(value[index]).startswith("M"):
+            raise UnsupportedQueryError(
+                "Hebrew vowel, accent, or combining marks are not converted to CAL code in v0.1"
+            )
+
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
+
+
+def _append_alternatives(candidates: list[str], alternatives: tuple[str, ...]) -> list[str]:
+    if len(candidates) * len(alternatives) > _MAX_CANDIDATES_PER_WORD:
+        raise ConversionExpansionError(
+            f"CAL candidate expansion exceeds {_MAX_CANDIDATES_PER_WORD} candidates per word"
+        )
+    expanded = [prefix + suffix for prefix in candidates for suffix in alternatives]
+    return list(dict.fromkeys(expanded))
+
+
+def _convert_syriac_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    for index, char in enumerate(value):
+        alternatives = _SYRIAC_TO_CAL_CODES.get(char)
+        if alternatives is None:
+            raise UnsupportedQueryError(
+                "Syriac input contains a mark, punctuation sign, or letter without a v0.1 "
+                "CAL-code mapping"
+            )
+        if len(alternatives) > 1:
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
+        candidates = _append_alternatives(candidates, alternatives)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
+
+
+def _convert_imperial_aramaic_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _IMPERIAL_ARAMAIC_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Imperial Aramaic input contains a non-consonantal or unverified character"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
+def _convert_palmyrene_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _PALMYRENE_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Palmyrene input contains a non-consonantal or unverified character"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
+def _convert_nabataean_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _NABATAEAN_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Nabataean input contains a non-consonantal or unverified character"
+            )
+        converted.append(mapped)
+    return "".join(converted)
+
+
+def _convert_hatran_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    for index, char in enumerate(value):
+        alternatives = _HATRAN_TO_CAL_CODES.get(char)
+        if alternatives is None:
+            raise UnsupportedQueryError(
+                "Hatran input contains a non-consonantal or unverified character"
+            )
+        if len(alternatives) > 1:
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
+        candidates = _append_alternatives(candidates, alternatives)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
+
+
+def _convert_samaritan_word(value: str) -> CalCodeWordCandidates:
+    candidates = [""]
+    ambiguities: list[CalCodeAmbiguity] = []
+    for index, char in enumerate(value):
+        alternatives = _SAMARITAN_TO_CAL_CODES.get(char)
+        if alternatives is None:
+            raise UnsupportedQueryError(
+                "Samaritan input contains a non-consonantal or unverified character"
+            )
+        if len(alternatives) > 1:
+            ambiguities.append(CalCodeAmbiguity(index=index, input=char, cal_codes=alternatives))
+        candidates = _append_alternatives(candidates, alternatives)
+    return CalCodeWordCandidates(
+        original=value,
+        candidates=tuple(candidates),
+        ambiguities=tuple(ambiguities),
+    )
+
+
+def _convert_mandaic_word(value: str) -> str:
+    converted: list[str] = []
+    for char in value:
+        mapped = _MANDAIC_TO_CAL_CODE.get(char)
+        if mapped is None:
+            raise UnsupportedQueryError(
+                "Mandaic input contains a character without a verified current CAL-code mapping"
+            )
+        converted.append(mapped)
+    return "".join(converted)
 
 
 def _reject_controls(value: str) -> None:
@@ -143,13 +739,43 @@ def _reject_controls(value: str) -> None:
 def _detect_representation(value: str) -> InputRepresentation:
     has_hebrew = any(_is_hebrew(char) for char in value)
     has_syriac = any(_is_syriac(char) for char in value)
+    has_imperial_aramaic = any(_is_imperial_aramaic_block(char) for char in value)
+    has_palmyrene = any(_is_palmyrene_block(char) for char in value)
+    has_nabataean = any(_is_nabataean_block(char) for char in value)
+    has_hatran = any(_is_hatran_block(char) for char in value)
+    has_samaritan = any(_is_samaritan_block(char) for char in value)
+    has_mandaic = any(_is_mandaic_block(char) for char in value)
+    script_count = sum(
+        (
+            has_hebrew,
+            has_syriac,
+            has_imperial_aramaic,
+            has_palmyrene,
+            has_nabataean,
+            has_hatran,
+            has_samaritan,
+            has_mandaic,
+        )
+    )
 
-    if has_hebrew and has_syriac:
-        raise AmbiguousQueryError("mixed Hebrew and Syriac query input is ambiguous")
+    if script_count > 1:
+        raise AmbiguousQueryError("mixed Aramaic script query input is ambiguous")
     if has_hebrew:
         return InputRepresentation.HEBREW
     if has_syriac:
         return InputRepresentation.SYRIAC
+    if has_imperial_aramaic:
+        return InputRepresentation.IMPERIAL_ARAMAIC
+    if has_palmyrene:
+        return InputRepresentation.PALMYRENE
+    if has_nabataean:
+        return InputRepresentation.NABATAEAN
+    if has_hatran:
+        return InputRepresentation.HATRAN
+    if has_samaritan:
+        return InputRepresentation.SAMARITAN
+    if has_mandaic:
+        return InputRepresentation.MANDAIC
 
     if any(ord(char) > 127 for char in value):
         if _is_unicode_transliteration(value):
@@ -177,6 +803,48 @@ def _validate_representation(value: str, representation: InputRepresentation) ->
             _is_syriac(char) or char in _SCRIPT_SEPARATORS for char in value
         ):
             raise UnsupportedQueryError("query is not valid syriac-script CAL input")
+        return
+
+    if representation is InputRepresentation.IMPERIAL_ARAMAIC:
+        if not any(char in _IMPERIAL_ARAMAIC_TO_CAL_CODE for char in value) or not all(
+            char in _IMPERIAL_ARAMAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Imperial Aramaic consonantal input")
+        return
+
+    if representation is InputRepresentation.PALMYRENE:
+        if not any(char in _PALMYRENE_TO_CAL_CODE for char in value) or not all(
+            char in _PALMYRENE_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Palmyrene consonantal input")
+        return
+
+    if representation is InputRepresentation.NABATAEAN:
+        if not any(char in _NABATAEAN_TO_CAL_CODE for char in value) or not all(
+            char in _NABATAEAN_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Nabataean consonantal input")
+        return
+
+    if representation is InputRepresentation.HATRAN:
+        if not any(char in _HATRAN_TO_CAL_CODES for char in value) or not all(
+            char in _HATRAN_TO_CAL_CODES or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Hatran consonantal input")
+        return
+
+    if representation is InputRepresentation.SAMARITAN:
+        if not any(char in _SAMARITAN_TO_CAL_CODES for char in value) or not all(
+            char in _SAMARITAN_TO_CAL_CODES or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Samaritan consonantal input")
+        return
+
+    if representation is InputRepresentation.MANDAIC:
+        if not any(char in _MANDAIC_TO_CAL_CODE for char in value) or not all(
+            char in _MANDAIC_TO_CAL_CODE or char in _SCRIPT_SEPARATORS for char in value
+        ):
+            raise UnsupportedQueryError("query is not valid Mandaic input with verified CAL codes")
         return
 
     if representation is InputRepresentation.UNICODE_TRANSLITERATION:
@@ -222,13 +890,43 @@ def _is_syriac(char: str) -> bool:
     return "\u0700" <= char <= "\u074f"
 
 
+def _is_imperial_aramaic_block(char: str) -> bool:
+    return _IMPERIAL_ARAMAIC_BLOCK_START <= char <= _IMPERIAL_ARAMAIC_BLOCK_END
+
+
+def _is_palmyrene_block(char: str) -> bool:
+    return _PALMYRENE_BLOCK_START <= char <= _PALMYRENE_BLOCK_END
+
+
+def _is_nabataean_block(char: str) -> bool:
+    return _NABATAEAN_BLOCK_START <= char <= _NABATAEAN_BLOCK_END
+
+
+def _is_hatran_block(char: str) -> bool:
+    return _HATRAN_BLOCK_START <= char <= _HATRAN_BLOCK_END
+
+
+def _is_samaritan_block(char: str) -> bool:
+    return _SAMARITAN_BLOCK_START <= char <= _SAMARITAN_BLOCK_END
+
+
+def _is_mandaic_block(char: str) -> bool:
+    return _MANDAIC_BLOCK_START <= char <= _MANDAIC_BLOCK_END
+
+
 __all__ = [
     "AmbiguousQueryError",
+    "CalCodeAmbiguity",
+    "CalCodeConversion",
+    "CalCodeConversionStrategy",
+    "CalCodeWordCandidates",
+    "ConversionExpansionError",
     "InputRepresentation",
     "NormalizationError",
     "NormalizationStrategy",
     "NormalizedQuery",
     "UnsupportedQueryError",
+    "convert_to_cal_code",
     "encode_pairs",
     "normalize_query",
 ]

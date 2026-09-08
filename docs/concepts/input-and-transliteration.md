@@ -11,9 +11,9 @@ The current CAL lexicon browser documents four accepted input representations:
 - Unicode Hebrew square script;
 - Unicode Syriac.
 
-CAL's general advantages page also confirms Roman transliteration, Unicode, Hebrew square script, and Syriac keyboard input. CAL-MCP therefore prefers direct pass-through for representations CAL already accepts instead of converting Hebrew or Syriac locally.
+CAL's general advantages page also confirms Roman transliteration, Unicode, Hebrew square script, and Syriac keyboard input. `normalize_query()` therefore prefers direct pass-through for representations that CAL already accepts. This query-normalization behavior is separate from the local `convert_to_cal_code()` / `cal_convert_to_code` capability described below: callers can explicitly request CAL Roman-code conversion without changing how ordinary upstream queries are normalized.
 
-The upstream evidence was rechecked on 2026-09-04:
+The upstream evidence was rechecked in September 2026:
 
 - `https://cal.huc.edu/searching/fullbrowser.html`
 - `https://cal.huc.edu/advantages.htm`
@@ -47,11 +47,11 @@ Automatic detection does not pretend that plain Roman input contains information
 
 CAL-code-specific characters disambiguate the representation. For example, `x`, `T`, `P`, `c`, `$`, `&`, `)`, `(`, CAL vocalization codes such as `A`, and documented CAL punctuation are classified as CAL code. Arbitrary ASCII letters are not accepted merely because they are ASCII; undocumented examples such as `J`, `B`, and `j` are rejected.
 
-Hebrew and Syriac are detected by script. A valid script input must contain at least one Unicode letter in the relevant script; an isolated Hebrew/Syriac combining mark or punctuation code point is not accepted as a query. Marks and punctuation from the same Unicode block may accompany a real script letter. Mixing Hebrew and Syriac in one query is rejected as ambiguous.
+Hebrew, Syriac, Imperial Aramaic, Palmyrene, Nabataean, Hatran, Samaritan, and Mandaic are detected by Unicode script/block. The dedicated-script converter validates against an explicit researched character table rather than accepting every code point merely because it lies in the same Unicode block. Mixing supported scripts in one conversion input is rejected rather than guessed.
 
 The current automatic Unicode-transliteration alphabet is deliberately limited to the shared Roman consonants above plus the characters explicitly shown by CAL's current lexicon-browser table: `ˀ ˁ ḥ ṭ ṗ ṣ š ś`. Space and underscore are the locally supported separators. CAL's `@` connector is CAL code, not Unicode transliteration; the browser explicitly tells Unicode/browser users to enter a space for that case. Broader scholarly transliteration conventions are not inferred merely because CAL may display additional vocalized forms in results.
 
-## CAL code conversion
+## CAL code and Unicode normalization
 
 CAL's current lexicon browser publishes this simple consonantal correspondence:
 
@@ -84,7 +84,7 @@ CAL's current lexicon browser publishes this simple consonantal correspondence:
 | `@` | space |
 | `_` | `_` |
 
-When a CAL-code query consists entirely of this documented simple subset, CAL-MCP converts it table-by-table to Unicode transliteration. Examples covered by tests:
+When a `normalize_query()` CAL-code query consists entirely of this documented simple subset, CAL-MCP converts it table-by-table to Unicode transliteration. Examples covered by tests:
 
 ```text
 $)wl      -> šˀwl
@@ -94,15 +94,64 @@ w_        -> w_
 
 Because `@` converts to a space, connector-only values such as `@`, `@@`, or `@ @` are rejected after conversion instead of becoming blank upstream queries. Embedded connectors such as `br@mwt)` remain valid.
 
-CAL's Roman-code documentation also defines Jewish Aramaic vocalization codes (`a A e E i u U o O :`), Syriac diacritic/punctuation codes, Mandaic `D H S`, and manuscript/editorial syntax. Those documented characters are accepted as CAL code, but are not partially converted through the simple consonant table. For example, `mlk%` and `mAlk` remain CAL code and pass through unchanged.
+CAL's Roman-code documentation also defines Jewish Aramaic vocalization codes (`a A e E i u U o O :`), Syriac diacritic/punctuation codes, Mandaic `D H S`, and manuscript/editorial syntax. Those documented characters are accepted as explicit CAL code, but are not partially converted through the simple CAL-code-to-Unicode normalization table. For example, `mlk%` and `mAlk` remain CAL code and pass through unchanged.
 
 The local CAL-code validator uses an explicit whitelist derived from those documented conventions rather than accepting every ASCII letter or punctuation mark.
 
-## No Hebrew/Syriac cross-conversion
+## Local CAL-code converter
 
-CAL-MCP does not transliterate Hebrew to Syriac, Syriac to Hebrew, or either script to Roman code in v0.1. CAL's own browser table is not bijective across those scripts: some CAL distinctions have no direct Hebrew or Syriac cell. A local cross-script converter would therefore need additional linguistic or orthographic choices that are outside this ticket.
+`convert_to_cal_code()` and the public local-only MCP tool `cal_convert_to_code` convert researched source representations into CAL Roman code. The converter performs zero CAL requests and is distinct from `normalize_query()` pass-through behavior.
 
-Users may submit Hebrew or Syriac directly because CAL accepts both.
+The supported v0.1 source representations are:
+
+- `unicode_transliteration`;
+- `hebrew`;
+- `syriac`, including ordinary Christian Palestinian Aramaic (CPA) Syriac-script input;
+- `imperial_aramaic`;
+- `palmyrene`;
+- `nabataean`;
+- `hatran`;
+- `samaritan`;
+- `mandaic`.
+
+Explicit valid CAL code and plain shared Roman consonants pass through unchanged. The converter does not translate Hebrew into Syriac or Syriac into Hebrew; instead, each supported representation maps directly to CAL Roman code according to its researched table.
+
+The result is structured per space-separated word. Each word has an ordered `candidates` collection and an `ambiguities` collection. A deterministic word has one candidate. A Unicode grapheme that genuinely lacks a CAL distinction returns every researched finite alternative rather than guessing from a dictionary, dialect, morphology, or context.
+
+### Finite ambiguity
+
+The known v0.1 finite ambiguities include:
+
+- bare Hebrew `ש` -> `$` or `&`; explicit shin dot `שׁ` -> `$`, explicit sin dot `שׂ` -> `&`;
+- Hatran `𐣣` (U+108E3 DALETH-RESH) -> `d` or `r`;
+- Samaritan `ࠔ` (SHAN) -> `$` or `&` because the encoded grapheme does not distinguish CAL shin from sin;
+- Syriac `ܖ` (U+0716 DOTLESS DALATH RISH) -> `d` or `r`.
+
+Candidate ordering is stable. Expansion is bounded to **32 candidates per word**. If another ambiguous grapheme would exceed that limit, conversion fails explicitly before returning a partial result; CAL-MCP will never silently truncate a justified candidate set.
+
+`cal_lexicon_lookup` can consume these finite candidates. It derives all complete candidates before network access, deduplicates equivalent CAL browser prefixes, permits at most eight unique prefix requests, and fetches at most one selected entry. See [Lexicon lookup and CAL-code conversion](../tools/lexicon.md) for the request-volume contract.
+
+### Script-specific deterministic edges
+
+The dedicated-script tables include distinctions that cannot be recovered safely from alphabet order alone:
+
+- Syriac/CPA `ܧ` (REVERSED PE) -> CAL `P`; final semkath `ܤ` -> `s`;
+- Mandaic `ࡇ` -> `H`, `ࡑ` -> `S`, and `ࡖ` -> `D`, preserving CAL's Mandaic-specific uppercase codes;
+- Mandaic `ࡗ` (KAD) -> `kD` as a deterministic two-code expansion;
+- Mandaic Unicode letters for vowel-bearing consonantal letters retain their researched CAL forms, including `ࡀ` -> `a`, `ࡅ` -> `u`, and `ࡉ` -> `i`.
+
+These are explicit evidence-backed mappings, not generalized transliteration rules.
+
+### Fail-closed boundary
+
+The converter deliberately fails closed outside its researched tables. Unsupported vowels, combining marks, punctuation, editorial signs, numbers, block code points without verified letter identities, and mixed-script input are not silently stripped. In particular:
+
+- Syriac `ܞ` (YUDH HE) remains **unsupported** because a direct current-CAL mapping for the single Unicode scalar has not been established;
+- Mandaic `ࡘ` (borrowed AIN) remains unsupported pending a verified current-CAL Roman correspondence;
+- Syriac, Hebrew, Samaritan, and Mandaic combining marks are unsupported unless a specific mapping has been researched and implemented;
+- unverified punctuation and numeric signs in dedicated script blocks remain unsupported.
+
+The converter never performs morphology, root inference, historical-spelling reconstruction, vowel restoration, or contextual disambiguation. Failure is preferable to producing a plausible but unjustified CAL spelling.
 
 ## Explicit representation override
 
@@ -116,6 +165,8 @@ assert query.normalized == "šˀwl"
 ```
 
 An override validates rather than coerces. Declaring `mlk` to be Hebrew, for example, raises `UnsupportedQueryError`; CAL-MCP will not translate it merely to satisfy the override. Declaring CAL-only `@` syntax as Unicode transliteration is likewise rejected.
+
+The same principle applies to `convert_to_cal_code()`: choosing a representation does not authorize characters outside that representation's researched table.
 
 ## Query and form encoding
 
@@ -132,14 +183,15 @@ Endpoint adapters should continue to build typed `CalRequest` parameter/form pai
 
 ## Deliberate non-features
 
-Normalization does not:
+Normalization and conversion do not:
 
 - infer a root from an inflected form;
 - remove or add mater lectionis;
 - normalize dialect spelling;
 - fuzzy-correct typos;
-- choose among possible Hebrew/Syriac transliterations;
-- invent support for unverified scholarly diacritics;
-- perform network requests.
+- choose among finite candidates by lexical probability;
+- invent support for unverified scholarly diacritics or script marks;
+- infer CAL `@` merely from whitespace;
+- perform network requests from the converter.
 
-When future endpoint evidence justifies another deterministic mapping, extend the whitelist/table and its tests together rather than adding heuristic conversion.
+When future endpoint or corpus evidence justifies another deterministic or finitely ambiguous mapping, extend the research, table, and tests together rather than adding heuristic conversion.

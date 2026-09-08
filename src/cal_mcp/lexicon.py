@@ -6,10 +6,18 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from html.parser import HTMLParser
+from itertools import product
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.normalization import NormalizedQuery, normalize_query
+from cal_mcp.normalization import (
+    CalCodeConversion,
+    ConversionExpansionError,
+    InputRepresentation,
+    NormalizedQuery,
+    convert_to_cal_code,
+    normalize_query,
+)
 
 
 class LexiconParseError(CalContentError):
@@ -78,6 +86,10 @@ class Provenance:
     normalized_query: str
     representation: str
     normalization_strategy: str
+    cal_code_word_candidates: tuple[tuple[str, ...], ...] = ()
+    cal_code_query_candidates: tuple[str, ...] = ()
+    browse_prefixes: tuple[str, ...] = ()
+    selected_cal_code_candidates: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,6 +355,18 @@ _DIALECT_EXACT = frozenset(
 _DIALECT_PREFIXES = ("BA-", "JBA", "JPA", "OA-", "OfA-", "Qum", "Syr")
 _NOUN_POS_QUALIFIERS = frozenset({"c.", "coll.", "du.", "f.", "m.", "pl.", "sg.", "t."})
 _STEM_TOKENS = frozenset({"G", "D", "C", "N", "Gt", "Dt", "Ct", "Et", "It", "Š", "Št"})
+_MAX_AMBIGUOUS_BROWSE_PREFIXES = 8
+_MAX_AMBIGUOUS_QUERY_CANDIDATES = 64
+_DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS = frozenset(
+    {
+        InputRepresentation.IMPERIAL_ARAMAIC,
+        InputRepresentation.PALMYRENE,
+        InputRepresentation.NABATAEAN,
+        InputRepresentation.HATRAN,
+        InputRepresentation.SAMARITAN,
+        InputRepresentation.MANDAIC,
+    }
+)
 
 
 @dataclass(slots=True)
@@ -558,29 +582,78 @@ class LexiconLookupService:
 
     async def lookup(self, query: str, *, lemma_key: str | None = None) -> LexiconLookupResult:
         normalized = normalize_query(query)
-        prefix = _browse_prefix(normalized.normalized)
-        browse_request = CalRequest(
-            method="GET",
-            path="browseSKEYheaders.php",
-            params=(("first3", f'"{prefix}"'),),
-        )
-        browse_result = await self._client.fetch(
-            browse_request,
-            parser=parse_browse_page,
-            cache_namespace="lexicon-browse-v1",
-        )
-        browse_provenance = _make_provenance(
-            normalized,
-            source_url=browse_result.source_url,
-            retrieved_at=browse_result.retrieved_at,
-            upstream_id=None,
+        conversion = convert_to_cal_code(query)
+        has_ambiguity = any(word.ambiguities for word in conversion.words)
+        requires_cal_code_search = (
+            has_ambiguity or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
         )
 
-        matches = tuple(
-            item
-            for item in browse_result.value.entries
-            if _query_matches(normalized.normalized, item)
+        if requires_cal_code_search:
+            query_candidates = _conversion_query_candidates(conversion)
+            cal_code_word_candidates = tuple(word.candidates for word in conversion.words)
+            cal_code_query_candidates = query_candidates
+            browse_prefixes = tuple(
+                dict.fromkeys(_browse_prefix(candidate) for candidate in query_candidates)
+            )
+            if len(browse_prefixes) > _MAX_AMBIGUOUS_BROWSE_PREFIXES:
+                raise ConversionExpansionError(
+                    "CAL lexicon ambiguity fan-out exceeds 8 unique browse prefixes"
+                )
+            match_surfaces = _candidate_match_surfaces(query_candidates)
+        else:
+            query_candidates = (normalized.normalized,)
+            cal_code_word_candidates = ()
+            cal_code_query_candidates = ()
+            browse_prefixes = (_browse_prefix(normalized.normalized),)
+            match_surfaces = query_candidates
+
+        browse_entries: list[LemmaRef] = []
+        first_source_url: str | None = None
+        first_retrieved_at: datetime | None = None
+        for prefix in browse_prefixes:
+            browse_result = await self._client.fetch(
+                CalRequest(
+                    method="GET",
+                    path="browseSKEYheaders.php",
+                    params=(("first3", f'"{prefix}"'),),
+                ),
+                parser=parse_browse_page,
+                cache_namespace="lexicon-browse-v1",
+            )
+            if first_source_url is None:
+                first_source_url = browse_result.source_url
+                first_retrieved_at = browse_result.retrieved_at
+            browse_entries.extend(browse_result.value.entries)
+
+        if first_source_url is None or first_retrieved_at is None:
+            raise AssertionError("CAL lexicon lookup produced no browse request")
+
+        matching_by_key: dict[str, LemmaRef] = {}
+        matching_candidates_by_key: dict[str, set[str]] = {}
+        for item in browse_entries:
+            if not any(_query_matches(surface, item) for surface in match_surfaces):
+                continue
+            matching_by_key.setdefault(item.lemma_key, item)
+            if requires_cal_code_search:
+                candidate_matches = matching_candidates_by_key.setdefault(item.lemma_key, set())
+                for candidate in query_candidates:
+                    if any(
+                        _query_matches(surface, item)
+                        for surface in _candidate_match_surfaces((candidate,))
+                    ):
+                        candidate_matches.add(candidate)
+        matches = tuple(matching_by_key.values())
+
+        browse_provenance = _make_provenance(
+            normalized,
+            source_url=first_source_url,
+            retrieved_at=first_retrieved_at,
+            upstream_id=None,
+            cal_code_word_candidates=cal_code_word_candidates,
+            cal_code_query_candidates=cal_code_query_candidates,
+            browse_prefixes=browse_prefixes,
         )
+
         if not matches:
             return LexiconLookupResult(
                 status=LexiconLookupStatus.NOT_FOUND,
@@ -601,6 +674,15 @@ class LexiconLookupService:
             selected = matches[0]
 
         selected_key = selected.lemma_key
+        selected_cal_code_candidates = (
+            tuple(
+                candidate
+                for candidate in query_candidates
+                if candidate in matching_candidates_by_key.get(selected_key, set())
+            )
+            if requires_cal_code_search
+            else ()
+        )
 
         def parse_selected(response: CalResponse) -> LexiconEntry:
             return parse_lexicon_entry(response, lemma_key=selected_key)
@@ -623,8 +705,37 @@ class LexiconLookupService:
                 source_url=entry_result.source_url,
                 retrieved_at=entry_result.retrieved_at,
                 upstream_id=selected_key,
+                cal_code_word_candidates=cal_code_word_candidates,
+                cal_code_query_candidates=cal_code_query_candidates,
+                browse_prefixes=browse_prefixes,
+                selected_cal_code_candidates=selected_cal_code_candidates,
             ),
         )
+
+
+def _conversion_query_candidates(conversion: CalCodeConversion) -> tuple[str, ...]:
+    candidate_count = 1
+    for word in conversion.words:
+        candidate_count *= len(word.candidates)
+        if candidate_count > _MAX_AMBIGUOUS_QUERY_CANDIDATES:
+            raise ConversionExpansionError(
+                "CAL lexicon ambiguity expansion exceeds 64 complete-query candidates"
+            )
+    return tuple(
+        " ".join(parts) for parts in product(*(word.candidates for word in conversion.words))
+    )
+
+
+def _candidate_match_surfaces(candidates: tuple[str, ...]) -> tuple[str, ...]:
+    surfaces: dict[str, None] = {}
+    for candidate in candidates:
+        surfaces.setdefault(candidate, None)
+        normalized = normalize_query(
+            candidate,
+            representation=InputRepresentation.CAL_CODE,
+        ).normalized
+        surfaces.setdefault(normalized, None)
+    return tuple(surfaces)
 
 
 def _parse_lines(response: CalResponse) -> list[_Line]:
@@ -944,6 +1055,10 @@ def _make_provenance(
     source_url: str,
     retrieved_at: datetime,
     upstream_id: str | None,
+    cal_code_word_candidates: tuple[tuple[str, ...], ...] = (),
+    cal_code_query_candidates: tuple[str, ...] = (),
+    browse_prefixes: tuple[str, ...] = (),
+    selected_cal_code_candidates: tuple[str, ...] = (),
 ) -> Provenance:
     return Provenance(
         source="CAL",
@@ -954,6 +1069,10 @@ def _make_provenance(
         normalized_query=normalized.normalized,
         representation=normalized.representation.value,
         normalization_strategy=normalized.strategy.value,
+        cal_code_word_candidates=cal_code_word_candidates,
+        cal_code_query_candidates=cal_code_query_candidates,
+        browse_prefixes=browse_prefixes,
+        selected_cal_code_candidates=selected_cal_code_candidates,
     )
 
 
@@ -1018,6 +1137,10 @@ def _provenance_to_dict(provenance: Provenance) -> dict[str, object]:
         "normalized_query": provenance.normalized_query,
         "representation": provenance.representation,
         "normalization_strategy": provenance.normalization_strategy,
+        "cal_code_word_candidates": [list(items) for items in provenance.cal_code_word_candidates],
+        "cal_code_query_candidates": list(provenance.cal_code_query_candidates),
+        "browse_prefixes": list(provenance.browse_prefixes),
+        "selected_cal_code_candidates": list(provenance.selected_cal_code_candidates),
     }
 
 

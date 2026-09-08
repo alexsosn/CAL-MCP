@@ -65,6 +65,14 @@ def _write_sdist(
     return sdist
 
 
+def test_release_verifier_frozen_tool_surface_includes_conversion_tool() -> None:
+    module = _load_verifier()
+
+    assert module.EXPECTED_TOOL_COUNT == 27
+    assert len(module.EXPECTED_TOOLS) == module.EXPECTED_TOOL_COUNT
+    assert "cal_convert_to_code" in module.EXPECTED_TOOLS
+
+
 def test_distribution_discovery_rejects_sdist_embedded_version_mismatch(tmp_path: Path) -> None:
     module = _load_verifier()
     _write_wheel(tmp_path)

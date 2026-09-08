@@ -9,6 +9,7 @@ import pytest
 from mcp import Client
 
 ROOT = Path(__file__).resolve().parents[1]
+README = ROOT / "README.md"
 DOCS = ROOT / "docs"
 TOOLS_DIR = DOCS / "tools"
 DOCS_INDEX = DOCS / "index.md"
@@ -16,6 +17,7 @@ CONFIGURATION = DOCS / "configuration.md"
 RESEARCH_AUDIT = DOCS / "research" / "issue-12-v0.1-contract-docs.md"
 ARCHITECTURE = ROOT / "wiki" / "architecture.md"
 LEXICON_DOC = TOOLS_DIR / "lexicon.md"
+INPUT_DOC = DOCS / "concepts" / "input-and-transliteration.md"
 
 REQUIRED_V01_DOCS = (
     "docs/index.md",
@@ -50,8 +52,16 @@ async def test_every_public_tool_is_covered_by_tool_docs() -> None:
     tool_docs = "\n".join(path.read_text(encoding="utf-8") for path in TOOLS_DIR.glob("*.md"))
     missing = [tool_name for tool_name in tool_names if f"`{tool_name}`" not in tool_docs]
 
-    assert len(tool_names) == 26
+    assert len(tool_names) == 27
     assert missing == []
+
+
+def test_readme_release_surface_tracks_conversion_tool() -> None:
+    readme = README.read_text(encoding="utf-8")
+
+    assert "27 public tools" in readme
+    assert "27-tool surface" in readme
+    assert "`cal_convert_to_code`" in readme
 
 
 def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> None:
@@ -62,6 +72,8 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
         path.name for path in sorted(TOOLS_DIR.glob("*.md")) if f"tools/{path.name}" not in index
     ]
     assert missing_links == []
+    assert "27 tools" in index
+    assert "`cal_convert_to_code`" in index
     assert "#39" in index
     assert "defer" in index.lower()
 
@@ -87,8 +99,60 @@ def test_cross_cutting_request_bounds_preserve_lexicon_two_request_exception() -
     assert "two CAL requests" in research
 
 
+def test_converter_docs_name_every_supported_v01_input_representation() -> None:
+    text = INPUT_DOC.read_text(encoding="utf-8")
+
+    for representation in (
+        "unicode_transliteration",
+        "hebrew",
+        "syriac",
+        "imperial_aramaic",
+        "palmyrene",
+        "nabataean",
+        "hatran",
+        "samaritan",
+        "mandaic",
+    ):
+        assert f"`{representation}`" in text
+
+    assert "does not transliterate Hebrew to Syriac" not in text
+    assert "or either script to Roman code in v0.1" not in text
+
+
+def test_converter_docs_explain_researched_finite_ambiguities() -> None:
+    text = INPUT_DOC.read_text(encoding="utf-8")
+
+    for grapheme in ("ש", "𐣣", "ࠔ", "ܖ"):
+        assert f"`{grapheme}`" in text
+    assert "32 candidates" in text
+    assert "never" in text.lower() and "truncate" in text.lower()
+
+
+def test_converter_docs_record_script_specific_edges_and_fail_closed_boundary() -> None:
+    text = INPUT_DOC.read_text(encoding="utf-8")
+
+    assert "`ࡖ`" in text and "`D`" in text
+    assert "`ࡗ`" in text and "`kD`" in text
+    assert "`ܧ`" in text and "`P`" in text
+    assert "`ܞ`" in text and "unsupported" in text.lower()
+    assert "combining marks" in text.lower()
+    assert "fail" in text.lower() and "closed" in text.lower()
+
+
+def test_lexicon_docs_name_conversion_path_provenance_fields() -> None:
+    text = LEXICON_DOC.read_text(encoding="utf-8")
+
+    for field in (
+        "cal_code_word_candidates",
+        "cal_code_query_candidates",
+        "browse_prefixes",
+        "selected_cal_code_candidates",
+    ):
+        assert f"`{field}`" in text
+
+
 def test_relative_markdown_links_resolve() -> None:
-    markdown_files = [ROOT / "README.md", *sorted(DOCS.rglob("*.md"))]
+    markdown_files = [README, *sorted(DOCS.rglob("*.md"))]
     broken: list[str] = []
 
     for markdown_file in markdown_files:

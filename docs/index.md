@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** pre-release. The v0.1 public tool contract is frozen at the 26 tools documented here except for release-blocking regression fixes. A versioned package release and Agora registration are separate follow-up work.
+> **Status:** pre-release. The current v0.1 public tool contract contains 27 tools: the issue-#12 audit's 26 CAL-backed tools plus the release-blocking deterministic conversion tool added by issue #52. A versioned package release and Agora registration are separate follow-up work.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
@@ -12,6 +12,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 | CAL research area | v0.1 status | CAL-MCP surface |
 | --- | --- | --- |
+| Deterministic supported-script / Unicode input conversion to CAL code | **Implemented as adapter-owned deterministic preprocessing** | [`cal_convert_to_code`](concepts/input-and-transliteration.md); performs no CAL request |
 | Lexicon/root/headword/full-form lookup | **Implemented** | [`cal_lexicon_lookup`](tools/lexicon.md) |
 | English gloss and citation-text search | **Implemented** | [`cal_gloss_search`, `cal_citation_text_search`](tools/search.md) |
 | Online text discovery, topic search, and bounded page reading | **Implemented** | [`cal_text_catalogue`, `cal_text_search`, `cal_text_page`](tools/texts.md) |
@@ -33,7 +34,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 - [Installation](installation.md) — current pre-release source installation and entry points.
 - [Configuration](configuration.md) — conservative request, retry, response-size, and cache policy.
 - [CAL identifiers](concepts/cal-identifiers.md) — file/subtext/category IDs, coordinates, and stability boundaries.
-- [Input and transliteration](concepts/input-and-transliteration.md) — deterministic CAL/Unicode/Hebrew/Syriac input handling.
+- [Input and transliteration](concepts/input-and-transliteration.md) — deterministic CAL/Unicode/Hebrew/Syriac and researched dedicated-script input conversion.
 - [Provenance and citation](concepts/provenance-and-citation.md) — source URLs, retrieval dates, and reproducibility.
 - [Errors and upstream drift](concepts/errors-and-upstream-drift.md) — caller errors, network/upstream failures, empty states, and parser drift.
 - [Lexical research guide](guides/lexical-research.md) — lemma/search/concordance/bibliography workflows.
@@ -44,6 +45,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 ## Tool reference
 
+- [Input conversion and transliteration](concepts/input-and-transliteration.md) — `cal_convert_to_code` and lexicon input-conversion semantics.
 - [Lexicon](tools/lexicon.md)
 - [English search](tools/search.md)
 - [Texts](tools/texts.md)
@@ -57,7 +59,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 ## Contract principles
 
-The v0.1 surface is task-oriented rather than a mirror of CAL's PHP forms. Endpoint names, form controls, and HTML structure are private adapter details. Returned CAL identifiers are preserved where useful, but CAL-MCP does not decode opaque IDs into invented semantics.
+The v0.1 surface is task-oriented rather than a mirror of CAL's PHP forms. Endpoint names, form controls, and HTML structure are private adapter details. Returned CAL identifiers are preserved where useful, but CAL-MCP does not decode opaque IDs into invented semantics. The local `cal_convert_to_code` tool is adapter-owned deterministic preprocessing and does not claim to be a CAL research endpoint.
 
 A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, or bibliography archives.
 

@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The current v0.1 candidate exposes 26 CAL-backed public tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
+> **Status:** active pre-release development. The current v0.1 candidate exposes 27 public tools: one deterministic local CAL-code conversion tool plus 26 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -29,10 +29,11 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 ## v0.1 public surface
 
-The executable tool schemas are the technical source of truth. The issue-#12 audit freezes the current 26-tool surface for v0.1 except release-blocking regression fixes.
+The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 27-tool surface: the issue-#12 audit's 26 CAL-backed tools plus the release-blocking deterministic conversion tool added by issue #52.
 
 | Area | Public tools |
 | --- | --- |
+| Input conversion | `cal_convert_to_code` |
 | Lexicon | `cal_lexicon_lookup` |
 | English search | `cal_gloss_search`, `cal_citation_text_search` |
 | Texts | `cal_text_catalogue`, `cal_text_search`, `cal_text_page` |
@@ -64,7 +65,7 @@ CAL-MCP is independently runnable. Agora integration is downstream packaging/mar
 
 ## Request and data policy
 
-The shared CAL client enforces finite timeouts, low bounded concurrency, transient-only bounded retries, redirect/origin boundaries, streaming response-size limits, duplicate in-flight request suppression, and a bounded process-local cache. Starting/importing the server does not contact CAL; live traffic begins only when a CAL-backed tool is explicitly called.
+The shared CAL client enforces finite timeouts, low bounded concurrency, transient-only bounded retries, redirect/origin boundaries, streaming response-size limits, duplicate in-flight request suppression, and a bounded process-local cache. Starting/importing the server does not contact CAL; live traffic begins only when a CAL-backed tool is explicitly called. The deterministic conversion tool performs no CAL network request.
 
 Normal CI is offline and uses reduced semantic fixtures. CAL-MCP does not expose cache warming, background refresh, persistent storage, automatic corpus traversal, or a generic invented pagination layer.
 

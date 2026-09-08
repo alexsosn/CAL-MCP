@@ -48,7 +48,7 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     assert CHANGELOG.exists()
     changelog = CHANGELOG.read_text(encoding="utf-8")
     assert "0.1.0" in changelog
-    assert "26" in changelog
+    assert "27" in changelog
     assert "#39" in changelog
 
     assert LIVE_SMOKE_WORKFLOW.exists()
@@ -112,7 +112,7 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "venv" in verifier
     assert "cal-mcp" in verifier
     assert "StdioServerParameters" in verifier
-    assert "26" in verifier
+    assert "27" in verifier
 
 
 def test_live_smoke_constants_and_default_cases_are_frozen() -> None:

@@ -1,10 +1,24 @@
-# Lexicon lookup
+# Lexicon lookup and CAL-code conversion
 
-`cal_lexicon_lookup` is the first CAL-backed scholarly tool in CAL-MCP. It resolves a CAL-supported root, headword, alias, or full form to structured lexicon data while preserving CAL's own homograph and sense distinctions.
+`cal_convert_to_code` is a local-only conversion helper for supported Aramaic input representations. `cal_lexicon_lookup` resolves a CAL-supported root, headword, alias, or full form to structured lexicon data while preserving CAL's own homograph and sense distinctions.
 
-The tool performs live, bounded requests to CAL. CAL remains the authority for the lexical content; CAL-MCP supplies normalization, typed structure, request policy, and provenance.
+The converter performs **zero network requests**. Lexicon lookup performs live, bounded requests to CAL. CAL remains the authority for lexical content; CAL-MCP supplies deterministic conversion/normalization, typed structure, request policy, and provenance.
 
-## Tool
+## Local converter
+
+```text
+cal_convert_to_code(value, representation=None)
+```
+
+The converter returns ordered CAL-code candidates per explicit space-separated word. A deterministic word has one candidate. A grapheme with a researched finite ambiguity returns every justified candidate rather than choosing one. For example, bare square-script `ש` expands to CAL `$` (shin) and `&` (sin), while `שׁ` and `שׂ` remain deterministic.
+
+The result includes `original`, `representation`, `strategy`, and `words`. Each word records `original`, ordered `candidates`, and `ambiguities`; an ambiguity records its input index, input grapheme, and ordered CAL-code alternatives.
+
+Candidate expansion is bounded. Unsupported or unverified vowels, combining marks, punctuation, editorial notation, mixed scripts, or other characters are rejected rather than silently stripped or linguistically guessed. Ordinary spaces are not converted to CAL `@`, because `@` carries CAL lexical-structure semantics that whitespace alone does not establish.
+
+The current v0.1 conversion contract is intentionally table-driven and grows only after script-specific research and tests. See [Input and transliteration](../concepts/input-and-transliteration.md).
+
+## Lookup tool
 
 ```text
 cal_lexicon_lookup(query, lemma_key=None)
@@ -16,6 +30,8 @@ The lexical form to look up. The shared normalization layer accepts the CAL-supp
 
 Normalization is deterministic. The lookup layer does not infer roots, apply fuzzy spelling correction, rank senses semantically, or choose a homograph by probability.
 
+When the input contains a researched finite orthographic ambiguity, lookup generates the corresponding bounded CAL-code candidates and searches every required **unique** CAL browser prefix. Duplicate prefixes are requested once, and multiple encoding paths that resolve to the same CAL lemma are deduplicated by canonical `lemma_key`.
+
 ### `lemma_key`
 
 Optional exact CAL lemma key used only to disambiguate candidates returned for the same query.
@@ -26,7 +42,7 @@ CAL endpoint names, DOM structure, and PHP form parameters are not part of the M
 
 ## Lookup behavior
 
-A lookup uses the minimum bounded CAL flow needed by the current public lexicon interface:
+For deterministic input a lookup uses the minimum bounded CAL flow needed by the current public lexicon interface:
 
 1. one lexicon-browser request using at most the first three normalized browser symbols;
 2. exact matching against CAL headwords and aliases returned by that bounded browser page;
@@ -34,10 +50,12 @@ A lookup uses the minimum bounded CAL flow needed by the current public lexicon 
 
 Therefore:
 
-- a not-found lookup uses one CAL request;
-- an ambiguous lookup uses one CAL request and does not fetch every candidate entry;
+- a deterministic not-found lookup uses one CAL request;
+- a deterministic ambiguous lookup uses one CAL request and does not fetch every candidate entry;
 - a successful lookup normally uses two CAL requests;
 - the tool does not enumerate neighboring entries or build a local lexicon index.
+
+For finite encoding ambiguity, all complete CAL-code candidates are derived **before** network access. They are grouped by browser prefix. At most eight unique browser-prefix requests are permitted per public lookup; exceeding that cap raises before the first CAL request. Ambiguity occurring after the three-symbol browser prefix therefore adds no request. After browser aggregation the adapter fetches at most one selected entry, so the absolute ambiguity-aware bound is eight browser requests plus one entry request.
 
 For CAL multiword browser input, the documented `@`/space convention is preserved when the bounded prefix is constructed. Combining marks do not consume an additional browser-symbol slot.
 
@@ -67,7 +85,7 @@ Optional CAL sections are represented as empty lists when absent. Required entry
 
 ### `ambiguous`
 
-CAL exposes more than one exact matching lemma/homograph. `entry` is `null`; `matches` contains the typed candidates.
+CAL exposes more than one exact matching lemma/homograph after all bounded encoding candidates are aggregated. `entry` is `null`; `matches` contains the typed candidates.
 
 For example, the deterministic fixture for `br` preserves both CAL keys:
 
@@ -91,9 +109,9 @@ cal_lexicon_lookup(query="br", lemma_key="br N")
 
 ### `not_found`
 
-No exact CAL headword or alias on the bounded browser result matches the normalized query. `entry` is `null` and `matches` is empty.
+No exact CAL headword or alias on the bounded browser results matches any justified query candidate. `entry` is `null` and `matches` is empty.
 
-This is a normal structured result and is distinct from a network failure, CAL maintenance/error content, or parser drift.
+This is a normal structured result and is distinct from a network failure, CAL maintenance/error content, parser drift, or candidate-expansion limit.
 
 ## Alias and script examples
 
@@ -121,7 +139,7 @@ When CAL renders a citation-count marker, the parsed citation count must agree w
 
 ## Provenance
 
-`provenance` is adapter metadata describing the live CAL retrieval:
+`provenance` is adapter metadata describing the live CAL retrieval and, when conversion-driven search is used, the exact bounded conversion path that led to the result:
 
 | Field | Meaning |
 | --- | --- |
@@ -133,15 +151,24 @@ When CAL renders a citation-count marker, the parsed citation count must agree w
 | `normalized_query` | deterministic normalized query |
 | `representation` | detected/selected input representation |
 | `normalization_strategy` | normalization strategy used by CAL-MCP |
+| `cal_code_word_candidates` | ordered CAL-code candidate list for each input word when lookup uses the converter; empty for the legacy pass-through lookup path |
+| `cal_code_query_candidates` | ordered complete CAL-code query candidates used for conversion-driven matching; empty for the legacy pass-through lookup path |
+| `browse_prefixes` | exact ordered unique CAL browser prefixes actually requested for this lookup |
+| `selected_cal_code_candidates` | conversion candidates that matched the selected lemma when one entry is fetched; empty for `not_found`, unresolved `ambiguous`, and legacy pass-through results |
+
+The four conversion-path keys are always present in serialized provenance, even when their values are empty. This keeps the v0.1 result schema stable across deterministic, ambiguous, found, and not-found results. When multiple encoding candidates resolve to one canonical CAL lemma, the lemma is returned once while `selected_cal_code_candidates` retains every matching encoding path in stable candidate order.
 
 CAL describes its database as a live work in progress, so scholarly use should retain the source URL and retrieval date. Cache hits preserve the timestamp of the actual CAL retrieval rather than fabricating a newer one.
 
 ## Failure modes
 
-The tool keeps these cases separate:
+The tools keep these cases separate:
 
 - **not found** — normal `not_found` result;
-- **ambiguous** — normal `ambiguous` result with explicit CAL candidates;
+- **ambiguous lexical match** — normal `ambiguous` result with explicit CAL candidates;
+- **finite encoding ambiguity** — explicit candidate sets, automatically searched within fixed bounds;
+- **candidate expansion overflow** — typed local failure before unbounded computation or CAL traffic;
+- **unsupported conversion input** — typed local failure rather than lossy conversion;
 - **invalid `lemma_key`** — caller error because the key is not one of the current matches;
 - **network/timeout/upstream HTTP failure** — typed request-layer failure under the conservative retry policy;
 - **CAL maintenance/error page** — content failure before lexicon parsing;
@@ -151,18 +178,20 @@ See [Configuration](../configuration.md) for request, retry, cache, redirect, an
 
 ## Limits and non-capabilities
 
-`cal_lexicon_lookup` does not provide:
+The converter and lookup do not provide:
 
+- morphological analysis, lemmatization, root inference, or historical spelling reconstruction;
+- fuzzy or semantic ranking;
+- unsupported-diacritic stripping;
 - English gloss search across the lexicon;
 - concordance/KWIC queries;
 - corpus text browsing;
 - token-at-coordinate analysis;
-- semantic/fuzzy ranking;
 - CAL data correction;
 - bulk extraction or lexicon crawling;
 - a persistent local CAL database.
 
-Those are separate capabilities or deliberate non-goals. Use this tool when the research task starts from a lexical form and needs the corresponding CAL entry or explicit homograph candidates.
+Those are separate capabilities or deliberate non-goals. Use `cal_convert_to_code` when the task is representation conversion and `cal_lexicon_lookup` when the task needs CAL lexical content.
 
 ## Fixture and reproducibility policy
 
