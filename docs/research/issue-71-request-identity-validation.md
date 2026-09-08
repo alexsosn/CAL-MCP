@@ -63,7 +63,7 @@ A non-string namespace likewise leaks an incidental attribute error rather than 
 The production transport later consumes:
 
 ```python
-params=list(request.params)
+params = list(request.params)
 form_content = urlencode(request.data).encode("utf-8") if request.data else None
 ```
 
