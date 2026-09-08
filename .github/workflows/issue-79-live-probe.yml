@@ -1,0 +1,63 @@
+name: Issue 79 bounded Tel Dan probe
+
+on:
+  push:
+    branches:
+      - fix/issue-79-tel-dan-text-page
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Fetch two fixed Tel Dan variants
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.request import Request, urlopen
+
+          URLS = (
+              "https://cal.huc.edu/get_a_chapter.php?file=13250",
+              "https://cal.huc.edu/get_a_chapter.php?file=13250&page=0",
+          )
+
+          class P(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.parts=[]; self.links=[]; self.href=None; self.link_parts=[]
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      self.href = dict(attrs).get("href", "")
+                      self.link_parts=[]
+                  if tag in {"br","p","div","tr","td","li","h1","h2","h3"}:
+                      self.parts.append("\n")
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.href is not None:
+                      text=" ".join("".join(self.link_parts).split())
+                      self.links.append((self.href, text))
+                      self.href=None; self.link_parts=[]
+                  if tag in {"p","div","tr","td","li","h1","h2","h3"}:
+                      self.parts.append("\n")
+              def handle_data(self, data):
+                  self.parts.append(data)
+                  if self.href is not None:
+                      self.link_parts.append(data)
+
+          for url in URLS:
+              req = Request(url, headers={"User-Agent":"CAL-MCP issue-79 bounded research probe (+https://github.com/alexsosn/CAL-MCP)"})
+              with urlopen(req, timeout=15) as r:
+                  body = r.read(512 * 1024)
+                  print("URL", url)
+                  print("STATUS", r.status, "FINAL", r.geturl(), "BYTES", len(body), "CTYPE", r.headers.get("Content-Type"))
+              p=P(); p.feed(body.decode("utf-8", errors="replace")); p.close()
+              visible=[" ".join(x.split()) for x in "".join(p.parts).splitlines()]
+              visible=[x for x in visible if x]
+              print("VISIBLE", visible[:35])
+              relevant=[x for x in p.links if any(k in x[0] for k in ("get_file_info", "bablex", "comment.php", "get_a_chapter"))]
+              print("LINKS", relevant[:35])
+          PY
