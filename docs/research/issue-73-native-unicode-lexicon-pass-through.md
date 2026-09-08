@@ -58,15 +58,17 @@ The first minimal implementation caught every `UnsupportedQueryError` for inputs
 
 This shows that `normalized.representation in {HEBREW, SYRIAC}` is necessary but not sufficient evidence for fallback. Script-block detection must not be treated as a whitelist of locally verified base letters.
 
-The narrow fallback condition is **mark-only conversion loss**:
+The narrow fallback condition is **mark-only conversion loss over verified base letters**:
 
 - the original query is normalized as Hebrew or Syriac;
 - local conversion fails with `UnsupportedQueryError`;
-- the query actually contains at least one Unicode mark (`General_Category` beginning with `M`);
-- removing Unicode marks only for the eligibility check yields a base-letter/separator string that `convert_to_cal_code()` accepts;
-- the original pointed/vocalized query, not the stripped probe, is then sent unchanged through the legacy Unicode browse path.
+- the query actually contains at least one Unicode combining mark (`General_Category` beginning with `M`);
+- a local scan permits only spaces/underscores, verified Hebrew/Syriac base letters, and combining marks attached to a preceding verified base letter;
+- each base letter is validated through `convert_to_cal_code(char, representation=normalized.representation)`, so eligibility reuses the researched converter inventory rather than Unicode-block membership;
+- unsupported punctuation, unattached marks, or unverified base letters make the fallback ineligible;
+- the original pointed/vocalized query is then sent unchanged through the legacy Unicode browse path.
 
-This does not transliterate, normalize away, or send a stripped query. Mark removal is only a local proof that the converter failure is attributable to pointing/vocalization layered on converter-supported base characters. An unverified base such as `ܞ`, including `ܞ` plus a vowel mark, still fails because the mark-stripped probe remains unsupported. Unsupported punctuation likewise remains unsupported because it is not removed by the mark-only probe.
+The scan is only a local safety predicate. It does not transliterate, strip marks, or send a probe to CAL. An unverified base such as `ܞ`, including `ܞ` plus a vowel mark, still fails because the base letter itself is unsupported. Unsupported punctuation and an unattached combining mark likewise remain local failures before I/O.
 
 ## Required compatibility behavior
 
@@ -74,7 +76,7 @@ For Hebrew/Syriac:
 
 - If local conversion succeeds and exposes finite ambiguity (for example bare Hebrew `ש` or Syriac `ܖ`), keep the bounded CAL-code fan-out added by issue #52.
 - If local conversion fails only because Unicode pointing/vocalization marks sit on converter-supported Hebrew/Syriac base characters, fall back to the legacy one-prefix Unicode browse path.
-- If any mark-stripped base character remains unsupported, fail before CAL I/O.
+- If any base character is unsupported, punctuation is unverified, or a combining mark is unattached, fail before CAL I/O.
 - Do not weaken `convert_to_cal_code()` itself.
 
 For dedicated scripts (Imperial Aramaic, Palmyrene, Nabataean, Hatran, Samaritan, Mandaic):
@@ -97,7 +99,7 @@ Catch only `UnsupportedQueryError` from optional Hebrew/Syriac conversion. Do no
 - arbitrary exceptions;
 - dedicated-script conversion errors.
 
-After catching `UnsupportedQueryError`, perform the mark-only eligibility probe above. If that probe does not positively establish converter-supported base content, re-raise the original error.
+After catching `UnsupportedQueryError`, perform the verified marked-letter eligibility scan above. If that scan does not positively establish supported base content plus attached marks, re-raise the original error.
 
 ## TDD strategy
 
@@ -110,13 +112,15 @@ Test at least:
 3. no entry request occurs for those no-match cases;
 4. unverified Syriac `ܞ` fails before I/O;
 5. unverified Syriac plus a mark (`ܞܲ`) also fails before I/O, proving that the fallback is not merely “has a mark”;
-6. existing bare-Hebrew-shin ambiguity tests remain unchanged and continue to fan out;
-7. existing dedicated-script tests remain unchanged and continue to require conversion.
+6. Syriac punctuation after otherwise supported marked letters fails before I/O;
+7. an unattached Syriac combining mark fails before I/O;
+8. existing bare-Hebrew-shin ambiguity tests remain unchanged and continue to fan out;
+9. existing dedicated-script tests remain unchanged and continue to require conversion.
 
 ## Implementation boundary
 
-Keep the fix local to `src/cal_mcp/lexicon.py`. Add a small private eligibility helper if needed. It may use `unicodedata.category()` and `convert_to_cal_code()` only for the local mark-stripped eligibility probe; it must never alter the query sent to CAL.
+Keep the fix local to `src/cal_mcp/lexicon.py`. The eligibility check may use `unicodedata.category()` and `convert_to_cal_code()` only to validate the original normalized query's character classes and base-letter inventory; it must never alter the query sent to CAL.
 
 ## Conclusion
 
-Issue #73 is a release-blocking compatibility regression caused by conflating CAL-native pointed/vocalized Unicode acceptance with the stricter standalone converter contract. The first representation-only fallback was also too broad. The corrected safe boundary is to permit legacy Hebrew/Syriac pass-through only when the conversion failure is demonstrably mark-only over converter-supported base content; all unverified base characters remain fail-closed before I/O.
+Issue #73 is a release-blocking compatibility regression caused by conflating CAL-native pointed/vocalized Unicode acceptance with the stricter standalone converter contract. The first representation-only fallback was also too broad. The corrected safe boundary is to permit legacy Hebrew/Syriac pass-through only when the conversion failure is demonstrably mark-only over converter-supported base content, with marks attached to verified letters and no unsupported punctuation; all unverified base characters remain fail-closed before I/O.
