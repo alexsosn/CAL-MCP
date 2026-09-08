@@ -169,10 +169,12 @@ def parse_text_search_page(response: CalResponse) -> TextSearchPage:
     matches: list[TextRef] = []
     for line in lines:
         for link in line.links:
-            if not _is_path(link.href, "get_a_chapter.php"):
+            if not (
+                _is_path(link.href, "get_a_chapter.php") or _is_path(link.href, "showsubtexts.php")
+            ):
                 continue
             label, description = _search_label_and_description(line, link)
-            text = _text_ref_from_link(link, label=label, description=description)
+            text = _search_text_ref_from_link(link, label=label, description=description)
             if text is None:
                 raise TextParseError("CAL text search result contains a malformed text link")
             matches.append(text)
@@ -425,6 +427,41 @@ def _text_ref_from_link(
     return TextRef(
         file_id=file_id,
         subtext_id=subtext_id,
+        label=rendered_label,
+        description=description,
+    )
+
+
+def _search_text_ref_from_link(
+    link: _Link,
+    *,
+    label: str,
+    description: str | None,
+) -> TextRef | None:
+    ordinary = _text_ref_from_link(link, label=label, description=description)
+    if ordinary is not None:
+        return ordinary
+    if not _is_path(link.href, "showsubtexts.php"):
+        return None
+
+    query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+    subtext_values = query.get("subtext")
+    if (
+        subtext_values is None
+        or len(subtext_values) != 1
+        or _ID_RE.fullmatch(subtext_values[0]) is None
+    ):
+        raise TextParseError("CAL Mandaic text search result has an invalid file identifier")
+    cset_values = query.get("cset")
+    if cset_values != ["M"]:
+        raise TextParseError("CAL Mandaic text search result has an invalid cset")
+
+    rendered_label = label.strip()
+    if not rendered_label:
+        raise TextParseError("CAL Mandaic text search result has no rendered label")
+    return TextRef(
+        file_id=subtext_values[0],
+        subtext_id=None,
         label=rendered_label,
         description=description,
     )
