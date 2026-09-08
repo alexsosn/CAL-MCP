@@ -36,6 +36,9 @@ _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
         "74923",
     }
 )
+_ONKELOS_JONATHAN_CATEGORY_ID = "51"
+_ONKELOS_JONATHAN_PATH = "targum_onkelos_jonathan.html"
+_ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"
 
 
 class TextParseError(CalContentError):
@@ -278,6 +281,8 @@ class TextService:
         )
         if normalized_category is None:
             request = CalRequest(method="GET", path="newtextmenu.html")
+        elif normalized_category == _ONKELOS_JONATHAN_CATEGORY_ID:
+            request = CalRequest(method="GET", path=_ONKELOS_JONATHAN_PATH)
         else:
             request = CalRequest(
                 method="GET",
@@ -415,12 +420,27 @@ def _prepare_text_search_query(value: str) -> str:
 
 
 def _category_from_link(link: _Link) -> TextCategoryRef | None:
+    label = link.text.strip()
+    parsed = urlsplit(link.href)
+    exact_dedicated_route = (
+        not parsed.scheme
+        and not parsed.netloc
+        and parsed.path in (_ONKELOS_JONATHAN_PATH, f"/{_ONKELOS_JONATHAN_PATH}")
+    )
+    if exact_dedicated_route:
+        if parsed.query:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+        if not label:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue link has no label")
+        return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
+    if label == _ONKELOS_JONATHAN_LABEL:
+        raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+
     if not _is_path(link.href, "showsubtexts.php"):
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     category_id = _single_query_value(query, "subtext", "category")
     _parse_id(category_id, "category_id")
-    label = link.text.strip()
     if not label:
         raise TextParseError("CAL text catalogue category link has no label")
     return TextCategoryRef(category_id=category_id, label=label)

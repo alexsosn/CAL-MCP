@@ -28,6 +28,8 @@ The result contains two ordered collections:
 
 A call performs **one CAL request**. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.
 
+CAL's current root text browser routes the **Targums Onkelos and Jonathan to the Prophets** collection through a dedicated CAL page rather than an ordinary `showsubtexts.php` link. CAL-MCP preserves that branch in root discovery as category `51`. An explicit `cal_text_catalogue(category_id="51")` call makes one request to that dedicated collection page and returns its ordered children using the normal result shapes: subdivided sources such as `51001 TgO Gn` remain `categories`, while direct sources such as `51400 MegTan (Megillat Taanit)` remain `texts`. The dedicated route stays adapter-private, no child is prefetched, and follow-up retrieval remains a separate caller-controlled action.
+
 `category_id` is validated as an opaque decimal CAL identifier. It is preserved as a string rather than converted to an integer so the adapter does not erase potentially meaningful leading zeroes.
 
 ## `cal_text_search`
@@ -131,6 +133,7 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 
 Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08. Representative cases include:
 
+- root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
 - a topic search for `Tel Dan` returning CAL file `13250`;
 - a topic search for `Ginza` returning the current specialized Mandaic file references `74410` and `74411` without following those links;
 - a paginated `BT AZ` page exposing page and machine-coordinate metadata;
