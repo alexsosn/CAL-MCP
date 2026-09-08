@@ -61,7 +61,7 @@ cal_text_page(
 )
 ```
 
-This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's ordinary route and the current mixed direct/subdivided Mandaic collection-74 routes behind the same public operation. Route classification is private adapter metadata derived from current CAL navigation; it is not inferred from the `74` prefix at request time.
+This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's ordinary route and the current mixed direct/subdivided Mandaic collection-74 routes behind the same public operation. Route classification is private adapter metadata derived from current CAL navigation; it is not inferred from the `74` prefix at request time. The `74` prefix identifies only the Mandaic collection boundary; it does not tell CAL-MCP whether a particular file uses the direct or subdivided page route.
 
 ### Page numbering
 
