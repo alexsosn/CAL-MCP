@@ -164,11 +164,7 @@ async def test_pair_string_subclasses_are_rejected_before_transport(
     member: str,
 ) -> None:
     client = CalHttpClient(transport=unreachable_transport)
-    pairs = (
-        ((StringSubclass("q"), "one"),)
-        if member == "key"
-        else (("q", StringSubclass("one")),)
-    )
+    pairs = ((StringSubclass("q"), "one"),) if member == "key" else (("q", StringSubclass("one")),)
     request = (
         CalRequest(method="GET", path="entry.php", params=pairs)
         if field == "params"
