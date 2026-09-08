@@ -529,7 +529,9 @@ def _page_navigation(
                 sub_values = query.get("sub")
                 if sub_values is not None:
                     if len(sub_values) != 1:
-                        raise TextParseError("CAL text page navigation has repeated sub identifiers")
+                        raise TextParseError(
+                            "CAL text page navigation has repeated sub identifiers"
+                        )
                     if sub_values[0]:
                         subtext_id = _parse_id(sub_values[0], "subtext_id")
                 if subtext_id != requested_subtext_id:
