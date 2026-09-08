@@ -15,6 +15,8 @@ Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebre
 
 Single-source chapter reading is intentionally **not** duplicated as a Targum-specific MCP tool. Where CAL exposes a source chapter link, it points into CAL's ordinary text browser and can be followed through the existing text tools in a separate caller-controlled step.
 
+For source discovery, CAL's current Text Browse root gives the Onkelos/Jonathan family a dedicated upstream page rather than an ordinary category link. `cal_text_catalogue()` now preserves that branch as category `51`; a separate `cal_text_catalogue(category_id="51")` call lists one level of the Onkelos/Jonathan collection. Subdivided sources remain catalogue categories and direct sources remain text references. No source or chapter is fetched automatically.
+
 ## `cal_targum_parallel`
 
 ```text
@@ -192,5 +194,7 @@ The normal test suite is offline. Reduced semantic fixtures were captured/rechec
 - valid Onqelos and Neofiti reflex results for opaque MT lemma ID `1751`;
 - CAL's invalid-ID broad-reflex fallback;
 - wrong headings, contradictory totals, duplicate IDs, query contradictions, and cross-origin links.
+
+Issue #101 adds a separate reduced text-catalogue contract for discovering the Onkelos/Jonathan collection as category `51`; it does not add a fifth Targum-specific operation.
 
 These fixtures are reduced parser contracts, not archived CAL pages. The live research used 15 bounded CAL requests total and did not traverse books, verses, sources, lemma alphabets, KWIC examples, chapters, or corpora automatically.
