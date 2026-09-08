@@ -41,6 +41,8 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 ### Release and drift validation
 
 - The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 27-tool schema without contacting CAL.
+- Deterministic CI and release validation use committed Python 3.11 target/build constraints with exact-environment verification; a separate latest-compatible job checks the broad dependency ranges declared for downstream users.
+- Those deterministic constraints are validation inputs only; downstream package metadata retains the reviewed broad runtime dependency ranges.
 - A separate live drift smoke is opt-in/scheduled and capped at **9 CAL requests**, concurrency 1, retries 0, cache disabled.
 - The live smoke covers eight representative parser/service families and distinguishes parser drift from network/upstream and other content/policy failures.
 
@@ -51,7 +53,6 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 - v0.1 is stdio-only; there is no hosted CAL-MCP service.
 - CAL's recent-five-years bibliography snapshot is intentionally deferred to #39 and is not part of the frozen v0.1 surface.
 - Pseudo-Jonathan Hebrew-reflex research is not exposed because CAL currently marks that upstream workflow under development.
-- Dependency reproducibility/latest-compatible CI policy remains the separate non-blocking issue #18; v0.1 does not narrow reviewed runtime dependency ranges merely for release packaging.
 
 ### Upstream and attribution
 
