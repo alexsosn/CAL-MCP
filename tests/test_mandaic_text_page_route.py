@@ -185,3 +185,35 @@ async def test_mandaic_navigation_to_foreign_file_fails_closed() -> None:
             await TextService(client).page("74410", page=1)
     finally:
         await client.aclose()
+
+
+class MutatedNavigationTransport:
+    def __init__(self, old: bytes, new: bytes) -> None:
+        self.old = old
+        self.new = new
+
+    async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        assert request.params == (("cset", "M"), ("file", "74410"), ("sub", "001"))
+        return _response(FIXTURE.read_bytes().replace(self.old, self.new))
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        (b"cset=M", b"cset=X", "navigation cset"),
+        (b"sub=002", b"sub=003", "inconsistent next-page"),
+    ],
+)
+async def test_malformed_mandaic_navigation_fails_closed(
+    old: bytes,
+    new: bytes,
+    message: str,
+) -> None:
+    client = CalHttpClient(transport=MutatedNavigationTransport(old, new))
+    try:
+        with pytest.raises(TextParseError, match=message):
+            await TextService(client).page("74410", page=1)
+    finally:
+        await client.aclose()
