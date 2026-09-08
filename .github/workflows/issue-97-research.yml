@@ -17,7 +17,6 @@ jobs:
         run: |
           python - <<'PY'
           from html.parser import HTMLParser
-          from urllib.parse import parse_qs, urlsplit
           from urllib.request import Request, urlopen
 
           URL = "https://cal.huc.edu/show_Mandaic.php?R1=74"
@@ -28,36 +27,19 @@ jobs:
               raise SystemExit("menu response exceeded 512 KiB research cap")
           html = body.decode("utf-8", errors="replace")
 
-          class Links(HTMLParser):
+          class Anchors(HTMLParser):
               def __init__(self):
                   super().__init__()
-                  self.hrefs = []
+                  self.anchors = []
               def handle_starttag(self, tag, attrs):
                   if tag.lower() == "a":
-                      href = dict(attrs).get("href")
-                      if href:
-                          self.hrefs.append(href)
+                      self.anchors.append(dict(attrs))
 
-          parser = Links()
+          parser = Anchors()
           parser.feed(html)
-          routes = {}
-          for href in parser.hrefs:
-              parsed = urlsplit(href)
-              query = parse_qs(parsed.query)
-              path = parsed.path.rsplit("/", 1)[-1]
-              if path == "showsubtexts.php" and query.get("cset") == ["M"] and len(query.get("subtext", [])) == 1:
-                  file_id = query["subtext"][0]
-                  routes[file_id] = "subdivided"
-              elif path == "get_a_chapter.php" and query.get("cset") == ["M"] and len(query.get("file", [])) == 1:
-                  file_id = query["file"][0]
-                  routes[file_id] = "direct"
-
-          subdivided = sorted(file_id for file_id, route in routes.items() if route == "subdivided")
-          direct = sorted(file_id for file_id, route in routes.items() if route == "direct")
           print("MENU_URL", URL)
-          print("ROUTE_COUNT", len(routes))
-          print("SUBDIVIDED", ",".join(subdivided))
-          print("DIRECT", ",".join(direct))
-          if not subdivided or not direct:
-              raise SystemExit("expected both subdivided and direct Mandaic menu routes")
+          print("BODY_BYTES", len(body))
+          print("ANCHOR_COUNT", len(parser.anchors))
+          for index, attrs in enumerate(parser.anchors):
+              print("ANCHOR", index, repr(attrs))
           PY
