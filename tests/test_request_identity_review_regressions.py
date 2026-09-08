@@ -25,7 +25,7 @@ async def unreachable_transport(
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    ("request", "message"),
+    ("cal_request", "message"),
     [
         (
             CalRequest(
@@ -62,10 +62,14 @@ async def unreachable_transport(
     ],
 )
 async def test_method_and_path_boundary_errors_precede_pair_shape_errors(
-    request: CalRequest,
+    cal_request: CalRequest,
     message: str,
 ) -> None:
     client = CalHttpClient(transport=unreachable_transport)
 
     with pytest.raises(CalRequestValidationError, match=rf"^{message}$"):
-        await client.fetch(request, parser=lambda response: response.body, cache_namespace="entry")
+        await client.fetch(
+            cal_request,
+            parser=lambda response: response.body,
+            cache_namespace="entry",
+        )
