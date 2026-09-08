@@ -1,0 +1,34 @@
+name: issue-106 sync latest main
+
+on:
+  push:
+    branches:
+      - issue-106-text-information
+    paths:
+      - .github/workflows/issue106-sync-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-106-text-information
+          fetch-depth: 0
+      - name: Merge current main and remove helper
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge --no-edit origin/main
+          rm .github/workflows/issue106-sync-main.yml
+          git add -A
+          git diff --cached --check
+          git commit -m "Sync latest main before issue-106 RED"
+          git push origin HEAD:issue-106-text-information
