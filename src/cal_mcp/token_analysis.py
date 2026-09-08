@@ -18,6 +18,7 @@ from cal_mcp.lexicon import (
 _COORDINATE_RE = re.compile(r"^[0-9]+$")
 _ANALYSIS_MARKER = "click on a headword to see a complete lexicon entry"
 _NO_DATA_MARKER = "there is no data for this word"
+_NO_LEMMA_MARKER = "unrecognizable query or no such lemma found"
 
 
 class TokenAnalysisParseError(CalContentError):
@@ -79,6 +80,13 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
         if marker_indices or has_lemma_path:
             raise TokenAnalysisParseError(
                 "CAL token-analysis page mixes explicit no-data with analysis markup"
+            )
+        return TokenAnalysisPage(candidates=())
+
+    if _NO_LEMMA_MARKER in page_text:
+        if len(marker_indices) != 1 or has_lemma_path:
+            raise TokenAnalysisParseError(
+                "CAL token-analysis page has inconsistent current no-lemma markup"
             )
         return TokenAnalysisPage(candidates=())
 
