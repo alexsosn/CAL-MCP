@@ -20,12 +20,14 @@ When `subtext_id is None` and `file_id` is in the private current subdivided-fil
 GET get_a_chapter.php?cset=M&file=<file_id>&sub=<public page padded to at least 3 digits>
 ```
 
-Initial private set, grounded in issue-97 research:
+Current private set, grounded in issue-97 research plus the exact-head review amendment:
 
 ```text
 74401 74402 74410 74411 74421 74422 74423
-74428 74430 74432 74700 74701 74923
+74428 74430 74432 74700 74701 74702 74711 74714 74923
 ```
+
+The three review-added IDs `74702`, `74711`, and `74714` are current `showsubtexts.php` rows that were absent from the first partial menu observation. Their complete `747xx` neighborhood classification is recorded in `docs/research/issue-97-review-747xx-route-addendum.md`.
 
 The set is internal routing metadata, not a public taxonomy or stable CAL identifier promise.
 
@@ -118,10 +120,10 @@ Record exact final SHA, workflow run IDs, and test counts in the PR body.
 Review the complete final diff from scratch, not from the implementation narrative. Challenge at least:
 
 1. **Route evidence:** no remaining prefix-only assumption; both direct and subdivided examples inside `744xx`/`747xx` are accounted for.
-2. **Allowlist scope:** every allowlisted ID has current menu/browser evidence; `74700`'s browser/index evidence is clearly distinguished from the 20-row live-runner snapshot.
+2. **Allowlist scope:** every allowlisted ID has current menu/browser evidence; `74700`'s browser/index evidence is clearly distinguished from the first partial live-runner snapshot; review-added `74702`/`74711`/`74714` are tied to the complete current 747xx menu check.
 3. **Unknown/new IDs:** default-direct page 1 is safer than inventing `sub=NNN`; docs do not promise unknown files will succeed.
 4. **Direct pagination:** page >1 fails before transport and no hidden `page`/`sub` request is sent.
-5. **Subdivided compatibility:** Ginza Right/Left plus a non-Ginza subdivided file still use `sub=NNN`; large pages are not truncated.
+5. **Subdivided compatibility:** Ginza Right/Left plus non-Ginza subdivided files still use `sub=NNN`; large pages are not truncated.
 6. **Parser mode:** direct files do not receive specialized page-number synthesis or relaxed navigation validation.
 7. **Existing public subtext:** explicit `subtext_id` remains the ordinary route and is not reinterpreted as specialized pagination.
 8. **Ordinary texts:** non-Mandaic request construction and parsing are unchanged.
@@ -147,14 +149,19 @@ Immediately before merge:
 
 ## CAL access / load impact
 
-Research used four fixed menu GETs total while resolving raw rendering/link-shape ambiguity, each capped at 512 KiB and 15 seconds. Production remains one CAL request per supported `cal_text_page` call and adds no discovery, fallback probing, prefetch, traversal, or background work.
+Research used five fixed menu/direct-page GETs while resolving route classification, each capped at 512 KiB and 15 seconds. The later exact-head review classified additional current `747xx` route destinations from the menu links without traversing their contents. Production remains one CAL request per supported `cal_text_page` call and adds no discovery, fallback probing, prefetch, traversal, or background work.
 
 ## Execution record
 
 - Research and routing classification were committed before the plan and implementation.
-- Valid test-only RED: `64c40fcd100e9278c22687e1605f5668db8f55b4`, CI run `34243957093`. Both dependency matrices passed installation/environment validation, Ruff lint, Ruff format, and strict mypy before pytest. The deterministic matrix finished **677 passed / exactly 3 failed**, all three new route-scope regressions: direct `74501`/`74717` incorrectly received `sub=001`, and direct page 2 reached transport instead of failing locally.
+- Valid initial test-only RED: `64c40fcd100e9278c22687e1605f5668db8f55b4`, CI run `34243957093`. Both dependency matrices passed installation/environment validation, Ruff lint, Ruff format, and strict mypy before pytest. The deterministic matrix finished **677 passed / exactly 3 failed**, all three new route-scope regressions: direct `74501`/`74717` incorrectly received `sub=001`, and direct page 2 reached transport instead of failing locally.
 - Minimal production routing fix: `f091528ad40a46dc005981a51b642a3b0b36c060`.
-- Direct-parser-mode regression coverage was then added at `d4bbc9db25dc085eefd51e923b019001e592cf80` to prove a direct Mandaic page uses ordinary/unpaginated semantics rather than specialized page synthesis.
+- Direct-parser-mode regression coverage was added at `d4bbc9db25dc085eefd51e923b019001e592cf80` to prove a direct Mandaic page uses ordinary/unpaginated semantics rather than specialized page synthesis.
 - Post-fix GREEN at `d4bbc9db25dc085eefd51e923b019001e592cf80`: CI run `34244501560`, both deterministic and latest-compatible matrices green; deterministic pytest **691 passed**.
 - Earlier issue #85 research independently records a current direct Mandaic page (`74713`) using `get_a_chapter.php?cset=M&file=74713`, so retaining `cset=M` for direct Mandaic page retrieval is grounded in upstream evidence rather than inherited solely from the Ginza subdivided route.
-- This execution-record commit intentionally changes no production behavior. Exact-head CI and logically independent adversarial review remain required before merge.
+- Independent exact-head review of checkpoint `20617ad6606d4b6aa55b1a4436dba3f89ee8cb53` found a release-blocking incompleteness: current menu rows `74702`, `74711`, and `74714` are subdivided but absent from the first private set. The review verdict was recorded directly on PR #99 and required a review-regression loop.
+- Review evidence was frozen in `docs/research/issue-97-review-747xx-route-addendum.md`, establishing the complete current `74700–74723` route mapping without recursively traversing text content.
+- Review-regression test-only RED: `444ef680ec8702e885263ea41838d689fba7d34d`, CI run `34290147036`. Both matrices passed environment/static/type gates and failed pytest only on `74702`, `74711`, and `74714`; latest-compatible finished **712 passed / exactly 3 failed**. Each failure showed the wrong direct request versus the required `sub=001` request.
+- Minimal review correction: `b29b4748d3aed5a2a027e950536510b8d63370f6`, adding only those three researched IDs to the private subdivided set. Temporary patch-helper workflow was removed immediately afterward.
+- Durable R-025 and focused research were amended on 2026-09-09 so the repository evidence now matches the reviewed current route set.
+- Final dual-matrix GREEN on the documentation-complete, main-synchronized head and a fresh logically independent exact-head review remain required before merge.
