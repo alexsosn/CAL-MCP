@@ -12,36 +12,55 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: Probe one current CAL Ginza text search
+      - name: Probe one current CAL Ginza text search result shape
         shell: python
         run: |
           from html.parser import HTMLParser
           from urllib.parse import urlencode
           from urllib.request import Request, urlopen
 
-          class AnchorParser(HTMLParser):
+          BLOCKS = {
+              "address", "article", "aside", "blockquote", "div", "footer",
+              "h1", "h2", "h3", "h4", "h5", "h6", "header", "li", "p",
+              "section", "td", "th", "tr",
+          }
+
+          class SemanticParser(HTMLParser):
               def __init__(self):
-                  super().__init__()
-                  self.href = None
-                  self.text = []
-                  self.anchors = []
-                  self.page_text = []
+                  super().__init__(convert_charrefs=True)
+                  self.parts = []
+                  self.links = []
+                  self.open_href = None
+                  self.open_parts = []
+                  self.lines = []
 
               def handle_starttag(self, tag, attrs):
-                  if tag == "a":
-                      self.href = dict(attrs).get("href")
-                      self.text = []
+                  if tag in BLOCKS or tag == "br":
+                      self.flush()
+                  if tag == "a" and self.open_href is None:
+                      self.open_href = dict(attrs).get("href", "")
+                      self.open_parts = []
 
               def handle_data(self, data):
-                  self.page_text.append(data)
-                  if self.href is not None:
-                      self.text.append(data)
+                  self.parts.append(data)
+                  if self.open_href is not None:
+                      self.open_parts.append(data)
 
               def handle_endtag(self, tag):
-                  if tag == "a" and self.href is not None:
-                      self.anchors.append((self.href, " ".join(self.text).strip()))
-                      self.href = None
-                      self.text = []
+                  if tag == "a" and self.open_href is not None:
+                      text = " ".join("".join(self.open_parts).split())
+                      self.links.append((self.open_href, text))
+                      self.open_href = None
+                      self.open_parts = []
+                  if tag in BLOCKS or tag == "br":
+                      self.flush()
+
+              def flush(self):
+                  text = " ".join("".join(self.parts).split())
+                  if text:
+                      self.lines.append((text, tuple(self.links)))
+                  self.parts = []
+                  self.links = []
 
           data = urlencode({"search": "Ginza"}).encode()
           request = Request(
@@ -60,18 +79,17 @@ jobs:
               print("bytes", len(body))
               print("url", response.geturl())
 
-          parser = AnchorParser()
+          parser = SemanticParser()
           parser.feed(body.decode("utf-8", errors="replace"))
-          rendered = " ".join(" ".join(parser.page_text).split())
-          print("has_search_marker", "CAL search for texts like:" in rendered)
-          print("has_no_files_marker", "There are no files associated with the search term" in rendered)
-          relevant = [
-              (href, text)
-              for href, text in parser.anchors
-              if "ginza" in text.lower()
-              or "get_a_chapter.php" in href
-              or "showsubtexts.php" in href
+          parser.flush()
+          result_lines = [
+              (text, links)
+              for text, links in parser.lines
+              if any("showsubtexts.php" in href for href, _ in links)
           ]
-          print("relevant_anchor_count", len(relevant))
-          for href, text in relevant[:20]:
-              print("anchor", repr(href), repr(text[:200]))
+          print("specialized_result_line_count", len(result_lines))
+          for text, links in result_lines:
+              print("line", repr(text[:500]))
+              for href, anchor_text in links:
+                  if "showsubtexts.php" in href:
+                      print("result_link", repr(href), repr(anchor_text))
