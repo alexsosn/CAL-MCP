@@ -26,7 +26,7 @@ Before issue #52, `LexiconLookupService.lookup()` did:
 4. local match/filter;
 5. at most one selected entry fetch.
 
-Therefore any Hebrew/Syriac form accepted by `normalize_query()` could reach CAL unchanged.
+Therefore documented pointed/vocalized Hebrew/Syriac forms accepted by the existing normalization tests could reach CAL unchanged.
 
 ## Regression introduced by converter integration
 
@@ -50,14 +50,31 @@ There are two separate contracts:
 1. **CAL-native query normalization**: preserve documented Unicode forms CAL accepts.
 2. **Local Roman-code conversion**: convert only the researched lossless/finitely ambiguous subset; fail closed outside it.
 
-Lookup should use conversion only as an optional enhancement for CAL-native Hebrew/Syriac and as a required bridge for dedicated scripts that CAL lookup cannot consume directly.
+Lookup should use conversion only as an optional enhancement for documented pointed/vocalized CAL-native Hebrew/Syriac and as a required bridge for dedicated scripts that CAL lookup cannot consume directly.
+
+## Review-regression correction: script detection is not mapping validation
+
+The first minimal implementation caught every `UnsupportedQueryError` for inputs classified as Hebrew or Syriac and fell back to CAL-native browse. Review-regression CI `34221362183` disproved that boundary: the unverified Syriac base letter `ܞ` is classified as Syriac by normalization but is intentionally absent from the researched converter mapping. The broad fallback therefore sent an unverified character to CAL instead of failing before I/O.
+
+This shows that `normalized.representation in {HEBREW, SYRIAC}` is necessary but not sufficient evidence for fallback. Script-block detection must not be treated as a whitelist of locally verified base letters.
+
+The narrow fallback condition is **mark-only conversion loss**:
+
+- the original query is normalized as Hebrew or Syriac;
+- local conversion fails with `UnsupportedQueryError`;
+- the query actually contains at least one Unicode mark (`General_Category` beginning with `M`);
+- removing Unicode marks only for the eligibility check yields a base-letter/separator string that `convert_to_cal_code()` accepts;
+- the original pointed/vocalized query, not the stripped probe, is then sent unchanged through the legacy Unicode browse path.
+
+This does not transliterate, normalize away, or send a stripped query. Mark removal is only a local proof that the converter failure is attributable to pointing/vocalization layered on converter-supported base characters. An unverified base such as `ܞ`, including `ܞ` plus a vowel mark, still fails because the mark-stripped probe remains unsupported. Unsupported punctuation likewise remains unsupported because it is not removed by the mark-only probe.
 
 ## Required compatibility behavior
 
 For Hebrew/Syriac:
 
 - If local conversion succeeds and exposes finite ambiguity (for example bare Hebrew `ש` or Syriac `ܖ`), keep the bounded CAL-code fan-out added by issue #52.
-- If local conversion is unsupported but normalization already proved the Unicode query is CAL-native, fall back to the legacy one-prefix Unicode browse path.
+- If local conversion fails only because Unicode pointing/vocalization marks sit on converter-supported Hebrew/Syriac base characters, fall back to the legacy one-prefix Unicode browse path.
+- If any mark-stripped base character remains unsupported, fail before CAL I/O.
 - Do not weaken `convert_to_cal_code()` itself.
 
 For dedicated scripts (Imperial Aramaic, Palmyrene, Nabataean, Hatran, Samaritan, Mandaic):
@@ -80,40 +97,26 @@ Catch only `UnsupportedQueryError` from optional Hebrew/Syriac conversion. Do no
 - arbitrary exceptions;
 - dedicated-script conversion errors.
 
-This preserves fail-closed behavior and avoids hiding implementation bugs.
+After catching `UnsupportedQueryError`, perform the mark-only eligibility probe above. If that probe does not positively establish converter-supported base content, re-raise the original error.
 
 ## TDD strategy
 
-Add offline regression tests around `LexiconLookupService` with injected transport.
+Use offline regressions around `LexiconLookupService` with injected transport.
 
 Test at least:
 
 1. pointed Hebrew `מֶלֶךְ` performs exactly one browse request using the Unicode browse prefix and returns explicit `not_found` from a synthetic no-match page;
 2. vocalized Syriac `ܡܲܠܟܵܐ` does the same;
 3. no entry request occurs for those no-match cases;
-4. existing bare-Hebrew-shin ambiguity tests remain unchanged and continue to fan out;
-5. existing dedicated-script tests remain unchanged and continue to require conversion.
-
-The test-only RED should fail before I/O on current `main`, proving the regression directly.
+4. unverified Syriac `ܞ` fails before I/O;
+5. unverified Syriac plus a mark (`ܞܲ`) also fails before I/O, proving that the fallback is not merely “has a mark”;
+6. existing bare-Hebrew-shin ambiguity tests remain unchanged and continue to fan out;
+7. existing dedicated-script tests remain unchanged and continue to require conversion.
 
 ## Implementation boundary
 
-Keep the fix local to `src/cal_mcp/lexicon.py` unless tests prove otherwise.
-
-A minimal shape is:
-
-```python
-conversion: CalCodeConversion | None
-try:
-    conversion = convert_to_cal_code(query)
-except UnsupportedQueryError:
-    if normalized.representation not in {InputRepresentation.HEBREW, InputRepresentation.SYRIAC}:
-        raise
-    conversion = None
-```
-
-Then require CAL-code search only when `conversion is not None` and it is ambiguous or a dedicated-script representation; otherwise use the existing normalized Unicode path.
+Keep the fix local to `src/cal_mcp/lexicon.py`. Add a small private eligibility helper if needed. It may use `unicodedata.category()` and `convert_to_cal_code()` only for the local mark-stripped eligibility probe; it must never alter the query sent to CAL.
 
 ## Conclusion
 
-Issue #73 is a release-blocking compatibility regression caused by conflating CAL-native Unicode acceptance with the stricter standalone converter contract. The safe fix is not to loosen conversion; it is to make Hebrew/Syriac conversion optional inside lookup while keeping dedicated-script conversion mandatory and all ambiguity/request bounds intact.
+Issue #73 is a release-blocking compatibility regression caused by conflating CAL-native pointed/vocalized Unicode acceptance with the stricter standalone converter contract. The first representation-only fallback was also too broad. The corrected safe boundary is to permit legacy Hebrew/Syriac pass-through only when the conversion failure is demonstrably mark-only over converter-supported base content; all unverified base characters remain fail-closed before I/O.
