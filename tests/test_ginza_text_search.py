@@ -30,8 +30,7 @@ def test_ginza_search_preserves_specialized_mandaic_results_in_cal_order() -> No
     page = parse_text_search_page(_response())
 
     assert [
-        (match.file_id, match.subtext_id, match.label, match.description)
-        for match in page.matches
+        (match.file_id, match.subtext_id, match.label, match.description) for match in page.matches
     ] == [
         (
             "74410",
