@@ -567,7 +567,7 @@ def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
 
 
 def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
-    if not _is_path(link.href, "bablex.php"):
+    if not _is_path(link.href, "bablex.php") and not _is_path(link.href, "getlex.php"):
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     coordinate = _single_query_value(query, "coord", "token")

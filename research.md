@@ -422,3 +422,14 @@ PyPI's current official Trusted Publishing documentation recommends GitHub Actio
 Sources and full evidence: `docs/research/issue-15-v0.1-release.md`; https://docs.pypi.org/trusted-publishers/; release research workflow run `33995822616`.
 
 **Implication:** v0.1 ships an offline built-wheel/stdio gate and a separate opt-in/scheduled nine-request drift smoke. Publishing automation is compatible with PyPI Trusted Publishing, but documentation must not claim a successful PyPI release until the external trust prerequisite and actual upload have succeeded.
+
+
+## R-024 — Current CAL text pages use more than one lexical-token link family
+
+**Rechecked:** 2026-09-08.
+
+Issue #79's bounded Tel Dan probe established that current `get_a_chapter.php?file=13250` rows link lexical tokens through `getlex.php?coord=...&word=...&hasvariant=0`, while the current paginated `BT AZ` text (`file=71026`) still exposes `bablex.php?coord=...&word=...` token links. Tel Dan with and without upstream `page=0` returned the same 9,002-byte HTML, so page-number mapping is not the regression. The file-info link, unpaginated line text, decimal token coordinates/word indexes, and comment links remain semantically intact.
+
+Detailed evidence and probe load are recorded in `docs/research/issue-79-tel-dan-text-page.md`. The branch-only probe made four fixed Tel Dan GETs total and was removed before planning; no linked token analysis or neighboring text/page traversal occurred.
+
+**Implication:** text-page parsing must recognize both current CAL lexical-token endpoint families while preserving the exact returned URL and existing coordinate/index validation. Do not infer tokens from unlinked text, replace one endpoint globally with the other, or expose CAL-private link parameters in the MCP schema.
