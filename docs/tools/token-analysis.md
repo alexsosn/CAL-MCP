@@ -54,11 +54,13 @@ These conventions match the token metadata returned by `cal_text_page`; see [`..
 The states are intentionally distinct:
 
 - **invalid caller input** — a non-decimal coordinate or invalid `word_index` raises local validation failure before any CAL request;
-- **not found** — CAL's current explicit HTTP-success no-data message (`there is no data for this word ...`) maps to `status: "not_found"` and an empty candidate list;
+- **not found** — CAL returned one of the adapter's explicitly recognized no-candidate states. These currently include the legacy `there is no data for this word ...` page and a normal token-analysis result marker followed by CAL's exact `unrecognizable query or no such lemma found` message with no lemma-entry link. Both map to `status: "not_found"` and an empty candidate list;
 - **upstream/transport failure** — HTTP/content/request failures remain shared CAL client errors;
-- **parser drift** — a successful CAL page that lacks both a complete recognized analysis and CAL's explicit no-data marker fails closed as `TokenAnalysisParseError`.
+- **parser drift** — a successful CAL page that has neither a complete recognized analysis nor one of the explicitly recognized no-candidate states fails closed as `TokenAnalysisParseError`.
 
-This distinction matters because CAL currently returns the same explicit no-data message for at least two cases: a nonexistent decimal coordinate and an out-of-range word index. CAL-MCP reports only the upstream state it can observe and does not invent a more specific scholarly explanation.
+`status: "not_found"` deliberately does not claim a finer cause than CAL exposes. The legacy no-data page is currently used for cases such as a nonexistent coordinate or out-of-range word index, while the current no-lemma sentence itself conflates an unrecognizable query with an absent lemma. CAL-MCP therefore reports only the observable upstream no-candidate state rather than inventing a scholarly distinction.
+
+The current no-lemma sentence is accepted only together with exactly one normal token-analysis result marker and no lemma-entry link. If CAL mixes that sentence with lemma markup, omits the result marker, or returns some other unexplained successful shape, the parser fails closed instead of silently treating drift as an empty result.
 
 ## Request bound
 
@@ -80,12 +82,15 @@ The shared CAL HTTP policy still applies its origin, redirect, timeout, concurre
 
 ## Fixture-backed examples
 
-Offline tests use reduced semantic excerpts rechecked against current CAL behavior on 2026-09-04. They cover:
+Offline tests use reduced semantic excerpts rechecked against current CAL behavior through 2026-09-08. They cover:
 
 - one lexical analysis;
 - a real two-candidate ambiguous token;
 - Hebrew and Syriac rendered headwords;
-- CAL's explicit no-data result;
+- CAL's legacy explicit no-data result;
+- CAL's current result-marker plus `unrecognizable query or no such lemma found` empty-analysis state;
+- contradictory current empty-state markup with a lemma link;
+- current empty-state text without the required result marker;
 - incomplete/missing lemma-link markup;
 - unknown successful markup;
 - local coordinate/token-index validation;
