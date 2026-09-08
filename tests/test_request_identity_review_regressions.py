@@ -15,6 +15,10 @@ from cal_mcp.client import (
 PairTuple = tuple[tuple[str, str], ...]
 
 
+class CalRequestSubclass(CalRequest):
+    pass
+
+
 class PairContainerSubclass(tuple[tuple[str, str], ...]):
     pass
 
@@ -82,6 +86,21 @@ async def test_method_and_path_boundary_errors_precede_pair_shape_errors(
     with pytest.raises(CalRequestValidationError, match=rf"^{message}$"):
         await client.fetch(
             cal_request,
+            parser=lambda response: response.body,
+            cache_namespace="entry",
+        )
+
+
+@pytest.mark.anyio
+async def test_cal_request_subclass_is_rejected_before_transport() -> None:
+    client = CalHttpClient(transport=unreachable_transport)
+
+    with pytest.raises(
+        CalRequestValidationError,
+        match=r"^CAL request must be a CalRequest$",
+    ):
+        await client.fetch(
+            CalRequestSubclass(method="GET", path="entry.php"),
             parser=lambda response: response.body,
             cache_namespace="entry",
         )
