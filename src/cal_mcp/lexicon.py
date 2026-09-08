@@ -586,12 +586,35 @@ class LexiconLookupService:
         conversion: CalCodeConversion | None
         try:
             conversion = convert_to_cal_code(query)
-        except UnsupportedQueryError:
+        except UnsupportedQueryError as conversion_error:
             if normalized.representation not in {
                 InputRepresentation.HEBREW,
                 InputRepresentation.SYRIAC,
             }:
                 raise
+            fallback_supported = True
+            mark_anchor = False
+            for char in normalized.normalized:
+                if char in {" ", "_"}:
+                    mark_anchor = False
+                    continue
+                category = unicodedata.category(char)
+                if category.startswith("M"):
+                    if not mark_anchor:
+                        fallback_supported = False
+                        break
+                    continue
+                if not category.startswith("L"):
+                    fallback_supported = False
+                    break
+                try:
+                    convert_to_cal_code(char, representation=normalized.representation)
+                except UnsupportedQueryError:
+                    fallback_supported = False
+                    break
+                mark_anchor = True
+            if not fallback_supported:
+                raise conversion_error from None
             conversion = None
 
         requires_cal_code_search = conversion is not None and (
