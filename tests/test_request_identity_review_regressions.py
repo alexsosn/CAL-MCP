@@ -23,6 +23,10 @@ class StringPairSubclass(tuple[str, str]):
     pass
 
 
+class StringSubclass(str):
+    pass
+
+
 async def unreachable_transport(
     request: CalRequest,
     config: CalClientConfig,
@@ -102,6 +106,73 @@ async def test_tuple_subclasses_are_rejected_as_mutable_identity_escape_hatches(
     ):
         await client.fetch(
             CalRequest(method="GET", path="entry.php", params=params),
+            parser=lambda response: response.body,
+            cache_namespace="entry",
+        )
+
+
+@pytest.mark.anyio
+async def test_method_string_subclass_is_rejected_before_transport() -> None:
+    client = CalHttpClient(transport=unreachable_transport)
+
+    with pytest.raises(
+        CalRequestValidationError,
+        match=r"^CAL request method must be a string$",
+    ):
+        await client.fetch(
+            CalRequest(method=StringSubclass("GET"), path="entry.php"),
+            parser=lambda response: response.body,
+            cache_namespace="entry",
+        )
+
+
+@pytest.mark.anyio
+async def test_path_string_subclass_is_rejected_before_transport() -> None:
+    client = CalHttpClient(transport=unreachable_transport)
+
+    with pytest.raises(
+        CalRequestValidationError,
+        match=r"^CAL request path must be a string$",
+    ):
+        await client.fetch(
+            CalRequest(method="GET", path=StringSubclass("entry.php")),
+            parser=lambda response: response.body,
+            cache_namespace="entry",
+        )
+
+
+@pytest.mark.anyio
+async def test_namespace_string_subclass_is_rejected_before_transport() -> None:
+    client = CalHttpClient(transport=unreachable_transport)
+
+    with pytest.raises(
+        CalRequestValidationError,
+        match=r"^cache_namespace must be a string$",
+    ):
+        await client.fetch(
+            CalRequest(method="GET", path="entry.php"),
+            parser=lambda response: response.body,
+            cache_namespace=StringSubclass("entry"),
+        )
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("field", ["params", "data"])
+async def test_pair_string_subclasses_are_rejected_before_transport(field: str) -> None:
+    client = CalHttpClient(transport=unreachable_transport)
+    pairs = ((StringSubclass("q"), "one"),)
+    request = (
+        CalRequest(method="GET", path="entry.php", params=pairs)
+        if field == "params"
+        else CalRequest(method="POST", path="entry.php", data=pairs)
+    )
+
+    with pytest.raises(
+        CalRequestValidationError,
+        match=rf"^CAL request {field} must be a tuple of string pairs$",
+    ):
+        await client.fetch(
+            request,
             parser=lambda response: response.body,
             cache_namespace="entry",
         )
