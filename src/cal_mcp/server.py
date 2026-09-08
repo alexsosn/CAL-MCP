@@ -15,7 +15,7 @@ from cal_mcp.dictionary_collation import DictionaryCollationService, DictionaryS
 from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
-from cal_mcp.search import EnglishSearchService
+from cal_mcp.search import EnglishSearchService, GlossField
 from cal_mcp.syriac import SyriacService
 from cal_mcp.targum import TargumService
 from cal_mcp.texts import TextService
@@ -45,8 +45,9 @@ mcp = MCPServer(
         "no CAL request. Use cal_lexicon_lookup for bounded live CAL lexicon lookup; finite "
         "orthographic ambiguity is searched across all bounded CAL-code variants rather than "
         "guessed. "
-        "Use cal_gloss_search for CAL English-gloss search and cal_citation_text_search "
-        "for English words inside CAL citations. Use cal_text_catalogue to discover CAL "
+        "Use cal_gloss_search for ordinary CAL English-gloss search, cal_gloss_field for "
+        "CAL indexed specialized gloss fields, and cal_citation_text_search for English "
+        "words inside CAL citations. Use cal_text_catalogue to discover CAL "
         "text/category identifiers, cal_text_search to find texts by topic, and cal_text_page "
         "to retrieve one bounded CAL text page. Use cal_token_analysis for every CAL lexical "
         "analysis attached to one explicit text coordinate and zero-based token index. "
@@ -140,6 +141,26 @@ async def cal_gloss_search(
 
     client = ctx.request_context.lifespan_context.client
     result = await EnglishSearchService(client).search_gloss(query, all_glosses=all_glosses)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_gloss_field",
+    title="Search one CAL specialized gloss field",
+    structured_output=True,
+)
+async def cal_gloss_field(
+    field: GlossField,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Search one CAL indexed specialized gloss field.
+
+    The readable enum is mapped to CAL's private current field selector. One tool call
+    performs one bounded CAL request and does not expand or traverse other fields.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await EnglishSearchService(client).search_gloss_field(field)
     return result.to_dict()
 
 

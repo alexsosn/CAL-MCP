@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
+from types import MappingProxyType
 
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lexicon import (
@@ -21,6 +23,61 @@ _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
 
 class SearchParseError(CalContentError):
     """Raised when a CAL English-search page no longer exposes required semantics."""
+
+
+class GlossField(StrEnum):
+    ALCHEMY = "alchemy"
+    ANATOMY = "anatomy"
+    ARCHITECTURE = "architecture"
+    ASTRONOMY = "astronomy"
+    BOTANY = "botany"
+    CANTILLATION = "cantillation"
+    CHEMISTRY = "chemistry"
+    GEOGRAPHY = "geography"
+    GEOLOGY = "geology"
+    GEOMETRY = "geometry"
+    GRAMMAR = "grammar"
+    LITURGY = "liturgy"
+    LOGIC = "logic"
+    MAGIC = "magic"
+    MATHEMATICS = "mathematics"
+    MEDICINE = "medicine"
+    MUSIC = "music"
+    PHILOSOPHY = "philosophy"
+    TOPOGRAPHY = "topography"
+    ZOOLOGY = "zoology"
+
+
+@dataclass(frozen=True, slots=True)
+class _GlossFieldConfig:
+    label: str
+    token: str
+
+
+_GLOSS_FIELD_CONFIG = MappingProxyType(
+    {
+        GlossField.ALCHEMY: _GlossFieldConfig("alchemy", "(alchem"),
+        GlossField.ANATOMY: _GlossFieldConfig("anatomy", "(anat"),
+        GlossField.ARCHITECTURE: _GlossFieldConfig("architecture", "(arch"),
+        GlossField.ASTRONOMY: _GlossFieldConfig("astronomy", "(astron"),
+        GlossField.BOTANY: _GlossFieldConfig("botany, flora", "(bot"),
+        GlossField.CANTILLATION: _GlossFieldConfig("cantillation", "(cantill"),
+        GlossField.CHEMISTRY: _GlossFieldConfig("chemistry", "(chem"),
+        GlossField.GEOGRAPHY: _GlossFieldConfig("geography", "(geog"),
+        GlossField.GEOLOGY: _GlossFieldConfig("geology, gemology", "(geol"),
+        GlossField.GEOMETRY: _GlossFieldConfig("geometry", "(geom"),
+        GlossField.GRAMMAR: _GlossFieldConfig("grammar", "(gram"),
+        GlossField.LITURGY: _GlossFieldConfig("liturgy", "(liturg"),
+        GlossField.LOGIC: _GlossFieldConfig("logic", "(logic"),
+        GlossField.MAGIC: _GlossFieldConfig("magic", "(magic"),
+        GlossField.MATHEMATICS: _GlossFieldConfig("mathematics", "(math"),
+        GlossField.MEDICINE: _GlossFieldConfig("medicine", "(med"),
+        GlossField.MUSIC: _GlossFieldConfig("music", "(music"),
+        GlossField.PHILOSOPHY: _GlossFieldConfig("philosophy", "(philos"),
+        GlossField.TOPOGRAPHY: _GlossFieldConfig("topography", "(topog"),
+        GlossField.ZOOLOGY: _GlossFieldConfig("zoology, fauna", "(zool"),
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +119,22 @@ class GlossSearchResult:
         return {
             "matches": [_lemma_to_dict(item) for item in self.matches],
             "all_glosses": self.all_glosses,
+            "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class GlossFieldSearchResult:
+    field: GlossField
+    label: str
+    matches: tuple[LemmaRef, ...]
+    provenance: SearchProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "field": self.field.value,
+            "label": self.label,
+            "matches": [_lemma_to_dict(item) for item in self.matches],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -170,6 +243,35 @@ class EnglishSearchService:
                 query,
                 submitted,
                 "gloss",
+            ),
+        )
+
+    async def search_gloss_field(self, field: GlossField) -> GlossFieldSearchResult:
+        try:
+            normalized_field = GlossField(field)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("unsupported CAL specialized gloss field") from exc
+        config = _GLOSS_FIELD_CONFIG[normalized_field]
+
+        result = await self._client.fetch(
+            CalRequest(
+                method="GET",
+                path="newsearchmngs.php",
+                params=(("English", config.token), ("secondary", "true")),
+            ),
+            parser=parse_gloss_search_page,
+            cache_namespace="english-gloss-field-v1",
+        )
+        return GlossFieldSearchResult(
+            field=normalized_field,
+            label=config.label,
+            matches=result.value.matches,
+            provenance=_make_provenance(
+                result.source_url,
+                result.retrieved_at,
+                normalized_field.value,
+                config.token,
+                "gloss_field",
             ),
         )
 
@@ -289,6 +391,8 @@ __all__ = [
     "CitationSearchPage",
     "CitationTextSearchResult",
     "EnglishSearchService",
+    "GlossField",
+    "GlossFieldSearchResult",
     "GlossSearchPage",
     "GlossSearchResult",
     "SearchParseError",
