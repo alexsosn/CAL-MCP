@@ -51,7 +51,9 @@ async def test_text_service_parses_current_tel_dan_getlex_token_links() -> None:
     assert result.page.total_lines is None
     assert result.page.previous_page is None
     assert result.page.next_page is None
-    assert [(line.coordinate, line.display_coordinate, line.text) for line in result.page.lines] == [
+    assert [
+        (line.coordinate, line.display_coordinate, line.text) for line in result.page.lines
+    ] == [
         ("1325001", "01", "[,,, ,,,]mr"),
         ("1325002", "02", "[,,, ])by"),
     ]
