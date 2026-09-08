@@ -1,13 +1,14 @@
 # English search
 
-CAL-MCP exposes two bounded CAL-backed English search tools:
+CAL-MCP exposes three bounded CAL-backed English search tools:
 
 ```text
 cal_gloss_search(query, all_glosses=False)
+cal_gloss_field(field)
 cal_citation_text_search(query)
 ```
 
-They adapt two distinct current CAL search forms. They do not perform local indexing, fuzzy expansion, semantic reranking, or automatic follow-up lookups.
+They adapt distinct current CAL search workflows. They do not perform local indexing, fuzzy expansion, semantic reranking, or automatic follow-up lookups.
 
 ## `cal_gloss_search`
 
@@ -32,6 +33,46 @@ CAL-MCP trims surrounding ASCII spaces and collapses repeated internal ASCII spa
 
 An ordinary no-match search returns `matches: []`. It is not represented as a parser or network failure.
 
+## `cal_gloss_field`
+
+Search one of CAL's current indexed **Search by Specialized Field** categories. This is a separate CAL workflow from searching the visible word `alchemy`, `medicine`, and so on as an ordinary English gloss.
+
+The public `field` argument is a readable enum. Current values, in CAL's displayed order, are:
+
+| Field value | CAL label |
+| --- | --- |
+| `alchemy` | alchemy |
+| `anatomy` | anatomy |
+| `architecture` | architecture |
+| `astronomy` | astronomy |
+| `botany` | botany, flora |
+| `cantillation` | cantillation |
+| `chemistry` | chemistry |
+| `geography` | geography |
+| `geology` | geology, gemology |
+| `geometry` | geometry |
+| `grammar` | grammar |
+| `liturgy` | liturgy |
+| `logic` | logic |
+| `magic` | magic |
+| `mathematics` | mathematics |
+| `medicine` | medicine |
+| `music` | music |
+| `philosophy` | philosophy |
+| `topography` | topography |
+| `zoology` | zoology, fauna |
+
+CAL-MCP maps the readable enum to CAL's private current indexing token internally. Callers cannot supply that private token through this operation, and an unknown field is not reinterpreted as an ordinary English query.
+
+The result contains:
+
+- `field` — the readable enum value;
+- `label` — CAL's current human-facing field label;
+- `matches` — the same ordered CAL lemma-reference shape used by ordinary gloss results;
+- provenance for the actual CAL request.
+
+One call performs exactly one field-result request. It does not search every field, follow matching lemmas, or expand the selected field into additional queries.
+
 ## `cal_citation_text_search`
 
 Search for English words inside the citations attached to CAL lexicon entries.
@@ -50,33 +91,36 @@ Repeated hits for the same lemma remain separate and in CAL order. CAL-MCP does 
 
 ## Request behavior
 
-The current CAL form contract was rechecked on 2026-09-04:
+The ordinary CAL form contract was rechecked on 2026-09-04 and the specialized-field navigation on 2026-09-08:
 
 | Tool | CAL form behavior |
 | --- | --- |
 | gloss search | one `POST` to the current gloss-search handler with the English query and CAL's primary/all-glosses radio value |
+| specialized gloss field | one `GET` to the current gloss-search handler using CAL's private indexed field selector and subsidiary-gloss mode |
 | citation-text search | one `POST` to the current citation-search handler with the English query |
 
-The PHP handler names and form-field names are adapter internals and are not part of the MCP contract.
+The PHP handler names, form-field names, and specialized-field tokens are adapter internals and are not public MCP parameters.
 
 One MCP call performs exactly one CAL search request. It does not fetch each matched lexicon entry, follow search results, or make a second request to obtain context.
 
 ### Pagination and result bounds
 
-The current representative CAL gloss and citation-result pages inspected on 2026-09-04 exposed no page number, next-page link, continuation token, or other bounded continuation control. CAL-MCP therefore does **not** invent `page`, `offset`, or `continuation` parameters and does not split or auto-traverse the result set as though CAL provided such semantics.
+The current representative CAL gloss, specialized-field, and citation-result pages inspected during the focused audits exposed no page number, next-page link, continuation token, or other bounded continuation control. CAL-MCP therefore does **not** invent `page`, `offset`, or `continuation` parameters and does not split or auto-traverse the result set as though CAL provided such semantics.
 
 A search is bounded operationally by one upstream request and by the shared CAL HTTP response-size limit. If CAL later exposes a stable pagination contract, it must be researched, tested, and added explicitly rather than inferred from layout.
 
 ## Provenance
 
-Both tools return adapter provenance with:
+Search results return adapter provenance with:
 
 - `source: "CAL"`;
 - exact upstream result URL;
 - timezone-aware `retrieved_at` timestamp;
-- `original_query` exactly as supplied by the caller;
-- `submitted_query` after the documented deterministic ASCII-space cleanup;
-- `search_kind` (`gloss` or `citation_text`).
+- `original_query`;
+- `submitted_query`;
+- `search_kind`.
+
+For ordinary gloss and citation searches, `original_query` preserves the caller's input and `submitted_query` records deterministic ASCII-space cleanup. For `cal_gloss_field`, `original_query` is the readable field slug, `submitted_query` records CAL's private current indexed field token for reproducibility, and `search_kind` is `gloss_field`. The private token is provenance, not an accepted public selector.
 
 Cache hits retain the timestamp of the actual CAL retrieval.
 
@@ -85,7 +129,7 @@ Cache hits retain the timestamp of the actual CAL retrieval.
 These states remain distinct:
 
 - **ordinary empty result** — an empty `matches` or `hits` list after CAL explicitly reports no matches;
-- **invalid local query** — rejected before transport (for example, fewer than three letters for gloss search or more than three words for citation-text search);
+- **invalid local query/selector** — rejected before transport, including unsupported specialized-field values;
 - **network/HTTP/content failure** — typed failure from the shared conservative CAL request layer;
 - **parser drift** — CAL returned successful HTML but the required search-result semantics can no longer be recognized safely.
 
@@ -105,6 +149,12 @@ Include subsidiary glosses:
 cal_gloss_search(query="camel#", all_glosses=true)
 ```
 
+Specialized indexed field:
+
+```text
+cal_gloss_field(field="medicine")
+```
+
 Citation-text search:
 
 ```text
@@ -120,6 +170,7 @@ These tools do not provide:
 - fuzzy or semantic English search;
 - local full-text indexing;
 - automatic expansion to synonyms or related lemmas;
+- automatic traversal across all specialized fields;
 - automatic lexicon-entry fetches for returned references;
 - client-invented pagination over CAL results;
 - the separate CAL Citation Finder for texts not fully present in the online database;
