@@ -1,7 +1,7 @@
 # Issue #106 research — CAL text-information metadata
 
 **Research date:** 2026-09-09
-**Baseline:** branch created from pre-#104 `main`; synchronize with current `main` before TDD.
+**Baseline:** branch synchronized with current `main` before TDD.
 
 ## Research question
 
@@ -69,10 +69,11 @@ A fixed schema such as `edition`, `manuscript`, `bibliography`, or `findspot` wo
 
 The faithful initial model should therefore preserve CAL's ordered rendered metadata as normalized nonempty text lines/paragraphs, together with the requested identifiers and provenance. Links may be preserved as rendered text/navigation metadata only if parser evidence makes that lossless; they must never be followed automatically.
 
-Proposed typed result core:
+The result also needs an explicit status because CAL now has a current recognizable missing-information marker (documented below):
 
 ```text
 TextInformationResult
+  status: found | not_found
   file_id
   subtext_id
   metadata: ordered strings
@@ -81,10 +82,12 @@ TextInformationResult
     source_url
     retrieved_at
     operation = "text_information"
-    upstream selector / requested identifiers
+    requested identifiers
 ```
 
-Do not invent a title separate from the metadata unless the reduced fixtures demonstrate a stable semantic title field independent of the `Text Information` page heading.
+For `found`, `metadata` is nonempty. For CAL's explicit missing marker, return `not_found` with `metadata=()` rather than manufacturing bibliographic content.
+
+Do not invent a title separate from the metadata unless future evidence demonstrates a stable semantic title field independent of the `Text Information` page heading.
 
 ## Empty, missing, anti-scrape, and drift semantics
 
@@ -97,16 +100,28 @@ A bounded direct HTTP research probe made four fixed GETs (three known selectors
 99999999
 ```
 
-All four returned HTTP 200 with the same 8659-byte anti-scraping page containing CAL's request not to scrape and no text-information semantics. This means raw HTTP status/body size cannot distinguish a missing selector from a valid metadata page under that access mode.
+All four returned HTTP 200 with the same 8659-byte anti-scraping page containing CAL's request not to scrape and no text-information semantics. Raw HTTP status/body size therefore cannot distinguish a missing selector from a valid metadata page under that access mode.
+
+A subsequent indexed-current-page recheck found the explicit CAL missing-information case that the initial research had not yet observed:
+
+```text
+get_file_info.php?coord=00000639
+Text Information
+No information on record for this text.
+```
+
+This is a stable semantic distinction available to the adapter and satisfies the issue's requirement to distinguish explicit missing information from parser drift.
 
 Accordingly:
 
-- the adapter must recognize a genuine `Text Information` semantic page, not merely HTTP 200;
-- CAL's anti-scrape/maintenance/generic response must remain a shared content/upstream failure or parser drift, not a successful empty result;
-- no `not_found` state should be invented unless a focused fixture/current CAL surface exposes an explicit missing-text-information marker;
-- a well-formed but nonexistent decimal selector may therefore fail closed rather than return fabricated `not_found` in the initial contract.
+- require the semantic `Text Information` heading before interpreting either success or missing state;
+- exact current missing marker `No information on record for this text.` maps to structured `not_found` with empty metadata;
+- a heading with neither the missing marker nor nonempty metadata is parser drift;
+- CAL's anti-scrape/maintenance/generic response remains a shared content/upstream failure or parser drift, never `not_found`;
+- unrelated successful HTML remains parser drift;
+- do not infer `not_found` from HTTP status, body size, selector shape, or an unrecognized page.
 
-Normal CI remains offline; the anti-scrape research probe has been removed from the branch.
+Normal CI remains offline; the anti-scrape research probe has been removed from the branch. The indexed missing-state recheck required no additional automated CAL fetch.
 
 ## Existing parser interaction
 
@@ -133,10 +148,11 @@ Current CAL/browser-index evidence rechecked 2026-09-09:
 - `https://cal.huc.edu/get_file_info.php?coord=43200244`
 - `https://cal.huc.edu/get_file_info.php?coord=43200336`
 - `https://cal.huc.edu/get_file_info.php?coord=300001`
+- `https://cal.huc.edu/get_file_info.php?coord=00000639` — explicit `No information on record for this text.` marker;
 - `https://cal.huc.edu/newshow_browsedialects.php?R1=56`
 - `https://cal.huc.edu/get_a_chapter.php?clen=5&cset=R&file=56000&sub=128`
 - repository `src/cal_mcp/texts.py` current page-reference parsing.
 
 ## CAL load
 
-Four fixed GETs total were made by the dedicated research probe, each capped at 15 seconds and 512 KiB. No returned links were followed and no corpus/category enumeration was performed. The probe is not part of normal CI or the planned production path.
+Four fixed GETs total were made by the dedicated research probe, each capped at 15 seconds and 512 KiB. No returned links were followed and no corpus/category enumeration was performed. The indexed follow-up used search-index evidence rather than an additional automated CAL request. The probe is not part of normal CI or the planned production path.
