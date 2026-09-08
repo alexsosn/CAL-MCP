@@ -18,6 +18,8 @@ The same current browser documentation states two pieces of query syntax that ma
 - use a space for CAL `@` combinations;
 - use underscore for bound forms, for example `w_`.
 
+The CAL-native bound-form `_` separator is therefore part of the documented native browser syntax and must not be rejected merely because whole-query script-to-code conversion does not consume it.
+
 `tests/test_normalization.py` already freezes pointed Hebrew `מֶלֶךְ` and vocalized Syriac `ܡܲܠܟܵܐ` as accepted Hebrew/Syriac pass-through input. The shared normalization tables also permit the locally documented script separators space and underscore.
 
 Therefore the CAL-native lookup contract is wider than the local Roman-code converter contract in two relevant ways: native Hebrew/Syriac may contain pointing/vocalization marks, and documented browser separator syntax such as `_` may be valid even when the dedicated script-to-CAL-code converter does not itself encode the whole string.
