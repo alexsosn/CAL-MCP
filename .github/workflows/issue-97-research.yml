@@ -13,14 +13,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Inspect explicit current CAL Mandaic-script menu
+      - name: Inspect alternate current CAL Mandaic menu rendering
         run: |
           python - <<'PY'
           from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlsplit
           from urllib.request import Request, urlopen
 
-          URL = "https://cal.huc.edu/show_Mandaic.php?R1=74&cset=M"
+          URL = "https://cal.huc.edu/show_Mandaic.php?R1=74&cset=J"
           request = Request(URL, headers={"User-Agent": "CAL-MCP/issue-97-research (+https://github.com/alexsosn/CAL-MCP)"})
           with urlopen(request, timeout=15) as response:
               body = response.read(512 * 1024 + 1)
