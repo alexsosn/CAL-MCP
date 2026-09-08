@@ -13,9 +13,10 @@ from pathlib import Path, PurePosixPath
 
 from mcp import Client, StdioServerParameters
 
-EXPECTED_TOOL_COUNT = 26
+EXPECTED_TOOL_COUNT = 27
 EXPECTED_TOOLS = frozenset(
     {
+        "cal_convert_to_code",
         "cal_lexicon_lookup",
         "cal_gloss_search",
         "cal_citation_text_search",
