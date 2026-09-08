@@ -72,6 +72,21 @@ The indexed/browser view used by the bug report exposes additional collection-74
 
 The live raw menu also uses `cset=R` or `cset=J` in its own navigation even when the probe requested `cset=M`; #95's already-researched `cset=M` text-page request remains outside this ticket. Issue #97 changes only *which files receive the `sub=NNN` page-selector form*, not the established Mandaic text rendering selector. If that selector itself later proves incompatible, it should be a separate focused regression.
 
+## Post-review direct-page evidence
+
+The first adversarial review correctly noted that menu routing alone did not prove the response shape of a direct Mandaic text. A bounded follow-up probe therefore requested exactly one current direct page:
+
+- `https://cal.huc.edu/get_a_chapter.php?cset=M&file=74717`
+- HTTP 200, `text/html; charset=UTF-8`, 58,154 bytes, no redirect;
+- rendered file heading `74717: Qmaha Dbr ˁngaria`;
+- first rendered line coordinate `001`, machine coordinate `74717001`;
+- first lexical token `bšumaihun`, linked as `getlex.php?coord=74717001&word=0&hasvariant=0`;
+- no `Previous Page` or `Next Page` navigation links were rendered.
+
+The probe was fixed to that one URL, used a 15-second timeout and 512 KiB cap, and did not follow any returned text/token/comment links. Its temporary read-only workflow was subsequently removed. The reduced regression fixture `tests/fixtures/cal/text_page_mandaic_direct_74717.html` retains only the semantic fragment needed to prove the direct page is compatible with the ordinary/unpaginated parser mode.
+
+This evidence closes the review gap: direct Mandaic page 1 is not merely a menu-route assumption; the current destination has the same file-heading/line/token semantics needed by the existing ordinary page parser, without Mandaic `sub=NNN` page navigation.
+
 ## Classification decision
 
 There is no defensible arithmetic/prefix rule for current CAL Mandaic routing. Runtime discovery would require an extra CAL request and violate the existing one-request operation contract.
@@ -138,4 +153,4 @@ Normal CI remains offline.
 
 ## Research load
 
-Four fixed branch-only menu GETs were made while resolving markup/rendering ambiguity. Each had a 15-second timeout and 512 KiB cap. No Mandaic text, subtext, token, next-page, or catalogue link was followed by those probes. The first probe failed only because it assumed the wrong raw `cset` value; later probes inspected the same bounded menu response and did not expand scope.
+Five fixed branch-only CAL GETs were made in total: four menu/rendering requests while resolving route classification and one post-review direct-page request for `74717`. Each had a 15-second timeout and 512 KiB cap. No token, comment, next-page, catalogue-child, or other returned navigation link was followed. Temporary research workflows were removed after their evidence was recorded.
