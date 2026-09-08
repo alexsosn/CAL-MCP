@@ -283,7 +283,7 @@ class CalHttpClient:
         cache_namespace: str,
     ) -> CalFetchResult[T]:
         normalized = self._validate_and_normalize_request(request)
-        if not isinstance(cache_namespace, str):
+        if type(cache_namespace) is not str:
             raise CalRequestValidationError("cache_namespace must be a string")
         if not cache_namespace.strip():
             raise CalRequestValidationError("cache_namespace must not be empty")
@@ -382,11 +382,11 @@ class CalHttpClient:
             future.exception()
 
     def _validate_and_normalize_request(self, request: CalRequest) -> CalRequest:
-        if not isinstance(request, CalRequest):
+        if type(request) is not CalRequest:
             raise CalRequestValidationError("CAL request must be a CalRequest")
-        if not isinstance(request.method, str):
+        if type(request.method) is not str:
             raise CalRequestValidationError("CAL request method must be a string")
-        if not isinstance(request.path, str):
+        if type(request.path) is not str:
             raise CalRequestValidationError("CAL request path must be a string")
 
         method = request.method.upper().strip()
@@ -422,8 +422,8 @@ class CalHttpClient:
             if (
                 type(pair) is not tuple
                 or len(pair) != 2
-                or not isinstance(pair[0], str)
-                or not isinstance(pair[1], str)
+                or type(pair[0]) is not str
+                or type(pair[1]) is not str
             ):
                 raise CalRequestValidationError(
                     f"CAL request {name} must be a tuple of string pairs"
