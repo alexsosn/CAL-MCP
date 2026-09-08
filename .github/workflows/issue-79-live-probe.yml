@@ -26,14 +26,14 @@ jobs:
           class P(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.links=[]; self.href=None; self.link_parts=[]; self.interesting=[]
+                  self.links=[]; self.href=None; self.link_parts=[]; self.observations=[]
               def handle_starttag(self, tag, attrs):
                   data=dict(attrs)
                   if tag == "a":
                       self.href=data.get("href", ""); self.link_parts=[]
                   joined=" ".join(f"{k}={v}" for k,v in attrs if v is not None)
                   if any(k in joined.lower() for k in ("coord", "word", "lex", "token", "bablex")):
-                      self.interesting.append((tag, joined[:500]))
+                      self.observations.append((tag, joined[:500]))
               def handle_endtag(self, tag):
                   if tag == "a" and self.href is not None:
                       self.links.append((self.href, " ".join("".join(self.link_parts).split())))
@@ -47,5 +47,5 @@ jobs:
               print("STATUS", r.status, "BYTES", len(body), "CTYPE", r.headers.get("Content-Type"))
           p=P(); p.feed(body.decode("utf-8", errors="replace")); p.close()
           print("HREFS", p.links[:100])
-          print("ATTRS", p.interesting[:100])
+          print("ATTRS", p.observations[:100])
           PY
