@@ -1,0 +1,45 @@
+name: issue97 research amendment
+
+on:
+  push:
+    branches:
+      - fix/issue-97-mandaic-route-scope
+
+permissions:
+  contents: write
+
+jobs:
+  amend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-97-mandaic-route-scope
+          fetch-depth: 0
+      - name: Amend R-025 and self-remove
+        shell: python
+        run: |
+          from pathlib import Path
+          path = Path("research.md")
+          text = path.read_text(encoding="utf-8")
+          old = """Four fixed branch-only menu GETs were used while resolving CAL's raw rendering/`cset` variation; each had a 15-second timeout and 512 KiB cap. No text, subtext, token, page, or result link was followed. Detailed evidence is in `docs/research/issue-97-mandaic-route-scope.md`.
+
+**Implication:** `cal_text_page` keeps one public schema and one-request behavior, but private Mandaic route selection must be per-file. A current allowlist selects only CAL files explicitly observed as subdivided; all other `74...` files use the direct Mandaic page-1 route rather than inventing `sub=NNN`. Explicit public `subtext_id` and non-Mandaic routing remain unchanged. New subdivided files require researched allowlist updates rather than prefix inference or runtime discovery."""
+          new = """A post-review bounded direct-page probe of `74717` confirmed the destination itself: HTTP 200 with the expected file heading, ordinary line/token coordinates, the first `getlex.php` token link, and no previous/next-page navigation. The reduced `tests/fixtures/cal/text_page_mandaic_direct_74717.html` fixture retains only those parser-relevant semantics.
+
+Five fixed branch-only CAL GETs were made in total: four menu/rendering requests while resolving route classification and one direct-page request for `74717`. Each had a 15-second timeout and 512 KiB cap. No returned token, comment, next-page, catalogue-child, or other navigation link was followed. Detailed evidence is in `docs/research/issue-97-mandaic-route-scope.md`.
+
+**Implication:** `cal_text_page` keeps one public schema and one-request behavior, but private Mandaic route selection must be per-file. A current allowlist selects only CAL files explicitly observed as subdivided; all other `74...` files use the direct Mandaic page-1 route rather than inventing `sub=NNN`. Direct page 1 uses the ordinary/unpaginated parser semantics now grounded by the live `74717` destination. Explicit public `subtext_id` and non-Mandaic routing remain unchanged. New subdivided files require researched allowlist updates rather than prefix inference or runtime discovery."""
+          if text.count(old) != 1:
+              raise SystemExit("R-025 stale paragraph did not match exactly once")
+          path.write_text(text.replace(old, new), encoding="utf-8")
+      - name: Commit amended evidence and remove helper
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add research.md
+          git rm .github/workflows/_issue97_research_amend.yml
+          git diff --cached --check
+          git commit -m "research: amend Mandaic direct-page evidence"
+          git push origin HEAD:fix/issue-97-mandaic-route-scope
