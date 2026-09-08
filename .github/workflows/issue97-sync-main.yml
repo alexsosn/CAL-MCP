@@ -1,0 +1,30 @@
+name: issue-97 sync current main
+
+on:
+  push:
+    branches:
+      - fix/issue-97-mandaic-route-scope
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-97-mandaic-route-scope
+          fetch-depth: 0
+      - name: Merge current main and self-remove
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-commit --no-ff origin/main
+          git rm .github/workflows/issue97-sync-main.yml
+          git diff --cached --check
+          git commit -m "Merge current main into issue-97 branch"
+          git push origin HEAD:fix/issue-97-mandaic-route-scope
