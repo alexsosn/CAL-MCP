@@ -1,0 +1,52 @@
+name: issue-97 review route fix
+
+on:
+  push:
+    branches:
+      - fix/issue-97-mandaic-route-scope
+    paths:
+      - .github/workflows/issue97-review-route-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-97-mandaic-route-scope
+          fetch-depth: 0
+      - name: Apply reviewed route correction and remove helper
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/texts.py")
+          text = path.read_text()
+          old = '''        "74700",
+                  "74701",
+                  "74923",
+          '''
+          new = '''        "74700",
+                  "74701",
+                  "74702",
+                  "74711",
+                  "74714",
+                  "74923",
+          '''
+          if text.count(old) != 1:
+              raise SystemExit("unexpected Mandaic allowlist anchor")
+          path.write_text(text.replace(old, new, 1))
+          PY
+          git add src/cal_mcp/texts.py
+          git rm .github/workflows/issue97-review-route-fix.yml
+          git diff --cached --check
+          git commit -m "Fix current Mandaic 747xx route classification"
+          git push origin HEAD:fix/issue-97-mandaic-route-scope
