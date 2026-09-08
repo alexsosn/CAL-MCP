@@ -416,11 +416,11 @@ class CalHttpClient:
         name: str,
         value: object,
     ) -> tuple[tuple[str, str], ...]:
-        if not isinstance(value, tuple):
+        if type(value) is not tuple:
             raise CalRequestValidationError(f"CAL request {name} must be a tuple of string pairs")
         for pair in value:
             if (
-                not isinstance(pair, tuple)
+                type(pair) is not tuple
                 or len(pair) != 2
                 or not isinstance(pair[0], str)
                 or not isinstance(pair[1], str)
