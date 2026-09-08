@@ -15,6 +15,7 @@ from cal_mcp.normalization import (
     ConversionExpansionError,
     InputRepresentation,
     NormalizedQuery,
+    UnsupportedQueryError,
     convert_to_cal_code,
     normalize_query,
 )
@@ -582,13 +583,24 @@ class LexiconLookupService:
 
     async def lookup(self, query: str, *, lemma_key: str | None = None) -> LexiconLookupResult:
         normalized = normalize_query(query)
-        conversion = convert_to_cal_code(query)
-        has_ambiguity = any(word.ambiguities for word in conversion.words)
-        requires_cal_code_search = (
-            has_ambiguity or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
+        conversion: CalCodeConversion | None
+        try:
+            conversion = convert_to_cal_code(query)
+        except UnsupportedQueryError:
+            if normalized.representation not in {
+                InputRepresentation.HEBREW,
+                InputRepresentation.SYRIAC,
+            }:
+                raise
+            conversion = None
+
+        requires_cal_code_search = conversion is not None and (
+            any(word.ambiguities for word in conversion.words)
+            or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
         )
 
         if requires_cal_code_search:
+            assert conversion is not None
             query_candidates = _conversion_query_candidates(conversion)
             cal_code_word_candidates = tuple(word.candidates for word in conversion.words)
             cal_code_query_candidates = query_candidates
