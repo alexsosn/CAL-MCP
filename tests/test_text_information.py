@@ -30,7 +30,10 @@ _HATRAN_BODY = b"""<html><body>
 </body></html>"""
 
 
-def _response(body: bytes, url: str = "https://cal.huc.edu/get_file_info.php?coord=6042013") -> CalResponse:
+def _response(
+    body: bytes,
+    url: str = "https://cal.huc.edu/get_file_info.php?coord=6042013",
+) -> CalResponse:
     return CalResponse(
         status_code=200,
         url=url,
@@ -91,7 +94,10 @@ class InformationTransport:
         self.requests.append(request)
         coord = dict(request.params).get("coord", "missing")
         body = _HATRAN_BODY if coord == "43200336" else self.body
-        return _response(self.body if coord != "43200336" else body, f"https://cal.huc.edu/get_file_info.php?coord={coord}")
+        return _response(
+            body,
+            f"https://cal.huc.edu/get_file_info.php?coord={coord}",
+        )
 
 
 def _information_method(service: TextService) -> Any:
