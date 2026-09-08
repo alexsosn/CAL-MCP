@@ -397,7 +397,12 @@ def _prepare_text_search_query(value: str) -> str:
 def _category_from_link(link: _Link) -> TextCategoryRef | None:
     label = link.text.strip()
     parsed = urlsplit(link.href)
-    if parsed.path.endswith(_ONKELOS_JONATHAN_PATH):
+    exact_dedicated_route = (
+        not parsed.scheme
+        and not parsed.netloc
+        and parsed.path in (_ONKELOS_JONATHAN_PATH, f"/{_ONKELOS_JONATHAN_PATH}")
+    )
+    if exact_dedicated_route:
         if parsed.query:
             raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
         if not label:
