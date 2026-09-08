@@ -72,6 +72,8 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
         path.name for path in sorted(TOOLS_DIR.glob("*.md")) if f"tools/{path.name}" not in index
     ]
     assert missing_links == []
+    assert "27 tools" in index
+    assert "`cal_convert_to_code`" in index
     assert "#39" in index
     assert "defer" in index.lower()
 
