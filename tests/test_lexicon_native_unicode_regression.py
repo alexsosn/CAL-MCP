@@ -6,6 +6,7 @@ import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lexicon import LexiconLookupService, LexiconLookupStatus
+from cal_mcp.normalization import UnsupportedQueryError
 
 
 @pytest.mark.anyio
@@ -54,3 +55,23 @@ async def test_cal_native_pointed_unicode_keeps_legacy_single_browse_path(
     assert result.provenance.cal_code_query_candidates == ()
     assert result.provenance.browse_prefixes == (expected_prefix,)
     assert result.provenance.selected_cal_code_candidates == ()
+
+
+@pytest.mark.anyio
+async def test_unverified_syriac_letter_still_fails_before_cal_io() -> None:
+    calls = 0
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal calls
+        del request, config
+        calls += 1
+        raise AssertionError("unverified Syriac input must fail before CAL I/O")
+
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(UnsupportedQueryError):
+            await LexiconLookupService(client).lookup("ܞ")
+    finally:
+        await client.aclose()
+
+    assert calls == 0
