@@ -28,6 +28,8 @@ cal_lexicon_lookup(query, lemma_key=None)
 
 The lexical form to look up. The shared normalization layer accepts the CAL-supported input representations implemented by CAL-MCP, including CAL/Unicode transliteration, Hebrew square script, and Syriac. See [Input and transliteration](../concepts/input-and-transliteration.md).
 
+For CAL-native Hebrew/Syriac lookup, verified base letters may retain documented pointing/vocalization and the CAL-native bound-form `_` separator even when the stricter local converter cannot represent the whole query. The lookup keeps those forms unchanged on the bounded native browser path; unverified base letters, unsupported punctuation, and unattached marks still fail locally before CAL I/O.
+
 Normalization is deterministic. The lookup layer does not infer roots, apply fuzzy spelling correction, rank senses semantically, or choose a homograph by probability.
 
 When the input contains a researched finite orthographic ambiguity, lookup generates the corresponding bounded CAL-code candidates and searches every required **unique** CAL browser prefix. Duplicate prefixes are requested once, and multiple encoding paths that resolve to the same CAL lemma are deduplicated by canonical `lemma_key`.
