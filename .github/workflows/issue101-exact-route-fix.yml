@@ -1,0 +1,65 @@
+name: issue-101 exact route fix
+
+on:
+  push:
+    branches:
+      - issue-101-onkelos-jonathan-catalogue
+    paths:
+      - .github/workflows/issue101-exact-route-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-101-onkelos-jonathan-catalogue
+      - name: Tighten dedicated route match and remove helper
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/texts.py")
+          text = path.read_text()
+          old = '''    parsed = urlsplit(link.href)
+    if parsed.path.endswith(_ONKELOS_JONATHAN_PATH):
+        if parsed.query:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+        if not label:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue link has no label")
+        return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
+
+    if label == _ONKELOS_JONATHAN_LABEL:
+'''
+          new = '''    parsed = urlsplit(link.href)
+    exact_dedicated_route = (
+        not parsed.scheme
+        and not parsed.netloc
+        and parsed.path in (_ONKELOS_JONATHAN_PATH, f"/{_ONKELOS_JONATHAN_PATH}")
+    )
+    if exact_dedicated_route:
+        if parsed.query:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue route changed unexpectedly")
+        if not label:
+            raise TextParseError("CAL Onkelos/Jonathan catalogue link has no label")
+        return TextCategoryRef(category_id=_ONKELOS_JONATHAN_CATEGORY_ID, label=label)
+
+    if label == _ONKELOS_JONATHAN_LABEL:
+'''
+          if text.count(old) != 1:
+              raise SystemExit("expected route block exactly once")
+          path.write_text(text.replace(old, new))
+          Path(".github/workflows/issue101-exact-route-fix.yml").unlink()
+      - name: Commit exact-route fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Tighten Onkelos/Jonathan route matching"
+          git push origin HEAD:issue-101-onkelos-jonathan-catalogue
