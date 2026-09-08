@@ -1,0 +1,27 @@
+name: Issue 97 synchronize main
+
+on:
+  push:
+    branches: [fix/issue-97-mandaic-route-scope]
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-97-mandaic-route-scope
+          fetch-depth: 0
+      - name: Merge current main and remove helper in the merge commit
+        run: |
+          git config user.name "Oleksandr (Alex) Sosnovshchenko"
+          git config user.email "alex.sosn88@gmail.com"
+          git fetch origin main
+          git merge --no-commit --no-ff origin/main
+          rm .github/workflows/issue-97-sync-main.yml
+          git add .github/workflows/issue-97-sync-main.yml
+          git commit -m "Merge current main into issue-97 branch"
+          git push origin HEAD:fix/issue-97-mandaic-route-scope
