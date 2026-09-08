@@ -96,7 +96,7 @@ def test_malformed_getlex_token_links_fail_closed(href: str, message: str) -> No
         url="https://cal.huc.edu/get_a_chapter.php?file=13250&page=0",
         body=(
             '<html><body><a href="/get_file_info.php?coord=13250">'
-            '13250: TDanStel (Tel Dan Stele)</a>'
+            "13250: TDanStel (Tel Dan Stele)</a>"
             f'<div>01 <a href="{href}">token</a></div></body></html>'
         ).encode(),
         content_type="text/html; charset=UTF-8",
