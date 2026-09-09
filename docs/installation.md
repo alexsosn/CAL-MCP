@@ -51,7 +51,7 @@ See [Standalone MCP](integrations/standalone-mcp.md) for the client/process boun
 
 ## Release validation
 
-The v0.1 release pipeline builds one wheel and one source distribution. Before publication it validates the source archive's embedded package identity/required root metadata, then installs the exact wheel and exact source distribution independently in fresh virtual environments. Each installed artifact launches its `cal-mcp` executable over stdio and must expose the same release version and frozen 27-tool MCP surface. A separate bounded live smoke then checks representative CAL-backed surfaces before publication.
+The v0.1 release pipeline builds one wheel and one source distribution. Before publication it validates the source archive's embedded package identity/required root metadata, then installs the exact wheel and exact source distribution independently in fresh virtual environments. Each installed artifact launches its `cal-mcp` executable over stdio and must expose the same release version and frozen 29-tool MCP surface. A separate bounded live smoke then checks representative CAL-backed surfaces before publication.
 
 Merging the release preparation PR does not itself prove that the package is publicly available. The tagged release workflow and its PyPI publication result are the publication evidence.
 
