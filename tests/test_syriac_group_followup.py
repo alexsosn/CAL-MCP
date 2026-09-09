@@ -128,12 +128,8 @@ async def test_group_followup_rejects_response_route_or_selector_contradictions(
     "body",
     [
         "<h1>Select a Text</h1><p>No recognizable child rows</p>",
-        (
-            '<a href="https://example.org/get_a_chapter.php?file=70001">70001</a> foreign'
-        ),
-        (
-            '<a href="/showsubtexts.php?keyword=70002&amp;subtext=70003">70002</a> ambiguous'
-        ),
+        ('<a href="https://example.org/get_a_chapter.php?file=70001">70001</a> foreign'),
+        ('<a href="/showsubtexts.php?keyword=70002&amp;subtext=70003">70002</a> ambiguous'),
         (
             '<p><a href="/get_a_chapter.php?file=70001">70001</a> first</p>'
             '<p><a href="/get_a_chapter.php?file=70001">70001</a> duplicate</p>'
