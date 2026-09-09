@@ -8,6 +8,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
+from cal_mcp.syriac import syriac_text_category_slugs
 
 _ID_RE = re.compile(r"^\d+$")
 _PAGE_MARKER_RE = re.compile(
@@ -47,6 +48,11 @@ _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
 _ONKELOS_JONATHAN_CATEGORY_ID = "51"
 _ONKELOS_JONATHAN_PATH = "targum_onkelos_jonathan.html"
 _ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"
+_SYRIAC_COLLECTION_KEY = "syriac"
+_SYRIAC_ROOT_PATH = "AvailSyr.html"
+_SYRIAC_ROOT_LABEL = "Syriac"
+_SYRIAC_FOLLOW_UP_TOOL = "cal_syriac_texts"
+_SYRIAC_SELECTOR_NAME = "category"
 
 
 class TextParseError(CalContentError):
@@ -75,6 +81,15 @@ class TextRef:
 class TextCategoryRef:
     category_id: str
     label: str
+
+
+@dataclass(frozen=True, slots=True)
+class TextSpecializedCollectionRef:
+    collection_key: str
+    label: str
+    follow_up_tool: str
+    selector_name: str
+    supported_selectors: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +124,7 @@ class TextPage:
 class TextCataloguePage:
     categories: tuple[TextCategoryRef, ...]
     texts: tuple[TextRef, ...]
+    specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,11 +157,15 @@ class TextCatalogueResult:
     categories: tuple[TextCategoryRef, ...]
     texts: tuple[TextRef, ...]
     provenance: TextProvenance
+    specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
             "categories": [_category_to_dict(item) for item in self.categories],
             "texts": [_text_ref_to_dict(item) for item in self.texts],
+            "specialized_collections": [
+                _specialized_collection_to_dict(item) for item in self.specialized_collections
+            ],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -197,9 +217,18 @@ class TextInformationResult:
 def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
     categories: list[TextCategoryRef] = []
     texts: list[TextRef] = []
+    specialized_collections: list[TextSpecializedCollectionRef] = []
+    seen_specialized_keys: set[str] = set()
 
     for line in _parse_lines(response):
         for link in line.links:
+            specialized = _specialized_collection_from_link(link)
+            if specialized is not None:
+                if specialized.collection_key in seen_specialized_keys:
+                    raise TextParseError("CAL text catalogue repeats a specialized collection")
+                seen_specialized_keys.add(specialized.collection_key)
+                specialized_collections.append(specialized)
+                continue
             category = _category_from_link(link)
             if category is not None:
                 categories.append(category)
@@ -208,9 +237,15 @@ def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
             if text is not None:
                 texts.append(text)
 
-    if not categories and not texts:
-        raise TextParseError("CAL text catalogue contains no recognizable category or text links")
-    return TextCataloguePage(categories=tuple(categories), texts=tuple(texts))
+    if not categories and not texts and not specialized_collections:
+        raise TextParseError(
+            "CAL text catalogue contains no recognizable category, text, or specialized links"
+        )
+    return TextCataloguePage(
+        categories=tuple(categories),
+        texts=tuple(texts),
+        specialized_collections=tuple(specialized_collections),
+    )
 
 
 def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
@@ -399,6 +434,7 @@ class TextService:
                 operation="catalogue",
                 category_id=normalized_category,
             ),
+            specialized_collections=result.value.specialized_collections,
         )
 
     async def search(self, query: str) -> TextSearchResult:
@@ -555,6 +591,33 @@ def _prepare_text_search_query(value: str) -> str:
     if not parts:
         raise ValueError("CAL text search query must not be empty")
     return " ".join(parts)
+
+
+def _specialized_collection_from_link(
+    link: _Link,
+) -> TextSpecializedCollectionRef | None:
+    label = link.text.strip()
+    parsed = urlsplit(link.href)
+    exact_path = (
+        not parsed.scheme
+        and not parsed.netloc
+        and parsed.path in (_SYRIAC_ROOT_PATH, f"/{_SYRIAC_ROOT_PATH}")
+    )
+    if exact_path:
+        if parsed.query or parsed.fragment:
+            raise TextParseError("CAL Syriac root route changed unexpectedly")
+        if not label:
+            raise TextParseError("CAL Syriac root collection link has no label")
+        return TextSpecializedCollectionRef(
+            collection_key=_SYRIAC_COLLECTION_KEY,
+            label=label,
+            follow_up_tool=_SYRIAC_FOLLOW_UP_TOOL,
+            selector_name=_SYRIAC_SELECTOR_NAME,
+            supported_selectors=syriac_text_category_slugs(),
+        )
+    if label == _SYRIAC_ROOT_LABEL:
+        raise TextParseError("CAL Syriac root route changed unexpectedly")
+    return None
 
 
 def _category_from_link(link: _Link) -> TextCategoryRef | None:
@@ -959,6 +1022,18 @@ def _text_ref_to_dict(text: TextRef) -> dict[str, object]:
 
 def _category_to_dict(category: TextCategoryRef) -> dict[str, object]:
     return {"category_id": category.category_id, "label": category.label}
+
+
+def _specialized_collection_to_dict(
+    collection: TextSpecializedCollectionRef,
+) -> dict[str, object]:
+    return {
+        "collection_key": collection.collection_key,
+        "label": collection.label,
+        "follow_up_tool": collection.follow_up_tool,
+        "selector_name": collection.selector_name,
+        "supported_selectors": list(collection.supported_selectors),
+    }
 
 
 def _token_to_dict(token: TextToken) -> dict[str, object]:

@@ -426,6 +426,11 @@ _TEXT_CATEGORIES = {
     ),
 }
 
+
+def syriac_text_category_slugs() -> tuple[str, ...]:
+    return tuple(_TEXT_CATEGORIES)
+
+
 _MISSING_WORD_PATHS = {
     "adjectives": "display_missing_adj.php",
     "adverbs": "display_missingSL.php",
