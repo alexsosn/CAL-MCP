@@ -1,6 +1,6 @@
-# CAL text discovery and page retrieval
+# CAL text discovery, metadata, and page retrieval
 
-CAL-MCP exposes three bounded tools for discovering CAL texts and retrieving one rendered text page at a time. These tools adapt CAL's current public text interfaces; they do not create a local corpus, crawl categories, follow pagination automatically, or call CAL's token-analysis endpoint.
+CAL-MCP exposes four bounded tools for discovering CAL texts, retrieving CAL's explicit text-information metadata, and reading one rendered text page at a time. These tools adapt CAL's current public text interfaces; they do not create a local corpus, crawl categories, follow pagination automatically, follow metadata links, or call CAL's token-analysis endpoint.
 
 ## Which tool to use
 
@@ -9,6 +9,7 @@ CAL-MCP exposes three bounded tools for discovering CAL texts and retrieving one
 | Browse the root CAL text catalogue | `cal_text_catalogue()` |
 | Expand one catalogue category returned by CAL | `cal_text_catalogue(category_id=...)` |
 | Find CAL texts by the topic/search phrase accepted by CAL | `cal_text_search(query)` |
+| Retrieve CAL's detailed source/edition/editorial notes for one text or subtext | `cal_text_information(file_id, subtext_id=None)` |
 | Retrieve one CAL text page | `cal_text_page(file_id, subtext_id=None, page=1)` |
 
 The identifiers returned by these tools are CAL identifiers, not CAL-MCP identifiers. See [`../concepts/cal-identifiers.md`](../concepts/cal-identifiers.md).
@@ -47,11 +48,49 @@ The result contains:
 - `provenance.submitted_query`: the bounded query sent to CAL after deterministic ASCII-space cleanup;
 - CAL source URL and retrieval timestamp.
 
-Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic page route internally. Search still performs only the original single CAL request and never follows a returned result link automatically.
+Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic route classification internally. Search still performs only the original single CAL request and never follows a returned result link automatically.
 
 CAL currently renders an explicit no-files message when a topic search has no matches. CAL-MCP maps that recognized upstream state to `matches: []`. A successful HTML page that has neither recognizable text results nor CAL's explicit no-files marker is treated as parser drift rather than silently interpreted as an empty result.
 
 Blank queries and unsupported non-ASCII whitespace fail locally before any CAL request is made.
+
+## `cal_text_information`
+
+```text
+cal_text_information(
+    file_id: string,
+    subtext_id: string | null = null,
+)
+```
+
+CAL text pages expose a dedicated **Text Information** follow-up containing source-corpus, edition, editorial, numbering, manuscript/findspot, bibliography, photo, and quality/caution notes depending on the corpus. The structure is heterogeneous, so CAL-MCP preserves the ordered rendered metadata text instead of inventing fields such as `edition`, `manuscript`, or `bibliography` that CAL does not mark consistently.
+
+Use a `file_id` and optional `subtext_id` already returned by text discovery/page operations. CAL-MCP validates both as decimal identifiers and keeps the exact strings, including leading zeroes. Internally the private CAL selector is deterministic:
+
+```text
+subtext_id is null -> coord=<file_id>
+subtext_id present -> coord=<file_id><subtext_id>
+```
+
+The private `coord` parameter is not exposed in the MCP schema and arbitrary CAL URLs are not accepted. One tool call performs exactly one bounded `get_file_info.php` request. Links rendered inside CAL metadata are never followed automatically.
+
+The result contains:
+
+- `status`: `found` or `not_found`;
+- the requested `file_id` and optional `subtext_id`;
+- `metadata`: ordered CAL-rendered text strings for `found`, otherwise an empty list;
+- provenance with the actual CAL source URL, retrieval timestamp, operation name, and requested identifiers.
+
+CAL currently exposes the explicit missing-information state:
+
+```text
+Text Information
+No information on record for this text.
+```
+
+Only that recognized semantic state maps to `status: "not_found"`. An HTTP-success page with the heading but no content, CAL's generic anti-scrape/maintenance output, unrelated HTML, or a page whose missing marker is mixed with ordinary metadata is parser drift rather than a fabricated empty result. HTTP status/body size alone is never used to infer that metadata is missing.
+
+This operation is an explicit scholarly-provenance follow-up. `cal_text_catalogue`, `cal_text_search`, and `cal_text_page` do not prefetch it.
 
 ## `cal_text_page`
 
@@ -115,6 +154,8 @@ Every public text tool performs exactly one user-initiated CAL request:
 
 - no recursive catalogue expansion;
 - no automatic traversal to previous/next pages;
+- no automatic text-information lookup from discovery/page results;
+- no metadata-link traversal;
 - no route-discovery request before Mandaic page retrieval;
 - no `show all` request;
 - no prefetch of text-search matches;
@@ -131,14 +172,16 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 
 ## Fixture-backed examples
 
-Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08. Representative cases include:
+Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract. Representative cases include:
 
 - root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
 - a topic search for `Tel Dan` returning CAL file `13250`;
 - a topic search for `Ginza` returning the current specialized Mandaic file references `74410` and `74411` without following those links;
+- a text-information lookup preserving Ephrem source/edition/editorial/quality notes in CAL order, plus CAL's explicit `No information on record for this text.` missing state;
 - a paginated `BT AZ` page exposing page and machine-coordinate metadata;
 - the short Tel Dan text, which has valid `getlex.php` token links but no page-count marker;
 - a Ginza Rabba Right Side page using the current Mandaic `cset=M` / `sub=NNN` route and adjacent navigation without a rendered total page count;
+- a direct Mandaic page such as `74717`, which uses page 1 without an invented `sub=NNN` selector;
 - CAL's explicit no-lines page for a nonexistent subtext.
 
 The fixtures are parser contracts, not archived CAL pages. Normal CI performs zero CAL requests.

@@ -48,8 +48,10 @@ mcp = MCPServer(
         "Use cal_gloss_search for ordinary CAL English-gloss search, cal_gloss_field for "
         "CAL indexed specialized gloss fields, and cal_citation_text_search for English "
         "words inside CAL citations. Use cal_text_catalogue to discover CAL "
-        "text/category identifiers, cal_text_search to find texts by topic, and cal_text_page "
-        "to retrieve one bounded CAL text page. Use cal_token_analysis for every CAL lexical "
+        "text/category identifiers, cal_text_search to find texts by topic, cal_text_page "
+        "to retrieve one bounded CAL text page, and cal_text_information to retrieve CAL's "
+        "explicit source, edition, editorial, and other free-form Text Information metadata "
+        "for one returned file/subtext identifier. Use cal_token_analysis for every CAL lexical "
         "analysis attached to one explicit text coordinate and zero-based token index. "
         "Use cal_text_concordance for one text's ordered lemma-frequency index, cal_kwic_texts "
         "for one lemma in 1-8 explicit texts, cal_kwic_dialects to discover CAL's current "
@@ -243,6 +245,27 @@ async def cal_text_page(
 
     client = ctx.request_context.lifespan_context.client
     result = await TextService(client).page(file_id, subtext_id=subtext_id, page=page)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_text_information",
+    title="Retrieve CAL text information metadata",
+    structured_output=True,
+)
+async def cal_text_information(
+    file_id: str,
+    ctx: Context[AppContext],
+    subtext_id: str | None = None,
+) -> dict[str, object]:
+    """Retrieve CAL's explicit Text Information metadata for one text or subtext.
+
+    Metadata is returned as CAL's ordered free-form text rather than inferred bibliographic
+    fields. One call performs exactly one bounded CAL request and follows no metadata links.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TextService(client).information(file_id, subtext_id=subtext_id)
     return result.to_dict()
 
 

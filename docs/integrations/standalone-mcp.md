@@ -57,7 +57,7 @@ See [Configuration](../configuration.md) and [Limitations](../limitations.md).
 
 ## Tool discovery
 
-MCP clients should use the server's executable tool schemas rather than relying on hand-maintained parameter lists. The v0.1 surface contains 27 public tools grouped in the [user documentation index](../index.md).
+MCP clients should use the server's executable tool schemas rather than relying on hand-maintained parameter lists. The v0.1 surface contains 29 public tools grouped in the [user documentation index](../index.md).
 
 CAL form field names and PHP endpoint names are not part of the MCP contract.
 
