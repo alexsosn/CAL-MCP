@@ -19,7 +19,6 @@ class SyriacParseError(CalContentError):
 class SyriacTextNavigationKind(StrEnum):
     TEXT = "text"
     GROUP = "group"
-    CATALOGUE = "catalogue"
 
 
 class SyriacPeshittaStatus(StrEnum):
@@ -462,30 +461,13 @@ def parse_syriac_text_category_page(
                 navigation.append((SyriacTextNavigationKind.TEXT, upstream_id, resolved, link))
             elif endpoint == "showsubtexts.php":
                 resolved = _validated_same_origin_url(response.url, link.href, endpoint)
-                query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
-                selectors: list[tuple[SyriacTextNavigationKind, str]] = []
-                if "keyword" in query:
-                    keyword = _single_query_value(
-                        query,
-                        "keyword",
-                        "Syriac grouped-text navigation",
-                    )
-                    _require_decimal_identifier(keyword, "Syriac grouped-text keyword")
-                    selectors.append((SyriacTextNavigationKind.GROUP, keyword))
-                if "subtext" in query:
-                    subtext = _single_query_value(
-                        query,
-                        "subtext",
-                        "Syriac catalogue navigation",
-                    )
-                    _require_decimal_identifier(subtext, "Syriac catalogue identifier")
-                    selectors.append((SyriacTextNavigationKind.CATALOGUE, subtext))
-                if len(selectors) != 1:
-                    raise SyriacParseError(
-                        "CAL Syriac subtext navigation must expose exactly one semantic selector"
-                    )
-                kind, upstream_id = selectors[0]
-                navigation.append((kind, upstream_id, resolved, link))
+                upstream_id = _single_query_value(
+                    parse_qs(urlsplit(resolved).query, keep_blank_values=True),
+                    "keyword",
+                    "Syriac grouped-text navigation",
+                )
+                _require_decimal_identifier(upstream_id, "Syriac grouped-text keyword")
+                navigation.append((SyriacTextNavigationKind.GROUP, upstream_id, resolved, link))
             elif endpoint == "get_file_info.php":
                 resolved = _validated_same_origin_url(response.url, link.href, endpoint)
                 info_id = _single_query_value(
