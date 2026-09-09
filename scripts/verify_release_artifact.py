@@ -13,40 +13,7 @@ from pathlib import Path, PurePosixPath
 
 from mcp import Client, StdioServerParameters
 
-EXPECTED_TOOL_COUNT = 29
-EXPECTED_TOOLS = frozenset(
-    {
-        "cal_convert_to_code",
-        "cal_lexicon_lookup",
-        "cal_gloss_search",
-        "cal_gloss_field",
-        "cal_citation_text_search",
-        "cal_text_catalogue",
-        "cal_text_search",
-        "cal_text_page",
-        "cal_text_information",
-        "cal_token_analysis",
-        "cal_text_concordance",
-        "cal_kwic_texts",
-        "cal_kwic_dialects",
-        "cal_kwic_dialect",
-        "cal_bibliography_authors",
-        "cal_bibliography_author",
-        "cal_bibliography_keyword",
-        "cal_bibliography_lemma",
-        "cal_dictionary_collation",
-        "cal_targum_parallel",
-        "cal_targum_concordance",
-        "cal_targum_hebrew_lemmas",
-        "cal_targum_hebrew_reflexes",
-        "cal_external_citation_dialects",
-        "cal_external_citation_sources",
-        "cal_external_citations",
-        "cal_syriac_texts",
-        "cal_syriac_missing_words",
-        "cal_syriac_peshitta_parallel",
-    }
-)
+from cal_mcp.release_surface import V01_PUBLIC_TOOLS
 
 
 def _distribution_version(wheel: Path) -> str:
@@ -161,10 +128,10 @@ async def _verify_stdio(executable: Path, expected_version: str, cwd: Path) -> N
                 "installed MCP server version does not match distribution metadata: "
                 f"{client.server_info.version!r} != {expected_version!r}"
             )
-        tool_names = {tool.name for tool in (await client.list_tools()).tools}
-        if len(tool_names) != EXPECTED_TOOL_COUNT or tool_names != EXPECTED_TOOLS:
-            missing = sorted(EXPECTED_TOOLS - tool_names)
-            extra = sorted(tool_names - EXPECTED_TOOLS)
+        tool_names = frozenset(tool.name for tool in (await client.list_tools()).tools)
+        if tool_names != V01_PUBLIC_TOOLS:
+            missing = sorted(V01_PUBLIC_TOOLS - tool_names)
+            extra = sorted(tool_names - V01_PUBLIC_TOOLS)
             raise RuntimeError(
                 f"installed MCP schema mismatch: missing={missing!r} extra={extra!r}"
             )

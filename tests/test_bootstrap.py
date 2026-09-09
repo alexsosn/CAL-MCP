@@ -12,41 +12,12 @@ from mcp import Client, StdioServerParameters
 
 from cal_mcp import __version__
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.release_surface import V01_PUBLIC_TOOLS
 
 
 async def _assert_public_tools(client: Client) -> None:
     tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-    assert set(tools) == {
-        "cal_convert_to_code",
-        "cal_lexicon_lookup",
-        "cal_gloss_search",
-        "cal_gloss_field",
-        "cal_citation_text_search",
-        "cal_text_catalogue",
-        "cal_text_search",
-        "cal_text_page",
-        "cal_text_information",
-        "cal_token_analysis",
-        "cal_text_concordance",
-        "cal_kwic_texts",
-        "cal_kwic_dialects",
-        "cal_kwic_dialect",
-        "cal_bibliography_authors",
-        "cal_bibliography_author",
-        "cal_bibliography_keyword",
-        "cal_bibliography_lemma",
-        "cal_dictionary_collation",
-        "cal_targum_parallel",
-        "cal_targum_concordance",
-        "cal_targum_hebrew_lemmas",
-        "cal_targum_hebrew_reflexes",
-        "cal_external_citation_dialects",
-        "cal_external_citation_sources",
-        "cal_external_citations",
-        "cal_syriac_texts",
-        "cal_syriac_missing_words",
-        "cal_syriac_peshitta_parallel",
-    }
+    assert set(tools) == V01_PUBLIC_TOOLS
 
     conversion_schema = tools["cal_convert_to_code"].input_schema
     assert set(conversion_schema["properties"]) == {"value", "representation"}

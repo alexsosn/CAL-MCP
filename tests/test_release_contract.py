@@ -18,6 +18,7 @@ from cal_mcp.client import (
     CalUpstreamError,
 )
 from cal_mcp.concordance import ConcordanceParseError
+from cal_mcp.release_surface import V01_PUBLIC_TOOLS
 
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
@@ -112,7 +113,8 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "venv" in verifier
     assert "cal-mcp" in verifier
     assert "StdioServerParameters" in verifier
-    assert "29" in verifier
+    assert "V01_PUBLIC_TOOLS" in verifier
+    assert len(V01_PUBLIC_TOOLS) == 29
 
 
 def test_live_smoke_constants_and_default_cases_are_frozen() -> None:
