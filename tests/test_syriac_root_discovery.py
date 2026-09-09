@@ -151,6 +151,18 @@ def test_duplicate_syriac_specialized_collection_fails_closed() -> None:
         parse_text_catalogue_page(response)
 
 
+def test_non_root_catalogue_does_not_apply_syriac_root_drift_rules() -> None:
+    page = parse_text_catalogue_page(
+        _response(
+            '<a href="get_a_chapter.php?file=10001">Syriac</a>',
+            "https://cal.huc.edu/showsubtexts.php?subtext=3",
+        )
+    )
+
+    assert [(item.file_id, item.label) for item in page.texts] == [("10001", "Syriac")]
+    assert _specialized(page) == ()
+
+
 class RecordingTransport:
     def __init__(self, response: CalResponse) -> None:
         self.response = response
