@@ -93,7 +93,7 @@ cal_kwic_dialect(
 )
 ```
 
-Each valid explicit operation submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
+This operation requests one exact CAL lemma key in one explicit decimal dialect ID. It submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
 
 The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, per-hit charset, full-context URL, and upstream total.
 
