@@ -29,6 +29,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
         "cal_external_citation_sources",
         "cal_external_citations",
         "cal_syriac_texts",
+        "cal_syriac_group",
         "cal_syriac_missing_words",
         "cal_syriac_peshitta_parallel",
     }

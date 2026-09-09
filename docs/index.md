@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** pre-release. The current public contract contains 29 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
+> **Status:** pre-release. The current public contract contains 30 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
@@ -23,7 +23,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 | Citations from sources not available as full online CAL texts | **Implemented** | [`cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations`](tools/external-citations.md) |
 | Targum parallel verse, Targum concordance, and MT-Hebrew reflex study | **Implemented** | [`cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`](tools/targum.md) |
 | Browse one Targum source and inspect words | **Intentionally composed** | Use the ordinary [text tools](tools/texts.md), then [token analysis](tools/token-analysis.md); CAL itself links Targum sources into the general text browser. |
-| Syriac text-category discovery, missing-from-*A Syriac Lexicon* lists, MT/Peshitta comparison | **Implemented** | [`cal_syriac_texts`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel`](tools/syriac.md) |
+| Syriac text-category discovery, grouped-text follow-up, missing-from-*A Syriac Lexicon* lists, MT/Peshitta comparison | **Implemented** | [`cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel`](tools/syriac.md) |
 | Syriac citations from texts not online | **Intentionally composed** | Use the generic [external-citation workflow](tools/external-citations.md) with the Syriac dialect rather than a duplicate Syriac-only tool. |
 | Bibliography: CAL's “five most recent years” snapshot | **Deferred from v0.1** | Tracked separately in [issue #39](https://github.com/alexsosn/CAL-MCP/issues/39); its aggregate window/size semantics require a focused research/TDD ticket. |
 | Legacy/static bibliography addenda and archive documents | **Reference material, not an MCP operation** | CAL-MCP does not wrap static documents merely to increase tool count. |
@@ -61,6 +61,6 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 The v0.1 surface is task-oriented rather than a mirror of CAL's PHP forms. Endpoint names, form controls, and HTML structure are private adapter details. Returned CAL identifiers are preserved where useful, but CAL-MCP does not decode opaque IDs into invented semantics. The local `cal_convert_to_code` tool is adapter-owned deterministic preprocessing and does not claim to be a CAL research endpoint.
 
-A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, text-information metadata, specialized gloss fields, or bibliography archives.
+A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, text-information metadata, specialized gloss fields, Syriac groups, or bibliography archives.
 
 Successful CAL-backed results preserve an actual CAL source URL and retrieval timestamp. See [Provenance and citation](concepts/provenance-and-citation.md) and [Errors and upstream drift](concepts/errors-and-upstream-drift.md) for the cross-cutting result contract.

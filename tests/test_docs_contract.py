@@ -52,18 +52,19 @@ async def test_every_public_tool_is_covered_by_tool_docs() -> None:
     tool_docs = "\n".join(path.read_text(encoding="utf-8") for path in TOOLS_DIR.glob("*.md"))
     missing = [tool_name for tool_name in tool_names if f"`{tool_name}`" not in tool_docs]
 
-    assert len(tool_names) == 29
+    assert len(tool_names) == 30
     assert missing == []
 
 
 def test_readme_release_surface_tracks_public_tools() -> None:
     readme = README.read_text(encoding="utf-8")
 
-    assert "29 public tools" in readme
-    assert "29-tool surface" in readme
+    assert "30 public tools" in readme
+    assert "30-tool surface" in readme
     assert "`cal_convert_to_code`" in readme
     assert "`cal_gloss_field`" in readme
     assert "`cal_text_information`" in readme
+    assert "`cal_syriac_group`" in readme
 
 
 def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> None:
@@ -74,10 +75,11 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
         path.name for path in sorted(TOOLS_DIR.glob("*.md")) if f"tools/{path.name}" not in index
     ]
     assert missing_links == []
-    assert "29 tools" in index
+    assert "30 tools" in index
     assert "`cal_convert_to_code`" in index
     assert "`cal_gloss_field`" in index
     assert "`cal_text_information`" in index
+    assert "`cal_syriac_group`" in index
     assert "#39" in index
     assert "defer" in index.lower()
 

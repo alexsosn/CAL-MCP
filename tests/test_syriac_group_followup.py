@@ -165,7 +165,7 @@ async def test_group_mcp_schema_is_bounded_and_private_route_controls_stay_hidde
 
     assert "cal_syriac_group" in tools
     tool = tools["cal_syriac_group"]
-    properties = tool.inputSchema.get("properties", {})
+    properties = tool.input_schema.get("properties", {})
     assert set(properties) == {"group_id"}
     description = " ".join((tool.description or "").lower().split())
     assert "returned" in description and "group" in description
