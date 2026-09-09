@@ -17,7 +17,9 @@ def test_syriac_docs_explain_peshitta_catalogue_navigation_composition() -> None
 
 
 def test_durable_research_records_current_peshitta_subtext_route_correction() -> None:
-    research = (ROOT / "research.md").read_text(encoding="utf-8")
+    research = (
+        ROOT / "docs" / "research" / "issue-110-syriac-peshitta-subtext-routing.md"
+    ).read_text(encoding="utf-8")
 
     assert "62001" in research
     assert "showsubtexts.php" in research
