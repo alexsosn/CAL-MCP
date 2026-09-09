@@ -317,7 +317,8 @@ async def cal_text_concordance(
 ) -> dict[str, object]:
     """Return CAL's ordered lemma-frequency index for one explicit text.
 
-    ``script`` is ``semitic`` (default) or ``transliteration``. Following a lemma into KWIC requires another explicit tool call.
+    ``script`` is ``semitic`` (default) or ``transliteration``. Following a lemma into
+    KWIC requires another explicit tool call.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
