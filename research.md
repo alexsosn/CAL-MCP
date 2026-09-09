@@ -457,7 +457,7 @@ The review did not traverse those texts. It classified the menu's own destinatio
 
 **Amended implication:** the private subdivided-file allowlist must include `74702`, `74711`, and `74714` in addition to the previously researched entries. Any future route change still requires explicit current-menu evidence rather than arithmetic inference or runtime probing.
 
-## R-001 — Current Syriac Peshitta book rows use shallow catalogue navigation
+## R-026 — Current Syriac Peshitta book rows use shallow catalogue navigation
 
 **Rechecked:** 2026-09-09.
 
