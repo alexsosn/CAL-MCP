@@ -21,6 +21,9 @@ _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
 _MANDAIC_COLLECTION_PREFIX = "74"
+_MANDAIC_CATEGORY_ID = "74"
+_MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
+_MANDAIC_ROOT_LABEL = "Mandaic"
 _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
     {
         "74401",
@@ -210,6 +213,37 @@ def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
     return TextCataloguePage(categories=tuple(categories), texts=tuple(texts))
 
 
+def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
+    parsed_response = urlsplit(response.url)
+    if parsed_response.path != f"/{_MANDAIC_CATALOGUE_PATH}":
+        raise TextParseError("CAL Mandaic catalogue response endpoint changed unexpectedly")
+    response_query = parse_qs(parsed_response.query, keep_blank_values=True)
+    if set(response_query) != {"R1"} or response_query.get("R1") != [_MANDAIC_CATEGORY_ID]:
+        raise TextParseError("CAL Mandaic catalogue response selector changed unexpectedly")
+
+    texts: list[TextRef] = []
+    seen_ids: set[str] = set()
+    for line in _parse_lines(response):
+        candidates: list[TextRef] = []
+        for link in line.links:
+            candidate = _mandaic_catalogue_text_from_link(line, link, response.url)
+            if candidate is not None:
+                candidates.append(candidate)
+        if len(candidates) > 1:
+            raise TextParseError("CAL Mandaic catalogue row exposes multiple text routes")
+        if not candidates:
+            continue
+        candidate = candidates[0]
+        if candidate.file_id in seen_ids:
+            raise TextParseError("CAL Mandaic catalogue repeats a file identifier")
+        seen_ids.add(candidate.file_id)
+        texts.append(candidate)
+
+    if not texts:
+        raise TextParseError("CAL Mandaic catalogue contains no recognizable text rows")
+    return TextCataloguePage(categories=(), texts=tuple(texts))
+
+
 def parse_text_search_page(response: CalResponse) -> TextSearchPage:
     lines = _parse_lines(response)
     page_text = " ".join(line.text for line in lines)
@@ -331,10 +365,18 @@ class TextService:
         normalized_category = (
             None if category_id is None else _validate_id(category_id, "category_id")
         )
+        parser = parse_text_catalogue_page
         if normalized_category is None:
             request = CalRequest(method="GET", path="newtextmenu.html")
         elif normalized_category == _ONKELOS_JONATHAN_CATEGORY_ID:
             request = CalRequest(method="GET", path=_ONKELOS_JONATHAN_PATH)
+        elif normalized_category == _MANDAIC_CATEGORY_ID:
+            request = CalRequest(
+                method="GET",
+                path=_MANDAIC_CATALOGUE_PATH,
+                params=(("R1", _MANDAIC_CATEGORY_ID),),
+            )
+            parser = parse_mandaic_catalogue_page
         else:
             request = CalRequest(
                 method="GET",
@@ -344,7 +386,7 @@ class TextService:
 
         result = await self._client.fetch(
             request,
-            parser=parse_text_catalogue_page,
+            parser=parser,
             cache_namespace="text-catalogue-v1",
         )
         return TextCatalogueResult(
@@ -496,6 +538,13 @@ def _parse_id(value: str, name: str) -> str:
     return value
 
 
+def _parse_positive_id(value: str, name: str) -> str:
+    parsed = _parse_id(value, name)
+    if int(parsed) < 1:
+        raise TextParseError(f"CAL returned a non-positive {name}")
+    return parsed
+
+
 def _prepare_text_search_query(value: str) -> str:
     trimmed = value.strip(" ")
     if not trimmed:
@@ -511,6 +560,22 @@ def _prepare_text_search_query(value: str) -> str:
 def _category_from_link(link: _Link) -> TextCategoryRef | None:
     label = link.text.strip()
     parsed = urlsplit(link.href)
+
+    exact_mandaic_path = (
+        not parsed.scheme
+        and not parsed.netloc
+        and parsed.path in (_MANDAIC_CATALOGUE_PATH, f"/{_MANDAIC_CATALOGUE_PATH}")
+    )
+    if exact_mandaic_path:
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        if set(query) != {"R1"} or query.get("R1") != [_MANDAIC_CATEGORY_ID]:
+            raise TextParseError("CAL Mandaic catalogue route changed unexpectedly")
+        if not label:
+            raise TextParseError("CAL Mandaic catalogue link has no label")
+        return TextCategoryRef(category_id=_MANDAIC_CATEGORY_ID, label=label)
+    if label == _MANDAIC_ROOT_LABEL:
+        raise TextParseError("CAL Mandaic catalogue route changed unexpectedly")
+
     exact_dedicated_route = (
         not parsed.scheme
         and not parsed.netloc
@@ -564,6 +629,49 @@ def _text_ref_from_link(
         label=rendered_label,
         description=description,
     )
+
+
+def _mandaic_catalogue_text_from_link(
+    line: _Line,
+    link: _Link,
+    source_url: str,
+) -> TextRef | None:
+    parsed = urlsplit(link.href)
+    endpoint: str | None = None
+    selector: str | None = None
+    if parsed.path.endswith("showsubtexts.php"):
+        endpoint = "showsubtexts.php"
+        selector = "subtext"
+    elif parsed.path.endswith("get_a_chapter.php"):
+        endpoint = "get_a_chapter.php"
+        selector = "file"
+    else:
+        return None
+
+    if parsed.path not in (endpoint, f"/{endpoint}"):
+        raise TextParseError("CAL Mandaic catalogue child route path changed unexpectedly")
+
+    source = urlsplit(source_url)
+    resolved = urlsplit(urljoin(source_url, link.href))
+    if (resolved.scheme, resolved.netloc) != (source.scheme, source.netloc):
+        raise TextParseError("CAL Mandaic catalogue child route changed origin")
+
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    expected_keys = {"cset", selector}
+    if set(query) != expected_keys:
+        raise TextParseError("CAL Mandaic catalogue child query changed unexpectedly")
+    if query.get("cset") != ["M"]:
+        raise TextParseError("CAL Mandaic catalogue child cset changed unexpectedly")
+    file_id = _single_query_value(query, selector, "Mandaic catalogue")
+    _parse_positive_id(file_id, "file_id")
+
+    anchor = link.text.strip()
+    if not anchor or anchor != file_id or anchor not in line.text:
+        raise TextParseError("CAL Mandaic catalogue file link is detached or mislabeled")
+    rendered_label = line.text.replace(anchor, "", 1).strip()
+    if not rendered_label:
+        raise TextParseError("CAL Mandaic catalogue file row has no rendered label")
+    return TextRef(file_id=file_id, subtext_id=None, label=rendered_label)
 
 
 def _search_text_ref_from_link(
@@ -917,6 +1025,7 @@ __all__ = [
     "TextSearchResult",
     "TextService",
     "TextToken",
+    "parse_mandaic_catalogue_page",
     "parse_text_catalogue_page",
     "parse_text_information_page",
     "parse_text_page",

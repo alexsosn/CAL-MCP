@@ -31,6 +31,8 @@ On a cache miss, an explicit call submits one logical CAL request. A completed c
 
 CAL's current root text browser routes the **Targums Onkelos and Jonathan to the Prophets** collection through a dedicated CAL page rather than an ordinary `showsubtexts.php` link. CAL-MCP preserves that branch in root discovery as category `51`. An explicit `cal_text_catalogue(category_id="51")` call targets only that dedicated collection page and returns its ordered children using the normal result shapes: subdivided sources such as `51001 TgO Gn` remain `categories`, while direct sources such as `51400 MegTan (Megillat Taanit)` remain `texts`. The dedicated route stays adapter-private, no child is prefetched, and follow-up retrieval remains a separate caller-controlled action.
 
+CAL's current root text browser likewise routes **Mandaic** through a dedicated collection page rather than the ordinary catalogue hierarchy. CAL-MCP preserves that branch as category `74`. An explicit `cal_text_catalogue(category_id="74")` call targets only that Mandaic catalogue and returns its ordered entries as `texts`. CAL's dedicated page itself mixes subdivided links such as `showsubtexts.php?cset=M&subtext=<file>` with direct links such as `get_a_chapter.php?cset=M&file=<file>`; both identify text files on this surface, so CAL-MCP exposes the file identifier uniformly as `file_id` and keeps `subtext_id` null. The private route family and `cset=M` selector are validated by the adapter, not exposed as caller inputs. No listed text or subdivision is fetched during catalogue discovery. Reading a returned entry remains a separate explicit `cal_text_page(file_id, page=...)` operation, which applies the already-researched direct/subdivided Mandaic page routing internally without an extra route-discovery request.
+
 `category_id` is validated as an opaque decimal CAL identifier. It is preserved as a string rather than converted to an integer so the adapter does not erase potentially meaningful leading zeroes.
 
 ## `cal_text_search`
@@ -177,6 +179,7 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract. Representative cases include:
 
 - root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
+- root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;
 - a topic search for `Tel Dan` returning CAL file `13250`;
 - a topic search for `Ginza` returning the current specialized Mandaic file references `74410` and `74411` without following those links;
 - a text-information lookup preserving Ephrem source/edition/editorial/quality notes in CAL order, plus CAL's explicit `No information on record for this text.` missing state;
