@@ -161,29 +161,40 @@ def test_dedicated_mandaic_catalogue_rejects_response_identity_drift(url: str) -
 
 
 @pytest.mark.parametrize(
-    "href",
+    ("href", "anchor"),
     [
-        "showsubtexts.php?subtext=74401",
-        "showsubtexts.php?cset=H&subtext=74401",
-        "showsubtexts.php?cset=M&subtext=74401&extra=1",
-        "showsubtexts.php?cset=M&subtext=74401&subtext=74402",
-        "showsubtexts.php?cset=M&subtext=0",
-        "showsubtexts.php?cset=M&subtext=abc",
-        "get_a_chapter.php?file=74501",
-        "get_a_chapter.php?cset=H&file=74501",
-        "get_a_chapter.php?cset=M&file=74501&extra=1",
-        "get_a_chapter.php?cset=M&file=74501&file=74502",
-        "get_a_chapter.php?cset=M&file=0",
-        "get_a_chapter.php?cset=M&file=abc",
-        "https://example.org/get_a_chapter.php?cset=M&file=74501",
-        "https://example.org/showsubtexts.php?cset=M&subtext=74401",
+        ("showsubtexts.php?subtext=74401", "74401"),
+        ("showsubtexts.php?cset=H&subtext=74401", "74401"),
+        ("showsubtexts.php?cset=M&subtext=74401&extra=1", "74401"),
+        ("showsubtexts.php?cset=M&subtext=74401&subtext=74402", "74401"),
+        ("showsubtexts.php?cset=M&subtext=0", "0"),
+        ("showsubtexts.php?cset=M&subtext=abc", "abc"),
+        ("get_a_chapter.php?file=74501", "74501"),
+        ("get_a_chapter.php?cset=H&file=74501", "74501"),
+        ("get_a_chapter.php?cset=M&file=74501&extra=1", "74501"),
+        ("get_a_chapter.php?cset=M&file=74501&file=74502", "74501"),
+        ("get_a_chapter.php?cset=M&file=0", "0"),
+        ("get_a_chapter.php?cset=M&file=abc", "abc"),
+        ("https://example.org/get_a_chapter.php?cset=M&file=74501", "74501"),
+        ("https://example.org/showsubtexts.php?cset=M&subtext=74401", "74401"),
     ],
 )
 def test_dedicated_mandaic_catalogue_rejects_malformed_recognized_child_route(
     href: str,
+    anchor: str,
 ) -> None:
     response = _response(
-        f'<p><a href="{href}">74501</a> malformed</p>',
+        f'<p><a href="{href}">{anchor}</a> malformed</p>',
+        _MANDAIC_URL,
+    )
+
+    with pytest.raises(TextParseError):
+        _mandaic_parser()(response)
+
+
+def test_dedicated_mandaic_catalogue_rejects_anchor_identifier_mismatch() -> None:
+    response = _response(
+        '<p><a href="get_a_chapter.php?cset=M&amp;file=74501">74401</a> mismatched</p>',
         _MANDAIC_URL,
     )
 
