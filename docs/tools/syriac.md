@@ -1,6 +1,6 @@
 # CAL Syriac Studies
 
-CAL-MCP exposes three bounded task-level operations over CAL's current Syriac Studies interfaces. Every public operation performs exactly **one** user-initiated CAL request. Returned text/group/catalogue navigation, lexicon-entry links, and Peshitta chapter links are metadata for explicit follow-up calls; CAL-MCP never walks categories, opens every text, expands every lexical entry, advances through verses, or builds a local Syriac corpus.
+CAL-MCP exposes three bounded task-level operations over CAL's current Syriac Studies interfaces. each valid explicit operation submits at most one new logical CAL request to the shared client. Returned text/group/catalogue navigation, lexicon-entry links, and Peshitta chapter links are metadata for explicit follow-up calls; CAL-MCP never walks categories, opens every text, expands every lexical entry, advances through verses, or builds a local Syriac corpus.
 
 ## Which tool to use
 
@@ -156,7 +156,7 @@ CAL-MCP does not add vocalization, transliteration, morphology, emendation, or r
 
 ## Request and traversal bounds
 
-Every public Syriac Studies operation performs exactly one CAL request:
+each valid explicit operation submits at most one new logical CAL request to the shared client:
 
 - one selected text-category request;
 - one selected missing-word-category request;
@@ -165,6 +165,11 @@ Every public Syriac Studies operation performs exactly one CAL request:
 There is no hidden category enumeration, group traversal, catalogue traversal, text fetch, dictionary-entry expansion, alphabet walk, verse walking, chapter prefetch, external-citation crawl, background indexing, or local mirror. The shared CAL HTTP client continues to enforce origin, redirect, timeout, concurrency, retry, cache/single-flight, and response-size policy.
 
 Private upstream fields and values such as numeric `category`, `bookname`, `cset`, `file`, `keyword`, `subtext`, and `coord` are adapter implementation details and are not public MCP parameters.
+
+
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
 
 ## Provenance
 

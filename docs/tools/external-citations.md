@@ -49,13 +49,18 @@ cal_external_citation_sources(dialect_id)
 cal_external_citations(source_abbrev)
 ```
 
-Each tool call performs exactly one bounded CAL request. There is no hidden dialect traversal, source traversal, pagination, source-text reconstruction, online-text lookup, or lexical-entry expansion.
+each valid explicit operation submits at most one new logical CAL request to the shared client. There is no hidden dialect traversal, source traversal, pagination, source-text reconstruction, online-text lookup, or lexical-entry expansion.
 
 ### Concrete example
 
 Current CAL discovery includes the dialect choice `{"dialect_id": "6", "label": "Syriac"}`. Calling `cal_external_citation_sources("6")` returns, among many current Syriac choices, the source abbreviation `1CorH` for the Harklean version of 1 Corinthians. A separate `cal_external_citations("1CorH")` call returns ordered lexical citations including a record whose rendered `reference` is `1CorH 12:28`.
 
 `1CorH 12:28` is CAL's external-source reference, **not an online CAL passage coordinate**. It must not be treated as a `file_id`/subtext/page location or passed to `cal_text_page`. Following the citation's returned CAL lemma with `cal_lexicon_lookup` is another explicit caller action.
+
+
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
 
 ## Relationship to other citation/text tools
 

@@ -8,7 +8,7 @@
 cal_dictionary_collation(source, page)
 ```
 
-Each call performs exactly one user-initiated CAL request.
+each valid explicit operation submits at most one new logical CAL request to the shared client.
 
 ## Dictionary sources
 
@@ -111,7 +111,7 @@ Navigation links outside the result rows are ignored and never mistaken for lexi
 
 ## Request bounds
 
-One `cal_dictionary_collation` call performs exactly one bounded POST to CAL through the shared request layer. There is no runtime form discovery, fallback source-code retry, hidden page traversal, lemma expansion, prefetch, or background indexing.
+each valid explicit operation submits at most one new logical CAL request to the shared client. There is no runtime form discovery, fallback source-code retry, hidden page traversal, lemma expansion, prefetch, or background indexing.
 
 The shared CAL client supplies:
 
@@ -123,6 +123,11 @@ The shared CAL client supplies:
 - the configured decoded-response size limit.
 
 If a CAL result exceeds the shared response-size bound, the request fails instead of being truncated.
+
+
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
 
 ## Provenance
 

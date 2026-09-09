@@ -1,6 +1,6 @@
 # CAL Targum Studies
 
-CAL-MCP exposes four bounded task-level operations over CAL's current Targum Studies interfaces. Each public tool call performs exactly **one** user-initiated CAL request. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, fetch examples, or build a local Targum corpus.
+CAL-MCP exposes four bounded task-level operations over CAL's current Targum Studies interfaces. each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, fetch examples, or build a local Targum corpus.
 
 Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, and `cal_targum_hebrew_reflexes`.
 
@@ -135,7 +135,7 @@ The result preserves:
 - absolute same-origin CAL example URL;
 - provenance.
 
-The two-step boundary is deliberate. One discovery call plus one reflex call means two caller-controlled CAL requests; CAL-MCP never selects a Hebrew lemma or follows all candidates automatically.
+The two-step boundary is deliberate. one discovery call plus one reflex call remains two caller-controlled scholarly operations; CAL-MCP never selects a Hebrew lemma or follows all candidates automatically.
 
 CAL has a notable invalid-ID fallback: a nonexistent opaque MT selector may return a broad frequency list with a heading ending at `correspondences to` and no selected Hebrew lemma. CAL-MCP rejects that response as parser drift instead of presenting an unrelated broad list as the requested result.
 
@@ -147,7 +147,7 @@ Hebrew, Aramaic, and Syriac rendered text is preserved through ordinary HTML tex
 
 ## Request and traversal bounds
 
-Every public Targum operation performs exactly one CAL request:
+each valid explicit operation submits at most one new logical CAL request to the shared client:
 
 - one verse-comparison request;
 - one Targum concordance request;
@@ -157,6 +157,11 @@ Every public Targum operation performs exactly one CAL request:
 There is no hidden biblical verse walking, all-book traversal, all-version expansion, chooser-alphabet crawl, concordance example fetching, chapter prefetch, background indexing, or local mirror. The shared CAL HTTP client still enforces origin, redirect, timeout, concurrency, retry, cache/single-flight, and response-size policy.
 
 Private CAL form fields such as `bookname`, `Peshitta`, `Sam`, `R1`, `lemma`, `pos`, `texts`, and `charset` are adapter implementation details and are not public MCP parameters.
+
+
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
 
 ## Empty results, upstream failures, and parser drift
 
