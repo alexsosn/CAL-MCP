@@ -428,10 +428,6 @@ _TEXT_CATEGORIES = {
 
 
 def syriac_text_category_slugs() -> tuple[str, ...]:
-    return tuple(_TEXT_CATEGORIES)
-
-
-def syriac_text_category_slugs() -> tuple[str, ...]:
     """Return supported public Syriac text-category selectors in service order."""
     return tuple(_TEXT_CATEGORIES)
 
