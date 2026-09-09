@@ -125,6 +125,17 @@ def test_non_text_family_docs_are_cache_single_flight_and_retry_aware() -> None:
     assert failures == []
 
 
+def test_request_wording_preserves_operation_specific_shapes() -> None:
+    concordance = _normalize(_FAMILY_DOCS["concordance"].read_text(encoding="utf-8"))
+    dictionary = _normalize(_FAMILY_DOCS["dictionary-collation"].read_text(encoding="utf-8"))
+
+    assert "one exact cal lemma key in one explicit decimal dialect id" in concordance
+    assert (
+        "cal_dictionary_collation operation submits at most one new logical post-shaped cal request"
+        in dictionary
+    )
+
+
 @pytest.mark.anyio
 async def test_local_converter_remains_zero_network(
     monkeypatch: pytest.MonkeyPatch,
