@@ -76,6 +76,7 @@ def test_current_peshitta_book_links_are_catalogue_navigation(
         "/showsubtexts.php?subtext=",
         "/showsubtexts.php?subtext=not-a-decimal",
         "/showsubtexts.php?cset=Syriac",
+        "/showsubtexts.php?cset=Syriac&subtext=62001&unexpected=1",
     ],
 )
 def test_syriac_showsubtexts_requires_one_unambiguous_semantic_selector(href: str) -> None:
