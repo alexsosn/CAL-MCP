@@ -25,6 +25,7 @@ async def _assert_public_tools(client: Client) -> None:
         "cal_text_catalogue",
         "cal_text_search",
         "cal_text_page",
+        "cal_text_information",
         "cal_token_analysis",
         "cal_text_concordance",
         "cal_kwic_texts",
@@ -74,6 +75,10 @@ async def _assert_public_tools(client: Client) -> None:
     text_page_schema = tools["cal_text_page"].input_schema
     assert set(text_page_schema["properties"]) == {"file_id", "subtext_id", "page"}
     assert text_page_schema["required"] == ["file_id"]
+
+    text_information_schema = tools["cal_text_information"].input_schema
+    assert set(text_information_schema["properties"]) == {"file_id", "subtext_id"}
+    assert text_information_schema["required"] == ["file_id"]
 
     token_schema = tools["cal_token_analysis"].input_schema
     assert set(token_schema["properties"]) == {"coordinate", "word_index"}
@@ -169,6 +174,7 @@ async def _assert_public_tools(client: Client) -> None:
         catalogue_schema,
         text_search_schema,
         text_page_schema,
+        text_information_schema,
         token_schema,
         concordance_schema,
         kwic_texts_schema,
