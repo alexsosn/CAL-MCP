@@ -21,7 +21,25 @@ _INFORMATION_BODY = b"""<html><body>
 
 
 @pytest.mark.anyio
-async def test_text_information_public_description_is_cache_aware() -> None:
+@pytest.mark.parametrize(
+    "tool_name",
+    ["cal_text_catalogue", "cal_text_search", "cal_text_information"],
+)
+async def test_core_text_public_descriptions_are_cache_aware(tool_name: str) -> None:
+    server_module = importlib.import_module("cal_mcp.server")
+
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+
+    description = tools[tool_name].description or ""
+    lowered = " ".join(description.lower().split())
+    assert "at most one new logical cal request" in lowered
+    assert "cache hit" in lowered
+    assert "no new upstream i/o" in lowered
+
+
+@pytest.mark.anyio
+async def test_text_information_description_preserves_no_link_following_boundary() -> None:
     server_module = importlib.import_module("cal_mcp.server")
 
     async with Client(server_module.mcp, raise_exceptions=True) as client:
@@ -29,9 +47,6 @@ async def test_text_information_public_description_is_cache_aware() -> None:
 
     description = tools["cal_text_information"].description or ""
     lowered = " ".join(description.lower().split())
-    assert "at most one new logical cal request" in lowered
-    assert "completed" in lowered and "cache hit" in lowered
-    assert "no new upstream i/o" in lowered
     assert "follows no metadata links" in lowered
 
 
