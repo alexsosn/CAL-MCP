@@ -76,7 +76,7 @@ def test_static_syriac_category_uses_same_typed_item_model() -> None:
         ("62001", "P Gn"),
         ("62002", "P Ex"),
     ]
-    assert all(item.navigation_kind is SyriacTextNavigationKind.TEXT for item in page.items)
+    assert all(item.navigation_kind is SyriacTextNavigationKind.CATALOGUE for item in page.items)
 
 
 @pytest.mark.parametrize(
