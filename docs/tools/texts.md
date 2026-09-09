@@ -48,7 +48,7 @@ The result contains:
 - `provenance.submitted_query`: the bounded query sent to CAL after deterministic ASCII-space cleanup;
 - CAL source URL and retrieval timestamp.
 
-Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic page route internally. Search still performs only the original single CAL request and never follows a returned result link automatically.
+Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic route classification internally. Search still performs only the original single CAL request and never follows a returned result link automatically.
 
 CAL currently renders an explicit no-files message when a topic search has no matches. CAL-MCP maps that recognized upstream state to `matches: []`. A successful HTML page that has neither recognizable text results nor CAL's explicit no-files marker is treated as parser drift rather than silently interpreted as an empty result.
 
@@ -102,11 +102,11 @@ cal_text_page(
 )
 ```
 
-This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's different ordinary and Mandaic page-routing forms behind the same public operation.
+This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's ordinary route and the current mixed direct/subdivided Mandaic collection-74 routes behind the same public operation. Route classification is private adapter metadata derived from current CAL navigation; it is not inferred from the `74` prefix at request time. The `74` prefix identifies only the Mandaic collection boundary; it does not tell CAL-MCP whether a particular file uses the direct or subdivided page route.
 
 ### Page numbering
 
-The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current Mandaic collection-74 pages instead use CAL's `cset=M` route with a one-based `sub` page selector such as `001`, `002`, or `1000`. Both forms remain adapter-private, and one public call still makes exactly one CAL request.
+The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current CAL Mandaic navigation is heterogeneous: known subdivided files such as Ginza Rabba Right/Left (`74410`/`74411`) use the specialized `cset=M` route with a one-based `sub` selector such as `001`, `002`, or `1000`, while direct files such as `74501` and `74717` use a direct page-1 request with no `sub` or ordinary `page` field. A direct Mandaic request for `page>1` is rejected locally until CAL exposes a researched pagination contract for that route. These upstream forms remain adapter-private, and each supported public call still makes exactly one CAL request.
 
 For a paginated text, the result may contain:
 
@@ -117,11 +117,11 @@ For a paginated text, the result may contain:
 
 Some short CAL texts are not rendered with a page-count marker. Ordinary unpaginated pages are returned as page 1 with `page_count`, `total_lines`, `previous_page`, and `next_page` set to `null`.
 
-Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For the internal Mandaic route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. It does not invent `page_count` or `total_lines` when CAL does not provide them.
+Subdivided Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For that private specialized route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. Direct Mandaic page-1 responses use the ordinary/unpaginated parser semantics instead; they do not receive synthetic page numbering or relaxed specialized navigation. CAL-MCP does not invent `page_count` or `total_lines` when CAL does not provide them.
 
 For a successful requested-page operation, the page CAL renders or explicitly selects must remain consistent with the caller's one-based `page`. If CAL supplies contradictory page metadata or non-adjacent navigation, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
 
-For ordinary pagination, previous/next links must address the same `file_id` and `subtext_id` as the requested page and point to the adjacent in-range page implied by CAL's pagination marker. For the Mandaic route, navigation must retain `cset=M`, target the same file, and select the adjacent decimal `sub` page. Foreign files/subtexts, foreign Mandaic collection selectors, malformed selectors, and non-adjacent targets are parser drift. Missing previous/next links are not invented.
+For ordinary pagination, previous/next links must address the same `file_id` and `subtext_id` as the requested page and point to the adjacent in-range page implied by CAL's pagination marker. For the subdivided Mandaic route, navigation must retain `cset=M`, target the same file, and select the adjacent decimal `sub` page. Direct Mandaic page-1 responses do not opt into that specialized navigation contract. Foreign files/subtexts, foreign Mandaic collection selectors, malformed selectors, and non-adjacent targets are parser drift. Missing previous/next links are not invented.
 
 CAL's current browser also exposes a `show all` navigation path. CAL-MCP **does not expose it** because it defeats the bounded-request contract. Moving to another page requires another explicit `cal_text_page` call.
 
@@ -181,6 +181,7 @@ Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2
 - a paginated `BT AZ` page exposing page and machine-coordinate metadata;
 - the short Tel Dan text, which has valid `getlex.php` token links but no page-count marker;
 - a Ginza Rabba Right Side page using the current Mandaic `cset=M` / `sub=NNN` route and adjacent navigation without a rendered total page count;
+- a direct Mandaic page such as `74717`, which uses page 1 without an invented `sub=NNN` selector;
 - CAL's explicit no-lines page for a nonexistent subtext.
 
 The fixtures are parser contracts, not archived CAL pages. Normal CI performs zero CAL requests.
