@@ -121,8 +121,7 @@ class RecordingTransport:
 async def test_category_74_dispatches_to_dedicated_mandaic_catalogue_once() -> None:
     transport = RecordingTransport(
         _response(
-            '<p><a href="get_a_chapter.php?cset=M&amp;file=74501">74501</a> '
-            "Haran Gauaita</p>",
+            '<p><a href="get_a_chapter.php?cset=M&amp;file=74501">74501</a> Haran Gauaita</p>',
             _MANDAIC_URL,
         )
     )
@@ -138,9 +137,7 @@ async def test_category_74_dispatches_to_dedicated_mandaic_catalogue_once() -> N
         )
     ]
     assert result.provenance.category_id == "74"
-    assert [(item.file_id, item.label) for item in result.texts] == [
-        ("74501", "Haran Gauaita")
-    ]
+    assert [(item.file_id, item.label) for item in result.texts] == [("74501", "Haran Gauaita")]
 
 
 @pytest.mark.parametrize(
