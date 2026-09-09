@@ -28,7 +28,7 @@ async def test_text_information_public_description_is_cache_aware() -> None:
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
 
     description = tools["cal_text_information"].description or ""
-    lowered = description.lower()
+    lowered = " ".join(description.lower().split())
     assert "at most one new logical cal request" in lowered
     assert "completed" in lowered and "cache hit" in lowered
     assert "no new upstream i/o" in lowered
