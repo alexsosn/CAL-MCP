@@ -1,0 +1,42 @@
+name: issue105-refactor-fix
+
+on:
+  push:
+    branches:
+      - issue-105-syriac-group-followup
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-105-syriac-group-followup
+      - name: Fix lifted navigation helper and self-clean
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path("src/cal_mcp/syriac.py")
+          text = path.read_text(encoding="utf-8")
+          start = text.index("def _parse_syriac_navigation_items(")
+          end = text.index("def parse_syriac_text_group_page(", start)
+          segment = text[start:end]
+          old = "for line in parser.lines:"
+          assert segment.count(old) == 1
+          segment = segment.replace(old, "for line in lines:")
+          text = text[:start] + segment + text[end:]
+          path.write_text(text, encoding="utf-8")
+          Path(".github/workflows/issue105-refactor-fix.yml").unlink()
+          PY
+      - name: Commit and self-clean
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git commit -m "Fix Syriac navigation helper refactor (#105)"
+          git push origin HEAD:issue-105-syriac-group-followup
