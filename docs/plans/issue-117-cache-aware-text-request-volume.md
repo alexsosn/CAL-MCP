@@ -116,3 +116,7 @@ Before merge:
 ## CAL load impact
 
 Zero. All tests use local MCP introspection and injected transports.
+
+## Execution checkpoint
+
+Accepted RED head `c42d90c63e4f4c133cf6d0cb3be0763d71f496af` passed dependency/environment validation, Ruff lint, Ruff format, and strict mypy in both matrices. Pytest produced 750 passes and exactly two intended stale-wording failures; the endpoint-level shared-client cache invariant passed unchanged. The implementation then changed only `src/cal_mcp/server.py` description text and `docs/tools/texts.md` request-volume prose. No request, cache, retry, parser, model, schema, provenance, or route code changed.
