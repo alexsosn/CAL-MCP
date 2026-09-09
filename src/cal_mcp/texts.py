@@ -18,6 +18,8 @@ _PAGE_MARKER_RE = re.compile(
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
+_TEXT_INFORMATION_HEADING = "Text Information"
+_TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
 _MANDAIC_COLLECTION_PREFIX = "74"
 _ONKELOS_JONATHAN_CATEGORY_ID = "51"
 _ONKELOS_JONATHAN_PATH = "targum_onkelos_jonathan.html"
@@ -29,6 +31,11 @@ class TextParseError(CalContentError):
 
 
 class TextPageStatus(StrEnum):
+    FOUND = "found"
+    NOT_FOUND = "not_found"
+
+
+class TextInformationStatus(StrEnum):
     FOUND = "found"
     NOT_FOUND = "not_found"
 
@@ -87,6 +94,12 @@ class TextSearchPage:
 
 
 @dataclass(frozen=True, slots=True)
+class TextInformationPage:
+    status: TextInformationStatus
+    metadata: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class TextProvenance:
     source: str
     source_url: str
@@ -140,6 +153,24 @@ class TextPageResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class TextInformationResult:
+    status: TextInformationStatus
+    file_id: str
+    subtext_id: str | None
+    metadata: tuple[str, ...]
+    provenance: TextProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "status": self.status.value,
+            "file_id": self.file_id,
+            "subtext_id": self.subtext_id,
+            "metadata": list(self.metadata),
+            "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
 def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
     categories: list[TextCategoryRef] = []
     texts: list[TextRef] = []
@@ -187,6 +218,24 @@ def parse_text_search_page(response: CalResponse) -> TextSearchPage:
             "CAL text search page has neither results nor the explicit no-files marker"
         )
     return TextSearchPage(matches=tuple(matches))
+
+
+def parse_text_information_page(response: CalResponse) -> TextInformationPage:
+    lines = _parse_lines(response)
+    heading_indexes = [
+        index for index, line in enumerate(lines) if line.text == _TEXT_INFORMATION_HEADING
+    ]
+    if len(heading_indexes) != 1:
+        raise TextParseError("CAL text-information page is missing its unique semantic heading")
+
+    metadata = tuple(line.text for line in lines[heading_indexes[0] + 1 :])
+    if _TEXT_INFORMATION_MISSING_MARKER in metadata:
+        if metadata != (_TEXT_INFORMATION_MISSING_MARKER,):
+            raise TextParseError("CAL text-information missing marker is mixed with metadata")
+        return TextInformationPage(status=TextInformationStatus.NOT_FOUND, metadata=())
+    if not metadata:
+        raise TextParseError("CAL text-information page contains no metadata")
+    return TextInformationPage(status=TextInformationStatus.FOUND, metadata=metadata)
 
 
 def parse_text_page(
@@ -310,6 +359,43 @@ class TextService:
                 operation="search",
                 original_query=query,
                 submitted_query=submitted,
+            ),
+        )
+
+    async def information(
+        self,
+        file_id: str,
+        *,
+        subtext_id: str | None = None,
+    ) -> TextInformationResult:
+        normalized_file = _validate_id(file_id, "file_id")
+        normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
+        coord = (
+            normalized_file
+            if normalized_subtext is None
+            else f"{normalized_file}{normalized_subtext}"
+        )
+        result = await self._client.fetch(
+            CalRequest(
+                method="GET",
+                path="get_file_info.php",
+                params=(("coord", coord),),
+            ),
+            parser=parse_text_information_page,
+            cache_namespace="text-information-v1",
+        )
+        return TextInformationResult(
+            status=result.value.status,
+            file_id=normalized_file,
+            subtext_id=normalized_subtext,
+            metadata=result.value.metadata,
+            provenance=TextProvenance(
+                source="CAL",
+                source_url=result.source_url,
+                retrieved_at=result.retrieved_at,
+                operation="text_information",
+                upstream_id=normalized_file,
+                subtext_id=normalized_subtext,
             ),
         )
 
@@ -789,6 +875,9 @@ __all__ = [
     "TextCataloguePage",
     "TextCatalogueResult",
     "TextCategoryRef",
+    "TextInformationPage",
+    "TextInformationResult",
+    "TextInformationStatus",
     "TextLine",
     "TextPage",
     "TextPageResult",
@@ -801,6 +890,7 @@ __all__ = [
     "TextService",
     "TextToken",
     "parse_text_catalogue_page",
+    "parse_text_information_page",
     "parse_text_page",
     "parse_text_search_page",
 ]
