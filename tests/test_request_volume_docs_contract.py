@@ -125,11 +125,15 @@ def test_non_text_family_docs_are_cache_single_flight_and_retry_aware() -> None:
     assert failures == []
 
 
-def test_request_wording_preserves_operation_specific_shapes() -> None:
+def test_concordance_docs_preserve_explicit_kwic_dialect_scope() -> None:
     concordance = _normalize(_FAMILY_DOCS["concordance"].read_text(encoding="utf-8"))
-    dictionary = _normalize(_FAMILY_DOCS["dictionary-collation"].read_text(encoding="utf-8"))
 
     assert "one exact cal lemma key in one explicit decimal dialect id" in concordance
+
+
+def test_dictionary_collation_docs_preserve_post_request_shape() -> None:
+    dictionary = _normalize(_FAMILY_DOCS["dictionary-collation"].read_text(encoding="utf-8"))
+
     assert (
         "cal_dictionary_collation operation submits at most one new logical post-shaped cal request"
         in dictionary
