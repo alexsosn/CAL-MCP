@@ -1,0 +1,47 @@
+name: issue-117-core-text-description-fix
+
+on:
+  push:
+    branches:
+      - issue-117-cache-aware-text-request-docs
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-117-cache-aware-text-request-docs
+      - name: Apply two docstring corrections
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/cal_mcp/server.py')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              '''    Omit ``category_id`` for the root catalogue or pass one CAL category identifier returned\n    by a prior call. Each call performs exactly one bounded CAL request.\n''':
+              '''    Omit ``category_id`` for the root catalogue or pass one CAL category identifier returned\n    by a prior call. One explicit call submits at most one new logical CAL request. A\n    completed cache hit performs no new upstream I/O.\n''',
+              '''    Each call performs exactly one bounded CAL search request and returns CAL file/subtext\n    identifiers suitable for explicit follow-up retrieval.\n''':
+              '''    One explicit call submits at most one new logical CAL request and returns CAL file/subtext\n    identifiers suitable for explicit follow-up retrieval. A completed cache hit performs no\n    new upstream I/O.\n''',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected server phrase exactly once: {old!r}')
+              text = text.replace(old, new)
+          path.write_text(text, encoding='utf-8')
+
+          helper = Path('.github/workflows/issue-117-core-text-description-fix.yml')
+          helper.unlink()
+          PY
+      - name: Commit fix and remove helper
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/cal_mcp/server.py .github/workflows/issue-117-core-text-description-fix.yml
+          git commit -m "Make remaining core text descriptions cache-aware"
+          git push origin HEAD:issue-117-cache-aware-text-request-docs
