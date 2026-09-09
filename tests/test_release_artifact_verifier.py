@@ -11,6 +11,8 @@ from typing import Any
 
 import pytest
 
+from cal_mcp.release_surface import V01_PUBLIC_TOOLS
+
 ROOT = Path(__file__).resolve().parents[1]
 VERIFIER_PATH = ROOT / "scripts" / "verify_release_artifact.py"
 
@@ -68,13 +70,13 @@ def _write_sdist(
 def test_release_verifier_frozen_tool_surface_matches_current_public_tools() -> None:
     module = _load_verifier()
 
-    assert module.EXPECTED_TOOL_COUNT == 29
-    assert len(module.EXPECTED_TOOLS) == module.EXPECTED_TOOL_COUNT
+    assert module.V01_PUBLIC_TOOLS is V01_PUBLIC_TOOLS
+    assert len(V01_PUBLIC_TOOLS) == 29
     assert {
         "cal_convert_to_code",
         "cal_gloss_field",
         "cal_text_information",
-    } <= module.EXPECTED_TOOLS
+    } <= V01_PUBLIC_TOOLS
 
 
 def test_distribution_discovery_rejects_sdist_embedded_version_mismatch(tmp_path: Path) -> None:
