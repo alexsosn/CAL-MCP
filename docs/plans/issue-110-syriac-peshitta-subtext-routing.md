@@ -4,6 +4,8 @@ Date: 2026-09-09
 Research prerequisite: `docs/research/issue-110-syriac-peshitta-subtext-routing.md`
 Baseline: `main` at `381fb95725322640ed81302f8ca5bfa092920d4d`
 
+RED harness note: the first test-only attempt reached Ruff lint but stopped at `ruff format --check`; the subsequent correction changed only test formatting and left production code unchanged. The accepted RED is the later human-authored checkpoint on that corrected test-only state.
+
 ## Goal
 
 Make the existing `cal_syriac_texts("ot-peshitta")` and `cal_syriac_texts("nt-peshitta")` results faithfully represent CAL's current Peshitta book links and provide a clear MCP-native explicit follow-up to the existing generic text catalogue, without adding a new tool or automatic chapter traversal.
