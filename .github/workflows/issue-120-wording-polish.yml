@@ -1,0 +1,96 @@
+name: issue-120-wording-polish
+
+on:
+  push:
+    branches:
+      - issue-120-cache-aware-request-volume-audit
+
+permissions:
+  contents: write
+
+jobs:
+  polish-wording:
+    runs-on: ubuntu-latest
+    if: github.actor != 'github-actions[bot]'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-120-cache-aware-request-volume-audit
+          fetch-depth: 0
+      - name: Polish audited wording
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          server_path = Path('src/cal_mcp/server.py')
+          server = server_path.read_text(encoding='utf-8')
+          old_suffix = 'One explicit call submits at most one new logical CAL request. A completed cache hit performs no new upstream I/O.'
+          new_suffix = 'One explicit call submits at most one new logical CAL request. A completed cache hit\n    performs no new upstream I/O.'
+          if server.count(old_suffix) != 18:
+              raise RuntimeError(f'expected 18 unwrapped cache-aware suffixes, got {server.count(old_suffix)}')
+          server = server.replace(old_suffix, new_suffix)
+          replacements = {
+              '``script`` is ``semitic`` (default) or ``transliteration``.  Following a lemma into KWIC':
+                  '``script`` is ``semitic`` (default) or ``transliteration``. Following a lemma into KWIC',
+              "The readable enum is mapped to CAL's private current field selector. It does not expand or traverse other fields.":
+                  "The readable enum is mapped to CAL's private current field selector. It does not expand or\n    traverse other fields.",
+              'zero-based, matching the token metadata returned by ``cal_text_page``. Candidate lexicon entries are never expanded automatically.':
+                  'zero-based, matching the token metadata returned by ``cal_text_page``. Candidate lexicon\n    entries are never expanded automatically.',
+              'decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. Returned lemma links are never followed automatically.':
+                  'decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. Returned\n    lemma links are never followed automatically.',
+          }
+          for old, new in replacements.items():
+              if server.count(old) != 1:
+                  raise RuntimeError(f'server polish expected one {old!r}, got {server.count(old)}')
+              server = server.replace(old, new, 1)
+          server_path.write_text(server, encoding='utf-8')
+
+          doc_paths = [
+              Path('docs/tools/search.md'),
+              Path('docs/tools/token-analysis.md'),
+              Path('docs/tools/concordance.md'),
+              Path('docs/tools/bibliography.md'),
+              Path('docs/tools/dictionary-collation.md'),
+              Path('docs/tools/targum.md'),
+              Path('docs/tools/syriac.md'),
+              Path('docs/tools/external-citations.md'),
+          ]
+          for path in doc_paths:
+              text = path.read_text(encoding='utf-8')
+              text = text.replace('each valid explicit operation', 'Each valid explicit operation')
+              text = text.replace('a search is bounded operationally', 'A search is bounded operationally')
+              text = text.replace('one discovery call plus one reflex call remains', 'One discovery call plus one reflex call remains')
+              text = text.replace('\n\n\n### Shared cache, single-flight, and retry semantics', '\n\n### Shared cache, single-flight, and retry semantics')
+              path.write_text(text, encoding='utf-8')
+
+          scoped_fixture_replacements = {
+              Path('docs/tools/token-analysis.md'): (
+                  'exact one-request service behavior and provenance;',
+                  'single-fetch request construction and provenance;',
+              ),
+              Path('docs/tools/bibliography.md'): (
+                  'exact one-request service mappings and provenance;',
+                  'single-fetch request construction and provenance;',
+              ),
+              Path('docs/tools/dictionary-collation.md'): (
+                  'exact one-request POST mapping and provenance;',
+                  'single-fetch POST-shaped request construction and provenance;',
+              ),
+          }
+          for path, (old, new) in scoped_fixture_replacements.items():
+              text = path.read_text(encoding='utf-8')
+              if text.count(old) != 1:
+                  raise RuntimeError(f'{path}: expected one fixture phrase {old!r}, got {text.count(old)}')
+              path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+          git rm .github/workflows/issue-120-wording-polish.yml
+          git diff --check
+      - name: Commit prose polish
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/cal_mcp/server.py docs/tools/search.md docs/tools/token-analysis.md docs/tools/concordance.md docs/tools/bibliography.md docs/tools/dictionary-collation.md docs/tools/targum.md docs/tools/syriac.md docs/tools/external-citations.md
+          git commit -m 'Polish cache-aware request wording'
+          git push origin HEAD:issue-120-cache-aware-request-volume-audit
