@@ -4,6 +4,7 @@ import importlib
 import socket
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -179,9 +180,9 @@ async def test_group_mcp_schema_is_bounded_and_private_route_controls_stay_hidde
 
 
 def test_server_instructions_name_the_explicit_syriac_group_followup() -> None:
-    source = (importlib.import_module("cal_mcp.server").__file__ or "")
-    assert source
-    text = open(source, encoding="utf-8").read()
+    source = importlib.import_module("cal_mcp.server").__file__
+    assert source is not None
+    text = Path(source).read_text(encoding="utf-8")
     instructions = text.split("instructions=(", 1)[1].split("version=__version__", 1)[0]
 
     assert "cal_syriac_group" in instructions
