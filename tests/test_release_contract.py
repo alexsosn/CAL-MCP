@@ -114,7 +114,7 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "cal-mcp" in verifier
     assert "StdioServerParameters" in verifier
     assert "V01_PUBLIC_TOOLS" in verifier
-    assert len(V01_PUBLIC_TOOLS) == 29
+    assert len(V01_PUBLIC_TOOLS) == 30
 
 
 def test_live_smoke_constants_and_default_cases_are_frozen() -> None:
