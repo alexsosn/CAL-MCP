@@ -1,0 +1,26 @@
+name: Issue 110 sync current main
+on:
+  push:
+    branches: [fix/issue-110-syriac-peshitta-routing]
+permissions:
+  contents: write
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-110-syriac-peshitta-routing
+          fetch-depth: 0
+      - name: Merge exact current main and remove helper
+        run: |
+          git fetch origin main
+          test "$(git rev-parse origin/main)" = "c3303e269184d0b1893b6306ed05014d753faf58"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git merge --no-edit c3303e269184d0b1893b6306ed05014d753faf58
+          rm .github/workflows/_issue110_sync_main.yml
+          git add .github/workflows/_issue110_sync_main.yml
+          git commit -m "chore: remove issue-110 sync helper"
+          git push origin HEAD:fix/issue-110-syriac-peshitta-routing
