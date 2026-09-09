@@ -327,7 +327,7 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-017 — CAL full lexicon entries now inline non-content stylesheet text
+## R-027 — CAL full lexicon entries now inline non-content stylesheet text
 
 **Rechecked:** 2026-09-05.
 
