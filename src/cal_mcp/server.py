@@ -138,7 +138,9 @@ async def cal_gloss_search(
     """Search CAL English glosses without reranking or expanding the query.
 
     Set ``all_glosses`` to include subsidiary CAL glosses as well as primary glosses.
-    One tool call performs one bounded CAL search request.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -157,8 +159,11 @@ async def cal_gloss_field(
 ) -> dict[str, object]:
     """Search one CAL indexed specialized gloss field.
 
-    The readable enum is mapped to CAL's private current field selector. One tool call
-    performs one bounded CAL request and does not expand or traverse other fields.
+    The readable enum is mapped to CAL's private current field selector. It does not expand or
+    traverse other fields.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -178,7 +183,10 @@ async def cal_citation_text_search(
     """Search one to three English words in CAL lexicon citations.
 
     Results preserve CAL lemma references, lexical context, citation reference, source text,
-    and English translation. One tool call performs one bounded CAL search request.
+    and English translation.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -285,8 +293,11 @@ async def cal_token_analysis(
     """Return every CAL lexical analysis for one explicit text coordinate/token index.
 
     ``coordinate`` is CAL's opaque decimal machine coordinate and ``word_index`` is
-    zero-based, matching the token metadata returned by ``cal_text_page``. One call performs
-    one bounded CAL request and never expands candidate lexicon entries automatically.
+    zero-based, matching the token metadata returned by ``cal_text_page``. Candidate lexicon
+    entries are never expanded automatically.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -306,8 +317,11 @@ async def cal_text_concordance(
 ) -> dict[str, object]:
     """Return CAL's ordered lemma-frequency index for one explicit text.
 
-    ``script`` is ``semitic`` (default) or ``transliteration``. One call performs exactly
-    one bounded CAL request. Following a lemma into KWIC requires another explicit tool call.
+    ``script`` is ``semitic`` (default) or ``transliteration``. Following a lemma into
+    KWIC requires another explicit tool call.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -329,7 +343,10 @@ async def cal_kwic_texts(
     """Return ordered CAL KWIC hits for one lemma key in 1-8 explicit texts.
 
     Duplicate CAL hits remain duplicated and ordered. ``script`` is ``roman``, ``hebrew``,
-    or ``syriac``. One call performs one bounded CAL request and never fetches full context.
+    or ``syriac``. Full context is never fetched automatically.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -373,8 +390,10 @@ async def cal_kwic_dialect(
 ) -> dict[str, object]:
     """Return ordered CAL KWIC hits for one lemma key and one explicit dialect.
 
-    One call performs exactly one CAL request and never expands to other dialects or fetches
-    full-context pages automatically.
+    It never expands to other dialects or fetches full-context pages automatically.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -394,7 +413,10 @@ async def cal_bibliography_authors(
     """Return CAL's ordered exact author choices for a 1-6 character prefix.
 
     Ambiguous prefixes remain explicit choices. Use a returned author value in a separate
-    ``cal_bibliography_author`` call. One call performs exactly one bounded CAL request.
+    ``cal_bibliography_author`` call.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -414,8 +436,10 @@ async def cal_bibliography_author(
     """Return CAL bibliography records for one exact author value.
 
     Reuse an exact value returned by ``cal_bibliography_authors`` rather than guessing among
-    prefix matches. Citation text, Unicode, and CAL record links are preserved. One call
-    performs exactly one bounded CAL request.
+    prefix matches. Citation text, Unicode, and CAL record links are preserved.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -435,8 +459,10 @@ async def cal_bibliography_keyword(
     """Return records for one exact CAL text/subject bibliography tag.
 
     ``keyword`` follows CAL's bibliography tag vocabulary; it is not fuzzy or full-text
-    search. Returned record tags can be reused in later explicit calls. One call performs
-    exactly one bounded CAL request.
+    search. Returned record tags can be reused in later explicit calls.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -456,8 +482,10 @@ async def cal_bibliography_lemma(
     """Return bibliography records for one exact canonical CAL lemma key.
 
     Reuse canonical lemma keys returned by CAL-MCP where possible. Linked lemma keys and CAL
-    tags are preserved for explicit follow-up calls. One call performs exactly one bounded
-    CAL request.
+    tags are preserved for explicit follow-up calls.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -482,7 +510,9 @@ async def cal_targum_parallel(
 
     ``book`` is one exact CAL Targum book label. Peshitta and Samaritan are optional
     upstream comparison sources and are never fabricated when CAL has no reading.
-    One call performs exactly one bounded CAL request.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -592,7 +622,10 @@ async def cal_syriac_missing_words(
 
     This is CAL's published comparison surface against A Syriac Lexicon, not SEDRA and not
     an adapter-inferred equivalence. Full CAL lexicon entries require a separate explicit
-    lookup; one call performs exactly one bounded CAL request.
+    lookup.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -615,7 +648,9 @@ async def cal_syriac_peshitta_parallel(
 
     The result preserves CAL Hebrew/Syriac text and the Peshitta source link. Invalid
     coordinates are a typed not-found state; previous/next verse links are never followed.
-    One call performs exactly one bounded CAL request.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -634,7 +669,10 @@ async def cal_external_citation_dialects(
     """Return CAL's current dialect choices for citations from non-online texts.
 
     Use one returned ``dialect_id`` in a separate ``cal_external_citation_sources`` call.
-    One call performs exactly one bounded CAL request and does not enumerate sources.
+    It does not enumerate sources.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -655,7 +693,10 @@ async def cal_external_citation_sources(
 
     ``dialect_id`` must come from ``cal_external_citation_dialects``. The returned sources
     have citations in CAL but no full online text; no source or citation is followed
-    automatically. One call performs exactly one bounded CAL request.
+    automatically.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -676,7 +717,10 @@ async def cal_external_citations(
 
     ``source_abbrev`` should come from ``cal_external_citation_sources``. Lexical-entry links
     are preserved as metadata but are never followed automatically, and the source is not
-    represented as an online CAL passage. One call performs exactly one bounded CAL request.
+    represented as an online CAL passage.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -697,8 +741,11 @@ async def cal_dictionary_collation(
     """Return CAL's stored lemma correspondences for one dictionary page reference.
 
     ``source`` is a readable CAL-MCP dictionary identifier. ``page`` accepts CAL's documented
-    decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. One call
-    performs exactly one bounded CAL request and never follows returned lemma links.
+    decimal page syntax, including volume-qualified lists such as ``1:134, 2:212``. Returned
+    lemma links are never followed automatically.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client

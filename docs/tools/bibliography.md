@@ -1,6 +1,6 @@
 # CAL bibliography search
 
-CAL-MCP exposes four bounded operations over CAL's current public bibliography interfaces. Each public call performs exactly **one** user-initiated CAL request. Author-prefix discovery and exact-author retrieval are intentionally separate calls; CAL-MCP does not choose an author, follow bibliography tags, traverse the archive, or build a local index.
+CAL-MCP exposes four bounded operations over CAL's current public bibliography interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Author-prefix discovery and exact-author retrieval are intentionally separate calls; CAL-MCP does not choose an author, follow bibliography tags, traverse the archive, or build a local index.
 
 ## Which tool to use
 
@@ -117,7 +117,7 @@ During the bounded live audit on **2026-09-05**, representative current author, 
 
 CAL-MCP therefore exposes no `page`, `offset`, or `limit` parameter for these tools. Each call requests one complete current CAL result page subject to the shared decoded-response limit. If CAL later adds a real continuation mechanism, that is a new upstream contract to research and test; CAL-MCP will not infer hidden iteration from it.
 
-Every bibliography operation has an exact one-request upper bound:
+Each valid explicit operation submits at most one new logical CAL request to the shared client:
 
 - one author-prefix selector request;
 - one exact-author result request;
@@ -125,6 +125,10 @@ Every bibliography operation has an exact one-request upper bound:
 - one exact lemma result request.
 
 There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The separate CAL recent-five-years bibliography view is explicitly deferred from the v0.1 contract to issue #39, where its moving year window and result-size/continuation semantics can be researched independently.
+
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
 
 ## Provenance
 
@@ -152,7 +156,7 @@ Normal tests use reduced semantic excerpts rather than archived full CAL pages. 
 - malformed/missing citation/link semantics and cross-origin links;
 - contradictory no-data-plus-record markup;
 - local input bounds and lemma-key validation;
-- exact one-request service mappings and provenance;
+- single-fetch request construction and provenance;
 - MCP introspection with no private CAL form parameters and no invented bibliography pagination.
 
 Normal CI performs zero CAL requests.

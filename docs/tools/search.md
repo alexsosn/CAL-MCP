@@ -71,7 +71,7 @@ The result contains:
 - `matches` — the same ordered CAL lemma-reference shape used by ordinary gloss results;
 - provenance for the actual CAL request.
 
-One call performs exactly one field-result request. It does not search every field, follow matching lemmas, or expand the selected field into additional queries.
+Each valid explicit operation submits at most one new logical CAL request to the shared client. It does not search every field, follow matching lemmas, or expand the selected field into additional queries.
 
 ## `cal_citation_text_search`
 
@@ -101,13 +101,17 @@ The ordinary CAL form contract was rechecked on 2026-09-04 and the specialized-f
 
 The PHP handler names, form-field names, and specialized-field tokens are adapter internals and are not public MCP parameters.
 
-One MCP call performs exactly one CAL search request. It does not fetch each matched lexicon entry, follow search results, or make a second request to obtain context.
+Each valid explicit operation submits at most one new logical CAL request to the shared client. It does not fetch each matched lexicon entry, follow search results, or make a second request to obtain context.
 
 ### Pagination and result bounds
 
 The current representative CAL gloss, specialized-field, and citation-result pages inspected during the focused audits exposed no page number, next-page link, continuation token, or other bounded continuation control. CAL-MCP therefore does **not** invent `page`, `offset`, or `continuation` parameters and does not split or auto-traverse the result set as though CAL provided such semantics.
 
-A search is bounded operationally by one upstream request and by the shared CAL HTTP response-size limit. If CAL later exposes a stable pagination contract, it must be researched, tested, and added explicitly rather than inferred from layout.
+A search is bounded operationally by at most one new logical CAL request and by the shared CAL HTTP response-size limit. If CAL later exposes a stable pagination contract, it must be researched, tested, and added explicitly rather than inferred from layout.
+
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
 
 ## Provenance
 

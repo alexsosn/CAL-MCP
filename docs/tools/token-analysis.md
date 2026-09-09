@@ -64,7 +64,7 @@ The current no-lemma sentence is accepted only together with exactly one normal 
 
 ## Request bound
 
-Every `cal_token_analysis` call performs exactly **one** user-initiated CAL request.
+Each valid explicit operation submits at most one new logical CAL request to the shared client.
 
 It does not:
 
@@ -80,6 +80,10 @@ The returned `LemmaRef` is sufficient for an explicit follow-up `cal_lexicon_loo
 
 The shared CAL HTTP policy still applies its origin, redirect, timeout, concurrency, retry, cache, and maximum-response-byte limits.
 
+### Shared cache, single-flight, and retry semantics
+
+Each valid explicit operation in this family submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared policy. These mechanisms do not create hidden traversal, prefetch, or background work.
+
 ## Fixture-backed examples
 
 Offline tests use reduced semantic excerpts rechecked against current CAL behavior through 2026-09-08. They cover:
@@ -94,7 +98,7 @@ Offline tests use reduced semantic excerpts rechecked against current CAL behavi
 - incomplete/missing lemma-link markup;
 - unknown successful markup;
 - local coordinate/token-index validation;
-- exact one-request service behavior and provenance;
+- single-fetch request construction and provenance;
 - MCP schema exposure without private upstream `coord` / `word` parameter names.
 
 The fixtures are parser contracts, not archived CAL pages. Normal CI makes zero CAL requests.
