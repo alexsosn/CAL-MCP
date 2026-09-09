@@ -464,7 +464,6 @@ def parse_syriac_text_category_page(
     return SyriacTextCategoryPage(label=matching_headings[0], items=items)
 
 
-
 def _parse_syriac_navigation_items(
     lines: list[_Line],
     source_url: str,
@@ -584,23 +583,20 @@ def parse_syriac_text_group_page(
     _require_response_path(response.url, "showsubtexts.php", "Syriac grouped-text")
     query = parse_qs(urlsplit(response.url).query, keep_blank_values=True)
     if set(query) != {"keyword"}:
-        raise SyriacParseError(
-            "CAL Syriac grouped-text response has unexpected query semantics"
-        )
+        raise SyriacParseError("CAL Syriac grouped-text response has unexpected query semantics")
     returned_group = _single_query_value(
         query,
         "keyword",
         "Syriac grouped-text response",
     )
     if returned_group != submitted_group:
-        raise SyriacParseError(
-            "CAL Syriac grouped-text response contradicts the selected group"
-        )
+        raise SyriacParseError("CAL Syriac grouped-text response contradicts the selected group")
 
     parser = _SemanticLinesParser()
     parser.feed(response.body.decode("utf-8", errors="replace"))
     parser.close()
     return _parse_syriac_navigation_items(parser.lines, response.url)
+
 
 def parse_syriac_missing_words_page(
     response: CalResponse,
