@@ -153,3 +153,9 @@ Before merge:
 ## CAL load impact
 
 Zero. All research and tests are repository/local-introspection based.
+
+## Execution checkpoint
+
+Accepted test-only RED head `4aa429a32a9c4f5dc5273fadb13a756ed337f438` passed dependency/environment validation, Ruff lint, Ruff format, and strict mypy in both deterministic (`mcp 2.1.1`) and latest-compatible (`mcp 2.2.0`) matrices. Full pytest produced **757 passed / exactly 2 failures** in each matrix: the aggregate stale executable-description audit and the aggregate stale family-document audit. The protected local-converter zero-network test and lexicon bounded multi-request exception test both passed unchanged.
+
+Implementation changed only the 18 stale public MCP docstrings in `src/cal_mcp/server.py` and the eight audited `docs/tools/*.md` files. It distinguishes one logical request identity from completed-cache-hit/single-flight suppression and bounded retry transport attempts, preserves explicit multi-step scholarly workflow boundaries, and rewords fixture notes to refer to single-fetch request construction rather than unconditional invocation counts. No client, service, parser, model, schema, provenance, cache, retry, single-flight, route, request-construction, or release-surface implementation changed. Temporary implementation helpers self-deleted and are absent from the PR diff.
