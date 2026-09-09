@@ -8,7 +8,7 @@
 cal_dictionary_collation(source, page)
 ```
 
-each valid explicit operation submits at most one new logical CAL request to the shared client.
+Each valid explicit operation submits at most one new logical CAL request to the shared client.
 
 ## Dictionary sources
 
@@ -111,7 +111,7 @@ Navigation links outside the result rows are ignored and never mistaken for lexi
 
 ## Request bounds
 
-each valid explicit operation submits at most one new logical CAL request to the shared client. There is no runtime form discovery, fallback source-code retry, hidden page traversal, lemma expansion, prefetch, or background indexing.
+Each valid explicit operation submits at most one new logical CAL request to the shared client. There is no runtime form discovery, fallback source-code retry, hidden page traversal, lemma expansion, prefetch, or background indexing.
 
 The shared CAL client supplies:
 
@@ -123,7 +123,6 @@ The shared CAL client supplies:
 - the configured decoded-response size limit.
 
 If a CAL result exceeds the shared response-size bound, the request fails instead of being truncated.
-
 
 ### Shared cache, single-flight, and retry semantics
 
@@ -163,7 +162,7 @@ Normal CI uses reduced semantic fixtures based on the CAL shape rechecked on **2
 - source/page identity mismatch;
 - malformed, contradictory, cross-origin, and changed markup;
 - nested or duplicated result summary cards failing closed rather than duplicating rows;
-- exact one-request POST mapping and provenance;
+- single-fetch POST-shaped request construction and provenance;
 - MCP schema exposure without raw CAL form controls.
 
 Normal CI performs zero live CAL requests.

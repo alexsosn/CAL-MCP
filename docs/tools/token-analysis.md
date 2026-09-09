@@ -64,7 +64,7 @@ The current no-lemma sentence is accepted only together with exactly one normal 
 
 ## Request bound
 
-each valid explicit operation submits at most one new logical CAL request to the shared client.
+Each valid explicit operation submits at most one new logical CAL request to the shared client.
 
 It does not:
 
@@ -79,7 +79,6 @@ It does not:
 The returned `LemmaRef` is sufficient for an explicit follow-up `cal_lexicon_lookup` when a caller wants a full lexicon entry. That follow-up is a separate user-initiated tool call.
 
 The shared CAL HTTP policy still applies its origin, redirect, timeout, concurrency, retry, cache, and maximum-response-byte limits.
-
 
 ### Shared cache, single-flight, and retry semantics
 
@@ -99,7 +98,7 @@ Offline tests use reduced semantic excerpts rechecked against current CAL behavi
 - incomplete/missing lemma-link markup;
 - unknown successful markup;
 - local coordinate/token-index validation;
-- exact one-request service behavior and provenance;
+- single-fetch request construction and provenance;
 - MCP schema exposure without private upstream `coord` / `word` parameter names.
 
 The fixtures are parser contracts, not archived CAL pages. Normal CI makes zero CAL requests.

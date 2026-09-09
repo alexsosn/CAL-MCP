@@ -1,6 +1,6 @@
 # CAL concordance and KWIC
 
-CAL-MCP exposes four bounded concordance/KWIC operations over CAL's current public research interfaces. each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a concordance row or dialect selector to KWIC is always a second explicit caller action; CAL-MCP does not crawl texts, expand dialects, fetch full-context pages, or build a local concordance.
+CAL-MCP exposes four bounded concordance/KWIC operations over CAL's current public research interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a concordance row or dialect selector to KWIC is always a second explicit caller action; CAL-MCP does not crawl texts, expand dialects, fetch full-context pages, or build a local concordance.
 
 ## Which tool to use
 
@@ -36,7 +36,7 @@ The result preserves CAL's ordered rows with:
 - `semitic` — CAL's Semitic-script rendering (default);
 - `transliteration` — CAL transliteration.
 
-`text_id` must be an explicit decimal CAL text identifier. each valid explicit operation submits at most one new logical CAL request to the shared client. To inspect a lemma in context, pass the row's `lemma_key` and explicit text IDs to `cal_kwic_texts` in another call.
+`text_id` must be an explicit decimal CAL text identifier. Each valid explicit operation submits at most one new logical CAL request to the shared client. To inspect a lemma in context, pass the row's `lemma_key` and explicit text IDs to `cal_kwic_texts` in another call.
 
 ## `cal_kwic_texts`
 
@@ -93,7 +93,7 @@ cal_kwic_dialect(
 )
 ```
 
-each valid explicit operation submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
+Each valid explicit operation submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
 
 The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, per-hit charset, full-context URL, and upstream total.
 
@@ -119,7 +119,7 @@ CAL-MCP therefore does **not** expose a context-window option that the current s
 
 ## Request and result bounds
 
-each valid explicit operation submits at most one new logical CAL request to the shared client:
+Each valid explicit operation submits at most one new logical CAL request to the shared client:
 
 - one text concordance request;
 - one text-scoped KWIC request over at most eight explicit text IDs;
@@ -129,7 +129,6 @@ each valid explicit operation submits at most one new logical CAL request to the
 There is no automatic pagination, continuation, all-text/all-dialect expansion, full-context retrieval, prefetching, background indexing, or corpus mirror. No current result pagination/continuation was observed during the 2026-09-05 CAL audit, so CAL-MCP does not invent a continuation token.
 
 The shared HTTP client still enforces its origin, redirect, timeout, concurrency, retry, cache/single-flight, and maximum-response-size policy. The default decoded response-body ceiling is 2 MiB, with a hard configurable ceiling of 16 MiB. An oversized result raises the shared response-size error before endpoint parsing and is not cached or retried as a transient failure.
-
 
 ### Shared cache, single-flight, and retry semantics
 
