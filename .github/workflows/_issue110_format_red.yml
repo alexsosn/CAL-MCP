@@ -1,0 +1,35 @@
+name: Issue 110 RED formatting
+on:
+  push:
+    branches: [fix/issue-110-syriac-peshitta-routing]
+permissions:
+  contents: write
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: fix/issue-110-syriac-peshitta-routing
+          fetch-depth: 0
+      - name: Apply exact Ruff formatting correction
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('tests/test_syriac.py')
+          text = path.read_text()
+          old = '''    assert all(\n        item.navigation_kind is SyriacTextNavigationKind.CATALOGUE for item in page.items\n    )\n'''
+          new = '''    assert all(item.navigation_kind is SyriacTextNavigationKind.CATALOGUE for item in page.items)\n'''
+          if text.count(old) != 1:
+              raise SystemExit('expected formatting target exactly once')
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit correction and remove helper
+        run: |
+          rm .github/workflows/_issue110_format_red.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/test_syriac.py .github/workflows/_issue110_format_red.yml
+          git commit -m "test: format issue-110 RED"
+          git push origin HEAD:fix/issue-110-syriac-peshitta-routing
