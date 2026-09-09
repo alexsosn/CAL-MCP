@@ -471,7 +471,7 @@ def _parse_syriac_navigation_items(
 ) -> tuple[SyriacTextItem, ...]:
     items: list[SyriacTextItem] = []
     seen_ids: set[str] = set()
-    for line in parser.lines:
+    for line in lines:
         navigation: list[tuple[SyriacTextNavigationKind, str, str, _Link]] = []
         info_links: list[tuple[str, str, _Link]] = []
         for link in line.links:
