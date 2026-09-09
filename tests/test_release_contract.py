@@ -49,7 +49,9 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     assert CHANGELOG.exists()
     changelog = CHANGELOG.read_text(encoding="utf-8")
     assert "0.1.0" in changelog
-    assert "29" in changelog
+    assert "30 public tools" in changelog
+    assert "30-tool schema" in changelog
+    assert "cal_syriac_group" in changelog
     assert "#39" in changelog
 
     assert LIVE_SMOKE_WORKFLOW.exists()
