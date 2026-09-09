@@ -8,7 +8,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 ## Public capability matrix
 
-**Audited against CAL's current public research surfaces: 2026-09-09.**
+**Audited against CAL's current public research surfaces: 2026-09-10.**
 
 | CAL research area | v0.1 status | CAL-MCP surface |
 | --- | --- | --- |
