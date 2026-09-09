@@ -1,0 +1,76 @@
+name: issue-125 documentation
+
+on:
+  push:
+    branches:
+      - issue-125-syriac-root-discovery
+    paths:
+      - .github/workflows/issue125-docs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-125-syriac-root-discovery
+          fetch-depth: 0
+      - name: Update user documentation and self-remove
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: Path, old: str, new: str, label: str) -> None:
+              text = path.read_text()
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one anchor, found {count}")
+              path.write_text(text.replace(old, new, 1))
+
+          texts = Path("docs/tools/texts.md")
+          replace_once(
+              texts,
+              "The result contains two ordered collections:\n\n- `categories`: CAL category references with `category_id` and rendered `label`;\n- `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one.\n",
+              "The result contains three ordered collections, each preserving order within its own route family:\n\n- `categories`: ordinary CAL category references with decimal `category_id` and rendered `label`;\n- `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one;\n- `specialized_collections`: CAL-MCP routing references for current CAL branches that cannot be represented truthfully as a decimal generic category. Each item names a `follow_up_tool`, its `selector_name`, and the selectors supported by this CAL-MCP build.\n",
+              "texts result collections",
+          )
+          mandaic = "CAL's current root text browser likewise routes **Mandaic** through a dedicated collection page rather than the ordinary catalogue hierarchy. CAL-MCP preserves that branch as category `74`. An explicit `cal_text_catalogue(category_id=\"74\")` call targets only that Mandaic catalogue and returns its ordered entries as `texts`. CAL's dedicated page itself mixes subdivided links such as `showsubtexts.php?cset=M&subtext=<file>` with direct links such as `get_a_chapter.php?cset=M&file=<file>`; both identify text files on this surface, so CAL-MCP exposes the file identifier uniformly as `file_id` and keeps `subtext_id` null. The private route family and `cset=M` selector are validated by the adapter, not exposed as caller inputs. No listed text or subdivision is fetched during catalogue discovery. Reading a returned entry remains a separate explicit `cal_text_page(file_id, page=...)` operation, which applies the already-researched direct/subdivided Mandaic page routing internally without an extra route-discovery request.\n"
+          syriac_root = mandaic + "\nCAL's root **Syriac** branch is different again: its current target is the dedicated `AvailSyr.html` classification surface and has no researched decimal generic category identifier. CAL-MCP therefore does not fabricate one. Root `cal_text_catalogue()` returns it in `specialized_collections` with `collection_key=\"syriac\"`, CAL's rendered label, `follow_up_tool=\"cal_syriac_texts\"`, `selector_name=\"category\"`, and the ordered public category selectors supported by the same configuration used by `cal_syriac_texts`. Choose one returned selector and make a separate explicit `cal_syriac_texts(category=...)` call. Root discovery does not fetch `AvailSyr.html`, enumerate its children, or add another CAL request; the selector vocabulary is deterministic local adapter metadata.\n"
+          replace_once(texts, mandaic, syriac_root, "texts Syriac root insertion")
+          replace_once(
+              texts,
+              "- no recursive catalogue expansion;\n",
+              "- no recursive catalogue expansion or specialized-collection prefetch;\n",
+              "texts boundedness",
+          )
+          replace_once(
+              texts,
+              "- root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;\n",
+              "- root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;\n- root discovery of Syriac as an operation-aware `specialized_collections` item whose supported selectors compose explicitly with `cal_syriac_texts`, without fetching `AvailSyr.html`;\n",
+              "texts fixture list",
+          )
+
+          syriac = Path("docs/tools/syriac.md")
+          anchor = "Ordinary Syriac lexicon lookup, text retrieval, token analysis, concordance, and KWIC likewise stay on the existing general CAL-MCP tools rather than being reimplemented behind specialist names.\n\n## `cal_syriac_texts`\n"
+          replacement = "Ordinary Syriac lexicon lookup, text retrieval, token analysis, concordance, and KWIC likewise stay on the existing general CAL-MCP tools rather than being reimplemented behind specialist names.\n\n## Discover Syriac from the root text catalogue\n\nRoot `cal_text_catalogue()` preserves CAL's current `Syriac -> AvailSyr.html` branch as an operation-aware item in `specialized_collections` rather than inventing a decimal CAL category identifier. The item names `follow_up_tool=\"cal_syriac_texts\"`, `selector_name=\"category\"`, and returns the ordered `supported_selectors` accepted by this CAL-MCP build. Those selector strings come from the same local category configuration used by `cal_syriac_texts`; they are CAL-MCP routing metadata, not synthetic CAL IDs.\n\nA machine-actionable discovery sequence is therefore:\n\n```text\nroot = cal_text_catalogue()\nsyriac = root.specialized_collections[collection_key=\"syriac\"]\ncal_syriac_texts(category=<one syriac.supported_selectors value>)\n```\n\nThe root call remains one logical `newtextmenu.html` request on a cache miss and does **not** prefetch `AvailSyr.html` or enumerate Syriac classifications. Selecting a category is a separate explicit request.\n\n## `cal_syriac_texts`\n"
+          replace_once(syriac, anchor, replacement, "Syriac root discovery section")
+          replace_once(
+              syriac,
+              "The normal test suite is offline. Reduced semantic fixtures were captured/rechecked during bounded Syriac audits and cover:\n\n",
+              "The normal test suite is offline. Reduced semantic fixtures were captured/rechecked during bounded Syriac audits and cover:\n\n- root text-catalogue discovery of the exact dedicated Syriac branch as local follow-up metadata, including route-drift and no-prefetch regressions;\n",
+              "Syriac fixture root bullet",
+          )
+          PY
+          git add docs/tools/texts.md docs/tools/syriac.md
+          git rm .github/workflows/issue125-docs.yml
+          git diff --cached --check
+          git commit -m "Document Syriac root discovery workflow"
+          git push origin HEAD:issue-125-syriac-root-discovery
