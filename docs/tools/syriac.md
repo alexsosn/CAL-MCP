@@ -1,6 +1,6 @@
 # CAL Syriac Studies
 
-CAL-MCP exposes three bounded task-level operations over CAL's current Syriac Studies interfaces. Every public operation performs exactly **one** user-initiated CAL request. Returned text/group navigation, lexicon-entry links, and Peshitta chapter links are metadata for explicit follow-up calls; CAL-MCP never walks categories, opens every text, expands every lexical entry, advances through verses, or builds a local Syriac corpus.
+CAL-MCP exposes three bounded task-level operations over CAL's current Syriac Studies interfaces. Every public operation performs exactly **one** user-initiated CAL request. Returned text/group/catalogue navigation, lexicon-entry links, and Peshitta chapter links are metadata for explicit follow-up calls; CAL-MCP never walks categories, opens every text, expands every lexical entry, advances through verses, or builds a local Syriac corpus.
 
 ## Which tool to use
 
@@ -51,13 +51,27 @@ Each item preserves:
 
 - CAL's upstream text/group identifier;
 - CAL's rendered label;
-- `navigation_kind`, either `text` or `group`;
+- `navigation_kind`, one of `text`, `group`, or `catalogue`;
 - an absolute same-origin CAL navigation URL;
 - an optional same-origin file-information URL.
 
-A `text` item points directly into CAL's ordinary text browser. A `group` item points to another CAL subtext listing. Neither target is followed automatically. Callers decide whether to use the existing text tools in a later explicit action.
+The navigation kinds describe the next explicit CAL-MCP operation rather than exposing CAL's private form fields:
 
-The parser rejects duplicate identifiers, multiple navigation targets in one semantic row, detached or contradictory information links, malformed identifiers, cross-origin links, wrong category headings, and successful-looking pages whose current category-row semantics disappeared.
+- `text` points directly into CAL's ordinary text browser. Use `cal_text_page` in a later explicit call when the returned item identifies a text.
+- `group` represents CAL's Syriac `keyword=` grouped navigation. It stays distinct from the generic text catalogue because that catalogue does not model the Syriac group selector.
+- `catalogue` represents CAL's shallow `showsubtexts.php?subtext=<id>` text/book catalogue. Use the returned `upstream_id` with `cal_text_catalogue`.
+
+Current Peshitta book rows use `catalogue` navigation. For example, the OT Peshitta Genesis row returns `upstream_id="62001"`; an explicit caller-controlled sequence is:
+
+```text
+cal_syriac_texts(category="ot-peshitta")
+cal_text_catalogue(category_id="62001")
+cal_text_page(file_id="62001", subtext_id="01")
+```
+
+The NT Peshitta uses the same composition; for example Matthew is exposed under catalogue identifier `62040`. `cal_syriac_texts` does **not** prefetch a chapter, and `cal_text_catalogue` does not fetch chapter contents. Each follow-up remains a separate user-initiated request.
+
+The parser rejects duplicate identifiers, multiple navigation targets in one semantic row, ambiguous `showsubtexts.php` links that expose both group and catalogue selectors, detached or contradictory information links, malformed identifiers, cross-origin links, wrong category headings, and successful-looking pages whose current category-row semantics disappeared.
 
 ## `cal_syriac_missing_words`
 
@@ -148,9 +162,9 @@ Every public Syriac Studies operation performs exactly one CAL request:
 - one selected missing-word-category request;
 - one selected MT/Peshitta verse request.
 
-There is no hidden category enumeration, group traversal, text fetch, dictionary-entry expansion, alphabet walk, verse walking, chapter prefetch, external-citation crawl, background indexing, or local mirror. The shared CAL HTTP client continues to enforce origin, redirect, timeout, concurrency, retry, cache/single-flight, and response-size policy.
+There is no hidden category enumeration, group traversal, catalogue traversal, text fetch, dictionary-entry expansion, alphabet walk, verse walking, chapter prefetch, external-citation crawl, background indexing, or local mirror. The shared CAL HTTP client continues to enforce origin, redirect, timeout, concurrency, retry, cache/single-flight, and response-size policy.
 
-Private upstream fields and values such as numeric `category`, `bookname`, `cset`, `file`, `keyword`, and `coord` are adapter implementation details and are not public MCP parameters.
+Private upstream fields and values such as numeric `category`, `bookname`, `cset`, `file`, `keyword`, `subtext`, and `coord` are adapter implementation details and are not public MCP parameters.
 
 ## Provenance
 
@@ -167,13 +181,14 @@ Duplicate-request cache hits retain the original upstream retrieval timestamp an
 
 ## Fixture-backed contracts
 
-The normal test suite is offline. Reduced semantic fixtures were captured/rechecked during the bounded **2026-09-05** Syriac audit and cover:
+The normal test suite is offline. Reduced semantic fixtures were captured/rechecked during bounded Syriac audits and cover:
 
 - dynamic Metrical Homilies and Hymns category rows with both direct text and grouped navigation plus file-information links;
-- static OT Peshitta category rows;
+- current OT and NT Peshitta category rows using shallow `catalogue` navigation;
+- a current Peshitta Genesis chapter catalogue;
 - a current missing-verbs page with canonical CAL lemma links and notes;
 - Gen 1:1 MT/Peshitta Unicode output and CAL's Peshitta chapter link;
 - CAL's explicit coordinate-not-found response;
 - cross-origin, duplicate, contradictory, ambiguous, missing-semantic, noncanonical-link, wrong-heading, and ignored-script/style drift cases.
 
-These fixtures are reduced parser contracts, not archived CAL pages. The live research used **8 bounded CAL requests total** and did not traverse categories, texts, dictionary entries, verses, chapters, or external citations automatically.
+These fixtures are reduced parser contracts, not archived CAL pages. The original 2026-09-05 Syriac audit used 8 bounded CAL requests. The 2026-09-09 Peshitta routing correction was limited to the two Peshitta category pages and one representative immediate destination from each; it did not traverse chapter content, tokens, neighboring books, or returned navigation recursively.
