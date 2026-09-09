@@ -1,0 +1,106 @@
+name: issue-125 implementation
+
+on:
+  push:
+    branches:
+      - issue-125-syriac-root-discovery
+    paths:
+      - .github/workflows/issue125-implement.yml
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-125-syriac-root-discovery
+          fetch-depth: 0
+      - name: Apply frozen implementation and remove helper
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+
+          syriac = Path("src/cal_mcp/syriac.py")
+          text = syriac.read_text()
+          anchor = "}\n\n_MISSING_WORD_PATHS = {"
+          replacement = "}\n\n\ndef syriac_text_category_slugs() -> tuple[str, ...]:\n    return tuple(_TEXT_CATEGORIES)\n\n\n_MISSING_WORD_PATHS = {"
+          if text.count(anchor) != 1:
+              raise SystemExit("unexpected Syriac category-map anchor")
+          syriac.write_text(text.replace(anchor, replacement, 1))
+
+          texts = Path("src/cal_mcp/texts.py")
+          text = texts.read_text()
+
+          replacements = [
+              (
+                  "from cal_mcp.lexicon import _Line, _Link, _parse_lines\n",
+                  "from cal_mcp.lexicon import _Line, _Link, _parse_lines\nfrom cal_mcp.syriac import syriac_text_category_slugs\n",
+                  "texts import anchor",
+              ),
+              (
+                  '_ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"\n',
+                  '_ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"\n_SYRIAC_COLLECTION_KEY = "syriac"\n_SYRIAC_ROOT_PATH = "AvailSyr.html"\n_SYRIAC_ROOT_LABEL = "Syriac"\n_SYRIAC_FOLLOW_UP_TOOL = "cal_syriac_texts"\n_SYRIAC_SELECTOR_NAME = "category"\n',
+                  "Syriac root constants anchor",
+              ),
+              (
+                  "@dataclass(frozen=True, slots=True)\nclass TextCategoryRef:\n    category_id: str\n    label: str\n\n\n@dataclass(frozen=True, slots=True)\nclass TextToken:",
+                  "@dataclass(frozen=True, slots=True)\nclass TextCategoryRef:\n    category_id: str\n    label: str\n\n\n@dataclass(frozen=True, slots=True)\nclass TextSpecializedCollectionRef:\n    collection_key: str\n    label: str\n    follow_up_tool: str\n    selector_name: str\n    supported_selectors: tuple[str, ...]\n\n\n@dataclass(frozen=True, slots=True)\nclass TextToken:",
+                  "specialized model anchor",
+              ),
+              (
+                  "@dataclass(frozen=True, slots=True)\nclass TextCataloguePage:\n    categories: tuple[TextCategoryRef, ...]\n    texts: tuple[TextRef, ...]\n",
+                  "@dataclass(frozen=True, slots=True)\nclass TextCataloguePage:\n    categories: tuple[TextCategoryRef, ...]\n    texts: tuple[TextRef, ...]\n    specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()\n",
+                  "catalogue page model anchor",
+              ),
+              (
+                  "@dataclass(frozen=True, slots=True)\nclass TextCatalogueResult:\n    categories: tuple[TextCategoryRef, ...]\n    texts: tuple[TextRef, ...]\n    provenance: TextProvenance\n\n    def to_dict(self) -> dict[str, object]:\n        return {\n            \"categories\": [_category_to_dict(item) for item in self.categories],\n            \"texts\": [_text_ref_to_dict(item) for item in self.texts],\n            \"provenance\": _provenance_to_dict(self.provenance),\n        }\n",
+                  "@dataclass(frozen=True, slots=True)\nclass TextCatalogueResult:\n    categories: tuple[TextCategoryRef, ...]\n    texts: tuple[TextRef, ...]\n    provenance: TextProvenance\n    specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()\n\n    def to_dict(self) -> dict[str, object]:\n        return {\n            \"categories\": [_category_to_dict(item) for item in self.categories],\n            \"texts\": [_text_ref_to_dict(item) for item in self.texts],\n            \"specialized_collections\": [\n                _specialized_collection_to_dict(item) for item in self.specialized_collections\n            ],\n            \"provenance\": _provenance_to_dict(self.provenance),\n        }\n",
+                  "catalogue result model anchor",
+              ),
+              (
+                  "def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:\n    categories: list[TextCategoryRef] = []\n    texts: list[TextRef] = []\n\n    for line in _parse_lines(response):\n        for link in line.links:\n            category = _category_from_link(link)\n            if category is not None:\n                categories.append(category)\n                continue\n            text = _text_ref_from_link(link)\n            if text is not None:\n                texts.append(text)\n\n    if not categories and not texts:\n        raise TextParseError(\"CAL text catalogue contains no recognizable category or text links\")\n    return TextCataloguePage(categories=tuple(categories), texts=tuple(texts))\n",
+                  "def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:\n    categories: list[TextCategoryRef] = []\n    texts: list[TextRef] = []\n    specialized_collections: list[TextSpecializedCollectionRef] = []\n    seen_specialized_keys: set[str] = set()\n\n    for line in _parse_lines(response):\n        for link in line.links:\n            specialized = _specialized_collection_from_link(link)\n            if specialized is not None:\n                if specialized.collection_key in seen_specialized_keys:\n                    raise TextParseError(\"CAL text catalogue repeats a specialized collection\")\n                seen_specialized_keys.add(specialized.collection_key)\n                specialized_collections.append(specialized)\n                continue\n            category = _category_from_link(link)\n            if category is not None:\n                categories.append(category)\n                continue\n            text = _text_ref_from_link(link)\n            if text is not None:\n                texts.append(text)\n\n    if not categories and not texts and not specialized_collections:\n        raise TextParseError(\n            \"CAL text catalogue contains no recognizable category, text, or specialized links\"\n        )\n    return TextCataloguePage(\n        categories=tuple(categories),\n        texts=tuple(texts),\n        specialized_collections=tuple(specialized_collections),\n    )\n",
+                  "catalogue parser anchor",
+              ),
+              (
+                  "        return TextCatalogueResult(\n            categories=result.value.categories,\n            texts=result.value.texts,\n            provenance=TextProvenance(\n",
+                  "        return TextCatalogueResult(\n            categories=result.value.categories,\n            texts=result.value.texts,\n            provenance=TextProvenance(\n",
+                  "catalogue result construction anchor",
+              ),
+              (
+                  "                category_id=normalized_category,\n            ),\n        )\n\n    async def search(self, query: str) -> TextSearchResult:\n",
+                  "                category_id=normalized_category,\n            ),\n            specialized_collections=result.value.specialized_collections,\n        )\n\n    async def search(self, query: str) -> TextSearchResult:\n",
+                  "catalogue propagation anchor",
+              ),
+              (
+                  "def _category_from_link(link: _Link) -> TextCategoryRef | None:\n",
+                  "def _specialized_collection_from_link(\n    link: _Link,\n) -> TextSpecializedCollectionRef | None:\n    label = link.text.strip()\n    parsed = urlsplit(link.href)\n    exact_path = (\n        not parsed.scheme\n        and not parsed.netloc\n        and parsed.path in (_SYRIAC_ROOT_PATH, f\"/{_SYRIAC_ROOT_PATH}\")\n    )\n    if exact_path:\n        if parsed.query or parsed.fragment:\n            raise TextParseError(\"CAL Syriac root route changed unexpectedly\")\n        if not label:\n            raise TextParseError(\"CAL Syriac root collection link has no label\")\n        return TextSpecializedCollectionRef(\n            collection_key=_SYRIAC_COLLECTION_KEY,\n            label=label,\n            follow_up_tool=_SYRIAC_FOLLOW_UP_TOOL,\n            selector_name=_SYRIAC_SELECTOR_NAME,\n            supported_selectors=syriac_text_category_slugs(),\n        )\n    if label == _SYRIAC_ROOT_LABEL:\n        raise TextParseError(\"CAL Syriac root route changed unexpectedly\")\n    return None\n\n\ndef _category_from_link(link: _Link) -> TextCategoryRef | None:\n",
+                  "specialized parser insertion anchor",
+              ),
+              (
+                  "def _category_to_dict(category: TextCategoryRef) -> dict[str, object]:\n    return {\"category_id\": category.category_id, \"label\": category.label}\n\n\ndef _token_to_dict(token: TextToken) -> dict[str, object]:\n",
+                  "def _category_to_dict(category: TextCategoryRef) -> dict[str, object]:\n    return {\"category_id\": category.category_id, \"label\": category.label}\n\n\ndef _specialized_collection_to_dict(\n    collection: TextSpecializedCollectionRef,\n) -> dict[str, object]:\n    return {\n        \"collection_key\": collection.collection_key,\n        \"label\": collection.label,\n        \"follow_up_tool\": collection.follow_up_tool,\n        \"selector_name\": collection.selector_name,\n        \"supported_selectors\": list(collection.supported_selectors),\n    }\n\n\ndef _token_to_dict(token: TextToken) -> dict[str, object]:\n",
+                  "specialized serializer anchor",
+              ),
+          ]
+
+          for old, new, name in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"unexpected {name}: {count}")
+              text = text.replace(old, new, 1)
+          texts.write_text(text)
+          PY
+          git add src/cal_mcp/syriac.py src/cal_mcp/texts.py
+          git rm .github/workflows/issue125-implement.yml
+          git diff --cached --check
+          git commit -m "Expose Syriac as specialized root collection"
+          git push origin HEAD:issue-125-syriac-root-discovery
