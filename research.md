@@ -456,3 +456,14 @@ A fresh independent check of the same current Mandaic menu found three subdivide
 The review did not traverse those texts. It classified the menu's own destination hrefs and recorded the complete current `747xx` mapping in `docs/research/issue-97-review-747xx-route-addendum.md`.
 
 **Amended implication:** the private subdivided-file allowlist must include `74702`, `74711`, and `74714` in addition to the previously researched entries. Any future route change still requires explicit current-menu evidence rather than arithmetic inference or runtime probing.
+
+## R-001 — Current Syriac Peshitta book rows use shallow catalogue navigation
+
+**Rechecked:** 2026-09-09.
+
+Current CAL OT and NT Peshitta category pages no longer expose their biblical book rows as direct text-page links. Representative current rows such as `62001 P Gn` and `62040 P Mt` link to `showsubtexts.php` with a decimal book selector; the immediate destination is a shallow chapter catalogue whose chapter rows then use ordinary `file` + `sub` text-page navigation. This route is distinct from Syriac grouped navigation selected by CAL's `keyword` field.
+
+Focused evidence and bounded request details are recorded in `docs/research/issue-110-syriac-peshitta-subtext-routing.md`.
+
+**Implication:** Syriac category parsing preserves three navigation kinds: direct `text`, grouped `group`, and shallow `catalogue`. Peshitta book rows use `catalogue` and compose explicitly through `cal_text_catalogue(category_id=<returned upstream_id>)`; CAL-MCP does not prefetch chapters or expose private selector/form controls.
+
