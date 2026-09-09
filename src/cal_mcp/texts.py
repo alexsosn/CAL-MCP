@@ -6,7 +6,13 @@ from datetime import datetime
 from enum import StrEnum
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import (
+    CAL_BASE_URL,
+    CalContentError,
+    CalHttpClient,
+    CalRequest,
+    CalResponse,
+)
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -598,8 +604,10 @@ def _prepare_text_search_query(value: str) -> str:
 
 def _is_root_catalogue_response(url: str) -> bool:
     parsed = urlsplit(url)
+    cal_root = urlsplit(CAL_BASE_URL)
     return (
-        parsed.path == f"/{_ROOT_CATALOGUE_PATH}"
+        (parsed.scheme, parsed.netloc) == (cal_root.scheme, cal_root.netloc)
+        and parsed.path == f"/{_ROOT_CATALOGUE_PATH}"
         and not parsed.query
         and not parsed.fragment
     )
