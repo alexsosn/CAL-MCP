@@ -64,11 +64,12 @@ mcp = MCPServer(
         "cal_targum_parallel for one biblical verse across current CAL "
         "Targum readings, cal_targum_concordance for Targum-specific lemma counts, and the "
         "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "
-        "Use cal_syriac_texts for one explicit CAL Syriac text category, "
+        "Use cal_syriac_texts for one explicit CAL Syriac text category and "
+        "cal_syriac_group for one GROUP selector returned by that tool. Use "
         "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon "
-        "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac "
-        "text and lexicon follow-ups compose through cal_text_page and "
-        "cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL "
+        "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac direct-text, "
+        "catalogue, and lexicon follow-ups compose through cal_text_page, cal_text_catalogue, "
+        "and cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL "
         "dialect identifiers for citations from texts not in the online corpus, "
         "cal_external_citation_sources for one returned dialect, and "
         "cal_external_citations for one exact returned source abbreviation. "
@@ -600,12 +601,36 @@ async def cal_syriac_texts(
     """Return one bounded CAL Syriac text-category listing.
 
     ``category`` is a CAL-MCP descriptive slug, not CAL's private numeric category value.
-    Direct text and grouped-navigation results remain distinct and are never followed
-    automatically. Use existing text tools for explicit follow-up reading.
+    Direct text, grouped-navigation, and catalogue results remain distinct and are never
+    followed automatically. Use ``cal_syriac_group`` for returned GROUP selectors and the
+    generic text tools for explicit direct-text/catalogue follow-up.
     """
 
     client = ctx.request_context.lifespan_context.client
     result = await SyriacService(client).texts(category)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_syriac_group",
+    title="Browse one returned CAL Syriac grouped-text selector",
+    structured_output=True,
+)
+async def cal_syriac_group(
+    group_id: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Follow one GROUP selector returned by ``cal_syriac_texts``.
+
+    ``group_id`` is CAL's grouped-text selector, not a generic file or catalogue identifier.
+    Returned child navigation remains ordered metadata and is never followed recursively.
+
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await SyriacService(client).group(group_id)
     return result.to_dict()
 
 
