@@ -74,6 +74,7 @@ class SyriacProvenance:
     operation: str
     category: str | None = None
     upstream_category: str | None = None
+    group_id: str | None = None
     book: str | None = None
     book_id: str | None = None
     chapter: int | None = None
@@ -93,6 +94,22 @@ class SyriacTextCategoryResult:
             "label": self.label,
             "items": [_text_item_to_dict(item) for item in self.items],
             "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SyriacTextGroupResult:
+    group_id: str
+    items: tuple[SyriacTextItem, ...]
+    provenance: SyriacProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        provenance = _provenance_to_dict(self.provenance)
+        provenance["group_id"] = self.group_id
+        return {
+            "group_id": self.group_id,
+            "items": [_text_item_to_dict(item) for item in self.items],
+            "provenance": provenance,
         }
 
 
@@ -443,16 +460,24 @@ def parse_syriac_text_category_page(
     if len(matching_headings) != 1:
         raise SyriacParseError("CAL Syriac text category lacks the expected category heading")
 
+    items = _parse_syriac_navigation_items(parser.lines, response.url)
+    return SyriacTextCategoryPage(label=matching_headings[0], items=items)
+
+
+def _parse_syriac_navigation_items(
+    lines: list[_Line],
+    source_url: str,
+) -> tuple[SyriacTextItem, ...]:
     items: list[SyriacTextItem] = []
     seen_ids: set[str] = set()
-    for line in parser.lines:
+    for line in lines:
         navigation: list[tuple[SyriacTextNavigationKind, str, str, _Link]] = []
         info_links: list[tuple[str, str, _Link]] = []
         for link in line.links:
-            target = urlsplit(urljoin(response.url, link.href))
+            target = urlsplit(urljoin(source_url, link.href))
             endpoint = target.path.rsplit("/", 1)[-1]
             if endpoint == "get_a_chapter.php":
-                resolved = _validated_same_origin_url(response.url, link.href, endpoint)
+                resolved = _validated_same_origin_url(source_url, link.href, endpoint)
                 upstream_id = _single_query_value(
                     parse_qs(urlsplit(resolved).query, keep_blank_values=True),
                     "file",
@@ -461,7 +486,7 @@ def parse_syriac_text_category_page(
                 _require_decimal_identifier(upstream_id, "Syriac text file")
                 navigation.append((SyriacTextNavigationKind.TEXT, upstream_id, resolved, link))
             elif endpoint == "showsubtexts.php":
-                resolved = _validated_same_origin_url(response.url, link.href, endpoint)
+                resolved = _validated_same_origin_url(source_url, link.href, endpoint)
                 query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
                 allowed_keys = {"keyword", "subtext", "cset", "script"}
                 if unknown_keys := set(query) - allowed_keys:
@@ -501,7 +526,7 @@ def parse_syriac_text_category_page(
                 kind, upstream_id = selectors[0]
                 navigation.append((kind, upstream_id, resolved, link))
             elif endpoint == "get_file_info.php":
-                resolved = _validated_same_origin_url(response.url, link.href, endpoint)
+                resolved = _validated_same_origin_url(source_url, link.href, endpoint)
                 info_id = _single_query_value(
                     parse_qs(urlsplit(resolved).query, keep_blank_values=True),
                     "coord",
@@ -546,7 +571,31 @@ def parse_syriac_text_category_page(
 
     if not items:
         raise SyriacParseError("CAL Syriac text category has no recognized result rows")
-    return SyriacTextCategoryPage(label=matching_headings[0], items=tuple(items))
+    return tuple(items)
+
+
+def parse_syriac_text_group_page(
+    response: CalResponse,
+    *,
+    group_id: str,
+) -> tuple[SyriacTextItem, ...]:
+    submitted_group = _validate_group_id(group_id)
+    _require_response_path(response.url, "showsubtexts.php", "Syriac grouped-text")
+    query = parse_qs(urlsplit(response.url).query, keep_blank_values=True)
+    if set(query) != {"keyword"}:
+        raise SyriacParseError("CAL Syriac grouped-text response has unexpected query semantics")
+    returned_group = _single_query_value(
+        query,
+        "keyword",
+        "Syriac grouped-text response",
+    )
+    if returned_group != submitted_group:
+        raise SyriacParseError("CAL Syriac grouped-text response contradicts the selected group")
+
+    parser = _SemanticLinesParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    return _parse_syriac_navigation_items(parser.lines, response.url)
 
 
 def parse_syriac_missing_words_page(
@@ -714,6 +763,31 @@ class SyriacService:
             ),
         )
 
+    async def group(self, group_id: str) -> SyriacTextGroupResult:
+        submitted_group = _validate_group_id(group_id)
+        result = await self._client.fetch(
+            CalRequest(
+                method="GET",
+                path="showsubtexts.php",
+                params=(("keyword", submitted_group),),
+            ),
+            parser=lambda response: parse_syriac_text_group_page(
+                response,
+                group_id=submitted_group,
+            ),
+            cache_namespace="syriac-group-v1",
+        )
+        return SyriacTextGroupResult(
+            group_id=submitted_group,
+            items=result.value,
+            provenance=_make_provenance(
+                result.source_url,
+                result.retrieved_at,
+                operation="syriac_group",
+                group_id=submitted_group,
+            ),
+        )
+
     async def missing_words(self, category: str) -> SyriacMissingWordsResult:
         path = _missing_word_path(category)
         result = await self._client.fetch(
@@ -793,6 +867,12 @@ def _text_category_config(category: str) -> _TextCategoryConfig:
     if config is None:
         raise ValueError("category must be a current CAL-MCP Syriac text-category slug")
     return config
+
+
+def _validate_group_id(value: object) -> str:
+    if type(value) is not str or not value.isdecimal() or int(value) < 1:
+        raise ValueError("group_id must be a positive decimal Syriac GROUP selector")
+    return value
 
 
 def _missing_word_path(category: str) -> str:
@@ -894,6 +974,7 @@ def _make_provenance(
     operation: str,
     category: str | None = None,
     upstream_category: str | None = None,
+    group_id: str | None = None,
     book: str | None = None,
     book_id: str | None = None,
     chapter: int | None = None,
@@ -906,6 +987,7 @@ def _make_provenance(
         operation=operation,
         category=category,
         upstream_category=upstream_category,
+        group_id=group_id,
         book=book,
         book_id=book_id,
         chapter=chapter,

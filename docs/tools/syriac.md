@@ -1,12 +1,13 @@
 # CAL Syriac Studies
 
-CAL-MCP exposes three bounded task-level operations over CAL's current Syriac Studies interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Returned text/group/catalogue navigation, lexicon-entry links, and Peshitta chapter links are metadata for explicit follow-up calls; CAL-MCP never walks categories, opens every text, expands every lexical entry, advances through verses, or builds a local Syriac corpus.
+CAL-MCP exposes four bounded task-level operations over CAL's current Syriac Studies interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Returned text/group/catalogue navigation, lexicon-entry links, and Peshitta chapter links are metadata for explicit follow-up calls; CAL-MCP never walks categories, opens every text, expands every lexical entry, advances through verses, or builds a local Syriac corpus.
 
 ## Which tool to use
 
 | Goal | Tool |
 | --- | --- |
 | Browse one CAL Syriac text category | `cal_syriac_texts(category)` |
+| Follow one returned Syriac grouped-text selector | `cal_syriac_group(group_id)` |
 | List one CAL-curated class of Syriac headwords absent from *A Syriac Lexicon* | `cal_syriac_missing_words(category)` |
 | Compare one biblical verse in MT and CAL's Peshitta view | `cal_syriac_peshitta_parallel(book, chapter, verse)` |
 
@@ -58,7 +59,7 @@ Each item preserves:
 The navigation kinds describe the next explicit CAL-MCP operation rather than exposing CAL's private form fields:
 
 - `text` points directly into CAL's ordinary text browser. Use `cal_text_page` in a later explicit call when the returned item identifies a text.
-- `group` represents CAL's Syriac `keyword=` grouped navigation. It stays distinct from the generic text catalogue because that catalogue does not model the Syriac group selector.
+- `group` represents CAL's Syriac `keyword=` grouped navigation. Pass the returned `upstream_id` to `cal_syriac_group`; a group selector remains distinct from a generic text `file_id` or catalogue `subtext` identifier.
 - `catalogue` represents CAL's shallow `showsubtexts.php?subtext=<id>` text/book catalogue. Use the returned `upstream_id` with `cal_text_catalogue`.
 
 Current Peshitta book rows use `catalogue` navigation. For example, the OT Peshitta Genesis row returns `upstream_id="62001"`; an explicit caller-controlled sequence is:
@@ -69,9 +70,29 @@ cal_text_catalogue(category_id="62001")
 cal_text_page(file_id="62001", subtext_id="01")
 ```
 
-The NT Peshitta uses the same composition; for example Matthew is exposed under catalogue identifier `62040`. `cal_syriac_texts` does **not** prefetch a chapter, and `cal_text_catalogue` does not fetch chapter contents. Each follow-up remains a separate user-initiated request.
+The NT Peshitta uses the same composition; for example Matthew is exposed under catalogue identifier `62040`. `cal_syriac_texts` does **not** prefetch a chapter, and `cal_text_catalogue` does not fetch chapter contents. Each follow-up remains a separate user-initiated operation.
 
 The parser rejects duplicate identifiers, multiple navigation targets in one semantic row, ambiguous `showsubtexts.php` links that expose both group and catalogue selectors, detached or contradictory information links, malformed identifiers, cross-origin links, wrong category headings, and successful-looking pages whose current category-row semantics disappeared.
+
+## `cal_syriac_group`
+
+```text
+cal_syriac_group(group_id: string)
+```
+
+`group_id` is the positive decimal `upstream_id` from a `cal_syriac_texts` item whose `navigation_kind` is `group`. It belongs to CAL's Syriac grouped-text `keyword` selector namespace. CAL-MCP does not reinterpret the same digits as a generic text `file_id` or a generic catalogue `subtext` identifier.
+
+The adapter submits only the semantic selector represented by the returned GROUP row. It does **not** synthesize a `cset`, `script`, `file`, or `subtext` value. Private CAL presentation fields remain adapter details rather than public inputs.
+
+The result contains:
+
+- the selected `group_id`;
+- ordered child `items` using the same `text` / `group` / `catalogue` navigation model as `cal_syriac_texts`;
+- normal CAL provenance, including `operation: "syriac_group"` and `group_id`.
+
+Returned children are navigation metadata only. A nested `group` requires another explicit `cal_syriac_group` call; a `catalogue` can be passed explicitly to `cal_text_catalogue`; and a direct `text` can be followed explicitly through the ordinary text tools. The group operation never recurses, opens child texts, or prefetches a catalogue.
+
+The group response must come from CAL's `showsubtexts.php` family with exactly one `keyword` value matching the requested `group_id`. A repeated/mismatched selector, an extra response query control, an ambiguous or cross-origin child route, duplicate child identifier, contradictory information link, or successful-looking page with no recognized child rows fails closed as `SyriacParseError`.
 
 ## `cal_syriac_missing_words`
 
@@ -159,6 +180,7 @@ CAL-MCP does not add vocalization, transliteration, morphology, emendation, or r
 Each valid explicit operation submits at most one new logical CAL request to the shared client:
 
 - one selected text-category request;
+- one caller-selected Syriac group request;
 - one selected missing-word-category request;
 - one selected MT/Peshitta verse request.
 
@@ -178,7 +200,7 @@ Results include adapter provenance with:
 - actual `source_url`;
 - timezone-aware `retrieved_at`;
 - operation name;
-- selected public category or book/chapter/verse;
+- selected public category, returned group selector, or book/chapter/verse;
 - CAL's current internal category or book identifier when applicable.
 
 Duplicate-request cache hits retain the original upstream retrieval timestamp and source URL under the shared request-layer provenance contract.
@@ -188,6 +210,7 @@ Duplicate-request cache hits retain the original upstream retrieval timestamp an
 The normal test suite is offline. Reduced semantic fixtures were captured/rechecked during bounded Syriac audits and cover:
 
 - dynamic Metrical Homilies and Hymns category rows with both direct text and grouped navigation plus file-information links;
+- explicit grouped-text follow-up request identity, mixed child navigation, no recursion, selector contradictions, and malformed child-route failure using a reduced synthetic group page rather than an asserted current CAL group body;
 - current OT and NT Peshitta category rows using shallow `catalogue` navigation;
 - a current Peshitta Genesis chapter catalogue;
 - a current missing-verbs page with canonical CAL lemma links and notes;
@@ -195,4 +218,4 @@ The normal test suite is offline. Reduced semantic fixtures were captured/rechec
 - CAL's explicit coordinate-not-found response;
 - cross-origin, duplicate, contradictory, ambiguous, missing-semantic, noncanonical-link, wrong-heading, and ignored-script/style drift cases.
 
-These fixtures are reduced parser contracts, not archived CAL pages. The original 2026-09-05 Syriac audit used 8 bounded CAL requests. The 2026-09-09 Peshitta routing correction was limited to the two Peshitta category pages and one representative immediate destination from each; it did not traverse chapter content, tokens, neighboring books, or returned navigation recursively.
+These fixtures are reduced parser contracts, not archived CAL pages. The original 2026-09-05 Syriac audit used 8 bounded CAL requests. The 2026-09-09 Peshitta routing correction was limited to the two Peshitta category pages and one representative immediate destination from each; it did not traverse chapter content, tokens, neighboring books, or returned navigation recursively. The 2026-09-09 grouped-text follow-up audit did not enumerate groups and did not establish a stable current group-page heading or charset requirement, so CAL-MCP does not invent either.
