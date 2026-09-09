@@ -18,7 +18,10 @@ def _load_release_surface() -> ModuleType:
 
 
 def _load_verifier() -> ModuleType:
-    spec = importlib.util.spec_from_file_location("cal_mcp_release_verifier_sync_test", VERIFIER_PATH)
+    spec = importlib.util.spec_from_file_location(
+        "cal_mcp_release_verifier_sync_test",
+        VERIFIER_PATH,
+    )
     assert spec is not None
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
