@@ -261,7 +261,8 @@ async def cal_text_information(
     """Retrieve CAL's explicit Text Information metadata for one text or subtext.
 
     Metadata is returned as CAL's ordered free-form text rather than inferred bibliographic
-    fields. One call performs exactly one bounded CAL request and follows no metadata links.
+    fields. One explicit call submits at most one new logical CAL request and follows no
+    metadata links. A completed cache hit performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client

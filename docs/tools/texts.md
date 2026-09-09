@@ -27,9 +27,9 @@ The result contains two ordered collections:
 - `categories`: CAL category references with `category_id` and rendered `label`;
 - `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one.
 
-A call performs **one CAL request**. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.
+On a cache miss, an explicit call submits one logical CAL request. A completed cache hit performs zero new upstream I/O. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.
 
-CAL's current root text browser routes the **Targums Onkelos and Jonathan to the Prophets** collection through a dedicated CAL page rather than an ordinary `showsubtexts.php` link. CAL-MCP preserves that branch in root discovery as category `51`. An explicit `cal_text_catalogue(category_id="51")` call makes one request to that dedicated collection page and returns its ordered children using the normal result shapes: subdivided sources such as `51001 TgO Gn` remain `categories`, while direct sources such as `51400 MegTan (Megillat Taanit)` remain `texts`. The dedicated route stays adapter-private, no child is prefetched, and follow-up retrieval remains a separate caller-controlled action.
+CAL's current root text browser routes the **Targums Onkelos and Jonathan to the Prophets** collection through a dedicated CAL page rather than an ordinary `showsubtexts.php` link. CAL-MCP preserves that branch in root discovery as category `51`. An explicit `cal_text_catalogue(category_id="51")` call targets only that dedicated collection page and returns its ordered children using the normal result shapes: subdivided sources such as `51001 TgO Gn` remain `categories`, while direct sources such as `51400 MegTan (Megillat Taanit)` remain `texts`. The dedicated route stays adapter-private, no child is prefetched, and follow-up retrieval remains a separate caller-controlled action.
 
 `category_id` is validated as an opaque decimal CAL identifier. It is preserved as a string rather than converted to an integer so the adapter does not erase potentially meaningful leading zeroes.
 
@@ -48,7 +48,7 @@ The result contains:
 - `provenance.submitted_query`: the bounded query sent to CAL after deterministic ASCII-space cleanup;
 - CAL source URL and retrieval timestamp.
 
-Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic route classification internally. Search still performs only the original single CAL request and never follows a returned result link automatically.
+Current CAL searches may return ordinary text links or specialized Mandaic collection links. CAL-MCP maps both to the same `TextRef` result shape. For current Mandaic hits such as Ginza Rabba, the specialized upstream `cset=M` / `subtext=<file>` link stays adapter-private: the result exposes the CAL file identifier as `file_id`, keeps `subtext_id` as `null`, and preserves CAL's rendered label and description. That `file_id` can be passed directly to `cal_text_page(file_id, page=...)`, which applies the current Mandaic route classification internally. Search still submits at most one new logical CAL request and never follows a returned result link automatically; a completed cache hit performs zero new upstream I/O.
 
 CAL currently renders an explicit no-files message when a topic search has no matches. CAL-MCP maps that recognized upstream state to `matches: []`. A successful HTML page that has neither recognizable text results nor CAL's explicit no-files marker is treated as parser drift rather than silently interpreted as an empty result.
 
@@ -72,7 +72,7 @@ subtext_id is null -> coord=<file_id>
 subtext_id present -> coord=<file_id><subtext_id>
 ```
 
-The private `coord` parameter is not exposed in the MCP schema and arbitrary CAL URLs are not accepted. One tool call performs exactly one bounded `get_file_info.php` request. Links rendered inside CAL metadata are never followed automatically.
+The private `coord` parameter is not exposed in the MCP schema and arbitrary CAL URLs are not accepted. One explicit tool call submits at most one new logical CAL request to `get_file_info.php`. A completed cache hit performs zero new upstream I/O. Links rendered inside CAL metadata are never followed automatically.
 
 The result contains:
 
@@ -106,7 +106,7 @@ This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL'
 
 ### Page numbering
 
-The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current CAL Mandaic navigation is heterogeneous: known subdivided files such as Ginza Rabba Right/Left (`74410`/`74411`) use the specialized `cset=M` route with a one-based `sub` selector such as `001`, `002`, or `1000`, while direct files such as `74501` and `74717` use a direct page-1 request with no `sub` or ordinary `page` field. A direct Mandaic request for `page>1` is rejected locally until CAL exposes a researched pagination contract for that route. These upstream forms remain adapter-private, and each supported public call still makes exactly one CAL request.
+The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current CAL Mandaic navigation is heterogeneous: known subdivided files such as Ginza Rabba Right/Left (`74410`/`74411`) use the specialized `cset=M` route with a one-based `sub` selector such as `001`, `002`, or `1000`, while direct files such as `74501` and `74717` use a direct page-1 request with no `sub` or ordinary `page` field. A direct Mandaic request for `page>1` is rejected locally until CAL exposes a researched pagination contract for that route. These upstream forms remain adapter-private, and each supported public call submits at most one new logical CAL request; a completed cache hit performs zero new upstream I/O.
 
 For a paginated text, the result may contain:
 
@@ -150,7 +150,9 @@ A recognized page with text returns `status: "found"`. Transport/content failure
 
 ## Request bounds
 
-Every public text tool performs exactly one user-initiated CAL request:
+Every explicit public text operation submits at most one new logical CAL request to the shared client. A completed cache hit performs zero new upstream I/O, and an identical simultaneous call can be a single-flight follower without duplicating the active request. Retryable failures may consume bounded retry transport attempts under the shared retry policy. These mechanisms do not create hidden background work.
+
+The operation-level bounds remain:
 
 - no recursive catalogue expansion;
 - no automatic traversal to previous/next pages;
