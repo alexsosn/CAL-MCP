@@ -1099,6 +1099,7 @@ __all__ = [
     "TextSearchPage",
     "TextSearchResult",
     "TextService",
+    "TextSpecializedCollectionRef",
     "TextToken",
     "parse_mandaic_catalogue_page",
     "parse_text_catalogue_page",

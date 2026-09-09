@@ -431,6 +431,11 @@ def syriac_text_category_slugs() -> tuple[str, ...]:
     return tuple(_TEXT_CATEGORIES)
 
 
+def syriac_text_category_slugs() -> tuple[str, ...]:
+    """Return supported public Syriac text-category selectors in service order."""
+    return tuple(_TEXT_CATEGORIES)
+
+
 _MISSING_WORD_PATHS = {
     "adjectives": "display_missing_adj.php",
     "adverbs": "display_missingSL.php",
