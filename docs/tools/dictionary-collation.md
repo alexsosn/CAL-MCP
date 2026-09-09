@@ -111,7 +111,7 @@ Navigation links outside the result rows are ignored and never mistaken for lexi
 
 ## Request bounds
 
-Each valid explicit operation submits at most one new logical CAL request to the shared client. There is no runtime form discovery, fallback source-code retry, hidden page traversal, lemma expansion, prefetch, or background indexing.
+A valid cal_dictionary_collation operation submits at most one new logical POST-shaped CAL request to the shared client. There is no runtime form discovery, fallback source-code retry, hidden page traversal, lemma expansion, prefetch, or background indexing.
 
 The shared CAL client supplies:
 
