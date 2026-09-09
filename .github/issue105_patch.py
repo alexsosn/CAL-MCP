@@ -196,7 +196,7 @@ server = server.replace(old, new)
 marker = """@mcp.tool(
     name="cal_syriac_missing_words",
 """
-tool = """@mcp.tool(
+tool = '''@mcp.tool(
     name="cal_syriac_group",
     title="Browse one returned CAL Syriac grouped-text selector",
     structured_output=True,
@@ -219,7 +219,7 @@ async def cal_syriac_group(
     return result.to_dict()
 
 
-"""
+'''
 assert server.count(marker) == 1
 server = server.replace(marker, tool + marker)
 server_path.write_text(server, encoding="utf-8")
