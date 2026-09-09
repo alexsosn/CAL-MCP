@@ -53,6 +53,7 @@ _SYRIAC_ROOT_PATH = "AvailSyr.html"
 _SYRIAC_ROOT_LABEL = "Syriac"
 _SYRIAC_FOLLOW_UP_TOOL = "cal_syriac_texts"
 _SYRIAC_SELECTOR_NAME = "category"
+_ROOT_CATALOGUE_PATH = "newtextmenu.html"
 
 
 class TextParseError(CalContentError):
@@ -219,16 +220,18 @@ def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
     texts: list[TextRef] = []
     specialized_collections: list[TextSpecializedCollectionRef] = []
     seen_specialized_keys: set[str] = set()
+    is_root_catalogue = _is_root_catalogue_response(response.url)
 
     for line in _parse_lines(response):
         for link in line.links:
-            specialized = _specialized_collection_from_link(link)
-            if specialized is not None:
-                if specialized.collection_key in seen_specialized_keys:
-                    raise TextParseError("CAL text catalogue repeats a specialized collection")
-                seen_specialized_keys.add(specialized.collection_key)
-                specialized_collections.append(specialized)
-                continue
+            if is_root_catalogue:
+                specialized = _specialized_collection_from_link(link)
+                if specialized is not None:
+                    if specialized.collection_key in seen_specialized_keys:
+                        raise TextParseError("CAL text catalogue repeats a specialized collection")
+                    seen_specialized_keys.add(specialized.collection_key)
+                    specialized_collections.append(specialized)
+                    continue
             category = _category_from_link(link)
             if category is not None:
                 categories.append(category)
@@ -591,6 +594,15 @@ def _prepare_text_search_query(value: str) -> str:
     if not parts:
         raise ValueError("CAL text search query must not be empty")
     return " ".join(parts)
+
+
+def _is_root_catalogue_response(url: str) -> bool:
+    parsed = urlsplit(url)
+    return (
+        parsed.path == f"/{_ROOT_CATALOGUE_PATH}"
+        and not parsed.query
+        and not parsed.fragment
+    )
 
 
 def _specialized_collection_from_link(
