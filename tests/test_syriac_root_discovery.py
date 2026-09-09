@@ -178,6 +178,21 @@ def test_non_root_exact_availsyr_link_is_not_specialized_metadata() -> None:
     assert _specialized(page) == ()
 
 
+def test_foreign_root_path_does_not_enable_syriac_specialized_metadata() -> None:
+    page = parse_text_catalogue_page(
+        _response(
+            "<html><body>"
+            '<a href="get_a_chapter.php?file=10001">One text</a>'
+            '<a href="AvailSyr.html">Syriac</a>'
+            "</body></html>",
+            "https://example.org/newtextmenu.html",
+        )
+    )
+
+    assert [(item.file_id, item.label) for item in page.texts] == [("10001", "One text")]
+    assert _specialized(page) == ()
+
+
 class RecordingTransport:
     def __init__(self, response: CalResponse) -> None:
         self.response = response
