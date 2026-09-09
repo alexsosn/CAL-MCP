@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The current v0.1 candidate exposes 28 public tools: one deterministic local CAL-code conversion tool plus 27 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
+> **Status:** active pre-release development. The current v0.1 candidate exposes 29 public tools: one deterministic local CAL-code conversion tool plus 28 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -29,14 +29,14 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 ## v0.1 public surface
 
-The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 28-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, and the specialized CAL indexed gloss-field search added by issue #107.
+The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 29-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, and the explicit CAL text-information metadata follow-up added by issue #106.
 
 | Area | Public tools |
 | --- | --- |
 | Input conversion | `cal_convert_to_code` |
 | Lexicon | `cal_lexicon_lookup` |
 | English search | `cal_gloss_search`, `cal_gloss_field`, `cal_citation_text_search` |
-| Texts | `cal_text_catalogue`, `cal_text_search`, `cal_text_page` |
+| Texts | `cal_text_catalogue`, `cal_text_search`, `cal_text_page`, `cal_text_information` |
 | Token analysis | `cal_token_analysis` |
 | Concordance/KWIC | `cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect` |
 | Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` |
