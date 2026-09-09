@@ -1,0 +1,35 @@
+from __future__ import annotations
+
+V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
+    {
+        "cal_convert_to_code",
+        "cal_lexicon_lookup",
+        "cal_gloss_search",
+        "cal_gloss_field",
+        "cal_citation_text_search",
+        "cal_text_catalogue",
+        "cal_text_search",
+        "cal_text_page",
+        "cal_text_information",
+        "cal_token_analysis",
+        "cal_text_concordance",
+        "cal_kwic_texts",
+        "cal_kwic_dialects",
+        "cal_kwic_dialect",
+        "cal_bibliography_authors",
+        "cal_bibliography_author",
+        "cal_bibliography_keyword",
+        "cal_bibliography_lemma",
+        "cal_dictionary_collation",
+        "cal_targum_parallel",
+        "cal_targum_concordance",
+        "cal_targum_hebrew_lemmas",
+        "cal_targum_hebrew_reflexes",
+        "cal_external_citation_dialects",
+        "cal_external_citation_sources",
+        "cal_external_citations",
+        "cal_syriac_texts",
+        "cal_syriac_missing_words",
+        "cal_syriac_peshitta_parallel",
+    }
+)
