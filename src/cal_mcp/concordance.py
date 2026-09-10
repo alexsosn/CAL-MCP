@@ -903,7 +903,14 @@ def _parse_full_context_row(
     lexical = [
         link for cell in row.cells for link in cell.links if _is_path(link.href, "getlex.php")
     ]
+    comment_links = [
+        link for cell in row.cells for link in cell.links if _is_path(link.href, "comment.php")
+    ]
     if not lexical:
+        if comment_links:
+            raise ConcordanceParseError(
+                "CAL full-context context row has no recognized lexical links"
+            )
         return None
     if len(row.cells) != 2:
         raise ConcordanceParseError("CAL full-context text row must contain two cells")
