@@ -16,6 +16,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
         "cal_kwic_texts",
         "cal_kwic_dialects",
         "cal_kwic_dialect",
+        "cal_kwic_full_context",
         "cal_bibliography_authors",
         "cal_bibliography_author",
         "cal_bibliography_keyword",

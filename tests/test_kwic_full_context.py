@@ -356,7 +356,7 @@ async def test_mcp_registry_exposes_typed_full_context_without_url_input() -> No
         tools = {tool.name: tool for tool in (await client.list_tools()).tools}
 
     assert "cal_kwic_full_context" in tools
-    schema = tools["cal_kwic_full_context"].inputSchema
+    schema = tools["cal_kwic_full_context"].model_dump(by_alias=True)["inputSchema"]
     properties = schema.get("properties", {})
     assert set(properties) == {"file_id", "target_coordinate", "charset", "subtext_id"}
     assert "full_context_url" not in properties

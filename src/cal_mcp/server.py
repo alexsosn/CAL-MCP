@@ -55,7 +55,9 @@ mcp = MCPServer(
         "analysis attached to one explicit text coordinate and zero-based token index. "
         "Use cal_text_concordance for one text's ordered lemma-frequency index, cal_kwic_texts "
         "for one lemma in 1-8 explicit texts, cal_kwic_dialects to discover CAL's current "
-        "dialect identifiers, and cal_kwic_dialect for one explicit dialect. Use "
+        "dialect identifiers, cal_kwic_dialect for one explicit dialect, and "
+        "cal_kwic_full_context to follow one returned KWIC hit using its typed "
+        "file/target/charset selectors. Use "
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
@@ -399,6 +401,36 @@ async def cal_kwic_dialect(
 
     client = ctx.request_context.lifespan_context.client
     result = await ConcordanceService(client).kwic_dialect(lemma_key, dialect_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_kwic_full_context",
+    title="Read full CAL context for one KWIC hit",
+    structured_output=True,
+)
+async def cal_kwic_full_context(
+    file_id: str,
+    target_coordinate: str,
+    charset: str,
+    ctx: Context[AppContext],
+    subtext_id: str | None = None,
+) -> dict[str, object]:
+    """Follow one returned CAL KWIC hit into its bounded full-context page.
+
+    Pass the hit's ``file_id``, ``target_coordinate``, ``charset``, and optional
+    ``subtext_id``. Arbitrary URLs are not accepted and no returned links are followed.
+    One explicit call submits at most one new logical CAL request; a completed cache hit
+    performs no new upstream I/O.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await ConcordanceService(client).kwic_full_context(
+        file_id,
+        target_coordinate,
+        charset,
+        subtext_id=subtext_id,
+    )
     return result.to_dict()
 
 
