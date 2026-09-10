@@ -284,6 +284,28 @@ async def cal_text_information(
 
 
 @mcp.tool(
+    name="cal_text_line_comments",
+    title="Retrieve CAL line comments and translations",
+    structured_output=True,
+)
+async def cal_text_line_comments(
+    coordinate: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Retrieve CAL's citations/comments/translations for one explicit line coordinate.
+
+    Pass a ``coordinate`` already returned by ``cal_text_page``. Arbitrary URLs are
+    not accepted, returned lexicon-entry links are not followed, and one explicit call
+    submits at most one new logical CAL request. A completed cache hit performs no new
+    upstream I/O.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TextService(client).line_comments(coordinate)
+    return result.to_dict()
+
+
+@mcp.tool(
     name="cal_token_analysis",
     title="Analyze one CAL text token",
     structured_output=True,
