@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 _INDEX = Path("docs/index.md")
 _CURRENT_GAPS = {
     "#39": "recent",
