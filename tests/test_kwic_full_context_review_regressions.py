@@ -40,3 +40,26 @@ def test_full_context_lexical_link_query_shape_fails_closed(replacement: str) ->
             requested_target_coordinate="1325003",
             requested_charset="R",
         )
+
+
+def test_comment_identified_context_row_without_lexical_links_fails_closed() -> None:
+    body = FIXTURE.read_text().replace(
+        "getlex.php?coord=1325002",
+        "brokenlex.php?coord=1325002",
+    )
+    response = CalResponse(
+        status_code=200,
+        url=_SOURCE_URL,
+        body=body.encode(),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=_RETRIEVED_AT,
+    )
+
+    with pytest.raises(ConcordanceParseError):
+        parse_kwic_full_context_page(
+            response,
+            requested_file_id="13250",
+            requested_subtext_id=None,
+            requested_target_coordinate="1325003",
+            requested_charset="R",
+        )
