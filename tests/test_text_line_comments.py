@@ -280,9 +280,7 @@ async def test_service_accepts_current_alphanumeric_coordinate_and_makes_one_req
     ],
 )
 async def test_invalid_public_coordinates_fail_before_transport(coordinate: str) -> None:
-    transport = RecordingTransport(
-        _response("text_line_comments_pj_gen8_21.html")
-    )
+    transport = RecordingTransport(_response("text_line_comments_pj_gen8_21.html"))
     service = TextService(CalHttpClient(transport=transport))
 
     with pytest.raises(ValueError):
