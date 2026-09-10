@@ -1,0 +1,91 @@
+name: Issue 108 server Gate 2
+
+on:
+  push:
+    branches:
+      - issue-108-line-comments
+
+permissions:
+  contents: write
+
+jobs:
+  server-gate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-108-line-comments
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install validation environment
+        run: python -m pip install -e '.[dev]'
+      - name: Add typed line-comments server operation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('src/cal_mcp/server.py')
+          text = path.read_text()
+
+          old_instructions = '''        "for one returned file/subtext identifier. Use cal_token_analysis for every CAL lexical "
+          "analysis attached to one explicit text coordinate and zero-based token index. "
+'''
+          new_instructions = '''        "for one returned file/subtext identifier. Use cal_text_line_comments to explicitly "
+          "retrieve CAL citations/comments/translations for one returned line coordinate. "
+          "Use cal_token_analysis for every CAL lexical analysis attached to one explicit text "
+          "coordinate and zero-based token index. "
+'''
+          if text.count(old_instructions) != 1:
+              raise SystemExit('server instructions anchor drifted')
+          text = text.replace(old_instructions, new_instructions, 1)
+
+          anchor = '''@mcp.tool(
+              name="cal_token_analysis",
+              title="Analyze one CAL text token",
+              structured_output=True,
+          )
+'''
+          tool = '''@mcp.tool(
+              name="cal_text_line_comments",
+              title="Retrieve CAL line comments and translations",
+              structured_output=True,
+          )
+          async def cal_text_line_comments(
+              coordinate: str,
+              ctx: Context[AppContext],
+          ) -> dict[str, object]:
+              """Retrieve CAL's citations/comments/translations for one explicit line coordinate.
+
+              Pass a ``coordinate`` already returned by ``cal_text_page``. Arbitrary URLs are
+              not accepted, returned lexicon-entry links are not followed, and one explicit call
+              submits at most one new logical CAL request. A completed cache hit performs no new
+              upstream I/O.
+              """
+
+              client = ctx.request_context.lifespan_context.client
+              result = await TextService(client).line_comments(coordinate)
+              return result.to_dict()
+
+
+          ''' + anchor
+          if text.count(anchor) != 1:
+              raise SystemExit('token-analysis insertion anchor drifted')
+          text = text.replace(anchor, tool, 1)
+          path.write_text(text)
+      - name: Validate Gate 2
+        run: |
+          ruff format src/cal_mcp/server.py
+          ruff check .
+          ruff format --check .
+          mypy
+          pytest tests/test_text_line_comments.py -k 'not release_manifest'
+      - name: Commit only after focused GREEN
+        run: |
+          git rm .github/workflows/issue-108-server-gate.yml
+          git add src/cal_mcp/server.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Expose typed CAL line-comments server operation"
+          git push origin HEAD:issue-108-line-comments
