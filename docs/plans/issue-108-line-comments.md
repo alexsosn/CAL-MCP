@@ -154,13 +154,16 @@ class TextLineCommentsStatus(StrEnum):
     FOUND = "found"
     NO_CITATIONS = "no_citations"
 
+
 @dataclass(frozen=True, slots=True)
 class TextLineCommentRecord: ...
+
 
 @dataclass(frozen=True, slots=True)
 class TextLineCommentsPage:
     status: TextLineCommentsStatus
     records: tuple[TextLineCommentRecord, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class TextLineCommentsResult:
