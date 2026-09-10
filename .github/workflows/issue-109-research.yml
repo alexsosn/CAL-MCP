@@ -1,0 +1,85 @@
+name: Issue 109 bounded Targum example research
+
+on:
+  push:
+    branches:
+      - issue-109-targum-examples
+    paths:
+      - .github/workflows/issue-109-research.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Probe two fixed CAL example pages
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.error import HTTPError
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+          URLS = (
+              "https://cal.huc.edu/show1dialectKWIC.php?lemma=klb&pos=N&texts=51001+51002+51003+51004+51005&charset=H",
+              "https://cal.huc.edu/getOMT.php?MT=1751&cal=tyq%232+N",
+          )
+          MAX_BYTES = 512 * 1024
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          class SemanticProbe(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.text = []
+                  self.links = []
+                  self._href = None
+                  self._parts = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      self._href = dict(attrs).get("href")
+                      self._parts = []
+
+              def handle_data(self, data):
+                  cleaned = " ".join(data.split())
+                  if cleaned:
+                      self.text.append(cleaned)
+                      if self._href is not None:
+                          self._parts.append(cleaned)
+
+              def handle_endtag(self, tag):
+                  if tag == "a" and self._href is not None:
+                      self.links.append((self._href, " ".join(self._parts)))
+                      self._href = None
+                      self._parts = []
+
+          opener = build_opener(NoRedirect())
+          for index, url in enumerate(URLS, 1):
+              print(f"=== PROBE {index} ===")
+              request = Request(url, headers={"User-Agent": "CAL-MCP issue-109 research/1.0"})
+              try:
+                  response = opener.open(request, timeout=15)
+              except HTTPError as exc:
+                  raise SystemExit(f"unexpected HTTP {exc.code} for {url}") from exc
+              body = response.read(MAX_BYTES + 1)
+              if len(body) > MAX_BYTES:
+                  raise SystemExit(f"response exceeds {MAX_BYTES} bytes")
+              print("status", response.status)
+              print("url", response.geturl())
+              print("content-type", response.headers.get("Content-Type"))
+              print("bytes", len(body))
+              parser = SemanticProbe()
+              parser.feed(body.decode("utf-8", errors="replace"))
+              parser.close()
+              print("text", parser.text[:80])
+              print("links", parser.links[:40])
+          PY
