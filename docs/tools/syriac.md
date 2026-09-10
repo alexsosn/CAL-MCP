@@ -15,6 +15,20 @@ The CAL Syriac Studies page also links to citations from texts that are not in t
 
 Ordinary Syriac lexicon lookup, text retrieval, token analysis, concordance, and KWIC likewise stay on the existing general CAL-MCP tools rather than being reimplemented behind specialist names.
 
+## Discover Syriac from the root text catalogue
+
+Root `cal_text_catalogue()` preserves CAL's current `Syriac -> AvailSyr.html` branch as an operation-aware item in `specialized_collections` rather than inventing a decimal CAL category identifier. The item names `follow_up_tool="cal_syriac_texts"`, `selector_name="category"`, and returns the ordered `supported_selectors` accepted by this CAL-MCP build. Those selector strings come from the same local category configuration used by `cal_syriac_texts`; they are CAL-MCP routing metadata, not synthetic CAL IDs.
+
+A machine-actionable discovery sequence is therefore:
+
+```text
+root = cal_text_catalogue()
+syriac = root.specialized_collections[collection_key="syriac"]
+cal_syriac_texts(category=<one syriac.supported_selectors value>)
+```
+
+The root call remains one logical `newtextmenu.html` request on a cache miss and does **not** prefetch `AvailSyr.html` or enumerate Syriac classifications. Selecting a category is a separate explicit request.
+
 ## `cal_syriac_texts`
 
 ```text
@@ -209,6 +223,7 @@ Duplicate-request cache hits retain the original upstream retrieval timestamp an
 
 The normal test suite is offline. Reduced semantic fixtures were captured/rechecked during bounded Syriac audits and cover:
 
+- root text-catalogue discovery of the exact dedicated Syriac branch as local follow-up metadata, including route-drift and no-prefetch regressions;
 - dynamic Metrical Homilies and Hymns category rows with both direct text and grouped navigation plus file-information links;
 - explicit grouped-text follow-up request identity, mixed child navigation, no recursion, selector contradictions, and malformed child-route failure using a reduced synthetic group page rather than an asserted current CAL group body;
 - current OT and NT Peshitta category rows using shallow `catalogue` navigation;

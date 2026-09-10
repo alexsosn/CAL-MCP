@@ -22,16 +22,19 @@ cal_text_catalogue(category_id: string | null = null)
 
 With no `category_id`, the tool requests the current root text catalogue. With a CAL category identifier, it requests exactly that one catalogue level.
 
-The result contains two ordered collections:
+The result contains three ordered collections, each preserving order within its own route family:
 
-- `categories`: CAL category references with `category_id` and rendered `label`;
-- `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one.
+- `categories`: ordinary CAL category references with decimal `category_id` and rendered `label`;
+- `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one;
+- `specialized_collections`: CAL-MCP routing references for current CAL branches that cannot be represented truthfully as a decimal generic category. Each item names a `follow_up_tool`, its `selector_name`, and the selectors supported by this CAL-MCP build.
 
 On a cache miss, an explicit call submits one logical CAL request. A completed cache hit performs zero new upstream I/O. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.
 
 CAL's current root text browser routes the **Targums Onkelos and Jonathan to the Prophets** collection through a dedicated CAL page rather than an ordinary `showsubtexts.php` link. CAL-MCP preserves that branch in root discovery as category `51`. An explicit `cal_text_catalogue(category_id="51")` call targets only that dedicated collection page and returns its ordered children using the normal result shapes: subdivided sources such as `51001 TgO Gn` remain `categories`, while direct sources such as `51400 MegTan (Megillat Taanit)` remain `texts`. The dedicated route stays adapter-private, no child is prefetched, and follow-up retrieval remains a separate caller-controlled action.
 
 CAL's current root text browser likewise routes **Mandaic** through a dedicated collection page rather than the ordinary catalogue hierarchy. CAL-MCP preserves that branch as category `74`. An explicit `cal_text_catalogue(category_id="74")` call targets only that Mandaic catalogue and returns its ordered entries as `texts`. CAL's dedicated page itself mixes subdivided links such as `showsubtexts.php?cset=M&subtext=<file>` with direct links such as `get_a_chapter.php?cset=M&file=<file>`; both identify text files on this surface, so CAL-MCP exposes the file identifier uniformly as `file_id` and keeps `subtext_id` null. The private route family and `cset=M` selector are validated by the adapter, not exposed as caller inputs. No listed text or subdivision is fetched during catalogue discovery. Reading a returned entry remains a separate explicit `cal_text_page(file_id, page=...)` operation, which applies the already-researched direct/subdivided Mandaic page routing internally without an extra route-discovery request.
+
+CAL's root **Syriac** branch is different again: its current target is the dedicated `AvailSyr.html` classification surface and has no researched decimal generic category identifier. CAL-MCP therefore does not fabricate one. Root `cal_text_catalogue()` returns it in `specialized_collections` with `collection_key="syriac"`, CAL's rendered label, `follow_up_tool="cal_syriac_texts"`, `selector_name="category"`, and the ordered public category selectors supported by the same configuration used by `cal_syriac_texts`. Choose one returned selector and make a separate explicit `cal_syriac_texts(category=...)` call. Root discovery does not fetch `AvailSyr.html`, enumerate its children, or add another CAL request; the selector vocabulary is deterministic local adapter metadata.
 
 `category_id` is validated as an opaque decimal CAL identifier. It is preserved as a string rather than converted to an integer so the adapter does not erase potentially meaningful leading zeroes.
 
@@ -156,7 +159,7 @@ Every explicit public text operation submits at most one new logical CAL request
 
 The operation-level bounds remain:
 
-- no recursive catalogue expansion;
+- no recursive catalogue expansion or specialized-collection prefetch;
 - no automatic traversal to previous/next pages;
 - no automatic text-information lookup from discovery/page results;
 - no metadata-link traversal;
@@ -180,6 +183,7 @@ Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2
 
 - root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
 - root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;
+- root discovery of Syriac as an operation-aware `specialized_collections` item whose supported selectors compose explicitly with `cal_syriac_texts`, without fetching `AvailSyr.html`;
 - a topic search for `Tel Dan` returning CAL file `13250`;
 - a topic search for `Ginza` returning the current specialized Mandaic file references `74410` and `74411` without following those links;
 - a text-information lookup preserving Ephrem source/edition/editorial/quality notes in CAL order, plus CAL's explicit `No information on record for this text.` missing state;
