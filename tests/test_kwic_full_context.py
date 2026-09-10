@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import importlib
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
 import pytest
 from mcp import Client
@@ -15,6 +15,53 @@ from cal_mcp.release_surface import V01_PUBLIC_TOOLS
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 _RETRIEVED_AT = datetime(2026, 9, 10, tzinfo=UTC)
+_EMPTY_H_ANCHOR = 'word=3&amp;hasvariant=0"></a>'
+_SECOND_EMPTY_H_ANCHOR = (
+    _EMPTY_H_ANCHOR
+    + ' <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0"></a>'
+)
+_NONTERMINAL_H_ANCHOR = (
+    _EMPTY_H_ANCHOR
+    + ' <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0">tail</a>'
+)
+
+
+class _StatusView(Protocol):
+    value: str
+
+
+class _TokenView(Protocol):
+    coordinate: str
+    word_index: int
+    text: str
+    lexical_url: str
+
+
+class _LineView(Protocol):
+    coordinate: str
+    display_coordinate: str | None
+    text: str
+    tokens: tuple[_TokenView, ...]
+    comment_url: str | None
+
+
+class _PageView(Protocol):
+    status: _StatusView
+    lines: tuple[_LineView, ...]
+
+
+class _ProvenanceView(Protocol):
+    operation: str
+    text_id: str | None
+
+
+class _ResultView(Protocol):
+    status: _StatusView
+    file_id: str
+    subtext_id: str | None
+    target_coordinate: str
+    charset: str
+    provenance: _ProvenanceView
 
 
 def _response(name: str, url: str) -> CalResponse:
@@ -29,7 +76,8 @@ def _response(name: str, url: str) -> CalResponse:
 
 def _parser() -> Callable[..., object]:
     module = importlib.import_module("cal_mcp.concordance")
-    parser = getattr(module, "parse_kwic_full_context_page", None)
+    name = "parse_kwic_full_context_page"
+    parser = getattr(module, name, None)
     assert callable(parser), "concordance must expose parse_kwic_full_context_page"
     return cast(Callable[..., object], parser)
 
@@ -41,14 +89,24 @@ def _parse(
     subtext_id: str | None = None,
     target_coordinate: str = "1325003",
     charset: str = "R",
-) -> object:
-    return _parser()(
+) -> _PageView:
+    result = _parser()(
         response,
         requested_file_id=file_id,
         requested_subtext_id=subtext_id,
         requested_target_coordinate=target_coordinate,
         requested_charset=charset,
     )
+    return cast(_PageView, result)
+
+
+def _service_method(
+    service: ConcordanceService,
+) -> Callable[..., Awaitable[_ResultView]]:
+    name = "kwic_full_context"
+    method = getattr(service, name, None)
+    assert callable(method), "ConcordanceService must expose kwic_full_context"
+    return cast(Callable[..., Awaitable[_ResultView]], method)
 
 
 def _roman_url(*, target: str = "1325003", file_id: str = "13250") -> str:
@@ -59,14 +117,11 @@ def _roman_url(*, target: str = "1325003", file_id: str = "13250") -> str:
 
 
 def test_roman_full_context_preserves_rows_tokens_and_target_relationship() -> None:
-    page = _parse(
-        _response("kwic_full_context_tel_dan_roman.html", _roman_url())
-    )
+    page = _parse(_response("kwic_full_context_tel_dan_roman.html", _roman_url()))
 
-    assert getattr(page, "status").value == "found"
-    lines = getattr(page, "lines")
-    assert [line.coordinate for line in lines] == ["1325002", "1325003", "1325004"]
-    target = lines[1]
+    assert page.status.value == "found"
+    assert [line.coordinate for line in page.lines] == ["1325002", "1325003", "1325004"]
+    target = page.lines[1]
     assert target.display_coordinate == "03"
     assert target.text == "wy$kb )by yhk"
     assert [(token.word_index, token.text) for token in target.tokens] == [
@@ -81,14 +136,17 @@ def test_roman_full_context_preserves_rows_tokens_and_target_relationship() -> N
 
 
 def test_hebrew_terminal_empty_lexical_anchor_is_validated_but_not_exposed() -> None:
-    url = "https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=H&target=1325003"
+    url = (
+        "https://cal.huc.edu/get_a_kwicchapter.php?"
+        "file=13250&sub=&cset=H&target=1325003"
+    )
     page = _parse(
         _response("kwic_full_context_tel_dan_hebrew.html", url),
         charset="H",
     )
 
-    assert getattr(page, "status").value == "found"
-    line = getattr(page, "lines")[0]
+    assert page.status.value == "found"
+    line = page.lines[0]
     assert line.text == "וישכב * אבי"
     assert [(token.word_index, token.text) for token in line.tokens] == [
         (0, "וישכב"),
@@ -98,19 +156,21 @@ def test_hebrew_terminal_empty_lexical_anchor_is_validated_but_not_exposed() -> 
 
 
 @pytest.mark.parametrize(
-    "body_change",
+    ("old", "new"),
     [
-        ('word=3&amp;hasvariant=0\"></a>', 'word=3&amp;hasvariant=0\"></a> <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0"></a>'),
-        ('word=3&amp;hasvariant=0\"></a>', 'word=1&amp;hasvariant=0\"></a>'),
-        ('word=3&amp;hasvariant=0\"></a></td>', 'word=3&amp;hasvariant=0\"></a> <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0">tail</a></td>'),
+        (_EMPTY_H_ANCHOR, _SECOND_EMPTY_H_ANCHOR),
+        (_EMPTY_H_ANCHOR, 'word=1&amp;hasvariant=0"></a>'),
+        (_EMPTY_H_ANCHOR, _NONTERMINAL_H_ANCHOR),
     ],
 )
-def test_malformed_hebrew_empty_lexical_anchor_is_parser_drift(body_change: tuple[str, str]) -> None:
+def test_malformed_hebrew_empty_lexical_anchor_is_parser_drift(old: str, new: str) -> None:
     body = (FIXTURES / "kwic_full_context_tel_dan_hebrew.html").read_text()
-    old, new = body_change
     response = CalResponse(
         status_code=200,
-        url="https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=H&target=1325003",
+        url=(
+            "https://cal.huc.edu/get_a_kwicchapter.php?"
+            "file=13250&sub=&cset=H&target=1325003"
+        ),
         body=body.replace(old, new, 1).encode(),
         content_type="text/html; charset=UTF-8",
         retrieved_at=_RETRIEVED_AT,
@@ -123,8 +183,11 @@ def test_malformed_hebrew_empty_lexical_anchor_is_parser_drift(body_change: tupl
 def test_non_hebrew_empty_lexical_anchor_is_parser_drift() -> None:
     body = (FIXTURES / "kwic_full_context_tel_dan_roman.html").read_text().replace(
         "</td></tr>\n<tr><td><a href=\"comment.php?coord=1325004\">",
-        '<a href="getlex.php?coord=1325003&amp;word=5&amp;hasvariant=0"></a></td></tr>\n'
-        '<tr><td><a href="comment.php?coord=1325004">',
+        (
+            '<a href="getlex.php?coord=1325003&amp;word=5&amp;hasvariant=0"></a>'
+            "</td></tr>\n"
+            '<tr><td><a href="comment.php?coord=1325004">'
+        ),
         1,
     )
     response = CalResponse(
@@ -146,8 +209,8 @@ def test_matching_target_not_found_marker_is_typed_empty_result() -> None:
         target_coordinate=target,
     )
 
-    assert getattr(page, "status").value == "not_found"
-    assert getattr(page, "lines") == ()
+    assert page.status.value == "not_found"
+    assert page.lines == ()
 
 
 @pytest.mark.parametrize(
@@ -157,8 +220,14 @@ def test_matching_target_not_found_marker_is_typed_empty_result() -> None:
         "https://cal.huc.edu/get_a_chapter.php?file=13250&sub=&cset=R&target=1325003",
         "https://cal.huc.edu/get_a_kwicchapter.php?file=99999&sub=&cset=R&target=1325003",
         "https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=H&target=1325003",
-        "https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=R&target=1325003&target=1325004",
-        "https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=R&target=1325003&variants=0",
+        (
+            "https://cal.huc.edu/get_a_kwicchapter.php?"
+            "file=13250&sub=&cset=R&target=1325003&target=1325004"
+        ),
+        (
+            "https://cal.huc.edu/get_a_kwicchapter.php?"
+            "file=13250&sub=&cset=R&target=1325003&variants=0"
+        ),
     ],
 )
 def test_response_route_and_selectors_must_match_request(url: str) -> None:
@@ -169,7 +238,10 @@ def test_response_route_and_selectors_must_match_request(url: str) -> None:
 
 
 def test_missing_or_duplicate_requested_target_is_parser_drift() -> None:
-    response = _response("kwic_full_context_tel_dan_roman.html", _roman_url(target="1325999"))
+    response = _response(
+        "kwic_full_context_tel_dan_roman.html",
+        _roman_url(target="1325999"),
+    )
     with pytest.raises(ConcordanceParseError):
         _parse(response, target_coordinate="1325999")
 
@@ -203,7 +275,10 @@ def test_not_found_marker_cannot_contradict_rows_or_requested_target() -> None:
     with pytest.raises(ConcordanceParseError):
         _parse(mixed)
 
-    wrong_marker = _response("kwic_full_context_not_found.html", _roman_url(target="1325003"))
+    wrong_marker = _response(
+        "kwic_full_context_not_found.html",
+        _roman_url(target="1325003"),
+    )
     with pytest.raises(ConcordanceParseError):
         _parse(wrong_marker)
 
@@ -224,10 +299,8 @@ async def test_service_consumes_kwic_hit_selectors_with_exactly_one_request() ->
     response = _response("kwic_full_context_tel_dan_roman.html", _roman_url())
     transport = RecordingTransport(response)
     service = ConcordanceService(CalHttpClient(transport=transport))
-    method = getattr(service, "kwic_full_context", None)
-    assert callable(method), "ConcordanceService must expose kwic_full_context"
 
-    result = await method("13250", "1325003", "R")
+    result = await _service_method(service)("13250", "1325003", "R")
 
     assert result.status.value == "found"
     assert result.file_id == "13250"
@@ -269,11 +342,9 @@ async def test_invalid_full_context_selectors_fail_before_transport(
         _response("kwic_full_context_tel_dan_roman.html", _roman_url())
     )
     service = ConcordanceService(CalHttpClient(transport=transport))
-    method = getattr(service, "kwic_full_context", None)
-    assert callable(method), "ConcordanceService must expose kwic_full_context"
 
     with pytest.raises(ValueError):
-        await method(*args, **kwargs)
+        await _service_method(service)(*args, **kwargs)
 
     assert transport.requests == []
 
