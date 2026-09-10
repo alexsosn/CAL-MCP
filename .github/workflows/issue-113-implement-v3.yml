@@ -24,6 +24,18 @@ jobs:
           python-version: '3.11'
       - name: Install validation environment
         run: python -m pip install -e '.[dev]'
+      - name: Normalize patch helper
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('.github/scripts/issue_113_apply.py')
+          text = path.read_text()
+          old = "    r'''\\\n    def parse_kwic_full_context_page("
+          new = "    r'''\n    def parse_kwic_full_context_page("
+          if text.count(old) != 1:
+              raise SystemExit(f'expected one raw-block anchor, found {text.count(old)}')
+          path.write_text(text.replace(old, new, 1))
+          PY
       - name: Apply production patch
         run: python .github/scripts/issue_113_apply.py
       - name: Focused validation
