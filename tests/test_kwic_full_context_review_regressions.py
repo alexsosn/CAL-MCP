@@ -42,7 +42,7 @@ def test_full_context_lexical_link_query_shape_fails_closed(replacement: str) ->
         )
 
 
-def test_full_context_does_not_silently_drop_context_row_with_broken_lexical_links() -> None:
+def test_comment_identified_context_row_without_lexical_links_fails_closed() -> None:
     body = FIXTURE.read_text().replace(
         "getlex.php?coord=1325002",
         "brokenlex.php?coord=1325002",
