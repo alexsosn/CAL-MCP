@@ -12,29 +12,97 @@ jobs:
   server-gate:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v6
         with:
           ref: issue-108-line-comments
+          fetch-depth: 0
       - uses: actions/setup-python@v6
         with:
           python-version: '3.11'
       - name: Install validation environment
         run: python -m pip install -e '.[dev]'
-      - name: Add typed line-comments server operation
+      - name: Apply committed parser regressions
         run: |
           python - <<'PY'
           from pathlib import Path
 
+          path = Path('src/cal_mcp/texts.py')
+          text = path.read_text()
+
+          import_anchor = 'from cal_mcp.lexicon import _Line, _Link, _parse_lines\n'
+          import_line = 'from cal_mcp.lemma_key import validate_lemma_key\n'
+          if import_line not in text:
+              if text.count(import_anchor) != 1:
+                  raise SystemExit('lemma-key import anchor drifted')
+              text = text.replace(import_anchor, import_line + import_anchor, 1)
+
+          old_guard = '''            if self._span_parts is not None or self._anchor_parts is not None or self._in_gloss:
+                raise TextParseError(
+                    "CAL line-comments record closes with unfinished semantic markup"
+                )
+'''
+          new_guard = '''            if (
+                self._span_parts is not None
+                or self._anchor_parts is not None
+                or self._in_reference
+                or self._in_gloss
+            ):
+                raise TextParseError(
+                    "CAL line-comments record closes with unfinished semantic markup"
+                )
+'''
+          if '_in_reference\n                or self._in_gloss' not in text:
+              if text.count(old_guard) != 1:
+                  raise SystemExit('reference-state guard anchor drifted')
+              text = text.replace(old_guard, new_guard, 1)
+
+          old_validation = '''    if cits_values != ["all"]:
+        raise TextParseError("CAL line-comments lexical-entry link must request cits=all")
+    return resolved, lemma_values[0]
+'''
+          new_validation = '''    if cits_values != ["all"]:
+        raise TextParseError("CAL line-comments lexical-entry link must request cits=all")
+    try:
+        _, _, canonical_key = validate_lemma_key(lemma_values[0])
+    except ValueError as exc:
+        raise TextParseError("CAL line-comments lexical-entry link has an invalid lemma key") from exc
+    if canonical_key != lemma_values[0]:
+        raise TextParseError("CAL line-comments lexical-entry link has a noncanonical lemma key")
+    return resolved, canonical_key
+'''
+          if 'has an invalid lemma key' not in text:
+              if text.count(old_validation) != 1:
+                  raise SystemExit('lemma validation anchor drifted')
+              text = text.replace(old_validation, new_validation, 1)
+
+          path.write_text(text)
+          PY
+          ruff format src/cal_mcp/texts.py
+      - name: Validate parser and service Gate 2
+        run: |
+          ruff check .
+          ruff format --check .
+          mypy
+          pytest tests/test_text_line_comments.py tests/test_text_line_comments_review_regressions.py -k 'not release_manifest and not mcp_registry'
+      - name: Add typed line-comments server operation
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import textwrap
+
           path = Path('src/cal_mcp/server.py')
           text = path.read_text()
-          anchor = '''@mcp.tool(
+          anchor = textwrap.dedent('''\
+          @mcp.tool(
               name="cal_token_analysis",
               title="Analyze one CAL text token",
               structured_output=True,
           )
-          '''
-          tool = '''@mcp.tool(
+          ''')
+          tool = textwrap.dedent('''\
+          @mcp.tool(
               name="cal_text_line_comments",
               title="Retrieve CAL line comments and translations",
               structured_output=True,
@@ -43,10 +111,10 @@ jobs:
               coordinate: str,
               ctx: Context[AppContext],
           ) -> dict[str, object]:
-              """Retrieve CAL's citations/comments/translations for one explicit line coordinate.
+              """Retrieve CAL citations/comments/translations for one explicit line coordinate.
 
-              Pass a ``coordinate`` already returned by ``cal_text_page``. Arbitrary URLs are
-              not accepted, returned lexicon-entry links are not followed, and one explicit call
+              Pass a ``coordinate`` returned by ``cal_text_page``. Arbitrary URLs are not
+              accepted, returned lexicon-entry links are not followed, and one explicit call
               submits at most one new logical CAL request. A completed cache hit performs no new
               upstream I/O.
               """
@@ -56,23 +124,25 @@ jobs:
               return result.to_dict()
 
 
-          ''' + anchor
-          if text.count(anchor) != 1:
-              raise SystemExit('token-analysis insertion anchor drifted')
-          text = text.replace(anchor, tool, 1)
+          ''')
+          if 'name="cal_text_line_comments"' not in text:
+              if text.count(anchor) != 1:
+                  raise SystemExit('token-analysis insertion anchor drifted')
+              text = text.replace(anchor, tool + anchor, 1)
           path.write_text(text)
           PY
-      - name: Validate Gate 2
-        run: |
           ruff format src/cal_mcp/server.py
+      - name: Validate server Gate 2
+        run: |
           ruff check .
           ruff format --check .
           mypy
-          pytest tests/test_text_line_comments.py -k 'not release_manifest'
+          pytest tests/test_text_line_comments.py tests/test_text_line_comments_review_regressions.py -k 'not release_manifest'
       - name: Commit only after focused GREEN
         run: |
           git rm .github/workflows/issue-108-server-gate.yml
-          git add src/cal_mcp/server.py
+          git add src/cal_mcp/texts.py src/cal_mcp/server.py tests/test_text_line_comments_review_regressions.py
+          git diff --cached --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "Expose typed CAL line-comments server operation"
