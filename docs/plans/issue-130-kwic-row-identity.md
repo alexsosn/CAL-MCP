@@ -40,17 +40,10 @@ Change only `src/cal_mcp/concordance.py`.
 In `_parse_full_context_row()` classify comment identity before the existing `if not lexical: return None` exit. Equivalent minimal logic:
 
 ```python
-comment_links = [
-    link
-    for cell in row.cells
-    for link in cell.links
-    if _is_path(link.href, "comment.php")
-]
+comment_links = [link for cell in row.cells for link in cell.links if _is_path(link.href, "comment.php")]
 if not lexical:
     if comment_links:
-        raise ConcordanceParseError(
-            "CAL full-context context row has no recognized lexical links"
-        )
+        raise ConcordanceParseError("CAL full-context context row has no recognized lexical links")
     return None
 ```
 
