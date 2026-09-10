@@ -1,0 +1,43 @@
+name: issue-108 lint fix
+
+on:
+  push:
+    branches:
+      - issue-108-line-comments
+    paths:
+      - .github/workflows/issue108-lint-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-108-line-comments
+          fetch-depth: 0
+      - name: Wrap line-comments parser guard and self-remove
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/texts.py")
+          text = path.read_text()
+          old = '''        if tag == "p" and self._record is not None:\n            if self._span_parts is not None or self._anchor_parts is not None or self._in_gloss:\n                raise TextParseError("CAL line-comments record closes with unfinished semantic markup")\n'''
+          new = '''        if tag == "p" and self._record is not None:\n            if (\n                self._span_parts is not None\n                or self._anchor_parts is not None\n                or self._in_gloss\n            ):\n                raise TextParseError(\n                    "CAL line-comments record closes with unfinished semantic markup"\n                )\n'''
+          if text.count(old) != 1:
+              raise SystemExit(f"unexpected lint anchor count: {text.count(old)}")
+          path.write_text(text.replace(old, new, 1))
+          PY
+          git rm .github/workflows/issue108-lint-fix.yml
+          git add src/cal_mcp/texts.py
+          git diff --cached --check
+          git commit -m "Fix line-comments parser formatting"
+          git push origin HEAD:issue-108-line-comments
