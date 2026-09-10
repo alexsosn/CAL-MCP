@@ -983,13 +983,20 @@ def _parse_full_context_lexical_link(
 ) -> tuple[str, int, str, str]:
     lexical_url = _cal_navigation_url(source_url, link.href, "getlex.php")
     query = parse_qs(urlsplit(lexical_url).query, keep_blank_values=True)
+    if set(query) != {"coord", "word", "hasvariant"}:
+        raise ConcordanceParseError(
+            "CAL full-context lexical link has unexpected or missing selectors"
+        )
     coordinate = _parse_decimal_id(
         _single_query_value(query, "coord", "full-context lexical coordinate"),
         "coordinate",
     )
     word = _single_query_value(query, "word", "full-context lexical word")
+    hasvariant = _single_query_value(query, "hasvariant", "full-context lexical hasvariant")
     if not word.isascii() or not word.isdecimal():
         raise ConcordanceParseError("CAL full-context lexical word index is not decimal")
+    if not hasvariant.isascii() or not hasvariant.isdecimal():
+        raise ConcordanceParseError("CAL full-context lexical hasvariant selector is not decimal")
     return coordinate, int(word), link.text, lexical_url
 
 
