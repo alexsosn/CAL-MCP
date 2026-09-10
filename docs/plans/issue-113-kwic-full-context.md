@@ -90,10 +90,12 @@ class KwicFullContextStatus(StrEnum):
     FOUND = "found"
     NOT_FOUND = "not_found"
 
+
 @dataclass(frozen=True, slots=True)
 class KwicFullContextPage:
     status: KwicFullContextStatus
     lines: tuple[TextLine, ...]
+
 
 @dataclass(frozen=True, slots=True)
 class KwicFullContextResult:
