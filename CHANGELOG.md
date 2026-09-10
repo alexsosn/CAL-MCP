@@ -6,14 +6,14 @@ First standalone release candidate for CAL-MCP, a read-only MCP adapter over the
 
 ### Public MCP surface
 
-v0.1.0 freezes **30 public tools** across these research families:
+v0.1.0 freezes **31 public tools** across these research families:
 
 - deterministic conversion from supported Aramaic-script/Unicode inputs to CAL code;
 - lexicon lookup;
 - English gloss search, structured gloss-field extraction, and citation-text search;
 - text catalogue/topic discovery, one-page retrieval, and explicit text-information metadata;
 - token-at-coordinate lexical analysis;
-- one-text concordance and explicit text/dialect KWIC;
+- one-text concordance, explicit text/dialect KWIC, and explicit typed KWIC full-context follow-up via `cal_kwic_full_context`;
 - bibliography author, text/subject-tag, and lemma search;
 - dictionary spelling collation;
 - citations from sources that CAL cites but does not expose as full online texts;
@@ -26,7 +26,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 
 - CAL data stay remote and live; no CAL corpus or lexicon is bundled in the package.
 - Operations are caller-initiated and bounded. Most public calls perform one CAL request; successful exact lexicon lookup uses a bounded two-request browser + selected-entry flow.
-- No background crawl, mirror, cache warming, hidden pagination, link traversal, or automatic source expansion.
+- No background crawl, mirror, cache warming, hidden pagination, link traversal, or automatic source expansion. KWIC full-context retrieval is a separate explicit caller action over typed selectors returned with a hit.
 - The shared client enforces finite timeouts, low concurrency, bounded transient-only retries, redirect/origin boundaries, response-size limits, single-flight suppression, and a bounded process-local cache.
 - Parsers fail closed on material upstream drift rather than returning plausible partial results.
 
@@ -40,7 +40,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 
 ### Release and drift validation
 
-- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 30-tool schema without contacting CAL.
+- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 31-tool schema without contacting CAL.
 - Deterministic CI and release validation use committed Python 3.11 target/build constraints with exact-environment verification; a separate latest-compatible job checks the broad dependency ranges declared for downstream users.
 - Those deterministic constraints are validation inputs only; downstream package metadata retains the reviewed broad runtime dependency ranges.
 - A separate live drift smoke is opt-in/scheduled and capped at **9 CAL requests**, concurrency 1, retries 0, cache disabled.
