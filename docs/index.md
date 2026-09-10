@@ -28,6 +28,19 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 | Bibliography: CAL's “five most recent years” snapshot | **Deferred from v0.1** | Tracked separately in [issue #39](https://github.com/alexsosn/CAL-MCP/issues/39); its aggregate window/size semantics require a focused research/TDD ticket. |
 | Legacy/static bibliography addenda and archive documents | **Reference material, not an MCP operation** | CAL-MCP does not wrap static documents merely to increase tool count. |
 
+## Known current reachability gaps
+
+An **Implemented** capability above means the named research task is supported; it does not mean every follow-up link rendered by CAL is MCP-followable. The 2026-09-10 route-level audit keeps the remaining gaps explicit rather than treating a preserved URL as a supported operation:
+
+- [#112](https://github.com/alexsosn/CAL-MCP/issues/112) — CAL's lexicon **prefix browse** remains a separate discovery task from exact/root/full-form lookup.
+- [#108](https://github.com/alexsosn/CAL-MCP/issues/108) — text-line **comments and translations** linked from red coordinates are preserved as metadata but have no typed follow-up operation yet.
+- [#109](https://github.com/alexsosn/CAL-MCP/issues/109) — Targum concordance/reflex **supporting examples** are returned as validated links but are not yet MCP-followable.
+- [#113](https://github.com/alexsosn/CAL-MCP/issues/113) — ordinary/dialect **KWIC full context** links use CAL's target-centered context route and have no typed consumer yet.
+- [#127](https://github.com/alexsosn/CAL-MCP/issues/127) — linked lexicon **citation full context** uses CAL's distinct `showachapter.php?fullcoord=...` route and requires focused research before it can be composed safely with text/KWIC tools.
+- [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — the bibliography **recent five-years snapshot** is still missing; its implementation is intentionally blocked until the standalone v0.1 release in [#15](https://github.com/alexsosn/CAL-MCP/issues/15) is published or the frozen public-contract decision changes.
+
+CAL's text-browser **show all** presentation is deliberately **not exposed** as a separate MCP operation because it removes the page bound. Use bounded `cal_text_page(..., page=...)` calls and explicit returned page navigation instead.
+
 ## Choose documentation by task
 
 - [Getting started](getting-started.md) — common research workflows and how to compose tools explicitly.
