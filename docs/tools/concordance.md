@@ -1,6 +1,6 @@
 # CAL concordance and KWIC
 
-CAL-MCP exposes four bounded concordance/KWIC operations over CAL's current public research interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a concordance row or dialect selector to KWIC is always a second explicit caller action; CAL-MCP does not crawl texts, expand dialects, fetch full-context pages, or build a local concordance.
+CAL-MCP exposes five bounded concordance/KWIC operations over CAL's current public research interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a concordance row or dialect selector to KWIC, or from one returned KWIC hit to full context, is always a separate explicit caller action; CAL-MCP does not crawl texts, expand dialects, or prefetch full-context pages.
 
 ## Which tool to use
 
@@ -10,6 +10,7 @@ CAL-MCP exposes four bounded concordance/KWIC operations over CAL's current publ
 | Find one CAL lemma in 1–8 explicit CAL texts | `cal_kwic_texts(lemma_key, text_ids, script="roman")` |
 | Discover CAL's current dialect choices for one lemma | `cal_kwic_dialects(lemma_key)` |
 | Find one CAL lemma in one explicit CAL dialect | `cal_kwic_dialect(lemma_key, dialect_id)` |
+| Read CAL's target-centered full text context for one returned KWIC hit | `cal_kwic_full_context(file_id, target_coordinate, charset, subtext_id=None)` |
 
 CAL text/dialect identifiers and lemma keys are upstream CAL identifiers. CAL-MCP preserves them for explicit follow-up calls rather than replacing them with adapter-owned IDs.
 
@@ -70,7 +71,7 @@ The result preserves:
 - absolute `full_context_url`;
 - `empty_scope_ids` for requested texts CAL explicitly reports as having no examples.
 
-CAL-MCP does **not** deduplicate, rerank, or statistically summarize hits. It also does not follow `full_context_url`; a returned URL is provenance/navigation metadata only.
+CAL-MCP does **not** deduplicate, rerank, or statistically summarize hits. It also does not follow `full_context_url` automatically. To inspect one selected hit, pass that hit's typed `file_id`, `target_coordinate`, `charset`, and optional `subtext_id` to `cal_kwic_full_context`. Arbitrary caller-supplied URLs are not accepted by that follow-up.
 
 For a successful response with a positive total, CAL-MCP requires the rendered upstream total to equal the number of safely parsed target hits. It also requires the requested text scopes to be accounted for by hits or CAL's explicit no-example markers. Contradictory totals, malformed target links, missing context, foreign text IDs, or incomplete scope coverage fail closed as `ConcordanceParseError` rather than returning a plausible partial result.
 
@@ -95,7 +96,35 @@ cal_kwic_dialect(
 
 This operation requests one exact CAL lemma key in one explicit decimal dialect ID. It submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
 
-The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, per-hit charset, full-context URL, and upstream total.
+The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, per-hit charset, full-context URL, and upstream total. Full context for one selected hit remains a separate explicit `cal_kwic_full_context` call.
+
+## `cal_kwic_full_context`
+
+```text
+cal_kwic_full_context(
+    file_id: string,
+    target_coordinate: string,
+    charset: string,
+    subtext_id: string | null = null,
+)
+```
+
+This operation consumes the typed selectors already returned on a `KwicHit`. It does not accept `full_context_url` or any other arbitrary URL. `file_id`, `target_coordinate`, and a non-null `subtext_id` must be decimal CAL identifiers. `charset` is the exact CAL hit charset and must be one of `R`, `H`, or `S`.
+
+A cache miss submits exactly one logical request to CAL's target-centered context route. Returned navigation or lexical links are validated as metadata but are not followed. The response has:
+
+- `status: "found"` with ordered full-context `lines`; or
+- `status: "not_found"` and an empty `lines` array when CAL explicitly reports the requested target coordinate as absent;
+- the requested `file_id`, optional `subtext_id`, `target_coordinate`, and `charset`;
+- per line: machine `coordinate`, rendered `display_coordinate`, rendered text, ordered lexical `tokens`, and optional CAL `comment_url`;
+- per token: coordinate, zero-based word index as CAL returned it, rendered token text, and validated CAL lexical URL;
+- CAL provenance and retrieval time.
+
+For `found`, the requested target coordinate must appear in exactly one parsed line. The parser also verifies that the response route and selectors match the request, that the page identifies the requested CAL file, and that lexical/comment links remain on the expected CAL routes with consistent coordinates. A mismatched or contradictory page fails closed as `ConcordanceParseError`.
+
+Current Hebrew (`charset="H"`) full-context pages append one empty lexical anchor after the last visible token of each text row. Bounded research on 2026-09-10 confirmed this as a stable presentation artifact for the tested route. CAL-MCP accepts it only in this full-context parser, only for `H`, only as the single terminal empty lexical anchor, and only when its word index is the successor of the preceding visible token. The artifact is omitted from returned tokens. Ordinary `cal_text_page` parsing is unchanged and remains strict about empty lexical anchors.
+
+`not_found` is not parser drift: it is accepted only when CAL returns the explicit `Target coordinate <id> not found.` marker for the requested target and no text rows contradict it. An unrelated marker, repeated marker, or marker mixed with parsed text rows fails closed.
 
 ## CAL lemma keys and homographs
 
@@ -124,9 +153,10 @@ Each valid explicit operation submits at most one new logical CAL request to the
 - one text concordance request;
 - one text-scoped KWIC request over at most eight explicit text IDs;
 - one dialect-selector request;
-- one one-dialect KWIC request.
+- one one-dialect KWIC request;
+- one full-context request for one explicit returned-hit selector set.
 
-There is no automatic pagination, continuation, all-text/all-dialect expansion, full-context retrieval, prefetching, background indexing, or corpus mirror. No current result pagination/continuation was observed during the 2026-09-05 CAL audit, so CAL-MCP does not invent a continuation token.
+There is no automatic pagination, continuation, all-text/all-dialect expansion, full-context prefetch, background indexing, or corpus mirror. No current KWIC result pagination/continuation was observed during the 2026-09-05 CAL audit, so CAL-MCP does not invent a continuation token.
 
 The shared HTTP client still enforces its origin, redirect, timeout, concurrency, retry, cache/single-flight, and maximum-response-size policy. The default decoded response-body ceiling is 2 MiB, with a hard configurable ceiling of 16 MiB. An oversized result raises the shared response-size error before endpoint parsing and is not cached or retried as a transient failure.
 
@@ -139,9 +169,10 @@ Each valid explicit operation in this family submits at most one new logical CAL
 These states remain distinct:
 
 - a CAL result with an explicit zero total/no-examples marker is a valid empty KWIC result;
+- an exact full-context target-not-found marker for the requested coordinate is a valid typed `not_found` result;
 - caller validation errors fail before transport;
 - network, timeout, HTTP, maintenance/content, redirect, and oversized-response failures remain typed request-layer failures;
-- a successful-looking CAL page whose totals, target links, scope IDs, selector fields, or required semantic markers disagree raises `ConcordanceParseError`.
+- a successful-looking CAL page whose totals, target links, scope IDs, selector fields, route identity, target identity, lexical/comment links, or required semantic markers disagree raises `ConcordanceParseError`.
 
 CAL-MCP does not convert parser drift into an empty result.
 
@@ -160,7 +191,7 @@ Duplicate-request cache hits preserve the original CAL retrieval timestamp and s
 
 ## Fixture-backed examples
 
-Normal tests use deliberately reduced semantic excerpts captured/rechecked on **2026-09-05**. Representative contracts include:
+Normal tests use deliberately reduced semantic excerpts captured/rechecked on **2026-09-05** and **2026-09-10**. Representative contracts include:
 
 - one-text concordance rows for CAL text `13250`;
 - multi-text KWIC with one explicitly empty text scope;
@@ -168,6 +199,8 @@ Normal tests use deliberately reduced semantic excerpts captured/rechecked on **
 - a current CAL dialect selector;
 - one Biblical Aramaic dialect hit with Hebrew rendering and a subtext ID;
 - explicit zero-hit output;
-- total-count mismatch and malformed/contextless target-link drift cases.
+- target-centered Tel Dan full-context rows in Roman and Hebrew rendering;
+- CAL's explicit full-context target-not-found marker;
+- total-count mismatch, malformed/contextless target links, malformed full-context selectors, and Hebrew empty-anchor drift cases.
 
 The fixtures are parser contracts, not archived CAL pages. Normal CI performs zero CAL requests.
