@@ -6,10 +6,9 @@ _CURRENT_GAPS = {
     "#108": "comments",
     "#109": "targum",
     "#112": "prefix",
-    "#113": "kwic",
     "#127": "citation",
 }
-_RESOLVED_ROUTE_ISSUES = ("#78", "#97", "#101", "#105", "#106", "#107", "#125")
+_RESOLVED_ROUTE_ISSUES = ("#78", "#97", "#101", "#105", "#106", "#107", "#113", "#125")
 
 
 def _gap_section() -> str:

@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The current v0.1 candidate exposes 30 public tools: one deterministic local CAL-code conversion tool plus 29 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
+> **Status:** active pre-release development. The current v0.1 candidate exposes 31 public tools: one deterministic local CAL-code conversion tool plus 30 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -29,7 +29,7 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 ## v0.1 public surface
 
-The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 30-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, and the explicit Syriac GROUP follow-up added by issue #105.
+The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 31-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, and the typed KWIC full-context follow-up added by issue #113.
 
 | Area | Public tools |
 | --- | --- |
@@ -38,7 +38,7 @@ The executable tool schemas are the technical source of truth. The current v0.1 
 | English search | `cal_gloss_search`, `cal_gloss_field`, `cal_citation_text_search` |
 | Texts | `cal_text_catalogue`, `cal_text_search`, `cal_text_page`, `cal_text_information` |
 | Token analysis | `cal_token_analysis` |
-| Concordance/KWIC | `cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect` |
+| Concordance/KWIC | `cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect`, `cal_kwic_full_context` |
 | Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` |
 | Dictionary collation | `cal_dictionary_collation` |
 | External citations | `cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations` |
@@ -67,7 +67,7 @@ CAL-MCP is independently runnable. Agora integration is downstream packaging/mar
 
 The shared CAL client enforces finite timeouts, low bounded concurrency, transient-only bounded retries, redirect/origin boundaries, streaming response-size limits, duplicate in-flight request suppression, and a bounded process-local cache. Starting/importing the server does not contact CAL; live traffic begins only when a CAL-backed tool is explicitly called. The deterministic conversion tool performs no CAL network request.
 
-Normal CI is offline and uses reduced semantic fixtures. CAL-MCP does not expose cache warming, background refresh, persistent storage, automatic corpus traversal, or a generic invented pagination layer.
+Normal CI is offline and uses reduced semantic fixtures. CAL-MCP does not expose cache warming, background refresh, persistent storage, automatic corpus traversal, or a generic invented pagination layer. KWIC full context is available only as a separate explicit call over typed selectors from a returned hit; parent KWIC calls do not prefetch it.
 
 See [`docs/configuration.md`](docs/configuration.md), [`docs/concepts/errors-and-upstream-drift.md`](docs/concepts/errors-and-upstream-drift.md), and [`docs/limitations.md`](docs/limitations.md).
 

@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** pre-release. The current public contract contains 30 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
+> **Status:** pre-release. The current public contract contains 31 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
@@ -17,7 +17,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 | English gloss, specialized indexed gloss-field, and citation-text search | **Implemented** | [`cal_gloss_search`, `cal_gloss_field`, `cal_citation_text_search`](tools/search.md) |
 | Online text discovery, including dedicated Onkelos/Jonathan and Mandaic routes plus operation-aware Syriac root handoff, topic search, explicit text-information metadata, and bounded page reading | **Implemented** | [`cal_text_catalogue`, `cal_text_search`, `cal_text_information`, `cal_text_page`](tools/texts.md); root Syriac discovery returns explicit `cal_syriac_texts` follow-up metadata rather than a synthetic CAL category ID |
 | Lexical analysis of one token from a returned text coordinate | **Implemented as explicit composition** | [`cal_token_analysis`](tools/token-analysis.md) after a caller-selected text page/token |
-| Basic text concordance and text/dialect KWIC | **Implemented** | [`cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect`](tools/concordance.md) |
+| Text concordance, text/dialect KWIC, and explicit target-centered KWIC full context | **Implemented** | [`cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect`, `cal_kwic_full_context`](tools/concordance.md); parent KWIC calls return selectors but never prefetch full context |
 | Bibliography by author, text/subject tag, or lemma | **Implemented** | [`cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma`](tools/bibliography.md) |
 | Dictionary spelling collation | **Implemented** | [`cal_dictionary_collation`](tools/dictionary-collation.md) |
 | Citations from sources not available as full online CAL texts | **Implemented** | [`cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations`](tools/external-citations.md) |
@@ -35,7 +35,6 @@ An **Implemented** capability above means the named research task is supported; 
 - [#112](https://github.com/alexsosn/CAL-MCP/issues/112) — CAL's lexicon **prefix browse** remains a separate discovery task from exact/root/full-form lookup.
 - [#108](https://github.com/alexsosn/CAL-MCP/issues/108) — text-line **comments and translations** linked from red coordinates are preserved as metadata but have no typed follow-up operation yet.
 - [#109](https://github.com/alexsosn/CAL-MCP/issues/109) — Targum concordance/reflex **supporting examples** are returned as validated links but are not yet MCP-followable.
-- [#113](https://github.com/alexsosn/CAL-MCP/issues/113) — ordinary/dialect **KWIC full context** links use CAL's target-centered context route and have no typed consumer yet.
 - [#127](https://github.com/alexsosn/CAL-MCP/issues/127) — linked lexicon **citation full context** uses CAL's distinct `showachapter.php?fullcoord=...` route and requires focused research before it can be composed safely with text/KWIC tools.
 - [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — the bibliography **recent five-years snapshot** is still missing; its implementation is intentionally blocked until the standalone v0.1 release in [#15](https://github.com/alexsosn/CAL-MCP/issues/15) is published or the frozen public-contract decision changes.
 
@@ -74,6 +73,6 @@ CAL's text-browser **show all** presentation is deliberately **not exposed** as 
 
 The v0.1 surface is task-oriented rather than a mirror of CAL's PHP forms. Endpoint names, form controls, and HTML structure are private adapter details. Returned CAL identifiers are preserved where useful, but CAL-MCP does not decode opaque IDs into invented semantics. The local `cal_convert_to_code` tool is adapter-owned deterministic preprocessing and does not claim to be a CAL research endpoint.
 
-A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, text-information metadata, specialized gloss fields, Syriac groups, or bibliography archives.
+A second research step is explicit: returned lemma keys, text identifiers, source abbreviations, coordinates, or selector IDs can be passed to a suitable follow-up tool, but CAL-MCP does not automatically traverse result links, next pages, books, dialects, sources, text-information metadata, specialized gloss fields, Syriac groups, KWIC full-context pages, or bibliography archives. KWIC full context is available only when the caller explicitly passes a returned hit's typed selectors to `cal_kwic_full_context`.
 
 Successful CAL-backed results preserve an actual CAL source URL and retrieval timestamp. See [Provenance and citation](concepts/provenance-and-citation.md) and [Errors and upstream drift](concepts/errors-and-upstream-drift.md) for the cross-cutting result contract.

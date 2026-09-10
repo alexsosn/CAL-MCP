@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.normalization import InputRepresentation, normalize_query
+from cal_mcp.texts import TextLine, TextToken
 
 _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
@@ -23,6 +24,7 @@ _DIALECT_TOTAL_RE = re.compile(
     re.IGNORECASE,
 )
 _EMPTY_SCOPE_RE = re.compile(r"^no examples found in ([0-9]+)$", re.IGNORECASE)
+_FULL_CONTEXT_NOT_FOUND_RE = re.compile(r"^Target coordinate ([0-9]+) not found\.$")
 
 _TEXT_SCRIPTS = {"transliteration": "R", "semitic": "S"}
 _KWIC_SCRIPTS = {"roman": "R", "hebrew": "H", "syriac": "S"}
@@ -140,6 +142,39 @@ class KwicResult:
             "total": self.total,
             "hits": [_hit_to_dict(item) for item in self.hits],
             "empty_scope_ids": list(self.empty_scope_ids),
+            "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
+class KwicFullContextStatus(StrEnum):
+    FOUND = "found"
+    NOT_FOUND = "not_found"
+
+
+@dataclass(frozen=True, slots=True)
+class KwicFullContextPage:
+    status: KwicFullContextStatus
+    lines: tuple[TextLine, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class KwicFullContextResult:
+    status: KwicFullContextStatus
+    file_id: str
+    subtext_id: str | None
+    target_coordinate: str
+    charset: str
+    lines: tuple[TextLine, ...]
+    provenance: ConcordanceProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "status": self.status.value,
+            "file_id": self.file_id,
+            "subtext_id": self.subtext_id,
+            "target_coordinate": self.target_coordinate,
+            "charset": self.charset,
+            "lines": [_text_line_to_dict(line) for line in self.lines],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -669,6 +704,301 @@ class ConcordanceService:
         )
         return _kwic_result(canonical_key, KwicScopeKind.DIALECT, result.value, provenance)
 
+    async def kwic_full_context(
+        self,
+        file_id: str,
+        target_coordinate: str,
+        charset: str,
+        *,
+        subtext_id: str | None = None,
+    ) -> KwicFullContextResult:
+        normalized_file = _validate_decimal_id(file_id, "file_id")
+        normalized_target = _validate_decimal_id(target_coordinate, "target_coordinate")
+        if not isinstance(charset, str) or charset not in _KWIC_CHARSETS:
+            raise ValueError("charset must be one of: H, R, S")
+        normalized_sub = (
+            None if subtext_id is None else _validate_decimal_id(subtext_id, "subtext_id")
+        )
+
+        def parse_requested(response: CalResponse) -> KwicFullContextPage:
+            return parse_kwic_full_context_page(
+                response,
+                requested_file_id=normalized_file,
+                requested_subtext_id=normalized_sub,
+                requested_target_coordinate=normalized_target,
+                requested_charset=charset,
+            )
+
+        result = await self._client.fetch(
+            CalRequest(
+                method="GET",
+                path="get_a_kwicchapter.php",
+                params=(
+                    ("file", normalized_file),
+                    ("sub", normalized_sub or ""),
+                    ("cset", charset),
+                    ("target", normalized_target),
+                ),
+            ),
+            parser=parse_requested,
+            cache_namespace="kwic-full-context-v1",
+        )
+        return KwicFullContextResult(
+            status=result.value.status,
+            file_id=normalized_file,
+            subtext_id=normalized_sub,
+            target_coordinate=normalized_target,
+            charset=charset,
+            lines=result.value.lines,
+            provenance=ConcordanceProvenance(
+                source="CAL",
+                source_url=result.source_url,
+                retrieved_at=result.retrieved_at,
+                operation="kwic_full_context",
+                text_id=normalized_file,
+            ),
+        )
+
+
+def parse_kwic_full_context_page(
+    response: CalResponse,
+    *,
+    requested_file_id: str,
+    requested_subtext_id: str | None,
+    requested_target_coordinate: str,
+    requested_charset: str,
+) -> KwicFullContextPage:
+    _validate_full_context_response_url(
+        response.url,
+        requested_file_id=requested_file_id,
+        requested_subtext_id=requested_subtext_id,
+        requested_target_coordinate=requested_target_coordinate,
+        requested_charset=requested_charset,
+    )
+    semantic_lines = _parse_lines(response)
+    _validate_full_context_file_identity(semantic_lines, response.url, requested_file_id)
+    markers = [
+        match
+        for line in semantic_lines
+        if (match := _FULL_CONTEXT_NOT_FOUND_RE.fullmatch(line.text)) is not None
+    ]
+    if len(markers) > 1:
+        raise ConcordanceParseError("CAL full-context page repeats target-not-found markers")
+    if markers and markers[0].group(1) != requested_target_coordinate:
+        raise ConcordanceParseError("CAL full-context not-found target differs from request")
+
+    parser = _TableHTMLParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    lines = tuple(
+        line
+        for row in parser.rows
+        if (
+            line := _parse_full_context_row(
+                row,
+                source_url=response.url,
+                requested_charset=requested_charset,
+            )
+        )
+        is not None
+    )
+    if markers:
+        if lines:
+            raise ConcordanceParseError(
+                "CAL full-context page contradicts target-not-found with text rows"
+            )
+        return KwicFullContextPage(
+            status=KwicFullContextStatus.NOT_FOUND,
+            lines=(),
+        )
+    if not lines:
+        raise ConcordanceParseError(
+            "CAL full-context page has neither text rows nor target-not-found marker"
+        )
+    if sum(line.coordinate == requested_target_coordinate for line in lines) != 1:
+        raise ConcordanceParseError(
+            "CAL full-context page does not contain exactly one requested target row"
+        )
+    return KwicFullContextPage(status=KwicFullContextStatus.FOUND, lines=lines)
+
+
+def _validate_full_context_response_url(
+    url: str,
+    *,
+    requested_file_id: str,
+    requested_subtext_id: str | None,
+    requested_target_coordinate: str,
+    requested_charset: str,
+) -> None:
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "cal.huc.edu"
+        or parsed.path != "/get_a_kwicchapter.php"
+        or parsed.fragment
+    ):
+        raise ConcordanceParseError("CAL full-context response has an unexpected route")
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if set(query) != {"file", "sub", "cset", "target"}:
+        raise ConcordanceParseError("CAL full-context response has unexpected or missing selectors")
+    file_id = _single_query_value(query, "file", "full-context file")
+    target = _single_query_value(query, "target", "full-context target")
+    charset = _single_query_value(query, "cset", "full-context charset")
+    sub_values = query.get("sub")
+    if sub_values is None or len(sub_values) != 1:
+        raise ConcordanceParseError("CAL full-context subtext parameter is missing or repeated")
+    subtext_id = sub_values[0] or None
+    if subtext_id is not None:
+        subtext_id = _parse_decimal_id(subtext_id, "subtext_id")
+    if charset not in _KWIC_CHARSETS:
+        raise ConcordanceParseError("CAL full-context response has an unknown charset")
+    if (
+        file_id != requested_file_id
+        or target != requested_target_coordinate
+        or charset != requested_charset
+        or subtext_id != requested_subtext_id
+    ):
+        raise ConcordanceParseError("CAL full-context response selectors contradict request")
+
+
+def _validate_full_context_file_identity(
+    lines: Sequence[object],
+    source_url: str,
+    requested_file_id: str,
+) -> None:
+    identities: list[str] = []
+    for line in lines:
+        for link in getattr(line, "links", ()):
+            href = getattr(link, "href", "")
+            if not _is_path(href, "get_file_info.php"):
+                continue
+            info_url = _cal_navigation_url(source_url, href, "get_file_info.php")
+            query = parse_qs(urlsplit(info_url).query, keep_blank_values=True)
+            if set(query) != {"coord"}:
+                raise ConcordanceParseError(
+                    "CAL full-context file-information link has unexpected selectors"
+                )
+            coord = _parse_decimal_id(
+                _single_query_value(query, "coord", "full-context file information"),
+                "file_id",
+            )
+            label = getattr(link, "text", "")
+            if not label.startswith(f"{coord}:"):
+                raise ConcordanceParseError(
+                    "CAL full-context file-information label differs from its identifier"
+                )
+            identities.append(coord)
+    if identities != [requested_file_id]:
+        raise ConcordanceParseError(
+            "CAL full-context file identity does not uniquely match request"
+        )
+
+
+def _parse_full_context_row(
+    row: _TableRow,
+    *,
+    source_url: str,
+    requested_charset: str,
+) -> TextLine | None:
+    lexical = [
+        link for cell in row.cells for link in cell.links if _is_path(link.href, "getlex.php")
+    ]
+    if not lexical:
+        return None
+    if len(row.cells) != 2:
+        raise ConcordanceParseError("CAL full-context text row must contain two cells")
+    if any(_is_path(link.href, "getlex.php") for link in row.cells[0].links):
+        raise ConcordanceParseError("CAL full-context lexical link is in coordinate cell")
+    if any(not _is_path(link.href, "getlex.php") for link in row.cells[1].links):
+        raise ConcordanceParseError("CAL full-context text cell has an unexpected link")
+
+    parsed_tokens = [
+        _parse_full_context_lexical_link(source_url, link) for link in row.cells[1].links
+    ]
+    coordinates = {item[0] for item in parsed_tokens}
+    if len(coordinates) != 1:
+        raise ConcordanceParseError("CAL full-context row mixes lexical coordinates")
+    coordinate = next(iter(coordinates))
+    empty_positions = [index for index, item in enumerate(parsed_tokens) if not item[2]]
+    if empty_positions:
+        if requested_charset != "H" or empty_positions != [len(parsed_tokens) - 1]:
+            raise ConcordanceParseError(
+                "CAL full-context row has an unsupported empty lexical anchor"
+            )
+        if len(parsed_tokens) < 2:
+            raise ConcordanceParseError(
+                "CAL Hebrew full-context empty anchor lacks a preceding token"
+            )
+        if parsed_tokens[-1][1] != parsed_tokens[-2][1] + 1:
+            raise ConcordanceParseError(
+                "CAL Hebrew full-context empty anchor is not the next word index"
+            )
+        parsed_tokens = parsed_tokens[:-1]
+    if not parsed_tokens or any(not item[2] for item in parsed_tokens):
+        raise ConcordanceParseError("CAL full-context row has no visible lexical tokens")
+
+    coordinate_cell, text_cell = row.cells
+    comment_links = [link for link in coordinate_cell.links if _is_path(link.href, "comment.php")]
+    if len(comment_links) > 1 or len(comment_links) != len(coordinate_cell.links):
+        raise ConcordanceParseError("CAL full-context coordinate cell has conflicting links")
+    display_coordinate = coordinate_cell.text or None
+    comment_url: str | None = None
+    if comment_links:
+        comment = comment_links[0]
+        comment_url = _cal_navigation_url(source_url, comment.href, "comment.php")
+        query = parse_qs(urlsplit(comment_url).query, keep_blank_values=True)
+        if set(query) != {"coord"}:
+            raise ConcordanceParseError("CAL full-context comment link has unexpected selectors")
+        comment_coordinate = _parse_decimal_id(
+            _single_query_value(query, "coord", "full-context comment"),
+            "coordinate",
+        )
+        if comment_coordinate != coordinate or comment.text != display_coordinate:
+            raise ConcordanceParseError("CAL full-context comment coordinate contradicts its row")
+
+    rendered_text = text_cell.text
+    if not rendered_text:
+        raise ConcordanceParseError("CAL full-context text row has no rendered text")
+    tokens = tuple(
+        TextToken(
+            coordinate=item[0],
+            word_index=item[1],
+            text=item[2],
+            lexical_url=item[3],
+        )
+        for item in parsed_tokens
+    )
+    return TextLine(
+        coordinate=coordinate,
+        display_coordinate=display_coordinate,
+        text=rendered_text,
+        tokens=tokens,
+        comment_url=comment_url,
+    )
+
+
+def _parse_full_context_lexical_link(
+    source_url: str,
+    link: _TableLink,
+) -> tuple[str, int, str, str]:
+    lexical_url = _cal_navigation_url(source_url, link.href, "getlex.php")
+    query = parse_qs(urlsplit(lexical_url).query, keep_blank_values=True)
+    if set(query) != {"coord", "word", "hasvariant"}:
+        raise ConcordanceParseError(
+            "CAL full-context lexical link has unexpected or missing selectors"
+        )
+    coordinate = _parse_decimal_id(
+        _single_query_value(query, "coord", "full-context lexical coordinate"),
+        "coordinate",
+    )
+    word = _single_query_value(query, "word", "full-context lexical word")
+    hasvariant = _single_query_value(query, "hasvariant", "full-context lexical hasvariant")
+    if not word.isascii() or not word.isdecimal():
+        raise ConcordanceParseError("CAL full-context lexical word index is not decimal")
+    if not hasvariant.isascii() or not hasvariant.isdecimal():
+        raise ConcordanceParseError("CAL full-context lexical hasvariant selector is not decimal")
+    return coordinate, int(word), link.text, lexical_url
+
 
 def _parse_kwic_hits(response: CalResponse) -> tuple[KwicHit, ...]:
     parser = _TableHTMLParser()
@@ -946,6 +1276,25 @@ def _hit_to_dict(item: KwicHit) -> dict[str, object]:
     }
 
 
+def _text_token_to_dict(item: TextToken) -> dict[str, object]:
+    return {
+        "coordinate": item.coordinate,
+        "word_index": item.word_index,
+        "text": item.text,
+        "lexical_url": item.lexical_url,
+    }
+
+
+def _text_line_to_dict(item: TextLine) -> dict[str, object]:
+    return {
+        "coordinate": item.coordinate,
+        "display_coordinate": item.display_coordinate,
+        "text": item.text,
+        "tokens": [_text_token_to_dict(token) for token in item.tokens],
+        "comment_url": item.comment_url,
+    }
+
+
 def _provenance_to_dict(item: ConcordanceProvenance) -> dict[str, object]:
     return {
         "source": item.source,
@@ -967,6 +1316,9 @@ __all__ = [
     "KwicDialectOptionsPage",
     "KwicDialectOptionsResult",
     "KwicDialectRef",
+    "KwicFullContextPage",
+    "KwicFullContextResult",
+    "KwicFullContextStatus",
     "KwicHit",
     "KwicPage",
     "KwicResult",
@@ -974,6 +1326,7 @@ __all__ = [
     "TextConcordancePage",
     "TextConcordanceResult",
     "parse_kwic_dialect_options",
+    "parse_kwic_full_context_page",
     "parse_kwic_result",
     "parse_text_concordance_page",
 ]
