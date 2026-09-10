@@ -1,0 +1,93 @@
+name: research issue 113 KWIC context detail
+
+on:
+  push:
+    branches:
+      - issue-113-kwic-full-context
+    paths:
+      - .github/workflows/research-issue-113-detail.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+      - name: Probe fixed H and S target-row structure
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import re
+          import urllib.error
+          import urllib.request
+          from html.parser import HTMLParser
+
+          BASE = "https://cal.huc.edu/get_a_kwicchapter.php"
+          TARGET = "1325003"
+          MAX_BYTES = 512 * 1024
+
+          class NoRedirect(urllib.request.HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          class AnchorParser(HTMLParser):
+              def __init__(self) -> None:
+                  super().__init__(convert_charrefs=True)
+                  self.href: str | None = None
+                  self.parts: list[str] = []
+                  self.anchors: list[tuple[str, str]] = []
+
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a" and self.href is None:
+                      self.href = dict(attrs).get("href") or ""
+                      self.parts = []
+
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.href is not None:
+                      self.anchors.append((self.href, " ".join("".join(self.parts).split())))
+                      self.href = None
+                      self.parts = []
+
+              def handle_data(self, data):
+                  if self.href is not None:
+                      self.parts.append(data)
+
+          opener = urllib.request.build_opener(NoRedirect())
+          headers = {"User-Agent": "CAL-MCP/0.1 research issue-113 detail (bounded fixed-target probe)"}
+
+          for cset in ("H", "S"):
+              url = f"{BASE}?file=13250&sub=&cset={cset}&target={TARGET}"
+              req = urllib.request.Request(url, headers=headers)
+              try:
+                  response = opener.open(req, timeout=15)
+              except urllib.error.HTTPError as exc:
+                  response = exc
+              with response:
+                  body = response.read(MAX_BYTES + 1)
+                  if len(body) > MAX_BYTES:
+                      raise SystemExit("response exceeded cap")
+                  print(f"=== cset={cset} status={response.status} bytes={len(body)} final={response.geturl()} ===")
+
+              text = body.decode("utf-8", errors="replace")
+              parser = AnchorParser()
+              parser.feed(text)
+              parser.close()
+              lexical = [(href, label) for href, label in parser.anchors if "getlex.php" in href]
+              empty = [(href, label) for href, label in lexical if not label]
+              target = [(href, label) for href, label in lexical if f"coord={TARGET}" in href]
+              print("lexical_count", len(lexical), "empty_lexical_count", len(empty))
+              print("target_anchors", target)
+              print("first_empty", empty[:10])
+
+              marker = f"coord={TARGET}"
+              positions = [m.start() for m in re.finditer(re.escape(marker), text)]
+              print("target_occurrences", len(positions))
+              for pos in positions[:4]:
+                  snippet = re.sub(r"\s+", " ", text[max(0, pos-220):pos+500])
+                  print("SNIP", snippet[:800])
+              print()
+          PY
