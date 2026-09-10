@@ -17,12 +17,10 @@ FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 _RETRIEVED_AT = datetime(2026, 9, 10, tzinfo=UTC)
 _EMPTY_H_ANCHOR = 'word=3&amp;hasvariant=0"></a>'
 _SECOND_EMPTY_H_ANCHOR = (
-    _EMPTY_H_ANCHOR
-    + ' <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0"></a>'
+    _EMPTY_H_ANCHOR + ' <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0"></a>'
 )
 _NONTERMINAL_H_ANCHOR = (
-    _EMPTY_H_ANCHOR
-    + ' <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0">tail</a>'
+    _EMPTY_H_ANCHOR + ' <a href="getlex.php?coord=1325003&amp;word=4&amp;hasvariant=0">tail</a>'
 )
 
 
@@ -110,10 +108,7 @@ def _service_method(
 
 
 def _roman_url(*, target: str = "1325003", file_id: str = "13250") -> str:
-    return (
-        "https://cal.huc.edu/get_a_kwicchapter.php?"
-        f"file={file_id}&sub=&cset=R&target={target}"
-    )
+    return f"https://cal.huc.edu/get_a_kwicchapter.php?file={file_id}&sub=&cset=R&target={target}"
 
 
 def test_roman_full_context_preserves_rows_tokens_and_target_relationship() -> None:
@@ -136,10 +131,7 @@ def test_roman_full_context_preserves_rows_tokens_and_target_relationship() -> N
 
 
 def test_hebrew_terminal_empty_lexical_anchor_is_validated_but_not_exposed() -> None:
-    url = (
-        "https://cal.huc.edu/get_a_kwicchapter.php?"
-        "file=13250&sub=&cset=H&target=1325003"
-    )
+    url = "https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=H&target=1325003"
     page = _parse(
         _response("kwic_full_context_tel_dan_hebrew.html", url),
         charset="H",
@@ -167,10 +159,7 @@ def test_malformed_hebrew_empty_lexical_anchor_is_parser_drift(old: str, new: st
     body = (FIXTURES / "kwic_full_context_tel_dan_hebrew.html").read_text()
     response = CalResponse(
         status_code=200,
-        url=(
-            "https://cal.huc.edu/get_a_kwicchapter.php?"
-            "file=13250&sub=&cset=H&target=1325003"
-        ),
+        url=("https://cal.huc.edu/get_a_kwicchapter.php?file=13250&sub=&cset=H&target=1325003"),
         body=body.replace(old, new, 1).encode(),
         content_type="text/html; charset=UTF-8",
         retrieved_at=_RETRIEVED_AT,
@@ -181,14 +170,18 @@ def test_malformed_hebrew_empty_lexical_anchor_is_parser_drift(old: str, new: st
 
 
 def test_non_hebrew_empty_lexical_anchor_is_parser_drift() -> None:
-    body = (FIXTURES / "kwic_full_context_tel_dan_roman.html").read_text().replace(
-        "</td></tr>\n<tr><td><a href=\"comment.php?coord=1325004\">",
-        (
-            '<a href="getlex.php?coord=1325003&amp;word=5&amp;hasvariant=0"></a>'
-            "</td></tr>\n"
-            '<tr><td><a href="comment.php?coord=1325004">'
-        ),
-        1,
+    body = (
+        (FIXTURES / "kwic_full_context_tel_dan_roman.html")
+        .read_text()
+        .replace(
+            '</td></tr>\n<tr><td><a href="comment.php?coord=1325004">',
+            (
+                '<a href="getlex.php?coord=1325003&amp;word=5&amp;hasvariant=0"></a>'
+                "</td></tr>\n"
+                '<tr><td><a href="comment.php?coord=1325004">'
+            ),
+            1,
+        )
     )
     response = CalResponse(
         status_code=200,
@@ -245,9 +238,13 @@ def test_missing_or_duplicate_requested_target_is_parser_drift() -> None:
     with pytest.raises(ConcordanceParseError):
         _parse(response, target_coordinate="1325999")
 
-    body = (FIXTURES / "kwic_full_context_tel_dan_roman.html").read_text().replace(
-        "coord=1325004",
-        "coord=1325003",
+    body = (
+        (FIXTURES / "kwic_full_context_tel_dan_roman.html")
+        .read_text()
+        .replace(
+            "coord=1325004",
+            "coord=1325003",
+        )
     )
     duplicate = CalResponse(
         status_code=200,
@@ -338,9 +335,7 @@ async def test_invalid_full_context_selectors_fail_before_transport(
     args: tuple[object, ...],
     kwargs: dict[str, object],
 ) -> None:
-    transport = RecordingTransport(
-        _response("kwic_full_context_tel_dan_roman.html", _roman_url())
-    )
+    transport = RecordingTransport(_response("kwic_full_context_tel_dan_roman.html", _roman_url()))
     service = ConcordanceService(CalHttpClient(transport=transport))
 
     with pytest.raises(ValueError):
