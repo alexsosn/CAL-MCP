@@ -363,8 +363,14 @@ class _LineCommentsHTMLParser(HTMLParser):
             return
 
         if tag == "p" and self._record is not None:
-            if self._span_parts is not None or self._anchor_parts is not None or self._in_gloss:
-                raise TextParseError("CAL line-comments record closes with unfinished semantic markup")
+            if (
+                self._span_parts is not None
+                or self._anchor_parts is not None
+                or self._in_gloss
+            ):
+                raise TextParseError(
+                    "CAL line-comments record closes with unfinished semantic markup"
+                )
             self.records.append(self._record)
             self._record = None
             self._in_reference = False
