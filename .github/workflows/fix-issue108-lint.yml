@@ -1,0 +1,43 @@
+name: Fix issue 108 implementation lint
+
+on:
+  push:
+    branches:
+      - issue-108-line-comments
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-108-line-comments
+      - name: Wrap the one overlong exception
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/texts.py")
+          text = path.read_text()
+          old = '                raise TextParseError("CAL line-comments record closes with unfinished semantic markup")\n'
+          new = (
+              '                raise TextParseError(\n'
+              '                    "CAL line-comments record closes with unfinished semantic markup"\n'
+              '                )\n'
+          )
+          if text.count(old) != 1:
+              raise SystemExit(f"expected exactly one target, found {text.count(old)}")
+          path.write_text(text.replace(old, new))
+          PY
+      - name: Commit patch and remove helper
+        run: |
+          git rm .github/workflows/fix-issue108-lint.yml
+          git add src/cal_mcp/texts.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Fix line-comments implementation lint"
+          git push origin HEAD:issue-108-line-comments
