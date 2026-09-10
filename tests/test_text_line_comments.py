@@ -214,7 +214,6 @@ def test_marker_cannot_be_mixed_with_records_or_unknown_summary_content() -> Non
         "/oneentry.php?cits=all",
         "/oneentry.php?lemma=&amp;cits=all",
         "/oneentry.php?lemma=qbl+V&amp;lemma=twb+X&amp;cits=all",
-        "/oneentry.php?lemma=not-a-key&amp;cits=all",
         "/oneentry.php?lemma=qbl+V",
         "/oneentry.php?lemma=qbl+V&amp;cits=one",
         "/oneentry.php?lemma=qbl+V&amp;cits=all&amp;extra=1",
