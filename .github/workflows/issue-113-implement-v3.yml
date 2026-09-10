@@ -1,0 +1,46 @@
+name: issue-113 KWIC full-context implementation v3
+
+on:
+  push:
+    branches:
+      - issue-113-kwic-full-context
+    paths:
+      - .github/workflows/issue-113-implement-v3.yml
+
+permissions:
+  contents: write
+
+jobs:
+  implement:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-113-kwic-full-context
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install validation environment
+        run: python -m pip install -e '.[dev]'
+      - name: Apply production patch
+        run: python .github/scripts/issue_113_apply.py
+      - name: Focused validation
+        run: |
+          ruff format src/cal_mcp/concordance.py src/cal_mcp/server.py src/cal_mcp/release_surface.py
+          ruff check src/cal_mcp/concordance.py src/cal_mcp/server.py src/cal_mcp/release_surface.py
+          mypy
+          pytest -q tests/test_kwic_full_context.py tests/test_concordance.py tests/test_concordance_current_shape_regression.py tests/test_concordance_review_regressions.py tests/test_texts.py
+      - name: Commit validated production change
+        run: |
+          rm .github/workflows/issue-113-implement.yml
+          rm .github/workflows/issue-113-implement-v2.yml
+          rm .github/workflows/issue-113-implement-v3.yml
+          rm .github/scripts/issue_113_apply.py
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/concordance.py src/cal_mcp/server.py src/cal_mcp/release_surface.py .github/workflows .github/scripts/issue_113_apply.py
+          git diff --cached --check
+          git commit -m "Implement typed KWIC full-context follow-up"
+          git push origin HEAD:issue-113-kwic-full-context
