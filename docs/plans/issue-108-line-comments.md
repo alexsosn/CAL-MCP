@@ -218,6 +218,10 @@ Tests must prove:
 
 A valid RED requires both CI matrices to pass dependency/environment validation, Ruff lint/format, and strict mypy, then fail pytest only in new expectations caused by the absent parser/service/tool/release entry. Record the exact RED SHA before production changes.
 
+### Recorded RED evidence
+
+The first test-only formatting attempt at `b2f3b9292a949e939f1384ae0b0248f19064157a` was not a valid RED because Ruff format failed before mypy/pytest. After formatting-only corrections, exact test-only head `edd431ae195dfd49a2f26876b1b58a8d9d4c1895` produced CI run `34509300660`: dependency/environment checks, Ruff lint, Ruff format, and strict mypy passed in both matrices; pytest then failed only on the new line-comments expectations (32 failures, 862 existing tests passed). Production code was still unchanged at that SHA.
+
 ## Gate 2 — minimal implementation
 
 Expected production files:
