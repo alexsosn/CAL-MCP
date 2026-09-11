@@ -14,6 +14,7 @@ from cal_mcp.client import (
     CalRequest,
     CalResponse,
 )
+from cal_mcp.lemma_key import validate_lemma_key
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -531,7 +532,19 @@ def _validate_line_comment_entry_url(source_url: str, href: str) -> tuple[str, s
         raise TextParseError("CAL line-comments lexical-entry link lacks one lemma selector")
     if cits_values != ["all"]:
         raise TextParseError("CAL line-comments lexical-entry link must request cits=all")
-    return resolved, lemma_values[0]
+
+    raw_lemma_key = lemma_values[0]
+    try:
+        _lemma, _suffix, lemma_key = validate_lemma_key(raw_lemma_key)
+    except ValueError as exc:
+        raise TextParseError(
+            "CAL line-comments lexical-entry link returned an invalid lemma key"
+        ) from exc
+    if lemma_key != raw_lemma_key:
+        raise TextParseError(
+            "CAL line-comments lexical-entry link returned a non-canonical lemma key"
+        )
+    return resolved, lemma_key
 
 
 def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:

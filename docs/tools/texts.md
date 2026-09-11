@@ -108,11 +108,11 @@ Use the exact `coordinate` returned on a caller-selected `TextLine` from `cal_te
 
 One explicit call submits at most one new logical CAL request. A completed cache hit performs zero new upstream I/O. Returned lexicon-entry links are validated and preserved as metadata but are never followed automatically.
 
-The result contains `status: "found" | "no_citations"`, the requested coordinate, ordered `records`, and provenance. Each found record preserves CAL's rendered reference, optional source citation text, optional translation/comment text, the opaque returned lemma key, rendered headword, optional part of speech, optional gloss, and validated same-origin entry URL.
+The result contains `status: "found" | "no_citations"`, the requested coordinate, ordered `records`, and provenance. Each found record preserves CAL's rendered reference, optional source citation text, optional translation/comment text, canonical CAL `lemma_key`, rendered headword, optional part of speech, optional gloss, and validated same-origin entry URL.
 
 CAL's exact `NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED` state maps to `no_citations` with an empty record list. It does **not** map to `not_found`: current CAL returns the same state for a deliberately invalid coordinate, so this endpoint alone cannot prove whether the line exists.
 
-Malformed response identity, contradictory empty-state/content combinations, structurally incomplete records, foreign or malformed entry links, repeated/empty lemma selectors, and unrecognized successful markup fail closed as parser drift. `cal_text_page` does not prefetch comments for any line.
+Malformed response identity, contradictory empty-state/content combinations, structurally incomplete records, foreign or malformed entry links, repeated/empty lemma selectors, malformed or non-canonical returned lemma keys, and unrecognized successful markup fail closed as parser drift. `cal_text_page` does not prefetch comments for any line.
 
 ## `cal_text_page`
 
@@ -197,7 +197,7 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 
 ## Fixture-backed examples
 
-Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract. Representative cases include:
+Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract and the 2026-09-10 line-comments contract. Representative cases include:
 
 - root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
 - root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;
