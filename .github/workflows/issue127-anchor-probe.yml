@@ -1,0 +1,54 @@
+name: issue-127 anchor probe
+on:
+  push:
+    branches: [issue-127-live-probe]
+    paths: [.github/workflows/issue127-anchor-probe.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Inspect fixed citation-context anchors
+        run: |
+          python - <<'PY'
+          from html.parser import HTMLParser
+          from urllib.request import Request, build_opener, HTTPRedirectHandler
+          from urllib.parse import urlsplit, parse_qs
+          class N(HTTPRedirectHandler):
+              def redirect_request(self,*args): return None
+          class P(HTMLParser):
+              def __init__(self): super().__init__(convert_charrefs=True); self.a=None; self.links=[]; self.row=[]; self.rows=[]; self.cell=None
+              def handle_starttag(self,t,a):
+                  d=dict(a)
+                  if t=='tr': self.row=[]
+                  elif t in ('td','th'): self.cell=[]
+                  elif t=='a' and self.cell is not None: self.a=[d.get('href',''),[]]
+              def handle_data(self,d):
+                  if self.a is not None: self.a[1].append(d)
+              def handle_endtag(self,t):
+                  if t=='a' and self.a is not None:
+                      x=(self.a[0],' '.join(''.join(self.a[1]).split())); self.links.append(x); self.cell.append(x); self.a=None
+                  elif t in ('td','th') and self.cell is not None: self.row.append(tuple(self.cell)); self.cell=None
+                  elif t=='tr' and self.row: self.rows.append(tuple(self.row)); self.row=[]
+          o=build_opener(N)
+          for coord in ('31000424','5101431061'):
+              with o.open(Request(f'https://cal.huc.edu/showachapter.php?fullcoord={coord}',headers={'User-Agent':'CAL-MCP issue-127 bounded research probe'}),timeout=15) as r:
+                  b=r.read(524289)
+              if len(b)>524288: raise SystemExit('cap exceeded')
+              p=P(); p.feed(b.decode('utf-8','replace')); p.close()
+              lex=[(h,l) for h,l in p.links if urlsplit(h).path.endswith('getlex.php')]
+              empt=[(h,l) for h,l in lex if not l]
+              print('PROBE',coord,'lex',len(lex),'empty',len(empt))
+              print('empty_links',empt[:20])
+              shapes=[]
+              for row in p.rows:
+                  lr=[(h,l) for c in row for h,l in c if urlsplit(h).path.endswith('getlex.php')]
+                  if lr:
+                      parsed=[]
+                      for h,l in lr:
+                          q=parse_qs(urlsplit(h).query,keep_blank_values=True); parsed.append((q.get('coord'),q.get('word'),sorted(q),bool(l)))
+                      shapes.append((len(row),parsed[-2:]))
+              print('row_shapes_tail',shapes[-4:])
+          PY
