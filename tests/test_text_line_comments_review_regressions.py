@@ -52,3 +52,19 @@ def test_nested_summary_card_fails_unique_container_contract() -> None:
 
     with pytest.raises(TextParseError):
         parse_text_line_comments_page(_response(body), requested_coordinate=_COORDINATE)
+
+
+def test_truncated_second_record_cannot_return_partial_success() -> None:
+    body = _FIXTURE.read_text(encoding="utf-8")
+    before, after = body.rsplit("</p>", 1)
+    body = f"{before}{after}"
+
+    with pytest.raises(TextParseError):
+        parse_text_line_comments_page(_response(body), requested_coordinate=_COORDINATE)
+
+
+def test_unclosed_summary_card_fails_closed() -> None:
+    body = _FIXTURE.read_text(encoding="utf-8").split("</div>", 1)[0]
+
+    with pytest.raises(TextParseError):
+        parse_text_line_comments_page(_response(body), requested_coordinate=_COORDINATE)
