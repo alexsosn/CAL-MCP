@@ -143,7 +143,10 @@ For every public tool:
 - input schema validates required/optional fields;
 - invalid input produces no network call;
 - typed service result serializes without losing semantic fields;
-- typed errors map to stable, useful MCP errors/results;
+- anticipated typed CAL-MCP failures return stable structured `isError` payloads with kind, operation, retryability, honest upstream reachability, and only typed safe metadata;
+- unexpected programming failures remain on the SDK's generic sanitizer and do not leak arbitrary exception text or receive a misleading CAL-MCP error kind;
+- successful empty/not-found states remain successful structured results;
+- every public tool output schema continues to admit the shared structured error payload;
 - examples in `docs/` match the current tool contract;
 - server can start and answer introspection without contacting CAL.
 

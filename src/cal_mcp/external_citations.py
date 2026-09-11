@@ -7,7 +7,8 @@ from datetime import datetime
 from html.parser import HTMLParser
 from urllib.parse import SplitResult, parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lemma_key import validate_lemma_key
 
 _CAL_ORIGIN = ("https", "cal.huc.edu")
@@ -42,7 +43,7 @@ _BIDI_FORMATTING = frozenset(
 )
 
 
-class ExternalCitationParseError(CalContentError):
+class ExternalCitationParseError(CalParseError):
     """Raised when CAL's external-citation markup loses required semantics."""
 
 
@@ -756,26 +757,26 @@ def _require_cal_origin(split: SplitResult, context: str) -> None:
 
 def _prepare_dialect_id(value: str) -> str:
     if not isinstance(value, str):
-        raise ValueError("dialect_id must be a string")
+        raise CalInputError("dialect_id must be a string")
     candidate = value.strip(" ")
     if _DIALECT_RE.fullmatch(candidate) is None:
-        raise ValueError("dialect_id must contain 1-6 ASCII decimal digits")
+        raise CalInputError("dialect_id must contain 1-6 ASCII decimal digits")
     return candidate
 
 
 def _prepare_source_abbrev(value: str) -> str:
     if not isinstance(value, str):
-        raise ValueError("source_abbrev must be a string")
+        raise CalInputError("source_abbrev must be a string")
     candidate = value.strip(" ")
     if not candidate:
-        raise ValueError("source_abbrev must not be empty")
+        raise CalInputError("source_abbrev must not be empty")
     if len(candidate) > _MAX_SOURCE_ABBREV_CHARS:
-        raise ValueError(f"source_abbrev must be at most {_MAX_SOURCE_ABBREV_CHARS} characters")
+        raise CalInputError(f"source_abbrev must be at most {_MAX_SOURCE_ABBREV_CHARS} characters")
     if any(
         (char.isspace() and char != " ") or unicodedata.category(char) in {"Cc", "Cf", "Cs"}
         for char in candidate
     ):
-        raise ValueError("source_abbrev may contain only ordinary spaces, not controls")
+        raise CalInputError("source_abbrev may contain only ordinary spaces, not controls")
     return candidate
 
 

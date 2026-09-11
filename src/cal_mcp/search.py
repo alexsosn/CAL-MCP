@@ -6,7 +6,8 @@ from datetime import datetime
 from enum import StrEnum
 from types import MappingProxyType
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lexicon import (
     LemmaRef,
     LexiconParseError,
@@ -21,7 +22,7 @@ _CITATION_EMPTY_MARKER = "there are no citations with the word:"
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
 
 
-class SearchParseError(CalContentError):
+class SearchParseError(CalParseError):
     """Raised when a CAL English-search page no longer exposes required semantics."""
 
 
@@ -220,7 +221,7 @@ class EnglishSearchService:
     ) -> GlossSearchResult:
         submitted = _prepare_english_query(query)
         if sum(char.isalpha() for char in submitted) < 3:
-            raise ValueError("CAL gloss search requires at least three letters")
+            raise CalInputError("CAL gloss search requires at least three letters")
 
         result = await self._client.fetch(
             CalRequest(
@@ -250,7 +251,7 @@ class EnglishSearchService:
         try:
             normalized_field = GlossField(field)
         except (TypeError, ValueError) as exc:
-            raise ValueError("unsupported CAL specialized gloss field") from exc
+            raise CalInputError("unsupported CAL specialized gloss field") from exc
         config = _GLOSS_FIELD_CONFIG[normalized_field]
 
         result = await self._client.fetch(
@@ -278,7 +279,7 @@ class EnglishSearchService:
     async def search_citations(self, query: str) -> CitationTextSearchResult:
         submitted = _prepare_english_query(query)
         if len(submitted.split(" ")) > 3:
-            raise ValueError("CAL citation-text search accepts at most three words")
+            raise CalInputError("CAL citation-text search accepts at most three words")
 
         result = await self._client.fetch(
             CalRequest(
@@ -328,12 +329,12 @@ def _parse_citation_text(text: str) -> tuple[str, str, str | None]:
 def _prepare_english_query(value: str) -> str:
     trimmed = value.strip(" ")
     if not trimmed:
-        raise ValueError("CAL English search query must not be empty")
+        raise CalInputError("CAL English search query must not be empty")
     if any(char.isspace() and char != " " for char in trimmed):
-        raise ValueError("CAL English search words must be separated by ASCII spaces")
+        raise CalInputError("CAL English search words must be separated by ASCII spaces")
     parts = [part for part in trimmed.split(" ") if part]
     if not parts:
-        raise ValueError("CAL English search query must not be empty")
+        raise CalInputError("CAL English search query must not be empty")
     return " ".join(parts)
 
 
