@@ -47,11 +47,7 @@ def _public_tool_error_result(error: PublicToolError) -> CallToolResult:
 
 def _sdk_validation_message(error: ValidationError) -> str:
     fields = sorted(
-        {
-            ".".join(str(part) for part in item["loc"])
-            for item in error.errors()
-            if item.get("loc")
-        }
+        {".".join(str(part) for part in item["loc"]) for item in error.errors() if item.get("loc")}
     )
     if not fields:
         return "Invalid tool arguments"
@@ -69,9 +65,7 @@ class CalMCPServer(MCPServer[AppContext]):
             return await super().call_tool(name, arguments, context)
         except UnexpectedToolError as exc:
             cause = exc.__cause__
-            public_error = (
-                classify_public_tool_error(name, cause) if cause is not None else None
-            )
+            public_error = classify_public_tool_error(name, cause) if cause is not None else None
             if public_error is None:
                 raise
             return _public_tool_error_result(public_error)
