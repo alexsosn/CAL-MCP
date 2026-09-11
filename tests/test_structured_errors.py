@@ -275,3 +275,18 @@ async def test_explicit_not_found_remains_success(
     assert result.structured_content is not None
     assert result.structured_content["status"] == "not_found"
     assert result.structured_content["candidates"] == []
+
+
+@pytest.mark.anyio
+async def test_all_public_output_schemas_admit_shared_structured_error_payload() -> None:
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        listed = await client.list_tools()
+
+    assert listed.tools
+    for tool in listed.tools:
+        schema = tool.output_schema
+        assert schema is not None, tool.name
+        assert schema.get("type") == "object", tool.name
+        assert not schema.get("required"), tool.name
+        additional = schema.get("additionalProperties", True)
+        assert additional is True or additional == {}, tool.name
