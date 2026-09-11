@@ -288,3 +288,10 @@ After merge, confirm #108 closes and update reachability documentation/umbrella 
 ## CAL load impact
 
 Focused live research is complete at three fixed raw requests plus indexed-page inspection; normal CI is offline. Production performs at most one new logical CAL request per explicit line-comments call. No comment-page link is followed automatically, no corpus enumeration occurs, and no background polling/crawl is introduced.
+
+## Implementation evidence
+
+- Valid test-only RED: `edd431ae195dfd49a2f26876b1b58a8d9d4c1895`, CI run `34509300660`; dependency/static/type gates passed in both matrices and pytest failed only on the new line-comments contract (862 existing tests passed, 32 expected failures).
+- Review-regression RED: `888d3924539f29d5180fec5eada364a14d0bcc90`, CI run `34530007920`; static/type gates passed and the remaining failures isolated release/docs synchronization plus the challenged returned-lemma behavior.
+- Focused implementation/release/docs GREEN: workflow run `34572934388` applied the narrowed patch, removed its temporary harness before validation, passed install, Ruff lint/format, strict mypy, and the complete pytest suite, then committed product/docs head `341ff3cb8a4594b08795a5ec191e90f4ef11678f`.
+- The final merge candidate must still pass the ordinary deterministic + latest-compatible CI matrices on a non-Actions-authored exact head and then receive a fresh logically independent adversarial review.
