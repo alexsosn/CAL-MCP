@@ -1,6 +1,6 @@
 # CAL text discovery, metadata, and page retrieval
 
-CAL-MCP exposes four bounded tools for discovering CAL texts, retrieving CAL's explicit text-information metadata, and reading one rendered text page at a time. These tools adapt CAL's current public text interfaces; they do not create a local corpus, crawl categories, follow pagination automatically, follow metadata links, or call CAL's token-analysis endpoint.
+CAL-MCP exposes five bounded tools for discovering CAL texts, retrieving CAL's explicit text-information metadata, reading one rendered text page at a time, and explicitly retrieving CAL line comments/translations. These tools adapt CAL's current public text interfaces; they do not create a local corpus, crawl categories, follow pagination automatically, follow metadata links, or call CAL's token-analysis endpoint.
 
 ## Which tool to use
 
@@ -10,6 +10,7 @@ CAL-MCP exposes four bounded tools for discovering CAL texts, retrieving CAL's e
 | Expand one catalogue category returned by CAL | `cal_text_catalogue(category_id=...)` |
 | Find CAL texts by the topic/search phrase accepted by CAL | `cal_text_search(query)` |
 | Retrieve CAL's detailed source/edition/editorial notes for one text or subtext | `cal_text_information(file_id, subtext_id=None)` |
+| Retrieve CAL citations/comments/translations for one returned line coordinate | `cal_text_line_comments(coordinate)` |
 | Retrieve one CAL text page | `cal_text_page(file_id, subtext_id=None, page=1)` |
 
 The identifiers returned by these tools are CAL identifiers, not CAL-MCP identifiers. See [`../concepts/cal-identifiers.md`](../concepts/cal-identifiers.md).
@@ -97,6 +98,22 @@ Only that recognized semantic state maps to `status: "not_found"`. An HTTP-succe
 
 This operation is an explicit scholarly-provenance follow-up. `cal_text_catalogue`, `cal_text_search`, and `cal_text_page` do not prefetch it.
 
+## `cal_text_line_comments`
+
+```text
+cal_text_line_comments(coordinate: string)
+```
+
+Use the exact `coordinate` returned on a caller-selected `TextLine` from `cal_text_page`. CAL line coordinates are opaque ASCII-alphanumeric identifiers on this route; CAL-MCP accepts 1–64 ASCII letters/digits and does not accept a `comment_url`, arbitrary CAL path, or arbitrary query selectors.
+
+One explicit call submits at most one new logical CAL request. A completed cache hit performs zero new upstream I/O. Returned lexicon-entry links are validated and preserved as metadata but are never followed automatically.
+
+The result contains `status: "found" | "no_citations"`, the requested coordinate, ordered `records`, and provenance. Each found record preserves CAL's rendered reference, optional source citation text, optional translation/comment text, the opaque returned `lemma_key`, rendered headword, optional part of speech, optional gloss, and validated same-origin entry URL.
+
+CAL's exact `NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED` state maps to `no_citations` with an empty record list. It does **not** map to `not_found`: current CAL returns the same state for a deliberately invalid coordinate, so this endpoint alone cannot prove whether the line exists.
+
+Malformed response identity, contradictory empty-state/content combinations, structurally incomplete records, foreign or malformed entry links, repeated/empty lemma selectors, and unrecognized successful markup fail closed as parser drift. `cal_text_page` does not prefetch comments for any line.
+
 ## `cal_text_page`
 
 ```text
@@ -138,7 +155,7 @@ A found page has a `text` reference plus ordered `lines`. Each line preserves th
 - `display_coordinate`: the rendered scholarly line/page locator when CAL supplies one;
 - `text`: the rendered text of that line;
 - `tokens`: ordered linked tokens, each with the CAL machine coordinate, zero-based CAL `word_index`, rendered token text, and absolute `lexical_url`;
-- `comment_url`: CAL's line-comment URL when CAL renders one.
+- `comment_url`: CAL's line-comment URL when CAL renders one; use the returned line `coordinate` with `cal_text_line_comments` for an explicit MCP-native follow-up.
 
 CAL currently exposes lexical token links through more than one endpoint family, including `bablex.php` and `getlex.php`. CAL-MCP preserves whichever lexical URL the page supplies and applies the same coordinate/word-index validation to both. It does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
 
@@ -162,6 +179,7 @@ The operation-level bounds remain:
 - no recursive catalogue expansion or specialized-collection prefetch;
 - no automatic traversal to previous/next pages;
 - no automatic text-information lookup from discovery/page results;
+- no automatic line-comment lookup from page results;
 - no metadata-link traversal;
 - no route-discovery request before Mandaic page retrieval;
 - no `show all` request;
@@ -173,13 +191,13 @@ The shared HTTP client still applies its timeout, origin, redirect, concurrency,
 
 ## Provenance
 
-Text results include adapter provenance with the CAL source URL and timezone-aware retrieval timestamp. Depending on the operation, provenance also records the requested `file_id`, `subtext_id`, `category_id`, one-based page, or original/submitted search query.
+Text results include adapter provenance with the CAL source URL and timezone-aware retrieval timestamp. Depending on the operation, provenance also records the requested `file_id`, `subtext_id`, `category_id`, one-based page, line coordinate, or original/submitted search query.
 
 Returned CAL identifiers and coordinates should be stored together with that provenance. CAL-MCP preserves them for faithful follow-up calls but does not promise that CAL will keep an identifier stable forever.
 
 ## Fixture-backed examples
 
-Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract. Representative cases include:
+Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract and the 2026-09-10 line-comments contract. Representative cases include:
 
 - root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
 - root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;

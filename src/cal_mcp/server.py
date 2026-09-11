@@ -51,7 +51,9 @@ mcp = MCPServer(
         "text/category identifiers, cal_text_search to find texts by topic, cal_text_page "
         "to retrieve one bounded CAL text page, and cal_text_information to retrieve CAL's "
         "explicit source, edition, editorial, and other free-form Text Information metadata "
-        "for one returned file/subtext identifier. Use cal_token_analysis for every CAL lexical "
+        "for one returned file/subtext identifier. Use cal_text_line_comments with one "
+        "returned TextLine.coordinate for CAL line comments/translations. Use "
+        "cal_token_analysis for every CAL lexical "
         "analysis attached to one explicit text coordinate and zero-based token index. "
         "Use cal_text_concordance for one text's ordered lemma-frequency index, cal_kwic_texts "
         "for one lemma in 1-8 explicit texts, cal_kwic_dialects to discover CAL's current "
@@ -280,6 +282,28 @@ async def cal_text_information(
 
     client = ctx.request_context.lifespan_context.client
     result = await TextService(client).information(file_id, subtext_id=subtext_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_text_line_comments",
+    title="Retrieve CAL line comments and translations",
+    structured_output=True,
+)
+async def cal_text_line_comments(
+    coordinate: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Retrieve CAL's citations/comments/translations for one explicit line coordinate.
+
+    Pass a ``coordinate`` already returned by ``cal_text_page``. Arbitrary URLs are
+    not accepted, returned lexicon-entry links are not followed, and one explicit call
+    submits at most one new logical CAL request. A completed cache hit performs no new
+    upstream I/O.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TextService(client).line_comments(coordinate)
     return result.to_dict()
 
 

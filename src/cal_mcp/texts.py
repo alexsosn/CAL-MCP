@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import (
@@ -17,6 +18,7 @@ from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
 _ID_RE = re.compile(r"^\d+$")
+_LINE_COMMENT_COORD_RE = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _PAGE_MARKER_RE = re.compile(
     r"^Page\s+(?P<page>\d+)\s+of\s+(?P<count>\d+)\s+"
     r"\((?P<total>\d+)\s+lines total\)$",
@@ -27,6 +29,8 @@ _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
+_LINE_COMMENTS_EMPTY_MARKER = "NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED"
+_LINE_COMMENTS_IGNORED_TAGS = frozenset({"script", "style"})
 _MANDAIC_COLLECTION_PREFIX = "74"
 _MANDAIC_CATEGORY_ID = "74"
 _MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
@@ -74,6 +78,11 @@ class TextPageStatus(StrEnum):
 class TextInformationStatus(StrEnum):
     FOUND = "found"
     NOT_FOUND = "not_found"
+
+
+class TextLineCommentsStatus(StrEnum):
+    FOUND = "found"
+    NO_CITATIONS = "no_citations"
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +152,24 @@ class TextSearchPage:
 class TextInformationPage:
     status: TextInformationStatus
     metadata: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class TextLineCommentRecord:
+    reference: str
+    source_text: str | None
+    translation: str | None
+    lemma_key: str
+    headword: str
+    part_of_speech: str | None
+    gloss: str | None
+    entry_url: str
+
+
+@dataclass(frozen=True, slots=True)
+class TextLineCommentsPage:
+    status: TextLineCommentsStatus
+    records: tuple[TextLineCommentRecord, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,6 +246,329 @@ class TextInformationResult:
             "metadata": list(self.metadata),
             "provenance": _provenance_to_dict(self.provenance),
         }
+
+
+@dataclass(frozen=True, slots=True)
+class TextLineCommentsResult:
+    status: TextLineCommentsStatus
+    coordinate: str
+    records: tuple[TextLineCommentRecord, ...]
+    provenance: TextProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "status": self.status.value,
+            "coordinate": self.coordinate,
+            "records": [_line_comment_record_to_dict(item) for item in self.records],
+            "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
+class _LineCommentRecordBuilder:
+    def __init__(self) -> None:
+        self.all_parts: list[str] = []
+        self.reference_parts: list[str] = []
+        self.reference_count = 0
+        self.spans: list[tuple[str, list[str]]] = []
+        self.br_count = 0
+        self.before_entry_parts: list[str] = []
+        self.links: list[tuple[str, list[str]]] = []
+        self.pos_parts: list[str] = []
+        self.gloss_parts: list[str] = []
+        self.gloss_count = 0
+        self.trailing_parts: list[str] = []
+        self.events: list[str] = []
+
+
+class _LineCommentsHTMLParser(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.titles: list[str] = []
+        self.records: list[_LineCommentRecordBuilder] = []
+        self.summary_count = 0
+        self._summary_depth = 0
+        self._title_parts: list[str] | None = None
+        self._record: _LineCommentRecordBuilder | None = None
+        self._span_parts: list[str] | None = None
+        self._anchor_href: str | None = None
+        self._anchor_parts: list[str] | None = None
+        self._in_reference = False
+        self._in_gloss = False
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._ignored_depth:
+            self._ignored_depth += 1
+            return
+        if tag in _LINE_COMMENTS_IGNORED_TAGS:
+            self._ignored_depth = 1
+            return
+
+        attr_map = dict(attrs)
+        if tag == "title":
+            if self._title_parts is not None:
+                raise TextParseError("CAL line-comments page has malformed nested title markup")
+            self._title_parts = []
+            return
+
+        if tag == "div":
+            classes = (attr_map.get("class") or "").split()
+            if "summary-card" in classes:
+                if self._summary_depth:
+                    raise TextParseError("CAL line-comments page has nested summary cards")
+                self.summary_count += 1
+                self._summary_depth = 1
+            elif self._summary_depth:
+                self._summary_depth += 1
+            return
+
+        if not self._summary_depth:
+            return
+        if tag == "p":
+            if self._record is not None:
+                raise TextParseError("CAL line-comments summary contains nested records")
+            self._record = _LineCommentRecordBuilder()
+            return
+        if self._record is None:
+            return
+
+        if tag == "span":
+            if self._span_parts is not None or self._anchor_parts is not None:
+                raise TextParseError("CAL line-comments record has malformed span nesting")
+            span_class = attr_map.get("class") or ""
+            parts: list[str] = []
+            self._record.spans.append((span_class, parts))
+            self._record.events.append(f"span:{span_class}")
+            self._span_parts = parts
+            return
+        if tag == "br":
+            self._record.br_count += 1
+            self._record.events.append("br")
+            return
+        if tag == "a":
+            if self._anchor_parts is not None:
+                raise TextParseError("CAL line-comments record has nested lexical links")
+            href = attr_map.get("href") or ""
+            parts = []
+            self._record.links.append((href, parts))
+            self._record.events.append("anchor")
+            self._anchor_href = href
+            self._anchor_parts = parts
+            return
+        if tag == "b":
+            if self._in_gloss:
+                raise TextParseError("CAL line-comments record has nested gloss markup")
+            self._record.gloss_count += 1
+            self._record.events.append("gloss")
+            self._in_gloss = True
+            return
+        if tag == "i" and self._anchor_parts is None:
+            self._record.reference_count += 1
+            self._record.events.append("reference")
+            self._in_reference = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            self._ignored_depth -= 1
+            return
+
+        if tag == "title" and self._title_parts is not None:
+            self.titles.append(_clean_text("".join(self._title_parts)))
+            self._title_parts = None
+            return
+
+        if tag == "p" and self._record is not None:
+            if (
+                self._span_parts is not None
+                or self._anchor_parts is not None
+                or self._in_reference
+                or self._in_gloss
+            ):
+                raise TextParseError(
+                    "CAL line-comments record closes with unfinished semantic markup"
+                )
+            self.records.append(self._record)
+            self._record = None
+            self._in_reference = False
+            return
+        if tag == "span" and self._span_parts is not None:
+            self._span_parts = None
+            return
+        if tag == "a" and self._anchor_parts is not None:
+            self._anchor_href = None
+            self._anchor_parts = None
+            return
+        if tag == "b" and self._in_gloss:
+            self._in_gloss = False
+            return
+        if tag == "i" and self._in_reference:
+            self._in_reference = False
+            return
+        if tag == "div" and self._summary_depth:
+            self._summary_depth -= 1
+
+    def close(self) -> None:
+        super().close()
+        if (
+            self._record is not None
+            or self._summary_depth
+            or self._ignored_depth
+            or self._span_parts is not None
+            or self._anchor_parts is not None
+            or self._in_reference
+            or self._in_gloss
+            or self._title_parts is not None
+        ):
+            raise TextParseError("CAL line-comments page ends with unfinished semantic markup")
+
+    def handle_data(self, data: str) -> None:
+        if self._ignored_depth:
+            return
+        if self._title_parts is not None:
+            self._title_parts.append(data)
+        record = self._record
+        if record is None:
+            return
+        record.all_parts.append(data)
+        if self._anchor_parts is not None:
+            self._anchor_parts.append(data)
+        elif self._span_parts is not None:
+            self._span_parts.append(data)
+        elif self._in_gloss:
+            record.gloss_parts.append(data)
+        elif self._in_reference:
+            record.reference_parts.append(data)
+        elif record.br_count and not record.links:
+            record.before_entry_parts.append(data)
+        elif record.links:
+            if record.gloss_count:
+                record.trailing_parts.append(data)
+            else:
+                record.pos_parts.append(data)
+
+
+def parse_text_line_comments_page(
+    response: CalResponse,
+    *,
+    requested_coordinate: str,
+) -> TextLineCommentsPage:
+    coordinate = _validate_line_comment_coordinate(requested_coordinate)
+    _validate_line_comment_response_url(response.url, coordinate)
+
+    parser = _LineCommentsHTMLParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+
+    expected_title = f"CAL: citations and comments for {coordinate}"
+    if parser.titles != [expected_title]:
+        raise TextParseError("CAL line-comments title does not uniquely match the request")
+    if parser.summary_count != 1:
+        raise TextParseError("CAL line-comments page lacks one unique summary card")
+    if not parser.records:
+        raise TextParseError("CAL line-comments summary contains no semantic records")
+
+    empty_markers = 0
+    records: list[TextLineCommentRecord] = []
+    for builder in parser.records:
+        rendered = _clean_text("".join(builder.all_parts))
+        if rendered == _LINE_COMMENTS_EMPTY_MARKER:
+            empty_markers += 1
+            continue
+        records.append(_parse_line_comment_record(builder, response.url))
+
+    if empty_markers:
+        if empty_markers != 1 or records or len(parser.records) != 1:
+            raise TextParseError("CAL line-comments empty marker conflicts with summary content")
+        return TextLineCommentsPage(status=TextLineCommentsStatus.NO_CITATIONS, records=())
+    if not records:
+        raise TextParseError("CAL line-comments page contains no recognizable records")
+    return TextLineCommentsPage(status=TextLineCommentsStatus.FOUND, records=tuple(records))
+
+
+def _parse_line_comment_record(
+    builder: _LineCommentRecordBuilder,
+    source_url: str,
+) -> TextLineCommentRecord:
+    if builder.reference_count != 1:
+        raise TextParseError("CAL line-comments record lacks one unique reference")
+    if [span_class for span_class, _parts in builder.spans] != ["heb", "rom"]:
+        raise TextParseError("CAL line-comments record citation spans changed unexpectedly")
+    if builder.br_count != 1:
+        raise TextParseError("CAL line-comments record lacks one citation/entry break")
+    if len(builder.links) != 1:
+        raise TextParseError("CAL line-comments record lacks one unique lexical-entry link")
+    if builder.gloss_count > 1:
+        raise TextParseError("CAL line-comments record repeats gloss markup")
+
+    expected_events = ["reference", "span:heb", "span:rom", "br", "anchor"]
+    if builder.gloss_count:
+        expected_events.append("gloss")
+    if builder.events != expected_events:
+        raise TextParseError("CAL line-comments record semantic field order changed unexpectedly")
+    if _clean_text("".join(builder.before_entry_parts)) != "See the entire entry for":
+        raise TextParseError("CAL line-comments record lexical-entry phrase changed unexpectedly")
+    if _clean_text("".join(builder.trailing_parts)):
+        raise TextParseError("CAL line-comments record has unexpected trailing semantic content")
+
+    reference = _clean_text("".join(builder.reference_parts))
+    if not reference:
+        raise TextParseError("CAL line-comments record has an empty reference")
+    source_text = _optional_clean_text("".join(builder.spans[0][1]))
+    translation = _optional_clean_text("".join(builder.spans[1][1]))
+
+    href, headword_parts = builder.links[0]
+    entry_url, lemma_key = _validate_line_comment_entry_url(source_url, href)
+    headword = _clean_text("".join(headword_parts))
+    if not headword:
+        raise TextParseError("CAL line-comments lexical-entry link has no rendered headword")
+
+    return TextLineCommentRecord(
+        reference=reference,
+        source_text=source_text,
+        translation=translation,
+        lemma_key=lemma_key,
+        headword=headword,
+        part_of_speech=_optional_clean_text("".join(builder.pos_parts)),
+        gloss=_optional_clean_text("".join(builder.gloss_parts)),
+        entry_url=entry_url,
+    )
+
+
+def _validate_line_comment_response_url(url: str, requested_coordinate: str) -> None:
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "cal.huc.edu"
+        or parsed.path != "/comment.php"
+        or parsed.fragment
+    ):
+        raise TextParseError("CAL line-comments response has an unexpected route")
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if set(query) != {"coord"} or query.get("coord") != [requested_coordinate]:
+        raise TextParseError("CAL line-comments response coordinate contradicts the request")
+
+
+def _validate_line_comment_entry_url(source_url: str, href: str) -> tuple[str, str]:
+    resolved = urljoin(source_url, href)
+    parsed = urlsplit(resolved)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "cal.huc.edu"
+        or parsed.path != "/oneentry.php"
+        or parsed.fragment
+    ):
+        raise TextParseError("CAL line-comments lexical-entry link has an unexpected route")
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if set(query) != {"lemma", "cits"}:
+        raise TextParseError("CAL line-comments lexical-entry link has unexpected selectors")
+    lemma_values = query.get("lemma")
+    cits_values = query.get("cits")
+    if lemma_values is None or len(lemma_values) != 1 or not lemma_values[0]:
+        raise TextParseError("CAL line-comments lexical-entry link lacks one lemma selector")
+    if cits_values != ["all"]:
+        raise TextParseError("CAL line-comments lexical-entry link must request cits=all")
+
+    return resolved, lemma_values[0]
 
 
 def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
@@ -506,6 +856,37 @@ class TextService:
             ),
         )
 
+    async def line_comments(self, coordinate: str) -> TextLineCommentsResult:
+        normalized_coordinate = _validate_line_comment_coordinate(coordinate)
+
+        def parse_requested(response: CalResponse) -> TextLineCommentsPage:
+            return parse_text_line_comments_page(
+                response,
+                requested_coordinate=normalized_coordinate,
+            )
+
+        result = await self._client.fetch(
+            CalRequest(
+                method="GET",
+                path="comment.php",
+                params=(("coord", normalized_coordinate),),
+            ),
+            parser=parse_requested,
+            cache_namespace="text-line-comments-v1",
+        )
+        return TextLineCommentsResult(
+            status=result.value.status,
+            coordinate=normalized_coordinate,
+            records=result.value.records,
+            provenance=TextProvenance(
+                source="CAL",
+                source_url=result.source_url,
+                retrieved_at=result.retrieved_at,
+                operation="line_comments",
+                upstream_id=normalized_coordinate,
+            ),
+        )
+
     async def page(
         self,
         file_id: str,
@@ -574,6 +955,12 @@ class TextService:
 def _validate_id(value: str, name: str) -> str:
     if not isinstance(value, str) or _ID_RE.fullmatch(value) is None:
         raise ValueError(f"{name} must be a CAL decimal identifier")
+    return value
+
+
+def _validate_line_comment_coordinate(value: str) -> str:
+    if not isinstance(value, str) or _LINE_COMMENT_COORD_RE.fullmatch(value) is None:
+        raise ValueError("coordinate must be a 1-64 character ASCII alphanumeric CAL coordinate")
     return value
 
 
@@ -1031,6 +1418,15 @@ def _is_path(href: str, filename: str) -> bool:
     return urlsplit(href).path.endswith(filename)
 
 
+def _clean_text(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _optional_clean_text(value: str) -> str | None:
+    cleaned = _clean_text(value)
+    return cleaned or None
+
+
 def _text_ref_to_dict(text: TextRef) -> dict[str, object]:
     return {
         "file_id": text.file_id,
@@ -1075,6 +1471,19 @@ def _line_to_dict(line: TextLine) -> dict[str, object]:
     }
 
 
+def _line_comment_record_to_dict(record: TextLineCommentRecord) -> dict[str, object]:
+    return {
+        "reference": record.reference,
+        "source_text": record.source_text,
+        "translation": record.translation,
+        "lemma_key": record.lemma_key,
+        "headword": record.headword,
+        "part_of_speech": record.part_of_speech,
+        "gloss": record.gloss,
+        "entry_url": record.entry_url,
+    }
+
+
 def _text_page_to_dict(page: TextPage) -> dict[str, object]:
     return {
         "text": _text_ref_to_dict(page.text),
@@ -1110,6 +1519,10 @@ __all__ = [
     "TextInformationResult",
     "TextInformationStatus",
     "TextLine",
+    "TextLineCommentRecord",
+    "TextLineCommentsPage",
+    "TextLineCommentsResult",
+    "TextLineCommentsStatus",
     "TextPage",
     "TextPageResult",
     "TextPageStatus",
@@ -1124,6 +1537,7 @@ __all__ = [
     "parse_mandaic_catalogue_page",
     "parse_text_catalogue_page",
     "parse_text_information_page",
+    "parse_text_line_comments_page",
     "parse_text_page",
     "parse_text_search_page",
 ]
