@@ -181,7 +181,7 @@ async def test_live_smoke_client_enforces_request_budget_and_safe_config() -> No
 
         with pytest.raises(module.LiveSmokeBudgetExceeded):
             await client.fetch(
-                CalRequest(method="GET", path="test", params=(("n", "overflow")),)),
+                CalRequest(method="GET", path="test", params=(("n", "overflow"),)),
                 parser=lambda response: response.body,
                 cache_namespace="release-budget-test",
             )
