@@ -1,0 +1,197 @@
+name: Issue 108 cleanup
+
+on:
+  push:
+    branches:
+      - issue-108-line-comments
+    paths:
+      - .github/workflows/issue-108-cleanup.yml
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-108-line-comments
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+      - name: Install validation environment
+        run: |
+          python -m pip install "pip==26.2.1" "setuptools==79.0.1"
+          python -m pip install -e ".[dev]" -c constraints/ci-py311.txt --build-constraint constraints/build-py311.txt
+      - name: Apply remaining exact edits idempotently
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def ensure(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              old_count = text.count(old)
+              new_count = text.count(new)
+              if old_count == 1 and new_count == 0:
+                  p.write_text(text.replace(old, new, 1), encoding="utf-8")
+                  return
+              if old_count == 0 and new_count == 1:
+                  return
+              raise SystemExit(
+                  f"{path}: unexpected anchor state old={old_count} new={new_count}"
+              )
+
+          ensure(
+              "src/cal_mcp/texts.py",
+              "from cal_mcp.lexicon import _Line, _Link, _parse_lines\n"
+              "from cal_mcp.syriac import syriac_text_category_slugs\n",
+              "from cal_mcp.lemma_key import validate_lemma_key\n"
+              "from cal_mcp.lexicon import _Line, _Link, _parse_lines\n"
+              "from cal_mcp.syriac import syriac_text_category_slugs\n",
+          )
+          ensure(
+              "src/cal_mcp/texts.py",
+              '''        if tag == "p" and self._record is not None:
+              if self._span_parts is not None or self._anchor_parts is not None or self._in_gloss:
+                  raise TextParseError(
+                      "CAL line-comments record closes with unfinished semantic markup"
+                  )
+          ''',
+              '''        if tag == "p" and self._record is not None:
+              if (
+                  self._span_parts is not None
+                  or self._anchor_parts is not None
+                  or self._in_reference
+                  or self._in_gloss
+              ):
+                  raise TextParseError(
+                      "CAL line-comments record closes with unfinished semantic markup"
+                  )
+          ''',
+          )
+          ensure(
+              "src/cal_mcp/texts.py",
+              '''    if lemma_values is None or len(lemma_values) != 1 or not lemma_values[0]:
+              raise TextParseError("CAL line-comments lexical-entry link lacks one lemma selector")
+          if cits_values != ["all"]:
+              raise TextParseError("CAL line-comments lexical-entry link must request cits=all")
+          return resolved, lemma_values[0]
+          ''',
+              '''    if lemma_values is None or len(lemma_values) != 1 or not lemma_values[0]:
+              raise TextParseError("CAL line-comments lexical-entry link lacks one lemma selector")
+          if cits_values != ["all"]:
+              raise TextParseError("CAL line-comments lexical-entry link must request cits=all")
+
+          raw_lemma_key = lemma_values[0]
+          try:
+              _lemma, _suffix, lemma_key = validate_lemma_key(raw_lemma_key)
+          except ValueError as exc:
+              raise TextParseError(
+                  "CAL line-comments lexical-entry link returned an invalid lemma key"
+              ) from exc
+          if lemma_key != raw_lemma_key:
+              raise TextParseError(
+                  "CAL line-comments lexical-entry link returned a non-canonical lemma key"
+              )
+          return resolved, lemma_key
+          ''',
+          )
+
+          docs = Path("docs/tools/texts.md")
+          text = docs.read_text(encoding="utf-8")
+          if "## `cal_text_line_comments`" not in text:
+              text = text.replace(
+                  "CAL-MCP exposes four bounded tools for discovering CAL texts, retrieving CAL's explicit text-information metadata, and reading one rendered text page at a time.",
+                  "CAL-MCP exposes five bounded tools for discovering CAL texts, retrieving CAL's explicit text-information metadata, reading one rendered text page at a time, and explicitly retrieving CAL line comments/translations.",
+                  1,
+              )
+              text = text.replace(
+                  "| Retrieve CAL's detailed source/edition/editorial notes for one text or subtext | `cal_text_information(file_id, subtext_id=None)` |\n| Retrieve one CAL text page | `cal_text_page(file_id, subtext_id=None, page=1)` |",
+                  "| Retrieve CAL's detailed source/edition/editorial notes for one text or subtext | `cal_text_information(file_id, subtext_id=None)` |\n| Retrieve CAL citations/comments/translations for one returned line coordinate | `cal_text_line_comments(coordinate)` |\n| Retrieve one CAL text page | `cal_text_page(file_id, subtext_id=None, page=1)` |",
+                  1,
+              )
+              section = '''## `cal_text_line_comments`
+
+```text
+cal_text_line_comments(coordinate: string)
+```
+
+Use the exact `coordinate` returned on a caller-selected `TextLine` from `cal_text_page`. CAL line coordinates are opaque ASCII-alphanumeric identifiers on this route; CAL-MCP accepts 1–64 ASCII letters/digits and does not accept a `comment_url`, arbitrary CAL path, or arbitrary query selectors.
+
+One explicit call submits at most one new logical CAL request. A completed cache hit performs zero new upstream I/O. Returned lexicon-entry links are validated and preserved as metadata but are never followed automatically.
+
+The result contains `status: "found" | "no_citations"`, the requested coordinate, ordered `records`, and provenance. Each found record preserves CAL's rendered reference, optional source citation text, optional translation/comment text, canonical lemma key, rendered headword, optional part of speech, optional gloss, and validated same-origin entry URL.
+
+CAL's exact `NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED` state maps to `no_citations` with an empty record list. It does **not** map to `not_found`: current CAL returns the same state for a deliberately invalid coordinate, so this endpoint alone cannot prove whether the line exists.
+
+Malformed response identity, contradictory empty-state/content combinations, structurally incomplete records, foreign or malformed entry links, malformed/noncanonical returned lemma keys, and unrecognized successful markup fail closed as parser drift. `cal_text_page` does not prefetch comments for any line.
+
+'''
+              text = text.replace("## `cal_text_page`\n", section + "## `cal_text_page`\n", 1)
+              text = text.replace(
+                  "- `comment_url`: CAL's line-comment URL when CAL renders one.\n",
+                  "- `comment_url`: CAL's line-comment URL when CAL renders one; use the returned line `coordinate` with `cal_text_line_comments` for an explicit MCP-native follow-up.\n",
+                  1,
+              )
+              text = text.replace(
+                  "- no automatic text-information lookup from discovery/page results;\n- no metadata-link traversal;",
+                  "- no automatic text-information lookup from discovery/page results;\n- no automatic line-comment lookup from page results;\n- no metadata-link traversal;",
+                  1,
+              )
+              text = text.replace(
+                  "provenance also records the requested `file_id`, `subtext_id`, `category_id`, one-based page, or original/submitted search query.",
+                  "provenance also records the requested `file_id`, `subtext_id`, `category_id`, one-based page, line coordinate, or original/submitted search query.",
+                  1,
+              )
+              docs.write_text(text, encoding="utf-8")
+
+          server = Path("src/cal_mcp/server.py")
+          text = server.read_text(encoding="utf-8")
+          if "Use cal_text_line_comments" not in text:
+              old = (
+                  '        "explicit source, edition, editorial, and other free-form Text Information metadata "\n'
+                  '        "for one returned file/subtext identifier. Use cal_token_analysis for every CAL lexical "'
+              )
+              new = (
+                  '        "explicit source, edition, editorial, and other free-form Text Information metadata "\n'
+                  '        "for one returned file/subtext identifier. Use cal_text_line_comments with one "\n'
+                  '        "returned TextLine.coordinate for CAL line comments/translations. Use "\n'
+                  '        "cal_token_analysis for every CAL lexical "'
+              )
+              if text.count(old) != 1:
+                  raise SystemExit("unexpected server instruction anchor")
+              server.write_text(text.replace(old, new, 1), encoding="utf-8")
+          PY
+      - name: Remove temporary issue-108 scaffolding
+        run: |
+          git rm -f .github/workflows/issue-108-cleanup.yml
+          git rm -f .github/workflows/issue-108-gate3-docs.yml
+          git rm -f scripts/_finalize_issue108.py
+          git rm -f scripts/tmp_issue108_gate3.py
+      - name: Format changed production Python
+        run: ruff format src/cal_mcp/texts.py src/cal_mcp/server.py
+      - name: Focused GREEN
+        run: |
+          ruff check .
+          ruff format --check .
+          mypy
+          pytest -q \
+            tests/test_text_line_comments.py \
+            tests/test_text_line_comments_review_regressions.py \
+            tests/test_docs_contract.py \
+            tests/test_reachability_docs_contract.py \
+            tests/test_release_contract.py \
+            tests/test_release_surface_sync.py \
+            tests/test_bootstrap.py
+      - name: Commit clean finalization
+        run: |
+          git add -A
+          git diff --cached --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Finalize typed CAL line comments"
+          git push origin HEAD:issue-108-line-comments
