@@ -10,8 +10,8 @@ from mcp import Client
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.release_surface import V01_PUBLIC_TOOLS
 from cal_mcp.texts import (
-    TextCategoryRef,
     TextCatalogueResult,
+    TextCategoryRef,
     TextProvenance,
     TextService,
     TextSpecializedCollectionRef,
