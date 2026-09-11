@@ -34,11 +34,7 @@ def test_non_rendered_script_cannot_fabricate_no_citations_state() -> None:
     summary_start = '<div class="summary-card">'
     before, remainder = body.split(summary_start, 1)
     _old_summary, after = remainder.split("</div>", 1)
-    body = (
-        f"{before}{summary_start}\n"
-        f"  <p><script>{_EMPTY_MARKER}</script></p>\n"
-        f"</div>{after}"
-    )
+    body = f"{before}{summary_start}\n  <p><script>{_EMPTY_MARKER}</script></p>\n</div>{after}"
 
     with pytest.raises(TextParseError):
         parse_text_line_comments_page(_response(body), requested_coordinate=_COORDINATE)
