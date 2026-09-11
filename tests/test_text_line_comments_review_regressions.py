@@ -29,12 +29,13 @@ def test_unclosed_line_comment_reference_markup_fails_closed() -> None:
         parse_text_line_comments_page(_response(body), requested_coordinate=_COORDINATE)
 
 
-def test_non_rendered_script_cannot_fabricate_no_citations_state() -> None:
+@pytest.mark.parametrize("tag", ["script", "style"])
+def test_non_rendered_markup_cannot_fabricate_no_citations_state(tag: str) -> None:
     body = _FIXTURE.read_text(encoding="utf-8")
     summary_start = '<div class="summary-card">'
     before, remainder = body.split(summary_start, 1)
     _old_summary, after = remainder.split("</div>", 1)
-    body = f"{before}{summary_start}\n  <p><script>{_EMPTY_MARKER}</script></p>\n</div>{after}"
+    body = f"{before}{summary_start}\n  <p><{tag}>{_EMPTY_MARKER}</{tag}></p>\n</div>{after}"
 
     with pytest.raises(TextParseError):
         parse_text_line_comments_page(_response(body), requested_coordinate=_COORDINATE)
