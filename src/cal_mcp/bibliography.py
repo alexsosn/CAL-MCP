@@ -7,11 +7,12 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.concordance import _validate_lemma_key
 
 
-class BibliographyParseError(CalContentError):
+class BibliographyParseError(CalParseError):
     """Raised when CAL bibliography markup no longer exposes required semantics."""
 
 
@@ -473,14 +474,14 @@ def _is_expected_cal_target(source_url: str, href: str, filename: str) -> bool:
 
 def _prepare_single_line(value: str, name: str, *, max_length: int) -> str:
     if not isinstance(value, str):
-        raise ValueError(f"{name} must be a string")
+        raise CalInputError(f"{name} must be a string")
     candidate = value.strip(" ")
     if not candidate:
-        raise ValueError(f"{name} must not be empty")
+        raise CalInputError(f"{name} must not be empty")
     if len(candidate) > max_length:
-        raise ValueError(f"{name} must not exceed {max_length} characters")
+        raise CalInputError(f"{name} must not exceed {max_length} characters")
     if _contains_forbidden_control(candidate):
-        raise ValueError(f"{name} must be a single-line value")
+        raise CalInputError(f"{name} must be a single-line value")
     return candidate
 
 

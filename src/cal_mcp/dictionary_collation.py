@@ -7,11 +7,12 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lemma_key import validate_lemma_key
 
 
-class DictionaryCollationParseError(CalContentError):
+class DictionaryCollationParseError(CalParseError):
     """Raised when CAL dictionary-collation markup no longer exposes required semantics."""
 
 
@@ -386,24 +387,24 @@ def _parse_entry_paragraph(
 
 def _normalize_page_reference(value: str) -> str:
     if not isinstance(value, str):
-        raise ValueError("page must be a string")
+        raise CalInputError("page must be a string")
     candidate = value.strip(" ")
     if not candidate:
-        raise ValueError("page must not be empty")
+        raise CalInputError("page must not be empty")
     if len(candidate) > _MAX_PAGE_LENGTH:
-        raise ValueError(f"page must not exceed {_MAX_PAGE_LENGTH} characters")
+        raise CalInputError(f"page must not exceed {_MAX_PAGE_LENGTH} characters")
     if _contains_forbidden_control(candidate):
-        raise ValueError("page must be a single-line value")
+        raise CalInputError("page must be a single-line value")
 
     parts = candidate.split(",")
     if len(parts) > _MAX_PAGE_REFS:
-        raise ValueError(f"page must contain at most {_MAX_PAGE_REFS} references")
+        raise CalInputError(f"page must contain at most {_MAX_PAGE_REFS} references")
 
     normalized: list[str] = []
     for part in parts:
         page_ref = part.strip(" ")
         if _PAGE_REF_RE.fullmatch(page_ref) is None:
-            raise ValueError("page must contain only decimal page or volume:page references")
+            raise CalInputError("page must contain only decimal page or volume:page references")
         normalized.append(page_ref)
     return ", ".join(normalized)
 
@@ -439,7 +440,7 @@ class DictionaryCollationService:
         try:
             dictionary_source = DictionarySource(source)
         except (TypeError, ValueError) as exc:
-            raise ValueError("source must be a supported dictionary source") from exc
+            raise CalInputError("source must be a supported dictionary source") from exc
         submitted_page = _normalize_page_reference(page)
         spec = _SOURCE_SPECS[dictionary_source]
 

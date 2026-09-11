@@ -6,7 +6,8 @@ from datetime import datetime
 from enum import StrEnum
 from urllib.parse import urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lexicon import (
     LemmaRef,
     _lemma_key_from_href,
@@ -21,7 +22,7 @@ _NO_DATA_MARKER = "there is no data for this word"
 _NO_LEMMA_MARKER = "unrecognizable query or no such lemma found"
 
 
-class TokenAnalysisParseError(CalContentError):
+class TokenAnalysisParseError(CalParseError):
     """Raised when a CAL token-analysis page no longer exposes required semantics."""
 
 
@@ -203,13 +204,13 @@ class TokenAnalysisService:
 
 def _validate_coordinate(value: str) -> str:
     if not isinstance(value, str) or _COORDINATE_RE.fullmatch(value) is None:
-        raise ValueError("coordinate must be a CAL decimal machine coordinate")
+        raise CalInputError("coordinate must be a CAL decimal machine coordinate")
     return value
 
 
 def _validate_word_index(value: int) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
-        raise ValueError("word_index must be a non-negative integer")
+        raise CalInputError("word_index must be a non-negative integer")
     return value
 
 

@@ -8,11 +8,12 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.biblical import cal_biblical_book_id
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lemma_key import validate_lemma_key
 
 
-class SyriacParseError(CalContentError):
+class SyriacParseError(CalParseError):
     """Raised when CAL Syriac markup no longer exposes required semantics."""
 
 
@@ -868,25 +869,25 @@ class SyriacService:
 
 def _text_category_config(category: str) -> _TextCategoryConfig:
     if not isinstance(category, str):
-        raise ValueError("category must be a current CAL-MCP Syriac text-category slug")
+        raise CalInputError("category must be a current CAL-MCP Syriac text-category slug")
     config = _TEXT_CATEGORIES.get(category)
     if config is None:
-        raise ValueError("category must be a current CAL-MCP Syriac text-category slug")
+        raise CalInputError("category must be a current CAL-MCP Syriac text-category slug")
     return config
 
 
 def _validate_group_id(value: object) -> str:
     if type(value) is not str or not value.isdecimal() or int(value) < 1:
-        raise ValueError("group_id must be a positive decimal Syriac GROUP selector")
+        raise CalInputError("group_id must be a positive decimal Syriac GROUP selector")
     return value
 
 
 def _missing_word_path(category: str) -> str:
     if not isinstance(category, str):
-        raise ValueError("category must be a current CAL-MCP Syriac missing-word category slug")
+        raise CalInputError("category must be a current CAL-MCP Syriac missing-word category slug")
     path = _MISSING_WORD_PATHS.get(category)
     if path is None:
-        raise ValueError("category must be a current CAL-MCP Syriac missing-word category slug")
+        raise CalInputError("category must be a current CAL-MCP Syriac missing-word category slug")
     return path
 
 
@@ -896,9 +897,9 @@ def _validate_book(book: str) -> str:
 
 def _validate_positive_int(value: int, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError(f"{name} must be an integer")
+        raise CalInputError(f"{name} must be an integer")
     if value < 1 or value > 999:
-        raise ValueError(f"{name} must be between 1 and 999")
+        raise CalInputError(f"{name} must be between 1 and 999")
     return value
 
 

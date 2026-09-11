@@ -8,7 +8,8 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.normalization import InputRepresentation, normalize_query
 from cal_mcp.texts import TextLine, TextToken
@@ -32,7 +33,7 @@ _KWIC_CHARSETS = frozenset({"R", "H", "S"})
 _MAX_TEXT_IDS = 8
 
 
-class ConcordanceParseError(CalContentError):
+class ConcordanceParseError(CalParseError):
     """Raised when a CAL concordance page no longer exposes required semantics."""
 
 
@@ -715,7 +716,7 @@ class ConcordanceService:
         normalized_file = _validate_decimal_id(file_id, "file_id")
         normalized_target = _validate_decimal_id(target_coordinate, "target_coordinate")
         if not isinstance(charset, str) or charset not in _KWIC_CHARSETS:
-            raise ValueError("charset must be one of: H, R, S")
+            raise CalInputError("charset must be one of: H, R, S")
         normalized_sub = (
             None if subtext_id is None else _validate_decimal_id(subtext_id, "subtext_id")
         )
@@ -1125,15 +1126,15 @@ def _expected_kwic_heading(
 
 def _validate_lemma_key(value: str) -> tuple[str, str, str]:
     if not isinstance(value, str):
-        raise ValueError("lemma_key must be a string")
+        raise CalInputError("lemma_key must be a string")
     candidate = value.strip(" ")
     if any(char.isspace() and char != " " for char in candidate):
-        raise ValueError("lemma_key may contain only ASCII spaces")
+        raise CalInputError("lemma_key may contain only ASCII spaces")
     if candidate.count(" ") != 1:
-        raise ValueError("lemma_key must contain one CAL lemma and one key suffix")
+        raise CalInputError("lemma_key must contain one CAL lemma and one key suffix")
     lemma, suffix = candidate.rsplit(" ", 1)
     if not lemma or " " in lemma or _SUFFIX_RE.fullmatch(suffix) is None:
-        raise ValueError("lemma_key has an invalid CAL lemma/key-suffix structure")
+        raise CalInputError("lemma_key has an invalid CAL lemma/key-suffix structure")
 
     base_lemma = lemma
     if "#" in lemma:
@@ -1145,7 +1146,7 @@ def _validate_lemma_key(value: str) -> tuple[str, str, str]:
             or not homograph.isdecimal()
             or homograph.startswith("0")
         ):
-            raise ValueError("lemma_key has an invalid CAL homograph suffix")
+            raise CalInputError("lemma_key has an invalid CAL homograph suffix")
     normalize_query(base_lemma, representation=InputRepresentation.CAL_CODE)
     return lemma, suffix, f"{lemma} {suffix}"
 
@@ -1173,7 +1174,7 @@ def _cal_navigation_url(source_url: str, href: str, filename: str) -> str:
 
 def _validate_decimal_id(value: str, name: str) -> str:
     if not isinstance(value, str) or _ID_RE.fullmatch(value) is None:
-        raise ValueError(f"{name} must be a CAL decimal identifier")
+        raise CalInputError(f"{name} must be a CAL decimal identifier")
     return value
 
 
@@ -1185,19 +1186,19 @@ def _parse_decimal_id(value: str, name: str) -> str:
 
 def _validate_text_ids(values: Sequence[str]) -> tuple[str, ...]:
     if isinstance(values, (str, bytes)):
-        raise ValueError("text_ids must be a sequence of CAL decimal identifiers")
+        raise CalInputError("text_ids must be a sequence of CAL decimal identifiers")
     normalized = tuple(_validate_decimal_id(value, "text_id") for value in values)
     if not 1 <= len(normalized) <= _MAX_TEXT_IDS:
-        raise ValueError(f"text_ids must contain between 1 and {_MAX_TEXT_IDS} identifiers")
+        raise CalInputError(f"text_ids must contain between 1 and {_MAX_TEXT_IDS} identifiers")
     if len(set(normalized)) != len(normalized):
-        raise ValueError("text_ids must not contain duplicates")
+        raise CalInputError("text_ids must not contain duplicates")
     return normalized
 
 
 def _script_charset(script: str, mapping: dict[str, str], operation: str) -> str:
     if not isinstance(script, str) or script not in mapping:
         choices = ", ".join(sorted(mapping))
-        raise ValueError(f"{operation} script must be one of: {choices}")
+        raise CalInputError(f"{operation} script must be one of: {choices}")
     return mapping[script]
 
 
