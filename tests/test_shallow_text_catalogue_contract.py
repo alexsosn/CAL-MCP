@@ -148,8 +148,9 @@ async def test_catalogue_input_schema_remains_category_only() -> None:
 
 
 def test_shallow_catalogue_metadata_does_not_change_release_surface() -> None:
-    assert len(V01_PUBLIC_TOOLS) == 32
+    assert len(V01_PUBLIC_TOOLS) == 33
     assert "cal_text_catalogue" in V01_PUBLIC_TOOLS
+    assert "cal_lexicon_citation_context" in V01_PUBLIC_TOOLS
 
 
 def test_text_docs_define_shallow_metadata_without_claiming_global_completeness() -> None:
