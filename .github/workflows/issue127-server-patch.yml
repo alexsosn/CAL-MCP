@@ -1,0 +1,64 @@
+name: issue-127 server patch
+
+on:
+  push:
+    branches:
+      - issue-127-lexicon-citation-context
+    paths:
+      - .github/workflows/issue127-server-patch.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-127-lexicon-citation-context
+          fetch-depth: 0
+      - name: Register citation context tool and self-remove
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("src/cal_mcp/server.py")
+          text = path.read_text()
+
+          def replace_once(old: str, new: str, label: str) -> None:
+              global text
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one anchor, found {count}")
+              text = text.replace(old, new, 1)
+
+          replace_once(
+              "from cal_mcp.lexicon import LexiconLookupService\n",
+              "from cal_mcp.lexicon import LexiconLookupService\n"
+              "from cal_mcp.lexicon_citation_context import LexiconCitationContextService\n",
+              "citation context import",
+          )
+
+          replace_once(
+              '''        "orthographic ambiguity is searched across all bounded CAL-code variants rather than "\n        "guessed. "\n''',
+              '''        "orthographic ambiguity is searched across all bounded CAL-code variants rather than "\n        "guessed. Use cal_lexicon_citation_context with a Citation.full_coordinate returned "\n        "by cal_lexicon_lookup to retrieve that citation's bounded CAL context explicitly. "\n''',
+              "server instructions",
+          )
+
+          anchor = '''\n\n@mcp.tool(\n    name="cal_gloss_search",\n'''
+          tool = '''\n\n@mcp.tool(\n    name="cal_lexicon_citation_context",\n    title="Retrieve full context for one CAL lexicon citation",\n    structured_output=True,\n)\nasync def cal_lexicon_citation_context(\n    full_coordinate: str,\n    ctx: Context[AppContext],\n) -> dict[str, object]:\n    """Retrieve one citation context selected by a typed CAL full coordinate.\n\n    Use ``full_coordinate`` only from a linked citation returned by ``cal_lexicon_lookup``.\n    The adapter submits one bounded CAL request and never follows chapter, token, comment, or\n    source-information links automatically.\n    """\n\n    client = ctx.request_context.lifespan_context.client\n    result = await LexiconCitationContextService(client).context(full_coordinate)\n    return result.to_dict()\n'''
+          replace_once(anchor, tool + anchor, "tool insertion")
+
+          path.write_text(text)
+          PY
+          git add src/cal_mcp/server.py
+          git rm .github/workflows/issue127-server-patch.yml
+          git diff --cached --check
+          git commit -m "Register lexicon citation context tool"
+          git push origin HEAD:issue-127-lexicon-citation-context
