@@ -1,0 +1,48 @@
+name: Issue 77 minimal GREEN patch
+
+on:
+  push:
+    branches:
+      - issue-77-shallow-catalogue
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: issue-77-shallow-catalogue
+          fetch-depth: 0
+      - name: Apply exact minimal implementation and docs
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/cal_mcp/texts.py')
+          text = path.read_text(encoding='utf-8')
+          old = '''@dataclass(frozen=True, slots=True)\nclass TextCatalogueResult:\n    categories: tuple[TextCategoryRef, ...]\n    texts: tuple[TextRef, ...]\n    provenance: TextProvenance\n    specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()\n\n    def to_dict(self) -> dict[str, object]:\n        return {\n            "categories": [_category_to_dict(item) for item in self.categories],\n            "texts": [_text_ref_to_dict(item) for item in self.texts],\n            "specialized_collections": [\n                _specialized_collection_to_dict(item) for item in self.specialized_collections\n            ],\n            "provenance": _provenance_to_dict(self.provenance),\n        }\n'''
+          new = '''@dataclass(frozen=True, slots=True)\nclass TextCatalogueResult:\n    categories: tuple[TextCategoryRef, ...]\n    texts: tuple[TextRef, ...]\n    provenance: TextProvenance\n    specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()\n    recursive: bool = False\n\n    @property\n    def has_unexpanded_children(self) -> bool:\n        return bool(self.categories or self.specialized_collections)\n\n    def to_dict(self) -> dict[str, object]:\n        return {\n            "categories": [_category_to_dict(item) for item in self.categories],\n            "texts": [_text_ref_to_dict(item) for item in self.texts],\n            "specialized_collections": [\n                _specialized_collection_to_dict(item) for item in self.specialized_collections\n            ],\n            "provenance": _provenance_to_dict(self.provenance),\n            "recursive": self.recursive,\n            "has_unexpanded_children": self.has_unexpanded_children,\n        }\n'''
+          if text.count(old) != 1:
+              raise SystemExit('TextCatalogueResult patch target mismatch')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+
+          path = Path('docs/tools/texts.md')
+          text = path.read_text(encoding='utf-8')
+          old = '''On a cache miss, an explicit call submits one logical CAL request. A completed cache hit performs zero new upstream I/O. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.\n'''
+          new = '''Every catalogue result also includes two traversal facts for machine callers:\n\n- `recursive` is always `false` for the current operation: the result describes only the single CAL catalogue level explicitly requested;\n- `has_unexpanded_children` is `true` when the returned level exposes at least one ordinary `category` or `specialized_collection` that can be followed explicitly.\n\n`has_unexpanded_children=false` means only that this returned level exposes no recognized child catalogue/specialized navigation. It does not prove that CAL's corpus has been exhaustively enumerated or that no other CAL route family exists. In particular, callers must not interpret the direct root `texts` array as a corpus-global inventory when child navigation is present.\n\nOn a cache miss, an explicit call submits one logical CAL request. A completed cache hit performs zero new upstream I/O. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.\n'''
+          if text.count(old) != 1:
+              raise SystemExit('texts.md patch target mismatch')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
+      - name: Commit patch and remove helper workflow
+        run: |
+          rm .github/workflows/issue-77-green.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/cal_mcp/texts.py docs/tools/texts.md .github/workflows/issue-77-green.yml
+          git commit -m "fix: expose shallow text catalogue semantics"
+          git push origin HEAD:issue-77-shallow-catalogue
