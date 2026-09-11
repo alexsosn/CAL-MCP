@@ -10,15 +10,20 @@ The existing user documentation already distinguishes local caller validation, n
 
 ## MCP SDK behavior
 
-Current MCP Python SDK v2 documentation and source establish three relevant behaviors:
+Current MCP Python SDK v2 documentation and source establish four relevant behaviors:
 
 1. `ToolError` is an anticipated tool failure. The client receives `isError=true` plus readable text, but `structured_content` is `None`.
 2. Unexpected exceptions are intentionally sanitized to a generic `Error executing tool <name>` result, while the original exception remains available server-side as the cause of `UnexpectedToolError`.
-3. A tool may return `CallToolResult` directly. When `is_error` is true, `MCPServer` does not validate `structured_content` against the successful tool output model. The MCP protocol permits `CallToolResult` to contain both `isError=true` and structured content.
+3. A tool may return `CallToolResult` directly. When `is_error` is true, `MCPServer` does not apply the normal successful-return conversion path before returning that direct result.
+4. The **client independently validates non-null `structured_content` against the tool's declared `output_schema`**. Therefore a structured error payload is only viable while the published tool output schemas admit that payload. CAL-MCP's current public wrappers all return broad `dict[str, object]` success objects, so the candidate `{ "error": ... }` object is compatible today, but issue #84 must pin that compatibility in executable tests. A future narrower output schema must either admit the error shape explicitly or move machine-readable error metadata to another protocol field; it must not silently break error delivery.
+
+The MCP protocol itself permits `CallToolResult` to contain both `isError=true` and structured content, but `structuredContent`, when present, still has to conform to a declared `outputSchema`.
 
 Sources rechecked 2026-09-11:
 
 - https://py.sdk.modelcontextprotocol.io/servers/handling-errors/
+- https://py.sdk.modelcontextprotocol.io/clients/
+- https://py.sdk.modelcontextprotocol.io/advanced/low-level-server/
 - https://py.sdk.modelcontextprotocol.io/api/mcp/server/mcpserver/server/
 - https://py.sdk.modelcontextprotocol.io/api/mcp/server/mcpserver/tools/base/
 - https://py.sdk.modelcontextprotocol.io/api/mcp/server/mcpserver/utilities/func_metadata/
@@ -30,7 +35,7 @@ The shared request layer already has stable explicit exception classes:
 
 - `CalRequestValidationError` — rejected before transport;
 - `CalNetworkError` — transport/timeout failure;
-- `CalUpstreamError` — non-successful HTTP response, with `status_code` and `url`;
+- `CalUpstreamError` — non-successful CAL HTTP response, with `status_code` and `url`;
 - `CalContentError` — successful HTTP response unsafe to interpret;
 - `CalResponseTooLargeError` — bounded response exceeded, with `url` and configured limit.
 
@@ -64,6 +69,8 @@ A failed **known CAL-MCP operation** should remain a normal MCP tool result with
 
 The textual `content` should contain the same safe kind + diagnostic in human/model-readable form. Structured content is for programmatic clients; text remains useful to clients/models that display only content blocks.
 
+Because the SDK client validates structured results against tool `output_schema`, issue #84's tests must also assert that all current public tool output schemas remain broad enough to accept the shared structured error object. This is a public compatibility invariant for as long as structured errors are encoded in `structuredContent`.
+
 ## Retryability policy
 
 - local invalid input: `false`;
@@ -87,7 +94,7 @@ The cleanest integration point is a small CAL-specific `MCPServer` subclass or e
 - convert **allowlisted CAL-MCP exception classes** into a direct structured `CallToolResult`;
 - re-raise all unknown exceptions unchanged so SDK crash sanitization/logging remains intact.
 
-This avoids copying try/except logic into 32 public tools and automatically applies to future tools that use the same typed error classes.
+This avoids copying try/except logic into every public tool and automatically applies to future tools that use the same typed error classes.
 
 ## Shared type gaps to resolve in the plan
 
@@ -111,12 +118,14 @@ The migration must be test-driven. It should not catch arbitrary `ValueError`, `
 The first RED should prove the current user-visible defect through the in-memory MCP client, not by unit-testing a helper in isolation. Representative cases should include:
 
 - local invalid input -> structured `invalid_input`, `upstream_reached=false`, no CAL request;
+- SDK schema/argument validation -> structured `invalid_input` only when safely identifiable;
 - parser drift -> structured `parser_drift`, `upstream_reached=true`;
 - transient upstream HTTP -> structured `upstream_http`, status/source URL, retryable true;
 - response-too-large/content failure classification;
 - unexpected programming exception remains generic and has no structured CAL-MCP error payload;
 - successful explicit not-found/empty remains `isError=false`;
-- success output schemas/results are unchanged.
+- success output schemas/results are unchanged;
+- current public output schemas admit the structured error object so client-side schema validation cannot reject it.
 
 Normal tests remain offline with mock transports/monkeypatching. No CAL request is required for issue #84 research or implementation.
 
