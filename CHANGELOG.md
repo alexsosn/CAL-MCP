@@ -28,7 +28,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 - Operations are caller-initiated and bounded. Most public calls perform one CAL request; successful exact lexicon lookup uses a bounded two-request browser + selected-entry flow.
 - No background crawl, mirror, cache warming, hidden pagination, link traversal, or automatic source expansion. KWIC full-context and text-line comments/translations retrieval are separate explicit caller actions over typed selectors/coordinates returned by prior calls.
 - `cal_text_line_comments` distinguishes `found` from CAL's explicit `no_citations` state; `no_citations` does not claim that the requested coordinate exists as a text line.
-- Line-comment parsing excludes non-rendered script/style content from semantic markers and rejects nested semantic result cards instead of accepting structurally ambiguous HTML.
+- Line-comment parsing excludes non-rendered script/style content from semantic markers, rejects nested semantic result cards, and fails closed on truncated records or unfinished semantic containers instead of returning partial success.
 - The shared client enforces finite timeouts, low concurrency, bounded transient-only retries, redirect/origin boundaries, response-size limits, single-flight suppression, and a bounded process-local cache.
 - Parsers fail closed on material upstream drift rather than returning plausible partial results.
 
