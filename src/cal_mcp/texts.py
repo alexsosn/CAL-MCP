@@ -192,7 +192,10 @@ class TextCatalogueResult:
     texts: tuple[TextRef, ...]
     provenance: TextProvenance
     specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()
-    recursive: bool = False
+
+    @property
+    def recursive(self) -> bool:
+        return False
 
     @property
     def has_unexpanded_children(self) -> bool:
