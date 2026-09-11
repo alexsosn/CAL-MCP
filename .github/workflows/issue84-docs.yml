@@ -1,0 +1,91 @@
+name: Issue 84 architecture docs
+
+on:
+  push:
+    branches:
+      - feat/issue-84-structured-errors
+    paths:
+      - .github/workflows/issue84-docs.yml
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-84-structured-errors
+          fetch-depth: 0
+      - name: Update architecture records and self-remove
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(name: str, old: str, new: str) -> None:
+              path = Path(name)
+              text = path.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f"{name}: expected one anchor, found {text.count(old)}")
+              path.write_text(text.replace(old, new, 1))
+
+          replace_once(
+              "wiki/architecture.md",
+              "      POLICY[request_policy.py\\nbounded cache policy]\n",
+              "      POLICY[request_policy.py\\nbounded cache policy]\n      ERRORS[errors.py\\npublic known-failure taxonomy]\n",
+          )
+          replace_once(
+              "wiki/architecture.md",
+              "    HTTP --> POLICY\n    HTTP --> CAL\n",
+              "    HTTP --> POLICY\n    Surfaces --> ERRORS\n    SERVER --> ERRORS\n    HTTP --> CAL\n",
+          )
+          replace_once(
+              "wiki/architecture.md",
+              "- dispatch each tool to one coherent task-level adapter/service;\n",
+              "- dispatch each tool to one coherent task-level adapter/service;\n- convert only explicitly typed, anticipated CAL-MCP failures into structured MCP `isError` results while leaving unexpected crashes on the SDK's generic sanitized path;\n",
+          )
+          replace_once(
+              "wiki/architecture.md",
+              "- `request_policy.py` — bounded process-local completed-result cache primitives.\n",
+              "- `request_policy.py` — bounded process-local completed-result cache primitives;\n- `errors.py` — shared caller-input/parser bases plus the allowlisted public error classifier used only at the MCP boundary.\n",
+          )
+          replace_once(
+              "wiki/architecture.md",
+              "    M-->>A: structured MCP response\n",
+              "    M-->>A: structured success or allowlisted structured error\n",
+          )
+          replace_once(
+              "wiki/architecture.md",
+              "Do not collapse these into a generic “no result.”\n",
+              "Do not collapse these into a generic “no result.” Anticipated typed failures cross the MCP boundary as structured `isError` results; unexpected programming/SDK failures remain generically sanitized by the MCP SDK rather than being reclassified as CAL failures.\n",
+          )
+          replace_once(
+              "wiki/architecture.md",
+              "├── dictionary_collation.py\n├── external_citations.py\n",
+              "├── dictionary_collation.py\n├── errors.py\n├── external_citations.py\n",
+          )
+
+          replace_once(
+              "wiki/testing.md",
+              "- typed errors map to stable, useful MCP errors/results;\n",
+              "- anticipated typed CAL-MCP failures return stable structured `isError` payloads with kind, operation, retryability, honest upstream reachability, and only typed safe metadata;\n- unexpected programming failures remain on the SDK's generic sanitizer and do not leak arbitrary exception text or receive a misleading CAL-MCP error kind;\n- successful empty/not-found states remain successful structured results;\n- every public tool output schema continues to admit the shared structured error payload;\n",
+          )
+
+          decisions = Path("wiki/decisions.md")
+          text = decisions.read_text()
+          if "## D-013 — Anticipated CAL-MCP failures use structured MCP errors" in text:
+              raise SystemExit("decision already present")
+          text += '''\n\n## D-013 — Anticipated CAL-MCP failures use structured MCP errors\n\n**Status:** accepted — 2026-09-11\n\nKnown caller-validation, CAL network/HTTP, response-size/content-policy, and parser-drift failures cross the public MCP boundary as `isError=true` results with a stable machine-readable `error` object. Unexpected programming failures and unknown SDK/protocol errors remain on the MCP SDK's generic sanitized error path.\n\nConsequences:\n\n- public callers can distinguish correction/retry/drift actions without parsing human error strings;\n- `upstream_reached` is false only for known local rejection, true only after a response is known, and null for ambiguous network receipt;\n- retryability follows the existing bounded request policy rather than inventing a second retry taxonomy;\n- URLs/status codes are exposed only from explicitly typed metadata, never scraped from arbitrary exception text;\n- public diagnostics are one-line and bounded, and response bodies/HTML/tracebacks are never part of the error contract;\n- successful empty/not-found states remain normal success results;\n- adding a new public error class requires an explicit allowlist/classifier decision and contract coverage rather than a catch-all serializer.\n'''
+          decisions.write_text(text)
+          PY
+          git add wiki/architecture.md wiki/testing.md wiki/decisions.md
+          git rm .github/workflows/issue84-docs.yml
+          git diff --cached --check
+          git commit -m "docs: record structured error boundary architecture"
+          git push origin HEAD:feat/issue-84-structured-errors
