@@ -28,15 +28,47 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          path = Path("src/cal_mcp/lexicon.py")
-          text = path.read_text()
-          old = "from cal_mcp.errors import CalParseError\n"
-          new = "from cal_mcp.errors import CalInputError, CalParseError\n"
-          if text.count(old) != 1:
-              raise SystemExit("lexicon error import anchor changed")
-          path.write_text(text.replace(old, new, 1))
+          replacements = {
+              "src/cal_mcp/bibliography.py": (
+                  "from cal_mcp.client import CalHttpClient, CalRequest, CalResponse\n"
+                  "from cal_mcp.errors import CalInputError, CalParseError\n"
+                  "from cal_mcp.concordance import _validate_lemma_key\n",
+                  "from cal_mcp.client import CalHttpClient, CalRequest, CalResponse\n"
+                  "from cal_mcp.concordance import _validate_lemma_key\n"
+                  "from cal_mcp.errors import CalInputError, CalParseError\n",
+              ),
+              "src/cal_mcp/lemma_key.py": (
+                  "from __future__ import annotations\n\n"
+                  "from cal_mcp.errors import CalInputError\n\n"
+                  "import re\n\n"
+                  "from cal_mcp.normalization import InputRepresentation, normalize_query\n",
+                  "from __future__ import annotations\n\n"
+                  "import re\n\n"
+                  "from cal_mcp.errors import CalInputError\n"
+                  "from cal_mcp.normalization import InputRepresentation, normalize_query\n",
+              ),
+              "src/cal_mcp/targum.py": (
+                  "from cal_mcp.biblical import cal_biblical_book_id\n"
+                  "from cal_mcp.client import CalHttpClient, CalRequest, CalResponse\n"
+                  "from cal_mcp.errors import CalInputError, CalParseError\n"
+                  "from cal_mcp.concordance import _validate_lemma_key\n",
+                  "from cal_mcp.biblical import cal_biblical_book_id\n"
+                  "from cal_mcp.client import CalHttpClient, CalRequest, CalResponse\n"
+                  "from cal_mcp.concordance import _validate_lemma_key\n"
+                  "from cal_mcp.errors import CalInputError, CalParseError\n",
+              ),
+              "src/cal_mcp/lexicon.py": (
+                  "from cal_mcp.errors import CalParseError\n",
+                  "from cal_mcp.errors import CalInputError, CalParseError\n",
+              ),
+          }
+          for name, (old, new) in replacements.items():
+              path = Path(name)
+              text = path.read_text()
+              if text.count(old) != 1:
+                  raise SystemExit(f"{name}: import anchor changed")
+              path.write_text(text.replace(old, new, 1))
           PY
-          ruff check --fix src/cal_mcp/bibliography.py src/cal_mcp/lemma_key.py src/cal_mcp/targum.py
           git add src/cal_mcp/bibliography.py src/cal_mcp/lemma_key.py src/cal_mcp/lexicon.py src/cal_mcp/targum.py
           git rm .github/workflows/issue84-lint-cleanup.yml
           git diff --cached --check
