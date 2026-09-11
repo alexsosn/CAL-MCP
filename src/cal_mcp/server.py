@@ -3,15 +3,20 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from typing import Any
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver import Context
+from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
+from mcp.types import CallToolResult, InputRequiredResult, TextContent
+from pydantic import ValidationError
 
 from cal_mcp import __version__
 from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalHttpClient
 from cal_mcp.concordance import ConcordanceService
 from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
+from cal_mcp.errors import PublicErrorKind, PublicToolError, classify_public_tool_error
 from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
 from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
@@ -27,6 +32,64 @@ class AppContext:
     client: CalHttpClient
 
 
+def _public_tool_error_result(error: PublicToolError) -> CallToolResult:
+    return CallToolResult(
+        content=[
+            TextContent(
+                type="text",
+                text=f"{error.operation}: {error.kind.value}: {error.message}",
+            )
+        ],
+        structured_content=error.to_dict(),
+        is_error=True,
+    )
+
+
+def _sdk_validation_message(error: ValidationError) -> str:
+    fields = sorted(
+        {
+            ".".join(str(part) for part in item["loc"])
+            for item in error.errors()
+            if item.get("loc")
+        }
+    )
+    if not fields:
+        return "Invalid tool arguments"
+    return f"Invalid tool arguments: {', '.join(fields)}"
+
+
+class CalMCPServer(MCPServer[AppContext]):
+    async def call_tool(
+        self,
+        name: str,
+        arguments: dict[str, Any],
+        context: Context[AppContext, Any] | None = None,
+    ) -> CallToolResult | InputRequiredResult:
+        try:
+            return await super().call_tool(name, arguments, context)
+        except UnexpectedToolError as exc:
+            cause = exc.__cause__
+            public_error = (
+                classify_public_tool_error(name, cause) if cause is not None else None
+            )
+            if public_error is None:
+                raise
+            return _public_tool_error_result(public_error)
+        except ToolError as exc:
+            cause = exc.__cause__
+            if not isinstance(cause, ValidationError):
+                raise
+            return _public_tool_error_result(
+                PublicToolError(
+                    kind=PublicErrorKind.INVALID_INPUT,
+                    operation=name,
+                    upstream_reached=False,
+                    retryable=False,
+                    message=_sdk_validation_message(cause),
+                )
+            )
+
+
 @asynccontextmanager
 async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppContext]:
     client = CalHttpClient()
@@ -36,7 +99,7 @@ async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppConte
         await client.aclose()
 
 
-mcp = MCPServer(
+mcp = CalMCPServer(
     "cal-mcp",
     description="Read-only MCP adapter for the Comprehensive Aramaic Lexicon.",
     instructions=(
