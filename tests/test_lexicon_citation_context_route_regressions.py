@@ -52,3 +52,22 @@ def test_nested_token_endpoint_lookalike_fails_closed() -> None:
             _response(html),
             requested_full_coordinate="31000424",
         )
+
+
+def test_unlinked_rendered_text_is_preserved_in_line_text() -> None:
+    html = (_FIXTURES / "lexicon_citation_context_ezra_4_24.html").read_text(encoding="utf-8")
+    html = html.replace(
+        '<a href="getlex.php?coord=31000424&word=0">target-one</a>\n      '
+        '<a href="getlex.php?coord=31000424&word=1">target-two</a>',
+        '<a href="getlex.php?coord=31000424&word=0">target-one</a> — unlinked-note '
+        '<a href="getlex.php?coord=31000424&word=1">target-two</a>',
+        1,
+    )
+
+    page = parse_lexicon_citation_context_page(
+        _response(html),
+        requested_full_coordinate="31000424",
+    )
+
+    target = next(line for line in page.lines if line.coordinate == "31000424")
+    assert target.text == "target-one — unlinked-note target-two"
