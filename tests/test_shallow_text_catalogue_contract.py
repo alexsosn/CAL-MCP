@@ -134,6 +134,16 @@ def test_specialized_collection_counts_as_unexpanded_navigation() -> None:
     assert payload["has_unexpanded_children"] is True
 
 
+def test_recursive_state_cannot_be_overridden_in_result_construction() -> None:
+    with pytest.raises(TypeError):
+        TextCatalogueResult(
+            categories=(),
+            texts=(),
+            provenance=_provenance(),
+            recursive=True,  # type: ignore[call-arg]
+        )
+
+
 @pytest.mark.anyio
 async def test_catalogue_input_schema_remains_category_only() -> None:
     server_module = importlib.import_module("cal_mcp.server")
