@@ -6,10 +6,10 @@ First standalone release candidate for CAL-MCP, a read-only MCP adapter over the
 
 ### Public MCP surface
 
-v0.1.0 freezes **32 public tools** across these research families:
+v0.1.0 freezes **33 public tools** across these research families:
 
 - deterministic conversion from supported Aramaic-script/Unicode inputs to CAL code;
-- lexicon lookup;
+- lexicon lookup plus explicit linked-citation full context via `cal_lexicon_citation_context`;
 - English gloss search, structured gloss-field extraction, and citation-text search;
 - text catalogue/topic discovery, one-page retrieval, explicit text-information metadata, and explicit line comments/translations via `cal_text_line_comments`;
 - token-at-coordinate lexical analysis;
@@ -26,7 +26,8 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 
 - CAL data stay remote and live; no CAL corpus or lexicon is bundled in the package.
 - Operations are caller-initiated and bounded. Most public calls perform one CAL request; successful exact lexicon lookup uses a bounded two-request browser + selected-entry flow.
-- No background crawl, mirror, cache warming, hidden pagination, link traversal, or automatic source expansion. KWIC full-context and text-line comments/translations retrieval are separate explicit caller actions over typed selectors/coordinates returned by prior calls.
+- No background crawl, mirror, cache warming, hidden pagination, link traversal, or automatic source expansion. Lexicon citation context, KWIC full-context, and text-line comments/translations retrieval are separate explicit caller actions over typed selectors/coordinates returned by prior calls.
+- `cal_lexicon_citation_context` accepts only the typed positive-decimal `full_coordinate` exposed for canonical linked lexicon citations; it does not accept arbitrary URLs or locally decode the opaque coordinate.
 - `cal_text_line_comments` distinguishes `found` from CAL's explicit `no_citations` state; `no_citations` does not claim that the requested coordinate exists as a text line.
 - Line-comment parsing excludes non-rendered script/style content from semantic markers, rejects nested semantic result cards, and fails closed on truncated records or unfinished semantic containers instead of returning partial success.
 - The shared client enforces finite timeouts, low concurrency, bounded transient-only retries, redirect/origin boundaries, response-size limits, single-flight suppression, and a bounded process-local cache.
@@ -42,7 +43,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 
 ### Release and drift validation
 
-- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 32-tool schema without contacting CAL.
+- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 33-tool schema without contacting CAL.
 - Deterministic CI and release validation use committed Python 3.11 target/build constraints with exact-environment verification; a separate latest-compatible job checks the broad dependency ranges declared for downstream users.
 - Those deterministic constraints are validation inputs only; downstream package metadata retains the reviewed broad runtime dependency ranges.
 - A separate live drift smoke is opt-in/scheduled and capped at **9 CAL requests**, concurrency 1, retries 0, cache disabled.
