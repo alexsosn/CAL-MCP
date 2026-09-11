@@ -71,9 +71,10 @@ def test_release_verifier_frozen_tool_surface_matches_current_public_tools() -> 
     module = _load_verifier()
 
     assert module.V01_PUBLIC_TOOLS is V01_PUBLIC_TOOLS
-    assert len(V01_PUBLIC_TOOLS) == 32
+    assert len(V01_PUBLIC_TOOLS) == 33
     assert {
         "cal_convert_to_code",
+        "cal_lexicon_citation_context",
         "cal_gloss_field",
         "cal_text_information",
         "cal_kwic_full_context",
