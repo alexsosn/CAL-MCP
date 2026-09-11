@@ -407,6 +407,20 @@ class _LineCommentsHTMLParser(HTMLParser):
         if tag == "div" and self._summary_depth:
             self._summary_depth -= 1
 
+    def close(self) -> None:
+        super().close()
+        if (
+            self._record is not None
+            or self._summary_depth
+            or self._ignored_depth
+            or self._span_parts is not None
+            or self._anchor_parts is not None
+            or self._in_reference
+            or self._in_gloss
+            or self._title_parts is not None
+        ):
+            raise TextParseError("CAL line-comments page ends with unfinished semantic markup")
+
     def handle_data(self, data: str) -> None:
         if self._ignored_depth:
             return
