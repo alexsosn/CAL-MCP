@@ -2,7 +2,7 @@
 
 These fixtures are deliberately reduced semantic excerpts, not archived CAL pages. They retain only the minimum current markup/text relationships needed by offline parser tests.
 
-Capture/recheck dates: **2026-09-04–2026-09-05**.
+Capture/recheck dates: **2026-09-04–2026-09-11**.
 
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
@@ -12,6 +12,9 @@ Capture/recheck dates: **2026-09-04–2026-09-05**.
 | `entry_bysh_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=by%24h+N` | full-form alias resolution and optional-section absence |
 | `entry_nmy_x.html` | `https://cal.huc.edu/oneentry.php?cits=all&lemma=nmy+X` | unnumbered primary sense, nested sense, notes |
 | `entry_abr_v.html` | `https://cal.huc.edu/oneentry.php?cits=all&lemma=%29br+V` | root cross-reference and stem-specific verb senses |
+| `lexicon_citation_context_ezra_4_24.html` | `https://cal.huc.edu/showachapter.php?fullcoord=31000424` | reduced Biblical Aramaic context around Ezra 4:24 with source info, preceding/target lines, comments, and lexical-token anchors |
+| `lexicon_citation_context_tgj_ez_31_6.html` | `https://cal.huc.edu/showachapter.php?fullcoord=5101431061` | reduced Targum context around TgJ Ez31:6 with variable-length source identity and ignored navigation links |
+| `lexicon_citation_context_not_found.html` | `https://cal.huc.edu/showachapter.php?fullcoord=999999999999` | exact no-citations marker and selector-binding semantics for the explicit context follow-up |
 | `not_found.html` | CAL lexicon surface | explicit no-match semantic page |
 | `search_gloss_camel.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=camel#`, `secondary=true`) | ordered lemma-link + gloss result shape |
 | `search_gloss_empty.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=qzxvjk#`, `secondary=true`) | exact current empty-gloss marker |
@@ -56,4 +59,4 @@ Capture/recheck dates: **2026-09-04–2026-09-05**.
 | `syriac_peshitta_gen_1_1.html` | `POST https://cal.huc.edu/showpesh.php` (`bookname=01`, `chapter=01`, `verse=01`) | Gen 1:1 MT/Peshitta Unicode text and Peshitta chapter navigation |
 | `syriac_peshitta_not_found.html` | bounded invalid-coordinate `showpesh.php` probe | current explicit `error in coord` not-found semantics |
 
-The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The search/text/token-analysis/concordance/bibliography/Targum/Syriac fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
+The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The lexicon citation-context/search/text/token-analysis/concordance/bibliography/Targum/Syriac fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.

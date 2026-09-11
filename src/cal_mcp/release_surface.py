@@ -4,6 +4,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
     {
         "cal_convert_to_code",
         "cal_lexicon_lookup",
+        "cal_lexicon_citation_context",
         "cal_gloss_search",
         "cal_gloss_field",
         "cal_citation_text_search",
