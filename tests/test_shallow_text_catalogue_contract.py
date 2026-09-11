@@ -66,6 +66,8 @@ async def test_root_catalogue_serializes_explicit_shallow_navigation_metadata() 
     transport = CatalogueTransport()
     result = await TextService(CalHttpClient(transport=transport)).catalogue()
 
+    assert result.recursive is False
+    assert result.has_unexpanded_children is True
     payload = result.to_dict()
     assert payload["recursive"] is False
     assert payload["has_unexpanded_children"] is True
