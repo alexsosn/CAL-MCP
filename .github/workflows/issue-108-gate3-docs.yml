@@ -1,5 +1,6 @@
 name: Issue 108 final docs synchronization
 
+# Temporary self-removing Gate 3 runner.
 on:
   push:
     branches:
