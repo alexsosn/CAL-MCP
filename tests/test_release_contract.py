@@ -49,8 +49,9 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     assert CHANGELOG.exists()
     changelog = CHANGELOG.read_text(encoding="utf-8")
     assert "0.1.0" in changelog
-    assert "32 public tools" in changelog
-    assert "32-tool schema" in changelog
+    assert "33 public tools" in changelog
+    assert "33-tool schema" in changelog
+    assert "cal_lexicon_citation_context" in changelog
     assert "cal_text_line_comments" in changelog
     assert "cal_kwic_full_context" in changelog
     assert "cal_syriac_group" in changelog
@@ -118,7 +119,8 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "cal-mcp" in verifier
     assert "StdioServerParameters" in verifier
     assert "V01_PUBLIC_TOOLS" in verifier
-    assert len(V01_PUBLIC_TOOLS) == 32
+    assert "cal_lexicon_citation_context" in V01_PUBLIC_TOOLS
+    assert len(V01_PUBLIC_TOOLS) == 33
 
 
 def test_live_smoke_constants_and_default_cases_are_frozen() -> None:
