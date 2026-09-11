@@ -80,9 +80,7 @@ def test_canonical_citation_exposes_typed_full_coordinate() -> None:
         None,
         "7101301076140",
     ]
-    assert citations[2].url == (
-        "https://cal.huc.edu/showachapter.php?fullcoord=7101301076140"
-    )
+    assert citations[2].url == "https://cal.huc.edu/showachapter.php?fullcoord=7101301076140"
 
 
 @pytest.mark.parametrize(
