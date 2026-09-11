@@ -11,6 +11,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
         "cal_text_search",
         "cal_text_page",
         "cal_text_information",
+        "cal_text_line_comments",
         "cal_token_analysis",
         "cal_text_concordance",
         "cal_kwic_texts",
