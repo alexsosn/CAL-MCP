@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from cal_mcp.errors import CalInputError
-
 import re
 
+from cal_mcp.errors import CalInputError
 from cal_mcp.normalization import InputRepresentation, normalize_query
 
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")

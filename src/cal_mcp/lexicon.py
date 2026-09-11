@@ -10,7 +10,7 @@ from itertools import product
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
-from cal_mcp.errors import CalParseError
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.normalization import (
     CalCodeConversion,
     ConversionExpansionError,

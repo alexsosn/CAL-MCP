@@ -8,8 +8,8 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
-from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.concordance import _validate_lemma_key
+from cal_mcp.errors import CalInputError, CalParseError
 
 
 class BibliographyParseError(CalParseError):
