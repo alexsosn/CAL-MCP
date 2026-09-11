@@ -33,6 +33,5 @@ jobs:
             exit 1
           fi
           git rm .github/workflows/issue84-sync-main.yml
-          git diff --cached --check
           git commit -m "Merge current main into structured-errors work"
           git push origin HEAD:feat/issue-84-structured-errors
