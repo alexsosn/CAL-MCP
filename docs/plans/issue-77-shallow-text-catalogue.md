@@ -32,7 +32,7 @@ The fields are additive; `categories`, `texts`, `specialized_collections`, and `
 
 Keep the metadata on `TextCatalogueResult`, not `TextCataloguePage` unless implementation requires a mechanical helper. The facts describe the public operation/traversal boundary and are derived after the current parser has already classified the returned level.
 
-Recommended implementation:
+Final implementation shape:
 
 ```python
 @dataclass(frozen=True, slots=True)
@@ -41,14 +41,17 @@ class TextCatalogueResult:
     texts: tuple[TextRef, ...]
     provenance: TextProvenance
     specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()
-    recursive: bool = False
+
+    @property
+    def recursive(self) -> bool:
+        return False
 
     @property
     def has_unexpanded_children(self) -> bool:
         return bool(self.categories or self.specialized_collections)
 ```
 
-Serialization should emit both values explicitly. An equivalent immutable implementation is acceptable if it avoids duplicated state that could become inconsistent.
+Serialization emits both values explicitly. `recursive` is derived/read-only rather than duplicated state, so callers cannot construct a result that contradicts the operation invariant.
 
 Do not let callers set `recursive=True`; there is no recursive public operation. No new MCP input is added and the public tool count does not change.
 
@@ -113,6 +116,9 @@ Zero additional CAL requests. The feature is local response metadata over the ex
 
 ## Execution evidence
 
-- Test-only RED head `e4e614d73396802307c202bae1293a63a20f13a2` was validated in both CI matrices on 2026-09-11: dependency/setup, Ruff lint/format, and strict mypy passed; pytest reported **903 passed / exactly 5 failed**, all from `tests/test_shallow_text_catalogue_contract.py` and all attributable to the missing `recursive` / `has_unexpanded_children` response fields or their documentation.
-- Minimal implementation changes only `TextCatalogueResult` serialization/derived metadata in `src/cal_mcp/texts.py`; documentation changes only `docs/tools/texts.md`. No CAL route, request shape, public input schema, tool count, release manifest, or automatic traversal behavior was changed.
-- The next authoritative checkpoint is the human-authored head carrying this execution record; it must pass both CI matrices before independent review.
+- Initial test-only RED head `e4e614d73396802307c202bae1293a63a20f13a2` was validated in both CI matrices on 2026-09-11: dependency/setup, Ruff lint/format, and strict mypy passed; pytest reported **903 passed / exactly 5 failed**, all from `tests/test_shallow_text_catalogue_contract.py` and all attributable to the missing `recursive` / `has_unexpanded_children` response fields or their documentation.
+- Minimal implementation changed only `TextCatalogueResult` serialization/derived metadata in `src/cal_mcp/texts.py`; documentation changed only `docs/tools/texts.md`. No CAL route, request shape, public input schema, tool count, release manifest, or automatic traversal behavior changed.
+- First dual GREEN passed on the implementation candidate, but independent review of exact head `307c21d50cc898d3abef694f693167ffe6167947` found that `recursive` was still constructor-settable even though the contract says it is always false. Review `5177473064` recorded REQUEST CHANGES semantics on that exact SHA.
+- Review-regression test `test_recursive_state_cannot_be_overridden_in_result_construction` was then added before the fix. CI run `34587610590` validated the RED in both matrices: all dependency/Ruff/mypy gates passed; pytest reported **908 passed / exactly 1 failed** in each matrix, solely because constructing `TextCatalogueResult(..., recursive=True)` did not raise `TypeError`.
+- Minimal review fix replaces the constructor field with a read-only `recursive` property returning `False`; request behavior, parser behavior, serialized key name, input schema, and tool count are unchanged.
+- The human-authored checkpoint carrying this execution record must now pass both CI matrices before fresh exact-head adversarial review.
