@@ -110,3 +110,9 @@ Before merge, refetch `main`. If it advanced, synchronize and rerun required CI/
 ## CAL load impact
 
 Zero additional CAL requests. The feature is local response metadata over the existing one-level catalogue result.
+
+## Execution evidence
+
+- Test-only RED head `e4e614d73396802307c202bae1293a63a20f13a2` was validated in both CI matrices on 2026-09-11: dependency/setup, Ruff lint/format, and strict mypy passed; pytest reported **903 passed / exactly 5 failed**, all from `tests/test_shallow_text_catalogue_contract.py` and all attributable to the missing `recursive` / `has_unexpanded_children` response fields or their documentation.
+- Minimal implementation changes only `TextCatalogueResult` serialization/derived metadata in `src/cal_mcp/texts.py`; documentation changes only `docs/tools/texts.md`. No CAL route, request shape, public input schema, tool count, release manifest, or automatic traversal behavior was changed.
+- The next authoritative checkpoint is the human-authored head carrying this execution record; it must pass both CI matrices before independent review.
