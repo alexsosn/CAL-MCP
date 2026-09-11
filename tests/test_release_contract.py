@@ -49,8 +49,9 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     assert CHANGELOG.exists()
     changelog = CHANGELOG.read_text(encoding="utf-8")
     assert "0.1.0" in changelog
-    assert "31 public tools" in changelog
-    assert "31-tool schema" in changelog
+    assert "32 public tools" in changelog
+    assert "32-tool schema" in changelog
+    assert "cal_text_line_comments" in changelog
     assert "cal_kwic_full_context" in changelog
     assert "cal_syriac_group" in changelog
     assert "#39" in changelog
@@ -117,7 +118,7 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "cal-mcp" in verifier
     assert "StdioServerParameters" in verifier
     assert "V01_PUBLIC_TOOLS" in verifier
-    assert len(V01_PUBLIC_TOOLS) == 31
+    assert len(V01_PUBLIC_TOOLS) == 32
 
 
 def test_live_smoke_constants_and_default_cases_are_frozen() -> None:
@@ -180,7 +181,7 @@ async def test_live_smoke_client_enforces_request_budget_and_safe_config() -> No
 
         with pytest.raises(module.LiveSmokeBudgetExceeded):
             await client.fetch(
-                CalRequest(method="GET", path="test", params=(("n", "overflow"),)),
+                CalRequest(method="GET", path="test", params=(("n", "overflow")),)),
                 parser=lambda response: response.body,
                 cache_namespace="release-budget-test",
             )
