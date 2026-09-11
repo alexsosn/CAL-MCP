@@ -1,158 +1,140 @@
-# Issue #15 research — v0.1 standalone release and low-load live drift smoke
+# Issue #15 research — v0.1 standalone release gate
 
-**Rechecked:** 2026-09-06
+**Rechecked:** 2026-09-11  
+**Issue:** #15
 
 ## Current release state
 
-CAL-MCP has a complete frozen v0.1 application surface but is not yet published as a release artifact.
+The formal v0.1 prerequisites named by #15 are complete: issues #12, #13, and #14 are closed. Current `main` already contains the release engineering built during earlier #15 work and later hardening tickets.
 
-- `pyproject.toml` currently declares package `cal-mcp`, version `0.1.0.dev0`, Python `>=3.11`, Hatchling as the build backend, and the installed console script `cal-mcp = cal_mcp.server:main`.
-- `python -m cal_mcp` delegates to the same server entry point.
-- `tests/test_bootstrap.py` already proves that an **editable development install** exposes the package version, starts `cal-mcp` over stdio, and advertises the frozen 26-tool schema without contacting CAL.
-- That is not yet a clean release-artifact test: normal CI installs the repository with `pip install -e ".[dev]"`; it does not build a wheel/sdist, install the wheel into a fresh environment, or launch the installed artifact there.
-- GitHub currently has no repository releases and `.github/workflows/` contains only normal offline CI.
-- `docs/installation.md` and `docs/integrations/standalone-mcp.md` correctly describe the project as pre-release and explicitly defer published-package instructions to issue #15.
+Current package metadata declares:
 
-Sources:
+- package: `cal-mcp`;
+- version: `0.1.0`;
+- Python: `>=3.11`;
+- build backend: Hatchling;
+- installed command: `cal-mcp = cal_mcp.server:main`;
+- equivalent module entry point: `python -m cal_mcp`;
+- runtime dependencies: `httpx2>=2.12,<3` and `mcp>=2,<3`.
 
-- `pyproject.toml`
-- `src/cal_mcp/__main__.py`
-- `src/cal_mcp/__init__.py`
-- `tests/test_bootstrap.py`
-- `.github/workflows/ci.yml`
-- `docs/installation.md`
-- `docs/integrations/standalone-mcp.md`
-- GitHub releases API, rechecked 2026-09-06: no releases
+The executable release contract is `cal_mcp.release_surface.V01_PUBLIC_TOOLS`, currently **32 public tools**. Current CI after #77 is green on `main`.
 
-**Implication:** release validation must test the built artifact in isolation rather than treating the existing editable-install stdio test as proof of a clean release.
+GitHub's releases collection is still empty. Therefore `0.1.0` is prepared in source but has not yet been published as a versioned release.
 
-## Previous capped live release probe
+## Existing release machinery
 
-Issue #15 already performed one bounded branch-only live research probe before implementation. The temporary workflow was deleted immediately after the run.
+`.github/workflows/release.yml` is a tag-triggered release pipeline for `v*` tags. It already:
 
-Run `33995822616` used:
+1. installs the frozen Python 3.11 validation environment;
+2. verifies the deterministic dependency set;
+3. runs Ruff lint/format, strict mypy, and the complete pytest suite;
+4. builds one wheel and one sdist;
+5. runs `scripts/verify_release_artifact.py` with the tag;
+6. uploads those exact distributions as an Actions artifact;
+7. runs the bounded live CAL smoke;
+8. publishes those same distributions to PyPI through OIDC trusted publishing (`environment: pypi`, job-level `id-token: write`);
+9. creates a GitHub release from the same artifacts and committed `CHANGELOG.md`.
 
-- one shared `CalHttpClient`;
-- `max_concurrency=1`;
-- `max_retries=0`;
-- `cache_enabled=False`;
-- a hard cap of **9 CAL requests total**.
+The artifact verifier checks:
 
-It exercised eight representative released research families:
+- one wheel + one sdist only;
+- package name/version metadata consistency;
+- tag version equals built distribution version;
+- safe/expected sdist root metadata;
+- independent installation of wheel and sdist into fresh virtual environments;
+- installed `cal-mcp` executable exists;
+- stdio server name and version match the distribution;
+- installed tool names equal `V01_PUBLIC_TOOLS` exactly.
 
-1. exact lexicon success: `cal_lexicon_lookup(query="br", lemma_key="br N")` — two CAL requests (bounded browser discovery + selected entry fetch);
-2. text discovery: `cal_text_search(query="Tel Dan")`;
-3. one-text concordance: `cal_text_concordance(text_id="13250")`;
-4. bibliography: `cal_bibliography_lemma(lemma_key="cly V")`;
-5. dictionary collation: `cal_dictionary_collation(source="jastrow", page="705")`;
-6. external citations: `cal_external_citation_dialects()`;
-7. Targum Studies: `cal_targum_parallel(book="Gen", chapter=1, verse=1)`;
-8. Syriac Studies: `cal_syriac_peshitta_parallel(book="Gen", chapter=1, verse=1)`.
+Artifact verification performs no CAL request.
 
-This exact selection totals nine requests because the lexicon success path is the only two-request case. It covers the major parser/service families without enumerating text catalogues, dialects, lemmas, verses, bibliography records, or result pages.
+## Live-smoke boundary and historical finding
 
-The probe found two genuine release-blocking current-CAL regressions:
+Earlier #15 research established that release smoke must use service-layer exceptions for useful drift/upstream classification rather than treating any MCP tool-result object as success. That work produced `cal_mcp.live_smoke`, with:
 
-- #41: current lexicon citation structure caused valid `br N` to fail;
-- #42: current one-text concordance switched to a BR-delimited row stream.
+- hard maximum: **9 CAL requests**;
+- concurrency: 1;
+- retries: 0;
+- cache: disabled;
+- eight representative families: lexicon, text search, text concordance, bibliography, dictionary collation, external citations, Targum, Syriac;
+- explicit failure categories: parser drift, upstream/network, other content/policy failure, harness failure.
 
-Both issues have since completed focused research → plan → TDD → independent-review fixes and are closed. Current `main` includes the #42 merge at `5d4d57414adcf87607bc23e57d17b283102f6ea8`; #41 is also closed before this release resumption.
+The original bounded research probe discovered real current-CAL regressions #41 and #42; both were subsequently fixed through focused TDD/review loops. The permanent smoke implementation incorporates those lessons and is separately available through `.github/workflows/live-smoke.yml` via manual dispatch or a weekly schedule. It is not ordinary PR CI.
 
-The earlier probe must **not** be repeated merely to rediscover those facts. The next live run should be the testable permanent smoke implementation after its offline RED/GREEN gate.
+## Fresh bounded live evidence — 2026-09-11
 
-## Important MCP error-result finding
+Because no scheduled run exists yet in the repository history, the release gate was rechecked once on the current release candidate with a temporary branch-only workflow. It installed the source candidate against latest-compatible dependencies (including MCP 2.2.0) and ran the permanent smoke unchanged.
 
-The research harness called public tools through the MCP client with `raise_exceptions=True`. When a server tool raised a parser exception, the server converted it to `UnexpectedToolError`; the client call returned a tool result marked `is_error` rather than necessarily raising in the caller. The original probe incorrectly printed such returned error results as `OK` because it only inspected `structured_content`.
+GitHub Actions run `34589005460` succeeded with exactly:
 
-**Implication:** any permanent MCP-boundary smoke must explicitly fail when `result.is_error` is true. A returned MCP result object alone is not success.
+```json
+{
+  "completed_cases": [
+    "lexicon",
+    "text_search",
+    "text_concordance",
+    "bibliography",
+    "dictionary_collation",
+    "external_citations",
+    "targum",
+    "syriac"
+  ],
+  "max_cal_requests": 9,
+  "request_count": 9
+}
+```
 
-For release drift classification, the cleaner v0.1 design is to run the representative probes through the same public application **services** with one real bounded `CalHttpClient`, while separately validating the actual packaged stdio MCP process offline. The service layer preserves the exception taxonomy that the generic MCP boundary currently hides.
+The temporary workflow removed itself immediately after the run. No additional CAL traversal/probe was performed.
 
-## Drift versus upstream failure classification
+**Implication:** current CAL compatibility does not block release. The immutable release workflow will deliberately repeat this same capped smoke once for the actual tag before publication.
 
-The shared request layer already separates:
+## Release-truth defects found in the current tree
 
-- `CalNetworkError` — transport/network failure;
-- `CalUpstreamError` — non-success CAL HTTP response;
-- `CalContentError` — successful HTTP response unsafe to parse as expected CAL content;
-- `CalResponseTooLargeError` — bounded response-size failure.
+The executable release machinery is ahead of user-facing release text:
 
-Endpoint/parser drift uses dedicated `CalContentError` subclasses, including:
+1. `docs/installation.md` says the clean artifact exposes a frozen **29-tool** MCP surface; actual frozen surface is 32.
+2. `docs/integrations/standalone-mcp.md` says v0.1 contains **29 public tools**; actual frozen surface is 32.
+3. `tests/test_release_contract.py` checks 32 tools in the changelog/verifier but does not detect those stale 29-tool user-doc statements.
+4. `README.md` says `active pre-release development` and `No versioned release has been published yet`. That is currently true, but if left in the tagged artifact it becomes false at the moment the release workflow succeeds.
+5. `CHANGELOG.md` dates 0.1.0 as `2026-09-06` and calls it a `release candidate`. The actual intended first publication is now 2026-09-11 (or a later tag date if an external publishing prerequisite delays it).
 
-- `LexiconParseError`;
-- `SearchParseError`;
-- `TextParseError`;
-- `TokenAnalysisParseError`;
-- `ConcordanceParseError`;
-- `BibliographyParseError`;
-- `DictionaryCollationParseError`;
-- `ExternalCitationParseError`;
-- `TargumParseError`;
-- `SyriacParseError`.
-
-The permanent smoke runner can therefore classify, without changing the public MCP contract:
-
-- **drift** — a domain parser exception after a successful CAL response;
-- **upstream/network** — `CalNetworkError` or `CalUpstreamError`;
-- **content/policy** — other `CalContentError` such as maintenance/unexpected content or response-size rejection;
-- **harness/other** — caller validation or unexpected local failure.
-
-This is operational diagnosis, not a claim about CAL scholarly correctness.
-
-## Permanent live-smoke boundary
-
-The permanent v0.1 smoke should retain the researched cap of **9 CAL requests** and the same eight representative families unless a test proves a smaller equivalent set. It must:
-
-- be opt-in/manual and scheduled separately from normal CI;
-- use concurrency 1, retries 0, cache disabled;
-- abort before request 10;
-- require every selected operation to return its normal semantic success state and provenance;
-- never follow links or paginate automatically;
-- report a failure category useful for distinguishing CAL unavailability from parser drift;
-- never run as part of ordinary pull-request CI.
-
-A weekly schedule is sufficient for drift detection at this project's scale; release validation may also run the same capped smoke once before publication.
+These are release blockers because #15 requires the released docs to match the released executable surface and publication state.
 
 ## Publication authentication boundary
 
-PyPI's current official documentation recommends Trusted Publishing with GitHub Actions OIDC rather than a long-lived API token. For GitHub Actions:
+The release workflow already follows the correct least-privilege Trusted Publishing shape:
 
-- the publishing job needs `permissions: id-token: write`;
-- `pypa/gh-action-pypi-publish@release/v1` is the recommended publishing action;
-- a dedicated GitHub environment such as `pypi` is optional but strongly recommended;
-- PyPI must be configured to trust the repository owner, repository, workflow filename, and (if used) environment;
-- a pending Trusted Publisher can create a new PyPI project on first publication, but it does **not** reserve the project name before that upload.
+- no stored PyPI password/token;
+- `id-token: write` only on the publish job;
+- GitHub environment `pypi`;
+- build/test/live smoke complete before publication;
+- GitHub release happens only after PyPI publication succeeds.
 
-Official sources, rechecked 2026-09-06:
+Actual PyPI trusted-publisher/environment configuration is account-side state and cannot be proven from repository code. If it is absent, the tag workflow will fail at publication and #15 must remain open with that exact external blocker rather than claiming success.
 
-- https://docs.pypi.org/trusted-publishers/
-- https://docs.pypi.org/trusted-publishers/using-a-publisher/
-- https://docs.pypi.org/trusted-publishers/adding-a-publisher/
-- https://docs.pypi.org/trusted-publishers/creating-a-project-through-oidc/
+A current web search found no existing public PyPI project page for `cal-mcp`, but package-name availability is conclusively established only by the first successful upload.
 
-The repository connection available to the development loop cannot inspect or configure the user's PyPI Trusted Publisher/account state. Repository code must therefore provide a least-privilege `release.yml` compatible with Trusted Publishing, but it must not claim that PyPI trust is configured until an actual publication succeeds.
+## Safe tag execution with available automation
 
-**Implication:** issue #15 can fully implement and test the release artifact, release workflow, and live-smoke machinery in-repository. Actual PyPI publication remains gated on the one-time external PyPI Trusted Publisher setup if it has not already been configured.
+The repository workflow is correctly tag-triggered. The connected GitHub actions available to this development loop do not expose creation of arbitrary tag refs directly. After a reviewed release-preparation merge, a temporary **non-merged trigger branch** can safely perform only:
 
-## Release workflow security constraints
+```text
+git fetch origin main
+git tag v0.1.0 <reviewed main SHA>
+git push origin v0.1.0
+```
 
-Trusted Publisher configuration effectively grants the selected workflow authority to publish. The release workflow should therefore be isolated from normal CI, use job-level OIDC permission only for the publish job, build/test artifacts before that permission is needed, and publish only an immutable version/tag whose version matches package metadata. Pull-request code must never obtain publish credentials.
+The helper exists only on the trigger branch. The tag points to reviewed `main`, whose tree contains the normal `release.yml` but not the helper. This preserves the immutable release boundary and avoids committing release-trigger machinery into the package.
 
-GitHub release assets and PyPI distributions should come from the same built artifact set rather than rebuilding independently after publication.
+## Scope conclusion
 
-## Relationship to issue #18
+No new CAL feature, parser, public tool, request policy, or release workflow redesign is needed for #15.
 
-Issue #18 tracks reproducible dependency constraints plus a latest-compatible job. It is explicitly non-blocking for current domain development but should not be accidentally solved by pinning runtime dependencies in #15. The v0.1 package retains its reviewed semantic dependency ranges; release packaging can install/build deterministically enough to validate artifact structure without changing the separate dependency-policy scope.
+Remaining repository work should be test-first and narrow:
 
-## No CAL data in the artifact
-
-D-001 remains unchanged: the release contains software and documentation only. It must not bundle CAL lexicon entries, text pages, fixtures beyond the already reviewed minimal test material, a cache, or any live-smoke response body.
-
-## Research conclusion
-
-Issue #15 should proceed with two independently testable release layers:
-
-1. **offline release artifact / stdio validation** — build wheel/sdist, install the wheel in a fresh environment, verify version + `cal-mcp` stdio introspection and the frozen 26-tool schema without contacting CAL;
-2. **separate capped live drift smoke** — the researched 9-request service-level probe with typed failure classification, invoked manually/scheduled and once at release time.
-
-Publication automation should use a dedicated OIDC Trusted Publishing workflow. Documentation changes from “pre-release” to a stable package-index command only after the publication step is known to succeed; until then, repository truth must describe the external publisher prerequisite explicitly.
+- strengthen release-contract tests so the released user docs cannot regress to a stale tool count or permanently pre-release wording;
+- correct `docs/installation.md`, `docs/integrations/standalone-mcp.md`, `README.md`, and `CHANGELOG.md` to be truthful both immediately before tagging and after successful publication;
+- keep package version `0.1.0`, 32-tool surface, artifact verifier, release workflow, and 9-request live-smoke behavior unchanged unless a failing regression proves otherwise;
+- independently adversarially review the exact release-preparation head;
+- merge; tag the reviewed main commit; observe the real release workflow end-to-end;
+- close #15 only after GitHub release + PyPI publication are verified. If external trusted-publisher configuration blocks publication, record that blocker and leave #15 open.
