@@ -49,13 +49,26 @@ jobs:
               "token_analysis.py",
           }
 
-          def add_after_client_import(text: str, import_line: str) -> str:
+          def add_error_import(text: str, import_line: str) -> str:
               lines = text.splitlines()
-              start = next(i for i, line in enumerate(lines) if line.startswith("from cal_mcp.client import"))
-              end = start
-              if lines[start].rstrip().endswith("("):
-                  end = next(i for i in range(start + 1, len(lines)) if lines[i] == ")")
-              lines.insert(end + 1, import_line)
+              client_starts = [
+                  i for i, line in enumerate(lines) if line.startswith("from cal_mcp.client import")
+              ]
+              if client_starts:
+                  start = client_starts[0]
+                  end = start
+                  if lines[start].rstrip().endswith("("):
+                      end = next(i for i in range(start + 1, len(lines)) if lines[i] == ")")
+                  lines.insert(end + 1, import_line)
+              else:
+                  future = next(
+                      i for i, line in enumerate(lines) if line == "from __future__ import annotations"
+                  )
+                  insert_at = future + 1
+                  while insert_at < len(lines) and lines[insert_at] == "":
+                      insert_at += 1
+                  lines.insert(insert_at, import_line)
+                  lines.insert(insert_at + 1, "")
               return "\n".join(lines) + "\n"
 
           for name in sorted(public_value_error_modules | parser_modules):
@@ -94,10 +107,7 @@ jobs:
                   imports.append("CalParseError")
               import_line = f"from cal_mcp.errors import {', '.join(imports)}"
               if import_line not in text:
-                  if "from cal_mcp.client import" in text:
-                      text = add_after_client_import(text, import_line)
-                  else:
-                      raise SystemExit(f"{name}: no client import anchor")
+                  text = add_error_import(text, import_line)
 
               if text == original:
                   raise SystemExit(f"{name}: migration made no change")
