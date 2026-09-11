@@ -3,12 +3,21 @@ from pathlib import Path
 _INDEX = Path("docs/index.md")
 _CURRENT_GAPS = {
     "#39": "recent",
-    "#108": "comments",
     "#109": "targum",
     "#112": "prefix",
     "#127": "citation",
 }
-_RESOLVED_ROUTE_ISSUES = ("#78", "#97", "#101", "#105", "#106", "#107", "#113", "#125")
+_RESOLVED_ROUTE_ISSUES = (
+    "#78",
+    "#97",
+    "#101",
+    "#105",
+    "#106",
+    "#107",
+    "#108",
+    "#113",
+    "#125",
+)
 
 
 def _gap_section() -> str:

@@ -346,7 +346,7 @@ async def test_invalid_full_context_selectors_fail_before_transport(
 
 def test_v01_release_manifest_includes_explicit_full_context_tool() -> None:
     assert "cal_kwic_full_context" in V01_PUBLIC_TOOLS
-    assert len(V01_PUBLIC_TOOLS) == 31
+    assert len(V01_PUBLIC_TOOLS) == 32
 
 
 @pytest.mark.anyio
