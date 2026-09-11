@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 
 import pytest
 from mcp import Client
-from mcp.types import TextContent
+from mcp.types import CallToolResult, TextContent
 
 import cal_mcp.server as server_module
 from cal_mcp.client import (
@@ -30,7 +30,7 @@ def _install_transport(monkeypatch: pytest.MonkeyPatch, transport: Transport) ->
 
 
 def _assert_structured_error(
-    result: object,
+    result: CallToolResult,
     *,
     kind: str,
     operation: str,
@@ -40,7 +40,7 @@ def _assert_structured_error(
     source_url: str | None = None,
     status_code: int | None = None,
 ) -> None:
-    assert getattr(result, "is_error") is True
+    assert result.is_error is True
     expected = {
         "error": {
             "kind": kind,
@@ -52,8 +52,8 @@ def _assert_structured_error(
             "status_code": status_code,
         }
     }
-    assert getattr(result, "structured_content") == expected
-    content = getattr(result, "content")
+    assert result.structured_content == expected
+    content = result.content
     assert len(content) == 1
     assert isinstance(content[0], TextContent)
     assert kind in content[0].text
@@ -133,9 +133,7 @@ async def test_parser_drift_returns_structured_error(
         retryable=False,
         message="CAL text search page is missing its result marker",
     )
-    rendered = " ".join(
-        block.text for block in result.content if isinstance(block, TextContent)
-    )
+    rendered = " ".join(block.text for block in result.content if isinstance(block, TextContent))
     assert "unrecognized successful markup" not in rendered
 
 
