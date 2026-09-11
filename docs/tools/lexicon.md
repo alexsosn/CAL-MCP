@@ -1,8 +1,8 @@
 # Lexicon lookup and CAL-code conversion
 
-`cal_convert_to_code` is a local-only conversion helper for supported Aramaic input representations. `cal_lexicon_lookup` resolves a CAL-supported root, headword, alias, or full form to structured lexicon data while preserving CAL's own homograph and sense distinctions.
+`cal_convert_to_code` is a local-only conversion helper for supported Aramaic input representations. `cal_lexicon_lookup` resolves a CAL-supported root, headword, alias, or full form to structured lexicon data while preserving CAL's own homograph and sense distinctions. `cal_lexicon_citation_context` explicitly follows one typed citation-context selector returned by lexicon lookup.
 
-The converter performs **zero network requests**. Lexicon lookup performs live, bounded requests to CAL. CAL remains the authority for lexical content; CAL-MCP supplies deterministic conversion/normalization, typed structure, request policy, and provenance.
+The converter performs **zero network requests**. Lexicon lookup and citation-context follow-up perform live, bounded requests to CAL. CAL remains the authority for lexical and citation content; CAL-MCP supplies deterministic conversion/normalization, typed structure, request policy, and provenance.
 
 ## Local converter
 
@@ -77,7 +77,7 @@ The entry preserves, where present:
 - numbered and recursively nested sense paths;
 - verb stem/sense headings;
 - dialect labels, including documented CAL dialect subcodes;
-- citation references, source links, and short citation text exposed by the entry;
+- citation references, source links, short citation text, and typed context selectors when CAL exposes the canonical context-link route;
 - root/grammar information;
 - form and usage notes;
 - derivatives and their hierarchy depth;
@@ -135,9 +135,33 @@ A successful `entry` has these top-level fields:
 | `derivatives` | linked derivatives with CAL key when available and hierarchy `depth` |
 | `notes` | CAL notes/bibliography text parsed from the entry section |
 
-A citation has `reference`, `url`, and `text`. For a linked CAL citation, `reference` and `url` preserve the rendered reference and its CAL link. Current CAL entries can also render citation fragments without a link or a safely separable structured reference; in that case CAL-MCP preserves the whole fragment in `text` and returns `reference: null` and `url: null` rather than inventing either field. Unicode citation text is preserved without transliteration.
+A citation has `reference`, `url`, `text`, and nullable `full_coordinate`. For a linked CAL citation, `reference` and `url` preserve the rendered reference and its CAL link. `full_coordinate` is populated only when that resolved link is the canonical current CAL citation-context route with exactly one positive ASCII-decimal selector. A citation URL that is noncanonical, has extra controls, or is not a context link is still preserved as citation metadata but has `full_coordinate: null`; CAL-MCP never turns an arbitrary returned URL into an executable selector.
+
+Current CAL entries can also render citation fragments without a link or a safely separable structured reference; in that case CAL-MCP preserves the whole fragment in `text` and returns `reference: null`, `url: null`, and `full_coordinate: null` rather than inventing those fields. Unicode citation text is preserved without transliteration.
 
 When CAL renders a citation-count marker, the parsed citation count must agree with it. A mismatch is treated as parser drift so silently dropped citation fragments do not produce an apparently complete entry.
+
+## Linked citation full context
+
+```text
+cal_lexicon_citation_context(full_coordinate)
+```
+
+Use this only with a non-null `Citation.full_coordinate` returned by `cal_lexicon_lookup`. The selector is treated as an opaque CAL coordinate string: CAL-MCP does not split it into locally invented file, chapter, verse, or subtext fields, and the tool does not accept a URL.
+
+A cache-miss call performs exactly one bounded CAL request for that explicit selector. Lexicon lookup never prefetches citation context, and the context operation never follows its returned source-information, token, comment, or navigation links automatically.
+
+A normal result contains:
+
+- `status`: `found` or `not_found`;
+- the exact `full_coordinate` submitted by the caller;
+- optional CAL-rendered `source_label` and validated `source_info_url`;
+- ordered `lines` using the same `TextLine`/`TextToken` structure as bounded text context;
+- provenance with the actual CAL context URL, retrieval timestamp, operation name, and selector.
+
+For `found`, the returned lines must contain the requested target coordinate exactly once. For `not_found`, CAL-MCP accepts only CAL's explicit no-citations marker when that marker is consistent with the requested selector and no text rows are present. A successful-looking page with neither recognizable rows nor the exact empty marker is parser drift.
+
+The adapter validates the CAL response origin, route, selector identity, token/comment routes, and source-information link semantics. Current citation-context pages do **not** share the KWIC route's special tolerance for an empty terminal lexical anchor; an empty lexical token label on this route fails closed.
 
 ## Provenance
 
@@ -160,27 +184,28 @@ When CAL renders a citation-count marker, the parsed citation count must agree w
 
 The four conversion-path keys are always present in serialized provenance, even when their values are empty. This keeps the v0.1 result schema stable across deterministic, ambiguous, found, and not-found results. When multiple encoding candidates resolve to one canonical CAL lemma, the lemma is returned once while `selected_cal_code_candidates` retains every matching encoding path in stable candidate order.
 
-CAL describes its database as a live work in progress, so scholarly use should retain the source URL and retrieval date. Cache hits preserve the timestamp of the actual CAL retrieval rather than fabricating a newer one.
+Citation-context results use their own smaller provenance object because `full_coordinate` is already the complete researched selector for that route. CAL describes its database as a live work in progress, so scholarly use should retain the source URL and retrieval date. Cache hits preserve the timestamp of the actual CAL retrieval rather than fabricating a newer one.
 
 ## Failure modes
 
 The tools keep these cases separate:
 
-- **not found** — normal `not_found` result;
+- **not found** — normal lexicon `not_found` result, or a citation-context `not_found` result only when CAL returns the validated explicit no-citations marker;
 - **ambiguous lexical match** — normal `ambiguous` result with explicit CAL candidates;
 - **finite encoding ambiguity** — explicit candidate sets, automatically searched within fixed bounds;
 - **candidate expansion overflow** — typed local failure before unbounded computation or CAL traffic;
 - **unsupported conversion input** — typed local failure rather than lossy conversion;
 - **invalid `lemma_key`** — caller error because the key is not one of the current matches;
+- **invalid `full_coordinate`** — caller error before CAL I/O; it must be a positive ASCII-decimal string;
 - **network/timeout/upstream HTTP failure** — typed request-layer failure under the conservative retry policy;
 - **CAL maintenance/error page** — content failure before lexicon parsing;
-- **parser drift** — CAL returned HTML, but required lexicon semantics can no longer be recognized safely, including inconsistent recursive sense numbering or citation-count mismatches.
+- **parser drift** — CAL returned HTML, but required semantics can no longer be recognized safely, including inconsistent recursive sense numbering, citation-count mismatches, citation-context route/selector contradictions, or malformed context rows.
 
 See [Configuration](../configuration.md) for request, retry, cache, redirect, and response-size policy.
 
 ## Limits and non-capabilities
 
-The converter and lookup do not provide:
+The converter and lexicon operations do not provide:
 
 - morphological analysis, lemmatization, root inference, or historical spelling reconstruction;
 - fuzzy or semantic ranking;
@@ -191,9 +216,12 @@ The converter and lookup do not provide:
 - token-at-coordinate analysis;
 - CAL data correction;
 - bulk extraction or lexicon crawling;
+- automatic citation-context traversal;
+- a generic URL-following operation;
+- local decoding of opaque `full_coordinate` values;
 - a persistent local CAL database.
 
-Those are separate capabilities or deliberate non-goals. Use `cal_convert_to_code` when the task is representation conversion and `cal_lexicon_lookup` when the task needs CAL lexical content.
+Those are separate capabilities or deliberate non-goals. Use `cal_convert_to_code` when the task is representation conversion, `cal_lexicon_lookup` when the task needs CAL lexical content, and `cal_lexicon_citation_context` only for an explicit typed context selector returned by lookup.
 
 ## Fixture and reproducibility policy
 

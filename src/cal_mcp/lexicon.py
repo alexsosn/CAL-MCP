@@ -37,6 +37,7 @@ class Citation:
     reference: str | None
     url: str | None
     text: str
+    full_coordinate: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -936,11 +937,13 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
         )
         linked_text = segments[0] if segments else ""
         reference = link.text.removesuffix("↗").strip()
+        resolved_url = urljoin(base_url, link.href) if link.href else None
         citations.append(
             Citation(
                 reference=reference,
-                url=urljoin(base_url, link.href) if link.href else None,
+                url=resolved_url,
                 text=linked_text,
+                full_coordinate=_citation_full_coordinate(resolved_url),
             )
         )
         citations.extend(_raw_citation(part) for part in segments[1:])
@@ -955,6 +958,29 @@ def _split_citation_segments(value: str, *, structural_boundaries: bool = False)
 
 def _raw_citation(text: str) -> Citation:
     return Citation(reference=None, url=None, text=text)
+
+
+def _citation_full_coordinate(url: str | None) -> str | None:
+    if url is None:
+        return None
+    parsed = urlsplit(url)
+    if (
+        parsed.scheme != "https"
+        or parsed.netloc != "cal.huc.edu"
+        or parsed.path != "/showachapter.php"
+        or parsed.fragment
+    ):
+        return None
+    query = parse_qs(parsed.query, keep_blank_values=True)
+    if set(query) != {"fullcoord"}:
+        return None
+    values = query.get("fullcoord")
+    if values is None or len(values) != 1:
+        return None
+    value = values[0]
+    if not value or not value.isascii() or not value.isdecimal() or int(value) < 1:
+        return None
+    return value
 
 
 def _parse_derivative(line: _Line) -> Derivative | None:
@@ -1128,7 +1154,12 @@ def _lemma_to_dict(lemma: LemmaRef) -> dict[str, object]:
 
 
 def _citation_to_dict(citation: Citation) -> dict[str, object]:
-    return {"reference": citation.reference, "url": citation.url, "text": citation.text}
+    return {
+        "reference": citation.reference,
+        "url": citation.url,
+        "text": citation.text,
+        "full_coordinate": citation.full_coordinate,
+    }
 
 
 def _sense_to_dict(sense: Sense) -> dict[str, object]:

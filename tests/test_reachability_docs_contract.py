@@ -5,7 +5,6 @@ _CURRENT_GAPS = {
     "#39": "recent",
     "#109": "targum",
     "#112": "prefix",
-    "#127": "citation",
 }
 _RESOLVED_ROUTE_ISSUES = (
     "#78",
@@ -17,6 +16,7 @@ _RESOLVED_ROUTE_ISSUES = (
     "#108",
     "#113",
     "#125",
+    "#127",
 )
 
 

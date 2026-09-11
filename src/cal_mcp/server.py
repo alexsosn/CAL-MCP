@@ -19,6 +19,7 @@ from cal_mcp.dictionary_collation import DictionaryCollationService, DictionaryS
 from cal_mcp.errors import PublicErrorKind, PublicToolError, classify_public_tool_error
 from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
+from cal_mcp.lexicon_citation_context import LexiconCitationContextService
 from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
 from cal_mcp.search import EnglishSearchService, GlossField
 from cal_mcp.syriac import SyriacService
@@ -101,7 +102,8 @@ mcp = CalMCPServer(
         "transliteration input into explicit bounded CAL-code candidates; this tool performs "
         "no CAL request. Use cal_lexicon_lookup for bounded live CAL lexicon lookup; finite "
         "orthographic ambiguity is searched across all bounded CAL-code variants rather than "
-        "guessed. "
+        "guessed. Use cal_lexicon_citation_context with a Citation.full_coordinate returned "
+        "by cal_lexicon_lookup to retrieve that citation's bounded CAL context explicitly. "
         "Use cal_gloss_search for ordinary CAL English-gloss search, cal_gloss_field for "
         "CAL indexed specialized gloss fields, and cal_citation_text_search for English "
         "words inside CAL citations. Use cal_text_catalogue to discover CAL "
@@ -184,6 +186,27 @@ async def cal_lexicon_lookup(
 
     client = ctx.request_context.lifespan_context.client
     result = await LexiconLookupService(client).lookup(query, lemma_key=lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_lexicon_citation_context",
+    title="Retrieve full context for one CAL lexicon citation",
+    structured_output=True,
+)
+async def cal_lexicon_citation_context(
+    full_coordinate: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Retrieve one citation context selected by a typed CAL full coordinate.
+
+    Use ``full_coordinate`` only from a linked citation returned by ``cal_lexicon_lookup``.
+    The adapter submits one bounded CAL request and never follows chapter, token, comment, or
+    source-information links automatically.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await LexiconCitationContextService(client).context(full_coordinate)
     return result.to_dict()
 
 
