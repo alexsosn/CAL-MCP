@@ -30,6 +30,7 @@ _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
 _LINE_COMMENTS_EMPTY_MARKER = "NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED"
+_LINE_COMMENTS_IGNORED_TAGS = frozenset({"script", "style"})
 _MANDAIC_COLLECTION_PREFIX = "74"
 _MANDAIC_CATEGORY_ID = "74"
 _MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
@@ -293,8 +294,16 @@ class _LineCommentsHTMLParser(HTMLParser):
         self._anchor_parts: list[str] | None = None
         self._in_reference = False
         self._in_gloss = False
+        self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._ignored_depth:
+            self._ignored_depth += 1
+            return
+        if tag in _LINE_COMMENTS_IGNORED_TAGS:
+            self._ignored_depth = 1
+            return
+
         attr_map = dict(attrs)
         if tag == "title":
             if self._title_parts is not None:
@@ -304,11 +313,13 @@ class _LineCommentsHTMLParser(HTMLParser):
 
         if tag == "div":
             classes = (attr_map.get("class") or "").split()
-            if self._summary_depth:
-                self._summary_depth += 1
-            elif "summary-card" in classes:
+            if "summary-card" in classes:
+                if self._summary_depth:
+                    raise TextParseError("CAL line-comments page has nested summary cards")
                 self.summary_count += 1
                 self._summary_depth = 1
+            elif self._summary_depth:
+                self._summary_depth += 1
             return
 
         if not self._summary_depth:
@@ -357,6 +368,10 @@ class _LineCommentsHTMLParser(HTMLParser):
             self._in_reference = True
 
     def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            self._ignored_depth -= 1
+            return
+
         if tag == "title" and self._title_parts is not None:
             self.titles.append(_clean_text("".join(self._title_parts)))
             self._title_parts = None
@@ -393,6 +408,8 @@ class _LineCommentsHTMLParser(HTMLParser):
             self._summary_depth -= 1
 
     def handle_data(self, data: str) -> None:
+        if self._ignored_depth:
+            return
         if self._title_parts is not None:
             self._title_parts.append(data)
         record = self._record
