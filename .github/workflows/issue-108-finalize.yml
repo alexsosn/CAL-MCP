@@ -26,11 +26,10 @@ jobs:
         run: |
           python -m pip install "pip==26.2.1" "setuptools==79.0.1"
           python -m pip install -e ".[dev]" -c constraints/ci-py311.txt --build-constraint constraints/build-py311.txt
-      - name: Apply exact finalization
+      - name: Apply exact remaining finalization
         run: python scripts/_finalize_issue108.py
       - name: Format changed Python
-        run: |
-          ruff format src/cal_mcp/texts.py src/cal_mcp/release_surface.py tests/test_docs_contract.py tests/test_reachability_docs_contract.py
+        run: ruff format src/cal_mcp/texts.py
       - name: Focused GREEN
         run: |
           ruff check .
@@ -41,22 +40,15 @@ jobs:
             tests/test_text_line_comments_review_regressions.py \
             tests/test_docs_contract.py \
             tests/test_reachability_docs_contract.py \
+            tests/test_release_contract.py \
             tests/test_release_surface_sync.py \
             tests/test_bootstrap.py
       - name: Commit clean finalization
         run: |
           git rm .github/workflows/issue-108-finalize.yml
-          git rm .github/workflows/issue-108-review-fix.yml
+          git rm -f .github/workflows/issue-108-gate3-docs.yml
           git rm scripts/_finalize_issue108.py
-          git add \
-            src/cal_mcp/texts.py \
-            src/cal_mcp/release_surface.py \
-            tests/test_docs_contract.py \
-            tests/test_reachability_docs_contract.py \
-            README.md \
-            CHANGELOG.md \
-            docs/index.md \
-            docs/tools/texts.md
+          git add src/cal_mcp/texts.py src/cal_mcp/server.py docs/tools/texts.md
           git diff --cached --check
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
