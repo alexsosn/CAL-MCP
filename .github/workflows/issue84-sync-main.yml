@@ -1,0 +1,113 @@
+name: issue-84 synchronize current main
+
+on:
+  push:
+    branches:
+      - feat/issue-84-structured-errors
+    paths:
+      - .github/workflows/issue84-sync-main.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: feat/issue-84-structured-errors
+          fetch-depth: 0
+      - name: Merge current main and resolve structured-error overlaps
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git merge --no-commit origin/main || true
+
+          unmerged="$(git diff --name-only --diff-filter=U | sort)"
+          expected="$(printf '%s\n' src/cal_mcp/lexicon.py src/cal_mcp/server.py | sort)"
+          if [ "$unmerged" != "$expected" ]; then
+            printf 'unexpected conflict set:\n%s\n' "$unmerged" >&2
+            exit 1
+          fi
+
+          git checkout --theirs src/cal_mcp/lexicon.py src/cal_mcp/server.py
+
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(text: str, old: str, new: str, label: str) -> str:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"{label}: expected one anchor, found {count}")
+              return text.replace(old, new, 1)
+
+          lexicon_path = Path("src/cal_mcp/lexicon.py")
+          text = lexicon_path.read_text()
+          text = replace_once(
+              text,
+              "from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse\n",
+              "from cal_mcp.client import CalHttpClient, CalRequest, CalResponse\n"
+              "from cal_mcp.errors import CalInputError, CalParseError\n",
+              "lexicon error imports",
+          )
+          text = replace_once(
+              text,
+              "class LexiconParseError(CalContentError):",
+              "class LexiconParseError(CalParseError):",
+              "lexicon parse base",
+          )
+          text = replace_once(
+              text,
+              'raise ValueError("lemma_key must identify one of the matching CAL candidates")',
+              'raise CalInputError("lemma_key must identify one of the matching CAL candidates")',
+              "lexicon public validation",
+          )
+          lexicon_path.write_text(text)
+
+          server_path = Path("src/cal_mcp/server.py")
+          text = server_path.read_text()
+          text = replace_once(
+              text,
+              "from dataclasses import dataclass\n",
+              "from dataclasses import dataclass\nfrom typing import Any\n",
+              "server typing import",
+          )
+          text = replace_once(
+              text,
+              "from mcp.server.mcpserver import Context\n",
+              "from mcp.server.mcpserver import Context\n"
+              "from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError\n"
+              "from mcp.types import CallToolResult, InputRequiredResult, TextContent\n"
+              "from pydantic import ValidationError\n",
+              "server MCP imports",
+          )
+          text = replace_once(
+              text,
+              "from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource\n",
+              "from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource\n"
+              "from cal_mcp.errors import PublicErrorKind, PublicToolError, classify_public_tool_error\n",
+              "server structured-error import",
+          )
+          marker = "\n\n@asynccontextmanager\nasync def app_lifespan"
+          structured = '''\n\ndef _public_tool_error_result(error: PublicToolError) -> CallToolResult:\n    return CallToolResult(\n        content=[\n            TextContent(\n                type="text",\n                text=f"{error.operation}: {error.kind.value}: {error.message}",\n            )\n        ],\n        structured_content=error.to_dict(),\n        is_error=True,\n    )\n\n\ndef _sdk_validation_message(error: ValidationError) -> str:\n    fields = sorted(\n        {".".join(str(part) for part in item["loc"]) for item in error.errors() if item.get("loc")}\n    )\n    if not fields:\n        return "Invalid tool arguments"\n    return f"Invalid tool arguments: {', '.join(fields)}"\n\n\nclass CalMCPServer(MCPServer[AppContext]):\n    async def call_tool(\n        self,\n        name: str,\n        arguments: dict[str, Any],\n        context: Context[AppContext, Any] | None = None,\n    ) -> CallToolResult | InputRequiredResult:\n        try:\n            return await super().call_tool(name, arguments, context)\n        except UnexpectedToolError as exc:\n            cause = exc.__cause__\n            public_error = classify_public_tool_error(name, cause) if cause is not None else None\n            if public_error is None:\n                raise\n            return _public_tool_error_result(public_error)\n        except ToolError as exc:\n            cause = exc.__cause__\n            if not isinstance(cause, ValidationError):\n                raise\n            return _public_tool_error_result(\n                PublicToolError(\n                    kind=PublicErrorKind.INVALID_INPUT,\n                    operation=name,\n                    upstream_reached=False,\n                    retryable=False,\n                    message=_sdk_validation_message(cause),\n                )\n            )\n'''
+          if "class CalMCPServer" in text:
+              raise SystemExit("structured server class unexpectedly already present")
+          text = replace_once(text, marker, structured + marker, "server class insertion")
+          text = replace_once(text, "mcp = MCPServer(\n", "mcp = CalMCPServer(\n", "server instance")
+          server_path.write_text(text)
+          PY
+
+          git add src/cal_mcp/lexicon.py src/cal_mcp/server.py
+          git rm .github/workflows/issue84-sync-main.yml
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            git diff --name-only --diff-filter=U >&2
+            exit 1
+          fi
+          git diff --cached --check
+          git commit -m "Merge current main into structured-errors work"
+          git push origin HEAD:feat/issue-84-structured-errors
