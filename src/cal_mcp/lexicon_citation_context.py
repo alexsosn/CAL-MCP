@@ -144,7 +144,9 @@ class _ContextHTMLParser(HTMLParser):
             self._open_link = None
         elif tag in {"td", "th"}:
             if self._cell_parts is None or self._cell_links is None:
-                raise LexiconCitationContextParseError("CAL citation context closes an unopened cell")
+                raise LexiconCitationContextParseError(
+                    "CAL citation context closes an unopened cell"
+                )
             if self._row_cells is None:
                 raise LexiconCitationContextParseError("CAL citation context cell is outside a row")
             self._row_cells.append(
@@ -154,7 +156,9 @@ class _ContextHTMLParser(HTMLParser):
             self._cell_links = None
         elif tag == "tr":
             if self._row_cells is None:
-                raise LexiconCitationContextParseError("CAL citation context closes an unopened row")
+                raise LexiconCitationContextParseError(
+                    "CAL citation context closes an unopened row"
+                )
             self.rows.append(_Row(tuple(self._row_cells)))
             self._row_cells = None
         if tag in _BLOCK_TAGS:
@@ -171,8 +175,14 @@ class _ContextHTMLParser(HTMLParser):
             raise LexiconCitationContextParseError(
                 "CAL citation context has an unclosed ignored subtree"
             )
-        if self._open_link is not None or self._cell_parts is not None or self._row_cells is not None:
-            raise LexiconCitationContextParseError("CAL citation context has incomplete table markup")
+        if (
+            self._open_link is not None
+            or self._cell_parts is not None
+            or self._row_cells is not None
+        ):
+            raise LexiconCitationContextParseError(
+                "CAL citation context has incomplete table markup"
+            )
         self._flush_block()
 
     def _append_data(self, data: str) -> None:
@@ -203,14 +213,10 @@ def parse_lexicon_citation_context_page(
 
     source_label, source_info_url = _parse_source_info(parser.links, response.url)
     lines = tuple(
-        line
-        for row in parser.rows
-        if (line := _parse_text_row(row, response.url)) is not None
+        line for row in parser.rows if (line := _parse_text_row(row, response.url)) is not None
     )
     missing_matches = [
-        match
-        for block in parser.blocks
-        if (match := _MISSING_RE.fullmatch(block)) is not None
+        match for block in parser.blocks if (match := _MISSING_RE.fullmatch(block)) is not None
     ]
 
     if missing_matches:
