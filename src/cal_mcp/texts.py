@@ -193,6 +193,14 @@ class TextCatalogueResult:
     provenance: TextProvenance
     specialized_collections: tuple[TextSpecializedCollectionRef, ...] = ()
 
+    @property
+    def recursive(self) -> bool:
+        return False
+
+    @property
+    def has_unexpanded_children(self) -> bool:
+        return bool(self.categories or self.specialized_collections)
+
     def to_dict(self) -> dict[str, object]:
         return {
             "categories": [_category_to_dict(item) for item in self.categories],
@@ -201,6 +209,8 @@ class TextCatalogueResult:
                 _specialized_collection_to_dict(item) for item in self.specialized_collections
             ],
             "provenance": _provenance_to_dict(self.provenance),
+            "recursive": self.recursive,
+            "has_unexpanded_children": self.has_unexpanded_children,
         }
 
 

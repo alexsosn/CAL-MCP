@@ -29,6 +29,13 @@ The result contains three ordered collections, each preserving order within its 
 - `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one;
 - `specialized_collections`: CAL-MCP routing references for current CAL branches that cannot be represented truthfully as a decimal generic category. Each item names a `follow_up_tool`, its `selector_name`, and the selectors supported by this CAL-MCP build.
 
+Every catalogue result also includes two traversal facts for machine callers:
+
+- `recursive` is always `false` for the current operation: the result describes only the single CAL catalogue level explicitly requested;
+- `has_unexpanded_children` is `true` when the returned level exposes at least one ordinary `category` or `specialized_collection` that can be followed explicitly.
+
+`has_unexpanded_children=false` means only that this returned level exposes no recognized child catalogue/specialized navigation. It does not prove that CAL's corpus has been exhaustively enumerated or that no other CAL route family exists. In particular, callers must not interpret the direct root `texts` array as a corpus-global inventory when child navigation is present.
+
 On a cache miss, an explicit call submits one logical CAL request. A completed cache hit performs zero new upstream I/O. CAL-MCP does not recursively expand returned categories. A caller that wants another level must explicitly call the tool again with the returned `category_id`.
 
 CAL's current root text browser routes the **Targums Onkelos and Jonathan to the Prophets** collection through a dedicated CAL page rather than an ordinary `showsubtexts.php` link. CAL-MCP preserves that branch in root discovery as category `51`. An explicit `cal_text_catalogue(category_id="51")` call targets only that dedicated collection page and returns its ordered children using the normal result shapes: subdivided sources such as `51001 TgO Gn` remain `categories`, while direct sources such as `51400 MegTan (Megillat Taanit)` remain `texts`. The dedicated route stays adapter-private, no child is prefetched, and follow-up retrieval remains a separate caller-controlled action.
