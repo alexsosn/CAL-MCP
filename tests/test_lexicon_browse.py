@@ -48,14 +48,14 @@ def _response(body: str, *, url: str = _BR_URL) -> CalResponse:
 
 
 def _public_parser() -> Callable[[CalResponse], object]:
-    module = importlib.import_module("cal_mcp.lexicon")
+    module = importlib.import_module("cal_mcp.lexicon_browse")
     parser = getattr(module, "parse_lexicon_browse_page", None)
     assert callable(parser), "public browse parser must be implemented after the RED gate"
     return cast(Callable[[CalResponse], object], parser)
 
 
 def _service(client: CalHttpClient) -> _BrowseService:
-    module = importlib.import_module("cal_mcp.lexicon")
+    module = importlib.import_module("cal_mcp.lexicon_browse")
     service_type = getattr(module, "LexiconBrowseService", None)
     assert callable(service_type), "LexiconBrowseService must be implemented after the RED gate"
     factory = cast(Callable[[CalHttpClient], _BrowseService], service_type)
