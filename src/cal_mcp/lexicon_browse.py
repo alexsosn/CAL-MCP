@@ -5,7 +5,13 @@ from datetime import datetime
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
-from cal_mcp.lexicon import LemmaRef, LexiconParseError, _lemma_to_dict, _parse_lines, parse_browse_page
+from cal_mcp.lexicon import (
+    LemmaRef,
+    LexiconParseError,
+    _lemma_to_dict,
+    _parse_lines,
+    parse_browse_page,
+)
 from cal_mcp.normalization import (
     AmbiguousQueryError,
     CalCodeConversion,
@@ -200,7 +206,9 @@ def _continuation_from_link(source_url: str, href: str) -> str:
     try:
         return _validate_continuation(sortkeys[0])
     except ValueError as exc:
-        raise LexiconParseError("CAL lexicon NEXT PAGE sortkey is outside the safe contract") from exc
+        raise LexiconParseError(
+            "CAL lexicon NEXT PAGE sortkey is outside the safe contract"
+        ) from exc
 
 
 def _validate_continuation(value: str) -> str:
