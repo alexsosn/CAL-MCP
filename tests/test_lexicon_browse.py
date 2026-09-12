@@ -75,9 +75,7 @@ def _next(page: object) -> str | None:
 
 
 def test_public_browse_parser_preserves_cal_order_and_next_continuation() -> None:
-    page = _public_parser()(
-        _response(_fixture("browse_br_unclosed_jump_2026_09_06.html"))
-    )
+    page = _public_parser()(_response(_fixture("browse_br_unclosed_jump_2026_09_06.html")))
 
     entries = _entries(page)
     assert [getattr(item, "lemma_key", None) for item in entries] == ["br N", "br#2 N"]
@@ -86,9 +84,7 @@ def test_public_browse_parser_preserves_cal_order_and_next_continuation() -> Non
 
 
 def test_existing_lookup_browse_parser_stays_navigation_agnostic() -> None:
-    page = parse_browse_page(
-        _response(_fixture("browse_br_unclosed_jump_2026_09_06.html"))
-    )
+    page = parse_browse_page(_response(_fixture("browse_br_unclosed_jump_2026_09_06.html")))
 
     assert [item.lemma_key for item in page.entries] == ["br N", "br#2 N"]
     assert getattr(page, "next_continuation", None) is None
