@@ -44,6 +44,8 @@ class LexiconBrowseProvenance:
     representation: str
     conversion_strategy: str
     continuation: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class LexiconBrowseResult:
     prefix: str
