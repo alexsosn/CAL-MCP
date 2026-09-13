@@ -11,8 +11,26 @@ from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalRespon
 
 
 @pytest.mark.anyio
-async def test_content_policy_error_does_not_expose_untrusted_response_url(
+@pytest.mark.parametrize(
+    ("body", "content_type", "expected_message"),
+    [
+        (
+            b"{}",
+            "application/json",
+            "CAL returned unexpected content type 'application/json'",
+        ),
+        (
+            b"<html><title>Maintenance</title><body>Please try later</body></html>",
+            "text/html; charset=UTF-8",
+            "CAL returned a probable maintenance page",
+        ),
+    ],
+)
+async def test_content_policy_errors_do_not_expose_untrusted_response_url(
     monkeypatch: pytest.MonkeyPatch,
+    body: bytes,
+    content_type: str,
+    expected_message: str,
 ) -> None:
     private_url = "https://example.org/private?token=DO_NOT_LEAK"
 
@@ -21,8 +39,8 @@ async def test_content_policy_error_does_not_expose_untrusted_response_url(
         return CalResponse(
             status_code=200,
             url=private_url,
-            body=b"{}",
-            content_type="application/json",
+            body=body,
+            content_type=content_type,
             retrieved_at=datetime(2026, 9, 13, tzinfo=UTC),
         )
 
@@ -42,7 +60,7 @@ async def test_content_policy_error_does_not_expose_untrusted_response_url(
     error = result.structured_content["error"]
     assert error["kind"] == "content"
     assert error["source_url"] is None
-    assert error["message"] == "CAL returned unexpected content type 'application/json'"
+    assert error["message"] == expected_message
     rendered = " ".join(block.text for block in result.content if isinstance(block, TextContent))
     assert "example.org" not in rendered
     assert "DO_NOT_LEAK" not in rendered
