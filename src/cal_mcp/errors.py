@@ -14,6 +14,9 @@ from cal_mcp.client import (
 
 _TRANSIENT_STATUS_CODES = frozenset({500, 502, 503, 504})
 _MAX_PUBLIC_MESSAGE_CHARS = 500
+_UNEXPECTED_CONTENT_TYPE_PREFIX = "CAL returned unexpected content type "
+_MAINTENANCE_PAGE_PREFIX = "CAL maintenance page returned"
+_GENERIC_CONTENT_MESSAGE = "CAL response content was rejected as unsafe"
 
 
 class CalInputError(ValueError):
@@ -125,7 +128,7 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             operation=operation,
             upstream_reached=True,
             retryable=False,
-            message=_safe_message(error),
+            message=_safe_content_message(error),
         )
     return None
 
@@ -146,6 +149,17 @@ def _trusted_cal_url(value: str) -> str | None:
     ):
         return None
     return value
+
+
+def _safe_content_message(error: CalContentError) -> str:
+    text = " ".join(str(error).split())
+    if text.startswith(_UNEXPECTED_CONTENT_TYPE_PREFIX):
+        diagnostic, separator, _url = text.partition(" for ")
+        if separator and len(diagnostic) <= _MAX_PUBLIC_MESSAGE_CHARS:
+            return diagnostic
+    if text.startswith(_MAINTENANCE_PAGE_PREFIX):
+        return "CAL returned a probable maintenance page"
+    return _GENERIC_CONTENT_MESSAGE
 
 
 def _safe_message(error: BaseException) -> str:
