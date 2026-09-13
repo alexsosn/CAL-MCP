@@ -14,6 +14,7 @@ from cal_mcp.concordance import ConcordanceService
 from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
 from cal_mcp.external_citations import ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService
+from cal_mcp.lexicon_browse import LexiconBrowseService
 from cal_mcp.lexicon_citation_context import LexiconCitationContextService
 from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
 from cal_mcp.search import EnglishSearchService, GlossField
@@ -45,48 +46,46 @@ mcp = MCPServer(
         "transliteration input into explicit bounded CAL-code candidates; this tool performs "
         "no CAL request. Use cal_lexicon_lookup for bounded live CAL lexicon lookup; finite "
         "orthographic ambiguity is searched across all bounded CAL-code variants rather than "
-        "guessed. Use cal_lexicon_citation_context with a Citation.full_coordinate returned "
-        "by cal_lexicon_lookup to retrieve that citation's bounded CAL context explicitly. "
-        "Use cal_gloss_search for ordinary CAL English-gloss search, cal_gloss_field for "
-        "CAL indexed specialized gloss fields, and cal_citation_text_search for English "
-        "words inside CAL citations. Use cal_text_catalogue to discover CAL "
-        "text/category identifiers, cal_text_search to find texts by topic, cal_text_page "
-        "to retrieve one bounded CAL text page, and cal_text_information to retrieve CAL's "
-        "explicit source, edition, editorial, and other free-form Text Information metadata "
-        "for one returned file/subtext identifier. Use cal_text_line_comments with one "
-        "returned TextLine.coordinate for CAL line comments/translations. Use "
-        "cal_token_analysis for every CAL lexical "
-        "analysis attached to one explicit text coordinate and zero-based token index. "
-        "Use cal_text_concordance for one text's ordered lemma-frequency index, cal_kwic_texts "
-        "for one lemma in 1-8 explicit texts, cal_kwic_dialects to discover CAL's current "
-        "dialect identifiers, cal_kwic_dialect for one explicit dialect, and "
-        "cal_kwic_full_context to follow one returned KWIC hit using its typed "
-        "file/target/charset selectors. Use "
+        "guessed. Use cal_lexicon_browse for one CAL lexicon browse page from a one-letter "
+        "jump or a two- or three-character prefix; continue only by passing the returned "
+        "next_continuation in a separate explicit call. Use cal_lexicon_citation_context with "
+        "a Citation.full_coordinate returned by cal_lexicon_lookup to retrieve that citation's "
+        "bounded CAL context explicitly. Use cal_gloss_search for ordinary CAL English-gloss "
+        "search, cal_gloss_field for CAL indexed specialized gloss fields, and "
+        "cal_citation_text_search for English words inside CAL citations. Use "
+        "cal_text_catalogue to discover CAL text/category identifiers, cal_text_search to find "
+        "texts by topic, cal_text_page to retrieve one bounded CAL text page, and "
+        "cal_text_information to retrieve CAL's explicit source, edition, editorial, and "
+        "other free-form Text Information metadata for one returned file/subtext identifier. "
+        "Use cal_text_line_comments with one returned TextLine.coordinate for CAL line "
+        "comments/translations. Use cal_token_analysis for every CAL lexical analysis attached "
+        "to one explicit text coordinate and zero-based token index. Use cal_text_concordance "
+        "for one text's ordered lemma-frequency index, cal_kwic_texts for one lemma in 1-8 "
+        "explicit texts, cal_kwic_dialects to discover CAL's current dialect identifiers, "
+        "cal_kwic_dialect for one explicit dialect, and cal_kwic_full_context to follow one "
+        "returned KWIC hit using its typed file/target/charset selectors. Use "
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
-        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma "
-        "correspondences for one explicit dictionary page reference. Use "
-        "cal_targum_parallel for one biblical verse across current CAL "
-        "Targum readings, cal_targum_concordance for Targum-specific lemma counts, and the "
-        "two cal_targum_hebrew_* tools for explicit MT-lemma discovery/reflex lookup. "
-        "Use cal_syriac_texts for one explicit CAL Syriac text category and "
-        "cal_syriac_group for one GROUP selector returned by that tool. Use "
-        "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon "
-        "list, and cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac direct-text, "
+        "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma correspondences "
+        "for one explicit dictionary page reference. Use cal_targum_parallel for one biblical "
+        "verse across current CAL Targum readings, cal_targum_concordance for Targum-specific "
+        "lemma counts, and the two cal_targum_hebrew_* tools for explicit MT-lemma "
+        "discovery/reflex lookup. Use cal_syriac_texts for one explicit CAL Syriac text "
+        "category and cal_syriac_group for one GROUP selector returned by that tool. Use "
+        "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon list, and "
+        "cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac direct-text, "
         "catalogue, and lexicon follow-ups compose through cal_text_page, cal_text_catalogue, "
-        "and cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL "
-        "dialect identifiers for citations from texts not in the online corpus, "
+        "and cal_lexicon_lookup. Use cal_external_citation_dialects to discover CAL dialect "
+        "identifiers for citations from texts not in the online corpus, "
         "cal_external_citation_sources for one returned dialect, and "
-        "cal_external_citations for one exact returned source abbreviation. "
-        "The external/non-online-text citations workflow is distinct from "
-        "cal_citation_text_search. "
-        "Follow-ups are always explicit tool calls; there is no "
-        "hidden text, dialect, "
-        "bibliography-tag, dictionary-page, Targum-version, or full-context traversal. "
-        "Ambiguous analyses and "
-        "author prefixes remain ordered CAL alternatives rather than guessed preferred readings. "
-        "Results include CAL provenance and retrieval time."
+        "cal_external_citations for one exact returned source abbreviation. The "
+        "external/non-online-text citations workflow is distinct from cal_citation_text_search. "
+        "Follow-ups are always explicit tool calls; there is no hidden text, dialect, "
+        "lexicon-page, bibliography-tag, dictionary-page, Targum-version, or full-context "
+        "traversal. Ambiguous analyses and author prefixes remain ordered CAL alternatives "
+        "rather than guessed preferred readings. Results include CAL provenance and retrieval "
+        "time."
     ),
     version=__version__,
     lifespan=app_lifespan,
@@ -129,6 +128,33 @@ async def cal_lexicon_lookup(
 
     client = ctx.request_context.lifespan_context.client
     result = await LexiconLookupService(client).lookup(query, lemma_key=lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_lexicon_browse",
+    title="Browse one CAL lexicon prefix page",
+    structured_output=True,
+)
+async def cal_lexicon_browse(
+    prefix: str,
+    ctx: Context[AppContext],
+    representation: InputRepresentation | None = None,
+    continuation: str | None = None,
+) -> dict[str, object]:
+    """Browse one bounded CAL lexicon page without automatic pagination.
+
+    One browse character follows CAL's JUMP TO workflow; two or three browse characters
+    follow CAL's documented prefix browser. Use only a returned ``next_continuation`` for a
+    later explicit continuation call. Entry pages are never fetched automatically.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await LexiconBrowseService(client).browse(
+        prefix,
+        representation=representation,
+        continuation=continuation,
+    )
     return result.to_dict()
 
 

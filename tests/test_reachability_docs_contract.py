@@ -4,7 +4,6 @@ _INDEX = Path("docs/index.md")
 _CURRENT_GAPS = {
     "#39": "recent",
     "#109": "targum",
-    "#112": "prefix",
 }
 _RESOLVED_ROUTE_ISSUES = (
     "#78",
@@ -14,6 +13,7 @@ _RESOLVED_ROUTE_ISSUES = (
     "#106",
     "#107",
     "#108",
+    "#112",
     "#113",
     "#125",
     "#127",
