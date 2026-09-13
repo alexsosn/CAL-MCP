@@ -9,11 +9,11 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import (
     CAL_BASE_URL,
-    CalContentError,
     CalHttpClient,
     CalRequest,
     CalResponse,
 )
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -66,7 +66,7 @@ _SYRIAC_SELECTOR_NAME = "category"
 _ROOT_CATALOGUE_PATH = "newtextmenu.html"
 
 
-class TextParseError(CalContentError):
+class TextParseError(CalParseError):
     """Raised when a CAL text page no longer exposes the required semantics."""
 
 
@@ -907,7 +907,7 @@ class TextService:
         normalized_file = _validate_id(file_id, "file_id")
         normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
-            raise ValueError("page must be a positive integer")
+            raise CalInputError("page must be a positive integer")
 
         mandaic_collection_route = normalized_subtext is None and normalized_file.startswith(
             _MANDAIC_COLLECTION_PREFIX
@@ -924,7 +924,7 @@ class TextService:
             ]
         elif mandaic_direct_route:
             if page != 1:
-                raise ValueError("direct Mandaic texts currently support only page 1")
+                raise CalInputError("direct Mandaic texts currently support only page 1")
             params = [("cset", "M"), ("file", normalized_file)]
         else:
             params = [("file", normalized_file)]
@@ -964,13 +964,13 @@ class TextService:
 
 def _validate_id(value: str, name: str) -> str:
     if not isinstance(value, str) or _ID_RE.fullmatch(value) is None:
-        raise ValueError(f"{name} must be a CAL decimal identifier")
+        raise CalInputError(f"{name} must be a CAL decimal identifier")
     return value
 
 
 def _validate_line_comment_coordinate(value: str) -> str:
     if not isinstance(value, str) or _LINE_COMMENT_COORD_RE.fullmatch(value) is None:
-        raise ValueError("coordinate must be a 1-64 character ASCII alphanumeric CAL coordinate")
+        raise CalInputError("coordinate must be a 1-64 character ASCII alphanumeric CAL coordinate")
     return value
 
 
@@ -990,12 +990,12 @@ def _parse_positive_id(value: str, name: str) -> str:
 def _prepare_text_search_query(value: str) -> str:
     trimmed = value.strip(" ")
     if not trimmed:
-        raise ValueError("CAL text search query must not be empty")
+        raise CalInputError("CAL text search query must not be empty")
     if any(char.isspace() and char != " " for char in trimmed):
-        raise ValueError("CAL text search words must be separated by ASCII spaces")
+        raise CalInputError("CAL text search words must be separated by ASCII spaces")
     parts = [part for part in trimmed.split(" ") if part]
     if not parts:
-        raise ValueError("CAL text search query must not be empty")
+        raise CalInputError("CAL text search query must not be empty")
     return " ".join(parts)
 
 

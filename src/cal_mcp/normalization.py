@@ -6,8 +6,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import urlencode
 
+from cal_mcp.errors import CalInputError
 
-class NormalizationError(ValueError):
+
+class NormalizationError(CalInputError):
     """Base class for deterministic CAL input normalization failures."""
 
 

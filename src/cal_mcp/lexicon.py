@@ -9,7 +9,8 @@ from html.parser import HTMLParser
 from itertools import product
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.normalization import (
     CalCodeConversion,
     ConversionExpansionError,
@@ -21,7 +22,7 @@ from cal_mcp.normalization import (
 )
 
 
-class LexiconParseError(CalContentError):
+class LexiconParseError(CalParseError):
     """Raised when CAL lexicon markup no longer contains required semantics."""
 
 
@@ -699,7 +700,7 @@ class LexiconLookupService:
         if lemma_key is not None:
             selected = next((item for item in matches if item.lemma_key == lemma_key), None)
             if selected is None:
-                raise ValueError("lemma_key must identify one of the matching CAL candidates")
+                raise CalInputError("lemma_key must identify one of the matching CAL candidates")
         elif len(matches) > 1:
             return LexiconLookupResult(
                 status=LexiconLookupStatus.AMBIGUOUS,

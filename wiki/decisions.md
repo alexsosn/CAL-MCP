@@ -152,3 +152,20 @@ Rationale: this avoids creating framework maintenance work before there is a sta
 Projects such as PSHAT and Peshitta MCP may inform edge cases and agent-facing ergonomics, but CAL-MCP will not inherit their data models/interfaces by default.
 
 Any copied/reused code requires an issue that verifies license compatibility and demonstrates that reuse is preferable to a small native implementation.
+
+
+## D-013 — Anticipated CAL-MCP failures use structured MCP errors
+
+**Status:** accepted — 2026-09-11
+
+Known caller-validation, CAL network/HTTP, response-size/content-policy, and parser-drift failures cross the public MCP boundary as `isError=true` results with a stable machine-readable `error` object. Unexpected programming failures and unknown SDK/protocol errors remain on the MCP SDK's generic sanitized error path.
+
+Consequences:
+
+- public callers can distinguish correction/retry/drift actions without parsing human error strings;
+- `upstream_reached` is false only for known local rejection, true only after a response is known, and null for ambiguous network receipt;
+- retryability follows the existing bounded request policy rather than inventing a second retry taxonomy;
+- URLs/status codes are exposed only from explicitly typed metadata, never scraped from arbitrary exception text;
+- public diagnostics are one-line and bounded, and response bodies/HTML/tracebacks are never part of the error contract;
+- successful empty/not-found states remain normal success results;
+- adding a new public error class requires an explicit allowlist/classifier decision and contract coverage rather than a catch-all serializer.

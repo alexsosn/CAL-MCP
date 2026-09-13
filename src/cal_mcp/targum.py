@@ -8,11 +8,12 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.biblical import cal_biblical_book_id
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.concordance import _validate_lemma_key
+from cal_mcp.errors import CalInputError, CalParseError
 
 
-class TargumParseError(CalContentError):
+class TargumParseError(CalParseError):
     """Raised when CAL Targum markup no longer exposes required semantics."""
 
 
@@ -729,7 +730,7 @@ class TargumService:
         submitted_chapter = _validate_positive_int(chapter, "chapter")
         submitted_verse = _validate_positive_int(verse, "verse")
         if not isinstance(include_peshitta, bool) or not isinstance(include_samaritan, bool):
-            raise ValueError("Targum optional-version flags must be booleans")
+            raise CalInputError("Targum optional-version flags must be booleans")
 
         data: list[tuple[str, str]] = [
             ("bookname", book_id),
@@ -868,9 +869,9 @@ def _validate_book(book: str) -> str:
 
 def _validate_positive_int(value: int, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int):
-        raise ValueError(f"{name} must be an integer")
+        raise CalInputError(f"{name} must be an integer")
     if value < 1 or value > 999:
-        raise ValueError(f"{name} must be between 1 and 999")
+        raise CalInputError(f"{name} must be between 1 and 999")
     return value
 
 
@@ -880,22 +881,22 @@ def _format_coordinate_number(value: int) -> str:
 
 def _validate_initial(initial: str) -> str:
     if not isinstance(initial, str) or initial not in _INITIALS:
-        raise ValueError("initial must be one current CAL MT lemma selector slug")
+        raise CalInputError("initial must be one current CAL MT lemma selector slug")
     return initial
 
 
 def _validate_targum(targum: str) -> str:
     if not isinstance(targum, str) or targum not in _TARGUM_CONFIG:
-        raise ValueError("targum must be 'onqelos' or 'neofiti'")
+        raise CalInputError("targum must be 'onqelos' or 'neofiti'")
     return targum
 
 
 def _validate_mt_lemma_id(mt_lemma_id: str) -> str:
     if not isinstance(mt_lemma_id, str):
-        raise ValueError("mt_lemma_id must be a string")
+        raise CalInputError("mt_lemma_id must be a string")
     candidate = mt_lemma_id.strip(" ")
     if not candidate.isdecimal() or len(candidate) > 8 or int(candidate) < 1:
-        raise ValueError("mt_lemma_id must be a positive decimal identifier of at most 8 digits")
+        raise CalInputError("mt_lemma_id must be a positive decimal identifier of at most 8 digits")
     return candidate
 
 
@@ -909,7 +910,7 @@ def _returned_mt_lemma_id(value: str) -> str:
 def _targum_config(targum: str) -> dict[str, str]:
     config = _TARGUM_CONFIG.get(targum)
     if config is None:
-        raise ValueError("targum must be 'onqelos' or 'neofiti'")
+        raise CalInputError("targum must be 'onqelos' or 'neofiti'")
     return config
 
 
