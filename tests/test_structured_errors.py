@@ -89,6 +89,37 @@ async def test_local_validation_returns_structured_error_without_transport(
 
 
 @pytest.mark.anyio
+async def test_lexicon_browse_continuation_validation_is_structured_without_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal calls
+        del request, config
+        calls += 1
+        raise AssertionError("browse validation must not reach CAL transport")
+
+    _install_transport(monkeypatch, transport)
+
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "cal_lexicon_browse",
+            {"prefix": "b", "continuation": "bad&cursor"},
+        )
+
+    _assert_structured_error(
+        result,
+        kind="invalid_input",
+        operation="cal_lexicon_browse",
+        upstream_reached=False,
+        retryable=False,
+        message="continuation contains URL or query delimiters",
+    )
+    assert calls == 0
+
+
+@pytest.mark.anyio
 async def test_sdk_argument_validation_returns_structured_invalid_input() -> None:
     async with Client(server_module.mcp, raise_exceptions=True) as client:
         result = await client.call_tool("cal_text_page", {"file_id": 123})
