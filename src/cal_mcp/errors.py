@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 from cal_mcp.client import (
     CalContentError,
@@ -84,23 +85,31 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             message=_safe_message(error),
         )
     if isinstance(error, CalUpstreamError):
+        source_url = _trusted_cal_url(error.url)
+        message = f"CAL returned HTTP {error.status_code}"
+        if source_url is not None:
+            message = f"{message} for {source_url}"
         return PublicToolError(
             kind=PublicErrorKind.UPSTREAM_HTTP,
             operation=operation,
             upstream_reached=True,
             retryable=error.status_code in _TRANSIENT_STATUS_CODES,
-            message=_safe_message(error),
-            source_url=error.url,
+            message=_safe_text(message),
+            source_url=source_url,
             status_code=error.status_code,
         )
     if isinstance(error, CalResponseTooLargeError):
+        source_url = _trusted_cal_url(error.url)
+        message = f"CAL response exceeded configured {error.max_response_bytes}-byte limit"
+        if source_url is not None:
+            message = f"{message} for {source_url}"
         return PublicToolError(
             kind=PublicErrorKind.RESPONSE_TOO_LARGE,
             operation=operation,
             upstream_reached=True,
             retryable=False,
-            message=_safe_message(error),
-            source_url=error.url,
+            message=_safe_text(message),
+            source_url=source_url,
         )
     if isinstance(error, CalParseError):
         return PublicToolError(
@@ -121,8 +130,30 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
     return None
 
 
+def _trusted_cal_url(value: str) -> str | None:
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        return None
+    if (
+        parsed.scheme != "https"
+        or parsed.hostname != "cal.huc.edu"
+        or port is not None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.fragment
+    ):
+        return None
+    return value
+
+
 def _safe_message(error: BaseException) -> str:
-    text = " ".join(str(error).split())
+    return _safe_text(str(error))
+
+
+def _safe_text(value: str) -> str:
+    text = " ".join(value.split())
     if not text:
         return "CAL-MCP operation failed"
     return text[:_MAX_PUBLIC_MESSAGE_CHARS]
