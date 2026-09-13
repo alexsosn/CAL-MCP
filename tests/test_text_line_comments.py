@@ -291,8 +291,9 @@ async def test_invalid_public_coordinates_fail_before_transport(coordinate: str)
 
 def test_release_manifest_includes_line_comments_tool() -> None:
     assert "cal_text_line_comments" in V01_PUBLIC_TOOLS
+    assert "cal_lexicon_browse" in V01_PUBLIC_TOOLS
     assert "cal_lexicon_citation_context" in V01_PUBLIC_TOOLS
-    assert len(V01_PUBLIC_TOOLS) == 33
+    assert len(V01_PUBLIC_TOOLS) == 34
 
 
 @pytest.mark.anyio
