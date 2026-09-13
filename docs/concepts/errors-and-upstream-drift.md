@@ -30,7 +30,7 @@ Anticipated CAL-MCP failures return an MCP tool result with `isError=true`, one 
 
 `retryable` is caller-level advice after CAL-MCP's own bounded retry policy. Upstream HTTP errors are marked retryable only for the currently allowed transient statuses `500`, `502`, `503`, and `504`. Invalid input, parser drift, content-policy failures, oversized responses, and ordinary non-transient HTTP failures are not marked retryable.
 
-`source_url` and `status_code` are populated only from typed failure metadata already carried by the adapter. CAL-MCP does not scrape URLs or status values from exception messages.
+`source_url` and `status_code` are populated only from typed failure metadata already carried by the adapter. A source URL is exposed only after it validates as an HTTPS URL on the exact `cal.huc.edu` origin; otherwise `source_url` is `null` and the untrusted URL is omitted from the public diagnostic message. CAL-MCP does not scrape URLs or status values from exception messages.
 
 Public diagnostic messages are adapter-authored or derived from explicitly allowlisted CAL-MCP exception classes, normalized to one line, and capped at 500 characters. Python class names, tracebacks, response bodies, HTML fragments, and arbitrary unexpected exception text are not part of the structured contract.
 
@@ -52,7 +52,7 @@ CAL-MCP retries only explicitly classified transient conditions and never create
 
 ## Upstream HTTP failures
 
-`CalUpstreamError` represents a non-successful CAL HTTP response after the bounded retry policy. The typed object records the status code and URL, which are carried into the structured public error.
+`CalUpstreamError` represents a non-successful CAL HTTP response after the bounded retry policy. The typed object records the status code and URL. The status is public; the URL is included only when it passes the exact CAL-origin validation described above.
 
 Redirect responses are not followed automatically. A 3xx therefore remains an upstream error rather than silently moving a request outside the already validated CAL boundary.
 
