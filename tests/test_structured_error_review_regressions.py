@@ -43,8 +43,6 @@ async def test_content_policy_error_does_not_expose_untrusted_response_url(
     assert error["kind"] == "content"
     assert error["source_url"] is None
     assert error["message"] == "CAL returned unexpected content type 'application/json'"
-    rendered = " ".join(
-        block.text for block in result.content if isinstance(block, TextContent)
-    )
+    rendered = " ".join(block.text for block in result.content if isinstance(block, TextContent))
     assert "example.org" not in rendered
     assert "DO_NOT_LEAK" not in rendered
