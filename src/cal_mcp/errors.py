@@ -46,6 +46,11 @@ class PublicToolError:
     source_url: str | None = None
     status_code: int | None = None
 
+    def __post_init__(self) -> None:
+        # SDK validation does not originate in our typed exception classifier.
+        # Enforce the public message invariant on every construction path.
+        object.__setattr__(self, "message", _safe_text(self.message))
+
     def to_dict(self) -> dict[str, object]:
         return {
             "error": {
