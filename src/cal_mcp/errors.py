@@ -134,6 +134,10 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
 
 
 def _trusted_cal_url(value: str) -> str | None:
+    # urlsplit silently strips some controls. Validate the original string before parsing
+    # because it is the original string that will be published as source_url.
+    if type(value) is not str or any(not 0x21 <= ord(char) <= 0x7E for char in value):
+        return None
     try:
         parsed = urlsplit(value)
         port = parsed.port
@@ -154,9 +158,9 @@ def _trusted_cal_url(value: str) -> str | None:
 def _safe_content_message(error: CalContentError) -> str:
     text = " ".join(str(error).split())
     if text.startswith(_UNEXPECTED_CONTENT_TYPE_PREFIX):
-        diagnostic, separator, _url = text.partition(" for ")
-        if separator and len(diagnostic) <= _MAX_PUBLIC_MESSAGE_CHARS:
-            return diagnostic
+        # Content-Type is an untrusted HTTP header, including its parameters and subtype.
+        # Never serialize any substring of it, even after stripping a response URL.
+        return "CAL returned an unexpected content type"
     if text.startswith(_MAINTENANCE_PAGE_PREFIX):
         return "CAL returned a probable maintenance page"
     return _GENERIC_CONTENT_MESSAGE
