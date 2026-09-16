@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from cal_mcp.errors import CalInputError
+
 _BOOK_IDS = {
     "Gen": "01",
     "Exod": "02",
@@ -44,7 +46,7 @@ def cal_biblical_book_id(book: str) -> str:
     """Return CAL's current selector ID for one exact biblical book label."""
 
     if not isinstance(book, str) or book not in _BOOK_IDS:
-        raise ValueError("book must be one exact current CAL biblical book label")
+        raise CalInputError("book must be one exact current CAL biblical book label")
     return _BOOK_IDS[book]
 
 

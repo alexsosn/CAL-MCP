@@ -63,9 +63,11 @@ CAL form field names and PHP endpoint names are not part of the MCP contract.
 
 ## Failure handling
 
-Transport-level MCP process failures are distinct from CAL request/parser failures produced while executing a tool. For the CAL-side taxonomy, see [Errors and upstream drift](../concepts/errors-and-upstream-drift.md).
+Anticipated CAL-MCP failures return MCP tool results with `isError=true` and a machine-readable `structuredContent.error` object. Clients can inspect its `kind`, `retryable`, and `upstream_reached` fields instead of parsing the human-readable text block. For example, local invalid input is non-retryable with `upstream_reached=false`, while an exhausted network timeout is retryable with `upstream_reached=null` because CAL receipt cannot be known.
 
-A parser-drift error should not be interpreted by the client as a legitimate empty CAL result.
+Successful empty/not-found results remain ordinary success results. Unexpected programming failures are deliberately different again: they remain on the MCP SDK's generic sanitized error path and do not receive a misleading CAL-MCP error classification.
+
+For the complete public taxonomy and fields, see [Errors and upstream drift](../concepts/errors-and-upstream-drift.md). A parser-drift error should never be interpreted by the client as a legitimate empty CAL result.
 
 ## Shutdown
 

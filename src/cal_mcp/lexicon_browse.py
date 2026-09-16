@@ -5,6 +5,7 @@ from datetime import datetime
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError
 from cal_mcp.lexicon import (
     LemmaRef,
     LexiconParseError,
@@ -205,7 +206,7 @@ def _continuation_from_link(source_url: str, href: str) -> str:
         raise LexiconParseError("CAL lexicon NEXT PAGE sortkey is missing or repeated")
     try:
         return _validate_continuation(sortkeys[0])
-    except ValueError as exc:
+    except CalInputError as exc:
         raise LexiconParseError(
             "CAL lexicon NEXT PAGE sortkey is outside the safe contract"
         ) from exc
@@ -213,15 +214,15 @@ def _continuation_from_link(source_url: str, href: str) -> str:
 
 def _validate_continuation(value: str) -> str:
     if not isinstance(value, str):
-        raise ValueError("continuation must be a string returned by cal_lexicon_browse")
+        raise CalInputError("continuation must be a string returned by cal_lexicon_browse")
     if not value or value != value.strip():
-        raise ValueError("continuation must be nonempty without surrounding whitespace")
+        raise CalInputError("continuation must be nonempty without surrounding whitespace")
     if len(value) > _CONTINUATION_MAX_LENGTH:
-        raise ValueError("continuation is too long")
+        raise CalInputError("continuation is too long")
     if any(ord(char) < 0x20 or ord(char) > 0x7E for char in value):
-        raise ValueError("continuation must contain printable ASCII only")
+        raise CalInputError("continuation must contain printable ASCII only")
     if any(char in _CONTINUATION_FORBIDDEN for char in value):
-        raise ValueError("continuation contains URL or query delimiters")
+        raise CalInputError("continuation contains URL or query delimiters")
     return value
 
 

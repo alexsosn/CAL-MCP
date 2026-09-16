@@ -130,6 +130,7 @@ flowchart TB
       BIBLE[biblical.py]
       HTTP[client.py\nCalHttpClient]
       POLICY[request_policy.py\nbounded cache policy]
+      ERRORS[errors.py\npublic known-failure taxonomy]
     end
 
     CAL[cal.huc.edu]
@@ -142,6 +143,8 @@ flowchart TB
     SYR --> BIBLE
     Surfaces --> HTTP
     HTTP --> POLICY
+    Surfaces --> ERRORS
+    SERVER --> ERRORS
     HTTP --> CAL
     CAL --> Surfaces
 ```
@@ -153,6 +156,7 @@ Responsibilities:
 - declare tool names, descriptions, arguments, output schemas;
 - validate caller input before network access where the public tool type/schema can do so;
 - dispatch each tool to one coherent task-level adapter/service;
+- convert only explicitly typed, anticipated CAL-MCP failures into structured MCP `isError` results while leaving unexpected crashes on the SDK's generic sanitized path;
 - own the lifespan of one bounded `CalHttpClient` for the running server so cache and single-flight state are shared across tool calls; client construction performs no CAL request and shutdown closes it;
 - remain unaware of CAL selectors, table layout, HTML nesting, or endpoint-specific parsing details.
 
@@ -185,7 +189,8 @@ Shared modules contain behavior that truly spans research surfaces:
 - `lemma_key.py` — reusable structural CAL lemma-key validation;
 - `biblical.py` — bounded shared biblical coordinate validation/helpers used by specialist comparison surfaces;
 - `client.py` — CAL request validation, transport, bounded retry/content policy, provenance-bearing fetch results, single-flight coordination;
-- `request_policy.py` — bounded process-local completed-result cache primitives.
+- `request_policy.py` — bounded process-local completed-result cache primitives;
+- `errors.py` — shared caller-input/parser bases plus the allowlisted public error classifier used only at the MCP boundary.
 
 The shared layer contains no CAL scholarly reinterpretation and does not invent a universal result model when different CAL tasks expose different semantics.
 
@@ -227,7 +232,7 @@ sequenceDiagram
     H->>P: validated response + source URL/time
     P-->>S: typed CAL result
     S-->>M: result + task provenance
-    M-->>A: structured MCP response
+    M-->>A: structured success or allowlisted structured error
 ```
 
 Some user workflows require a second explicit tool call using an identifier returned by the first. The server does not turn those compositions into hidden traversals.
@@ -242,7 +247,7 @@ Failure at any layer remains distinguishable:
 - CAL explicit not-found/empty result;
 - parser schema mismatch/upstream drift.
 
-Do not collapse these into a generic “no result.”
+Do not collapse these into a generic “no result.” Anticipated typed failures cross the MCP boundary as structured `isError` results; unexpected programming/SDK failures remain generically sanitized by the MCP SDK rather than being reclassified as CAL failures.
 
 ## 6. Input normalization architecture
 
@@ -340,6 +345,7 @@ src/cal_mcp/
 ├── client.py
 ├── concordance.py
 ├── dictionary_collation.py
+├── errors.py
 ├── external_citations.py
 ├── lemma_key.py
 ├── lexicon.py
