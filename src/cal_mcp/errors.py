@@ -5,6 +5,7 @@ from enum import StrEnum
 from urllib.parse import urlsplit
 
 from cal_mcp.client import (
+    _RETRYABLE_TRANSPORT_EXCEPTIONS,
     CalContentError,
     CalNetworkError,
     CalRequestValidationError,
@@ -85,11 +86,16 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             message=_safe_message(error),
         )
     if isinstance(error, CalNetworkError):
+        # The client chains the original transport exception. Share its retryable
+        # exception allowlist, so terminal HTTP/OSError failures are not advertised
+        # as retryable while exhausted timeouts and network failures still are.
+        cause = error.__cause__
+        retryable = cause is None or isinstance(cause, _RETRYABLE_TRANSPORT_EXCEPTIONS)
         return PublicToolError(
             kind=PublicErrorKind.NETWORK,
             operation=operation,
             upstream_reached=None,
-            retryable=True,
+            retryable=retryable,
             message=_safe_message(error),
         )
     if isinstance(error, CalUpstreamError):
