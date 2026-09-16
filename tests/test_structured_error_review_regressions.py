@@ -17,7 +17,7 @@ from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalRespon
         (
             b"{}",
             "application/json",
-            "CAL returned unexpected content type 'application/json'",
+            "CAL returned an unexpected content type",
         ),
         (
             b"<html><title>Maintenance</title><body>Please try later</body></html>",
