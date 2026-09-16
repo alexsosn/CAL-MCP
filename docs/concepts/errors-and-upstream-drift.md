@@ -28,11 +28,11 @@ Anticipated CAL-MCP failures return an MCP tool result with `isError=true`, one 
 - `true` when a CAL HTTP response was received and the failure is response/content/parser based;
 - `null` for network or timeout failures where CAL receipt cannot be known.
 
-`retryable` is caller-level advice after CAL-MCP's own bounded retry policy. Upstream HTTP errors are marked retryable only for the currently allowed transient statuses `500`, `502`, `503`, and `504`. Invalid input, parser drift, content-policy failures, oversized responses, and ordinary non-transient HTTP failures are not marked retryable.
+`retryable` is caller-level advice after CAL-MCP's own bounded retry policy. Upstream HTTP errors are marked retryable only for the currently allowed transient statuses `500`, `502`, `503`, and `504`. Invalid input, parser drift, content-policy failures, oversized responses, and ordinary non-transient HTTP failures are not marked retryable. For transport failures, exhausted retryable exception categories remain retryable; terminal transport categories that the adapter intentionally does not retry are marked non-retryable.
 
-`source_url` and `status_code` are populated only from typed failure metadata already carried by the adapter. A source URL is exposed only after it validates as an HTTPS URL on the exact `cal.huc.edu` origin; otherwise `source_url` is `null` and the untrusted URL is omitted from the public diagnostic message. CAL-MCP does not scrape URLs or status values from exception messages.
+`source_url` and `status_code` are populated only from typed failure metadata already carried by the adapter. A source URL is exposed only after it validates as an HTTPS URL on the exact `cal.huc.edu` origin with printable characters and no fragment, credentials or explicit port; otherwise `source_url` is `null` and the untrusted URL is omitted from the public diagnostic message. CAL-MCP does not scrape URLs or status values from exception messages.
 
-Public diagnostic messages are adapter-authored or derived from explicitly allowlisted CAL-MCP exception classes, normalized to one line, and capped at 500 characters. Python class names, tracebacks, response bodies, HTML fragments, and arbitrary unexpected exception text are not part of the structured contract.
+Public diagnostic messages are adapter-authored or derived from explicitly allowlisted CAL-MCP exception classes, normalized to one line, and capped at 500 characters. Unknown HTTP `Content-Type` values and their parameters are never copied into the public diagnostic. Python class names, tracebacks, response bodies, HTML fragments, and arbitrary unexpected exception text are not part of the structured contract.
 
 Unexpected programming failures remain on the MCP SDK's generic sanitized error path and do not receive a CAL-MCP structured error payload.
 
@@ -46,7 +46,7 @@ A caller-validation failure should not consume a CAL request.
 
 ## Network and timeout failures
 
-`CalNetworkError` represents a CAL transport operation that could not complete safely, including configured timeout and network failures after the bounded transient retry policy is exhausted. Public results use `kind=network`, `upstream_reached=null`, and `retryable=true`.
+`CalNetworkError` represents a CAL transport operation that could not complete safely. Public results use `kind=network` and `upstream_reached=null`. Timeouts and network exceptions that exhaust CAL-MCP's bounded retries retain `retryable=true`; other HTTP transport exceptions and `OSError` instances that CAL-MCP does not retry return `retryable=false`. The original exception cause is inspected only for its type, never exposed as diagnostic text. A network error without a recorded cause retains the retryable default.
 
 CAL-MCP retries only explicitly classified transient conditions and never creates an unbounded retry loop.
 
@@ -98,8 +98,8 @@ A contradictory page containing both a not-found marker and valid result blocks 
 ## What to do as a caller
 
 - **`invalid_input`:** correct the input locally; do not retry the same invalid request.
-- **`network` or retryable `upstream_http`:** retry only according to the client/application policy; CAL-MCP itself already applies its bounded retry budget.
-- **non-retryable `upstream_http`:** inspect the status and request semantics before deciding on another action.
+- **retryable `network` or `upstream_http`:** retry only according to the client/application policy; CAL-MCP itself already applies its bounded retry budget.
+- **non-retryable `network` or `upstream_http`:** inspect the failure and request semantics before deciding on another action.
 - **`response_too_large`, `content`, or `parser_drift`:** do not interpret the failure as empty or partial CAL data. The adapter needs a configuration/research/parser decision rather than blind retry.
 - **successful empty/not-found:** treat it as CAL's answer for that request at the recorded retrieval time.
 - **generic SDK execution error without structured content:** treat it as an unexpected server/programming failure, not as a classified CAL response.
