@@ -75,6 +75,7 @@ def test_concordance_rejects_malformed_example_selectors(href: str) -> None:
     [
         "/getOMT.php?MT=1751&amp;cal=tyq%232+N&amp;junk=x",
         "/getOMT.php?MT=1751&amp;cal=tyq%232+N#fragment",
+        "/getOMT.php?MT=1751&amp;cal=bad",
     ],
 )
 def test_reflex_rejects_malformed_example_selectors(href: str) -> None:
