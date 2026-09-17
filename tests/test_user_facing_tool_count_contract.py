@@ -20,9 +20,7 @@ def test_user_facing_v01_tool_count_claims_match_release_manifest() -> None:
         ),
         "docs/index.md": (f"contains {EXPECTED_COUNT} tools",),
         "docs/installation.md": (f"frozen {EXPECTED_COUNT}-tool MCP surface",),
-        "docs/integrations/standalone-mcp.md": (
-            f"surface contains {EXPECTED_COUNT} public tools",
-        ),
+        "docs/integrations/standalone-mcp.md": (f"surface contains {EXPECTED_COUNT} public tools",),
         "CHANGELOG.md": (
             f"freezes **{EXPECTED_COUNT} public tools**",
             f"frozen {EXPECTED_COUNT}-tool schema",
