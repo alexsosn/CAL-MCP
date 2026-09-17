@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from cal_mcp.release_surface import V01_PUBLIC_TOOLS
@@ -15,23 +16,24 @@ def _read(path: str) -> str:
 def test_user_facing_v01_tool_count_claims_match_release_manifest() -> None:
     claims = {
         "README.md": (
-            f"{EXPECTED_COUNT} public tools",
-            f"{EXPECTED_COUNT}-tool surface",
+            r"\b(\d+) public tools\b",
+            r"\b(\d+)-tool surface\b",
         ),
-        "docs/index.md": (f"contains {EXPECTED_COUNT} tools",),
-        "docs/installation.md": (f"frozen {EXPECTED_COUNT}-tool MCP surface",),
-        "docs/integrations/standalone-mcp.md": (f"surface contains {EXPECTED_COUNT} public tools",),
+        "docs/index.md": (r"\bcontains (\d+) tools\b",),
+        "docs/installation.md": (r"\bfrozen (\d+)-tool MCP surface\b",),
+        "docs/integrations/standalone-mcp.md": (r"\bsurface contains (\d+) public tools\b",),
         "CHANGELOG.md": (
-            f"freezes **{EXPECTED_COUNT} public tools**",
-            f"frozen {EXPECTED_COUNT}-tool schema",
+            r"freezes \*\*(\d+) public tools\*\*",
+            r"\bfrozen (\d+)-tool schema\b",
         ),
     }
 
-    missing: list[str] = []
-    for path, expected_phrases in claims.items():
+    mismatches: list[str] = []
+    for path, patterns in claims.items():
         text = _read(path)
-        for phrase in expected_phrases:
-            if phrase not in text:
-                missing.append(f"{path}: {phrase}")
+        for pattern in patterns:
+            matches = re.findall(pattern, text)
+            if matches != [str(EXPECTED_COUNT)]:
+                mismatches.append(f"{path}: {pattern} -> {matches!r}")
 
-    assert missing == []
+    assert mismatches == []
