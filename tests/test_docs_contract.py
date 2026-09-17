@@ -8,6 +8,8 @@ from urllib.parse import unquote
 import pytest
 from mcp import Client
 
+from cal_mcp.release_surface import V01_PUBLIC_TOOLS
+
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
 DOCS = ROOT / "docs"
@@ -18,6 +20,7 @@ RESEARCH_AUDIT = DOCS / "research" / "issue-12-v0.1-contract-docs.md"
 ARCHITECTURE = ROOT / "wiki" / "architecture.md"
 LEXICON_DOC = TOOLS_DIR / "lexicon.md"
 INPUT_DOC = DOCS / "concepts" / "input-and-transliteration.md"
+PUBLIC_TOOL_COUNT = len(V01_PUBLIC_TOOLS)
 
 REQUIRED_V01_DOCS = (
     "docs/index.md",
@@ -52,15 +55,15 @@ async def test_every_public_tool_is_covered_by_tool_docs() -> None:
     tool_docs = "\n".join(path.read_text(encoding="utf-8") for path in TOOLS_DIR.glob("*.md"))
     missing = [tool_name for tool_name in tool_names if f"`{tool_name}`" not in tool_docs]
 
-    assert len(tool_names) == 34
+    assert frozenset(tool_names) == V01_PUBLIC_TOOLS
     assert missing == []
 
 
 def test_readme_release_surface_tracks_public_tools() -> None:
     readme = README.read_text(encoding="utf-8")
 
-    assert "34 public tools" in readme
-    assert "34-tool surface" in readme
+    assert f"{PUBLIC_TOOL_COUNT} public tools" in readme
+    assert f"{PUBLIC_TOOL_COUNT}-tool surface" in readme
     assert "`cal_convert_to_code`" in readme
     assert "`cal_lexicon_browse`" in readme
     assert "`cal_lexicon_citation_context`" in readme
@@ -79,7 +82,7 @@ def test_docs_index_links_every_tool_page_and_records_deferred_capability() -> N
         path.name for path in sorted(TOOLS_DIR.glob("*.md")) if f"tools/{path.name}" not in index
     ]
     assert missing_links == []
-    assert "34 tools" in index
+    assert f"{PUBLIC_TOOL_COUNT} tools" in index
     assert "`cal_convert_to_code`" in index
     assert "`cal_lexicon_browse`" in index
     assert "`cal_lexicon_citation_context`" in index
