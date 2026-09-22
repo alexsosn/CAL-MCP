@@ -556,7 +556,7 @@ def parse_targum_parallel_page(
         if not label or not text:
             raise TargumParseError("CAL parallel Targum source block lacks label or text")
         if len(block.hrefs) > 1:
-            raise TargumParseError("CAL parallel Targum source block has ambiguous links")
+            raise TargumParseError("CAL Targum source block has ambiguous links")
         chapter_url = None
         if block.hrefs:
             chapter_url = _validated_same_origin_url(
@@ -991,7 +991,12 @@ def _validated_reflex_url(
     lemma_key = _single_query_value(query, "cal", "Targum reflex example")
     if returned_mt_id != mt_lemma_id:
         raise TargumParseError("CAL Targum reflex example link contradicts the selected MT lemma")
-    _, _, canonical_key = _validate_lemma_key(lemma_key)
+    try:
+        _, _, canonical_key = _validate_lemma_key(lemma_key)
+    except CalInputError as exc:
+        raise TargumParseError(
+            "CAL Targum reflex example link contains an invalid lemma key"
+        ) from exc
     if canonical_key != lemma_key:
         raise TargumParseError("CAL Targum reflex example link contains a noncanonical lemma key")
     return resolved, canonical_key
