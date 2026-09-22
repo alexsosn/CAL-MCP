@@ -556,7 +556,7 @@ def parse_targum_parallel_page(
         if not label or not text:
             raise TargumParseError("CAL parallel Targum source block lacks label or text")
         if len(block.hrefs) > 1:
-            raise TargumParseError("CAL Targum source block has ambiguous links")
+            raise TargumParseError("CAL parallel Targum source block has ambiguous links")
         chapter_url = None
         if block.hrefs:
             chapter_url = _validated_same_origin_url(
