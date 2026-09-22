@@ -948,12 +948,26 @@ def _validated_concordance_url(source_url: str, href: str, lemma_key: str) -> st
     )
     target = urlsplit(resolved)
     query = parse_qs(target.query, keep_blank_values=True)
+    if set(query) != {"lemma", "pos", "texts", "charset"}:
+        raise TargumParseError("CAL Targum concordance example link has unexpected selectors")
     lemma = _single_query_value(query, "lemma", "Targum concordance example")
     pos = _single_query_value(query, "pos", "Targum concordance example")
     texts = _single_query_value(query, "texts", "Targum concordance example")
-    if not texts.strip() or f"{lemma} {pos}" != lemma_key:
+    charset = _single_query_value(query, "charset", "Targum concordance example")
+    _validate_concordance_text_selector(texts)
+    if charset != "H" or f"{lemma} {pos}" != lemma_key:
         raise TargumParseError("CAL Targum concordance example link contradicts its result row")
     return resolved
+
+
+def _validate_concordance_text_selector(value: str) -> None:
+    text_ids = value.split(" ")
+    if not text_ids or any(
+        not text_id or not text_id.isascii() or not text_id.isdecimal() for text_id in text_ids
+    ):
+        raise TargumParseError("CAL Targum concordance example link has invalid text selectors")
+    if len(set(text_ids)) != len(text_ids):
+        raise TargumParseError("CAL Targum concordance example link repeats a text selector")
 
 
 def _validated_reflex_url(
@@ -971,11 +985,18 @@ def _validated_reflex_url(
     )
     target = urlsplit(resolved)
     query = parse_qs(target.query, keep_blank_values=True)
+    if set(query) != {"MT", "cal"}:
+        raise TargumParseError("CAL Targum reflex example link has unexpected selectors")
     returned_mt_id = _single_query_value(query, "MT", "Targum reflex example")
     lemma_key = _single_query_value(query, "cal", "Targum reflex example")
     if returned_mt_id != mt_lemma_id:
         raise TargumParseError("CAL Targum reflex example link contradicts the selected MT lemma")
-    _, _, canonical_key = _validate_lemma_key(lemma_key)
+    try:
+        _, _, canonical_key = _validate_lemma_key(lemma_key)
+    except CalInputError as exc:
+        raise TargumParseError(
+            "CAL Targum reflex example link contains an invalid lemma key"
+        ) from exc
     if canonical_key != lemma_key:
         raise TargumParseError("CAL Targum reflex example link contains a noncanonical lemma key")
     return resolved, canonical_key
@@ -995,6 +1016,8 @@ def _validated_same_origin_url(
         raise TargumParseError(f"CAL {context} link points outside the CAL origin")
     if target.path.rsplit("/", 1)[-1] != expected_path:
         raise TargumParseError(f"CAL {context} link targets an unexpected endpoint family")
+    if target.fragment:
+        raise TargumParseError(f"CAL {context} link contains an unexpected fragment")
     return resolved
 
 
