@@ -1009,6 +1009,8 @@ def _validated_same_origin_url(
     expected_path: str,
     context: str,
 ) -> str:
+    if "#" in href:
+        raise TargumParseError(f"CAL {context} link contains an unexpected fragment")
     resolved = urljoin(source_url, href)
     source = urlsplit(source_url)
     target = urlsplit(resolved)

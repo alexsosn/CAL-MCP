@@ -63,6 +63,7 @@ def _reflex_response(href: str) -> CalResponse:
         "/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=51001+51001&amp;charset=H",
         "/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=51001%C2%A051002&amp;charset=H",
         "/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=51001&amp;charset=H#fragment",
+        "/show1dialectKWIC.php?lemma=klb&amp;pos=N&amp;texts=51001&amp;charset=H#",
     ],
 )
 def test_concordance_rejects_malformed_example_selectors(href: str) -> None:
@@ -75,6 +76,7 @@ def test_concordance_rejects_malformed_example_selectors(href: str) -> None:
     [
         "/getOMT.php?MT=1751&amp;cal=tyq%232+N&amp;junk=x",
         "/getOMT.php?MT=1751&amp;cal=tyq%232+N#fragment",
+        "/getOMT.php?MT=1751&amp;cal=tyq%232+N#",
         "/getOMT.php?MT=1751&amp;cal=bad",
     ],
 )
@@ -85,3 +87,14 @@ def test_reflex_rejects_malformed_example_selectors(href: str) -> None:
             targum="onqelos",
             mt_lemma_id="1751",
         )
+
+
+def test_reflex_accepts_percent_encoded_number_sign_in_lemma_key() -> None:
+    page = parse_targum_reflex_page(
+        _reflex_response("/getOMT.php?MT=1751&amp;cal=tyq%232+N"),
+        targum="onqelos",
+        mt_lemma_id="1751",
+    )
+
+    assert page.reflexes[0].lemma_key == "tyq#2 N"
+    assert page.reflexes[0].example_url == "https://cal.huc.edu/getOMT.php?MT=1751&cal=tyq%232+N"

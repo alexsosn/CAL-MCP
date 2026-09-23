@@ -128,6 +128,24 @@ def test_parallel_changed_cross_origin_or_contradictory_markup_is_drift(body: st
         )
 
 
+def test_parallel_rejects_bare_fragment_chapter_link() -> None:
+    body = (
+        "<html><body><h1>MT and targums for Gen 1:1</h1>"
+        '<div class="targum-block"><span class="heb">MT</span></div>'
+        '<div class="targum-block">'
+        '<a href="/get_a_chapter.php?file=51001&amp;sub=01&amp;cset=H#">Onqelos:</a>'
+        '<span class="heb">text</span></div></body></html>'
+    )
+
+    with pytest.raises(TargumParseError):
+        parse_targum_parallel_page(
+            _inline_response(body, "https://cal.huc.edu/showtargum.php"),
+            book="Gen",
+            chapter=1,
+            verse=1,
+        )
+
+
 def test_targum_concordance_preserves_sections_counts_order_and_links() -> None:
     page = parse_targum_concordance_page(
         _fixture_response(
