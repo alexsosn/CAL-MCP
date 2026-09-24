@@ -66,7 +66,7 @@ The result preserves:
 
 - the canonical CAL `lemma_key`;
 - ordered rows;
-- CAL's section headings separately from individual source labels;
+- CAL's section headings separately from individual source labels. Each row's `section` is the nearest preceding section row CAL renders. On the current page (2026-09-24) CAL renders only `Torah` as a section row, and groups such as `Former Prophets` or `Writing Prophets` appear as ordinary rows after it, so they carry `section: "Torah"`. CAL-MCP reports CAL's layout and does not infer a different grouping;
 - exact source labels;
 - occurrence counts;
 - absolute same-origin CAL example URLs;

@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-031 — Current Targum concordance and Hebrew-reflex pages moved their headings
+
+**Rechecked:** 2026-09-24.
+
+Two bounded POSTs showed that `showtargumKWIC.php` now identifies itself (`CAL: Targum KWIC counts for <key>`) only in the page `<title>`, with an `<h3>` statement in the body, a `<td>` section row (`Torah` plus an empty cell), and the total as a single-cell row inside the table. `getOmtlemma.php` moved its `<source> correspondences to <Hebrew lemma>` heading from `<h1>` to `<h3>`, and its header row uses `<td>` cells. Row, link, count and selector semantics are unchanged. Detailed evidence: `docs/research/issue-152-targum-concordance-reflex-drift.md`.
+
+Sources:
+
+- https://cal.huc.edu/showtargumKWIC.php (POST `lemma=klb&pos=N`)
+- https://cal.huc.edu/getOmtlemma.php (POST `R1=1751`)
+
+**Implication:** result headings are read from `h1`, `h3` and `title`; the body statement must name the submitted key; the current section-row and in-table total forms are accepted; header rows may be all-`th` or all-`td`. Public schema and request counts are unchanged.
+
 ## R-028 — Current concordance/KWIC pages use display labels, BR-line hits, and per-form dialect summaries
 
 **Rechecked:** 2026-09-24.
