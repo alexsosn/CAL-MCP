@@ -91,3 +91,15 @@ The old parser read the single `found for` line as the dialect total and rejecte
 
 - The dialect hit `title` reference (for example `Ezra 4:14; …`) is not exposed. It is presentation metadata, and CAL identity is already carried by `file_id`/`subtext_id`/`target_coordinate`. It can be proposed separately.
 - `response_too_large` for large lemma/dialect pages (for example `br N` in dialect 6) is the 2 MiB policy working as designed; it is documented as a limitation.
+
+## Live verification of the fix (2026-09-24)
+
+A wheel built from this branch was installed and driven over stdio through MCP against live CAL (6 requests, sequential):
+
+- `cal_text_concordance("13250")`: found, with rows such as `)b N` / label `ˀb, ˀbˀ n.m.`;
+- `cal_kwic_texts("by N", ["13250"])`: total 1, target `1325009`;
+- `cal_kwic_texts("mlk N", ["12250", "13250"])`: total 6, `empty_scope_ids == ["12250"]`;
+- `cal_kwic_dialect("n)qh N", "6")`: total 1; forms `n)qh N`/0 and `nqh N`/1; the hit has `form_lemma_key: "nqh N"`, `charset: "U"`;
+- `cal_kwic_full_context` succeeded for an `R` hit (`13250`/`1325009`) and a `U` hit (`60301`/`53`/`603015323`).
+
+`python -m cal_mcp.live_smoke` then completed all eight cases using exactly 9/9 CAL requests.
