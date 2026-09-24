@@ -119,7 +119,9 @@ mcp = CalMCPServer(
         "to one explicit text coordinate and zero-based token index. Use cal_text_concordance "
         "for one text's ordered lemma-frequency index, cal_kwic_texts for one lemma in 1-8 "
         "explicit texts, cal_kwic_dialects to discover CAL's current dialect identifiers, "
-        "cal_kwic_dialect for one explicit dialect, and cal_kwic_full_context to follow one "
+        "cal_kwic_dialect for one explicit dialect (CAL may group hits by related lemma forms; "
+        "each hit's form_lemma_key and the result's forms report CAL's grouping), and "
+        "cal_kwic_full_context to follow one "
         "returned KWIC hit using its typed file/target/charset selectors. Use "
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
@@ -475,8 +477,9 @@ async def cal_kwic_texts(
 ) -> dict[str, object]:
     """Return ordered CAL KWIC hits for one lemma key in 1-8 explicit texts.
 
-    Duplicate CAL hits remain duplicated and ordered. ``script`` is ``roman``, ``hebrew``,
-    or ``syriac``. Full context is never fetched automatically.
+    Duplicate CAL hits remain duplicated and ordered; each hit's ``target_text`` is the
+    token CAL highlights, which distinguishes two occurrences on one line. ``script`` is
+    ``roman``, ``hebrew``, or ``syriac``. Full context is never fetched automatically.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
@@ -522,6 +525,11 @@ async def cal_kwic_dialect(
     ctx: Context[AppContext],
 ) -> dict[str, object]:
     """Return ordered CAL KWIC hits for one lemma key and one explicit dialect.
+
+    CAL reports this search per lemma form and may include related forms it groups with
+    the requested key (for example ``nqh N`` hits for ``n)qh N``). Every hit is kept and
+    carries CAL's ``form_lemma_key``; ``forms`` lists CAL's per-form counts, and ``total``
+    is their sum. Each hit's ``target_text`` is the token CAL highlights.
 
     It never expands to other dialects or fetches full-context pages automatically.
 

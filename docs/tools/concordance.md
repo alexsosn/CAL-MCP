@@ -67,7 +67,8 @@ The result preserves:
 - legitimate duplicate hits, including repeated target coordinates when CAL renders them as separate examples;
 - `file_id` and optional `subtext_id`;
 - `target_coordinate`;
-- rendered `context`: CAL's rendered target line for the hit, without its leading target coordinate. CAL also renders a line before and after each target line, but the current layout does not delimit them unambiguously from neighbouring hits or text headers, so they are not attached to hits. Use `cal_kwic_full_context` for surrounding lines. When one line holds two occurrences, CAL returns two hits with the same coordinate and, currently, the same rendered line text;
+- rendered `context`: CAL's rendered target line for the hit, without its leading target coordinate. CAL also renders a line before and after each target line, but the current layout does not delimit them unambiguously from neighbouring hits or text headers, so they are not attached to hits. Use `cal_kwic_full_context` for surrounding lines. (For CAL's earlier table layout, which remains supported as a compatibility fallback, `context` is that row's rendered non-link cells, including the preceding-line cell);
+- `target_text`: the token CAL highlights as the hit on the target line. When one line holds two occurrences, CAL returns two hits with the same coordinate and line text, and `target_text` is what tells them apart. It is `null` only for the earlier table layout, which did not highlight tokens;
 - returned CAL `charset`;
 - absolute `full_context_url`;
 - `form_lemma_key`: always `null` for text-scoped KWIC, because CAL does not report forms there;

@@ -239,7 +239,7 @@ def test_current_dialect_kwic_rejects_hit_after_last_form_summary() -> None:
     body = _fixture(_FORMS).replace(
         "Grand total:",
         '<a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015330">'
-        "603015330</a> ܢܩܬܐ<br>Grand total:",
+        "603015330</a> x <b>ܢܩܬܐ</b><br>Grand total:",
     )
     with pytest.raises(ConcordanceParseError, match="follows the last form summary"):
         _nqh(body)
@@ -346,3 +346,77 @@ def test_concordance_lemma_serializes_label() -> None:
         requested_charset="S",
     )
     assert _concordance_lemma_to_dict(page.lemmas[0])["label"] == "ˀb, ˀbˀ n.m."
+
+
+def test_current_kwic_hits_carry_cal_highlighted_target_token() -> None:
+    texts = parse_kwic_result(
+        _response(_fixture("kwic_texts_mlk_br_current.html"), TEXTS_URL),
+        lemma_key="mlk N",
+        scope_kind=KwicScopeKind.TEXTS,
+        scope_ids=("12250", "13250"),
+    )
+    # Two occurrences on line 1325006 share a coordinate and rendered line; CAL's
+    # highlighted token is what tells them apart.
+    assert [(hit.target_coordinate, hit.target_text) for hit in texts.hits] == [
+        ("1325003", "mlk"),
+        ("1325006", "mlky"),
+        ("1325006", "ml?[kN"),
+    ]
+    dialect = _nqh(_fixture(_FORMS))
+    assert [hit.target_text for hit in dialect.hits] == ["ܢܩܬܐ"]
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        # No highlighted token on the target line.
+        ("&nbsp;&nbsp;<b>mlk&nbsp;&nbsp; </b>y[$", "mlk y[$", "highlighted target token"),
+        # Two highlighted tokens on one target line.
+        (
+            "&nbsp;&nbsp;<b>mlk&nbsp;&nbsp; </b>y[$",
+            "<b>mlk</b> <b>y[$</b>",
+            "highlighted target token",
+        ),
+        # Text before the link that happens to repeat the coordinate.
+        (
+            '<a href="/get_a_kwicchapter.php?file=13250&sub=&cset=R&target=1325003">',
+            '1325003 <a href="/get_a_kwicchapter.php?file=13250&sub=&cset=R&target=1325003">',
+            "does not start with its coordinate",
+        ),
+        # A hit rendered under another requested text's section header.
+        (
+            "<b>12250:</b><br>no examples found in 12250<br><b>13250:</b>",
+            "<b>12250:</b>",
+            "another text",
+        ),
+    ],
+)
+def test_current_text_kwic_target_structure_fails_closed(old: str, new: str, message: str) -> None:
+    body = _fixture("kwic_texts_mlk_br_current.html")
+    assert old in body
+    with pytest.raises(ConcordanceParseError, match=message):
+        parse_kwic_result(
+            _response(body.replace(old, new, 1), TEXTS_URL),
+            lemma_key="mlk N",
+            scope_kind=KwicScopeKind.TEXTS,
+            scope_ids=("12250", "13250"),
+        )
+
+
+def test_unicode_syriac_full_context_page_parses_offline() -> None:
+    from cal_mcp.concordance import KwicFullContextStatus, parse_kwic_full_context_page
+
+    url = "https://cal.huc.edu/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323"
+    page = parse_kwic_full_context_page(
+        _response(_fixture("kwic_full_context_syr_romlaw_unicode.html"), url),
+        requested_file_id="60301",
+        requested_subtext_id="53",
+        requested_target_coordinate="603015323",
+        requested_charset="U",
+    )
+
+    assert page.status is KwicFullContextStatus.FOUND
+    assert [line.coordinate for line in page.lines] == ["603015322", "603015323", "603015324"]
+    target = page.lines[1]
+    assert target.tokens[-1].text == "ܢܩܬܐ"
+    assert [token.word_index for token in target.tokens] == list(range(8))

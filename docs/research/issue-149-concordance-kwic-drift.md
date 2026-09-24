@@ -103,3 +103,14 @@ A wheel built from this branch was installed and driven over stdio through MCP a
 - `cal_kwic_full_context` succeeded for an `R` hit (`13250`/`1325009`) and a `U` hit (`60301`/`53`/`603015323`).
 
 `python -m cal_mcp.live_smoke` then completed all eight cases using exactly 9/9 CAL requests.
+
+## Review amendment (2026-09-24)
+
+An independent review of the first candidate raised these points; the resolutions are:
+
+- **Target token.** Each current target line highlights exactly one token in `<b>` (verified on a full 421-hit capture of `br N` in text `51001`: 421 target links, 421 highlighted tokens plus one `<b>51001:</b>` header). Without it, two occurrences on one line (`1325006`, `mlky` and `ml?[kN`) become identical hits. Hits now carry an additive `target_text`, and a BR-line target line without exactly one highlighted token fails closed.
+- **Line structure.** A structural pass checks that nothing precedes the target link on its line, and that each text-scoped hit sits under its own `<b>NNNN:</b>` section header. The header stays the plain file ID for texts with subtexts (`51001:` for hits with `sub=03` … `sub=50`). A missing `<br>` that merges the following line into a target line is not detected: the only signal would be a digit-run heuristic that could reject legitimate text.
+- **`U` full context.** A reduced live capture of `get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323` is now an offline fixture. It parses without the Hebrew-only empty-anchor accommodation.
+- **Documentation and decisions.** The MCP tool descriptions now describe forms and `target_text`. `wiki/decisions.md` D-014 records the per-form `total` semantics, and the fixture README lists the new fixtures.
+
+Two additional research requests were made for this amendment: `POST showdialectKWIC.php` (`br N`, text `51001`, 210 KB) and the `U` full-context page (24 KB). The `klb N`/`51001` probe (no examples) confirmed the header format for an empty Targum text.

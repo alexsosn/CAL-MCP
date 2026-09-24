@@ -85,6 +85,7 @@ class KwicHit:
     full_context_url: str
     charset: str
     form_lemma_key: str | None = None
+    target_text: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -557,13 +558,21 @@ def parse_kwic_result(
         raise ConcordanceParseError("CAL KWIC heading does not match the requested scope")
 
     table_hits = _parse_kwic_hits(response)
-    positioned_hits = None if table_hits else _parse_kwic_hit_lines(lines, response.url)
+    positioned_hits = (
+        None
+        if table_hits
+        else _apply_kwic_target_structure(
+            response,
+            _parse_kwic_hit_lines(lines, response.url),
+            scope_kind=scope_kind,
+        )
+    )
     hits = table_hits if positioned_hits is None else tuple(hit for _, hit in positioned_hits)
 
     if scope_kind is KwicScopeKind.DIALECT:
         if len(scope_ids) != 1:
             raise ConcordanceParseError("CAL dialect KWIC must have exactly one requested dialect")
-        summaries, _ = _parse_dialect_form_summaries(
+        summaries = _parse_dialect_form_summaries(
             lines,
             requested_key=canonical_key,
             dialect_id=scope_ids[0],
@@ -587,7 +596,7 @@ def parse_kwic_result(
     elif any(_DIALECT_SUMMARY_HINT_RE.search(getattr(line, "text", "")) for line in lines):
         raise ConcordanceParseError("CAL text-scoped KWIC contains dialect form summaries")
 
-    total = _parse_kwic_total(lines, canonical_key, scope_kind, scope_ids)
+    total = _parse_kwic_total(lines, scope_kind)
     empty_scope_ids = _parse_empty_scopes(lines, scope_ids)
     if total != len(hits):
         raise ConcordanceParseError("CAL KWIC total does not match parsed target hits")
@@ -603,8 +612,6 @@ def parse_kwic_result(
             raise ConcordanceParseError("CAL KWIC marks a text both empty and non-empty")
         if hit_files.union(empty_scope_ids) != requested:
             raise ConcordanceParseError("CAL KWIC omits a requested text scope")
-    elif len(scope_ids) != 1:
-        raise ConcordanceParseError("CAL dialect KWIC must have exactly one requested dialect")
 
     return KwicPage(total=total, hits=hits, empty_scope_ids=empty_scope_ids)
 
@@ -1100,6 +1107,129 @@ def _parse_kwic_hits(response: CalResponse) -> tuple[KwicHit, ...]:
     return tuple(hits)
 
 
+_KWIC_SECTION_HEADER_RE = re.compile(r"^([0-9]+):$")
+_KWIC_LINE_BREAK_TAGS = frozenset({"br", "hr", "p", "div", "tr", "table", "li"})
+
+
+@dataclass(frozen=True, slots=True)
+class _KwicTargetSegment:
+    href: str
+    section: str | None
+    leading_text: str
+    highlighted: tuple[str, ...]
+
+
+@dataclass(slots=True)
+class _OpenKwicTargetSegment:
+    href: str
+    section: str | None
+    leading_text: str
+    highlighted: list[str] = field(default_factory=list)
+
+
+class _KwicTargetSegmentParser(HTMLParser):
+    """Record structure the flattened line parser cannot see for BR-line KWIC targets.
+
+    For each full-context link: the text before it on its line, the per-text section
+    header (``<b>NNNN:</b>``) it appears under, and the ``<b>`` highlighted target
+    token(s) on its line (R-028).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.segments: list[_KwicTargetSegment] = []
+        self._section: str | None = None
+        self._line_text: list[str] = []
+        self._open: _OpenKwicTargetSegment | None = None
+        self._in_target_link = False
+        self._bold_depth = 0
+        self._bold_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _KWIC_LINE_BREAK_TAGS:
+            self._end_line()
+        elif tag == "a":
+            href = dict(attrs).get("href") or ""
+            if _is_path(href, "get_a_kwicchapter.php"):
+                if self._open is not None:
+                    raise ConcordanceParseError("CAL KWIC target line has unexpected links")
+                self._open = _OpenKwicTargetSegment(
+                    href=href,
+                    section=self._section,
+                    leading_text="".join(self._line_text),
+                )
+                self._in_target_link = True
+        elif tag == "b":
+            self._bold_depth += 1
+            if self._bold_depth == 1:
+                self._bold_parts = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in _KWIC_LINE_BREAK_TAGS and tag not in {"br", "hr"}:
+            self._end_line()
+        elif tag == "a" and self._in_target_link:
+            self._in_target_link = False
+        elif tag == "b" and self._bold_depth:
+            self._bold_depth -= 1
+            if self._bold_depth == 0:
+                text = _clean_text("".join(self._bold_parts))
+                if self._open is not None and not self._in_target_link:
+                    self._open.highlighted.append(text)
+                elif self._open is None and (header := _KWIC_SECTION_HEADER_RE.fullmatch(text)):
+                    self._section = header.group(1)
+
+    def handle_data(self, data: str) -> None:
+        if self._bold_depth:
+            self._bold_parts.append(data)
+        if self._open is None:
+            self._line_text.append(data)
+
+    def close(self) -> None:
+        super().close()
+        self._end_line()
+
+    def _end_line(self) -> None:
+        if self._open is not None:
+            self.segments.append(
+                _KwicTargetSegment(
+                    href=self._open.href,
+                    section=self._open.section,
+                    leading_text=self._open.leading_text,
+                    highlighted=tuple(self._open.highlighted),
+                )
+            )
+            self._open = None
+        self._line_text = []
+
+
+def _apply_kwic_target_structure(
+    response: CalResponse,
+    positioned_hits: tuple[tuple[int, KwicHit], ...],
+    *,
+    scope_kind: KwicScopeKind,
+) -> tuple[tuple[int, KwicHit], ...]:
+    """Cross-check BR-line hits against target-line structure and attach the target token."""
+
+    parser = _KwicTargetSegmentParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    if len(parser.segments) != len(positioned_hits):
+        raise ConcordanceParseError("CAL KWIC target lines disagree with their links")
+    checked: list[tuple[int, KwicHit]] = []
+    for segment, (index, hit) in zip(parser.segments, positioned_hits, strict=True):
+        url = _cal_navigation_url(response.url, segment.href, "get_a_kwicchapter.php")
+        if url != hit.full_context_url:
+            raise ConcordanceParseError("CAL KWIC target lines disagree with their links")
+        if segment.leading_text.strip():
+            raise ConcordanceParseError("CAL KWIC target line does not start with its coordinate")
+        if len(segment.highlighted) != 1 or not segment.highlighted[0]:
+            raise ConcordanceParseError("CAL KWIC target line lacks one highlighted target token")
+        if scope_kind is KwicScopeKind.TEXTS and segment.section != hit.file_id:
+            raise ConcordanceParseError("CAL KWIC hit appears under another text's section")
+        checked.append((index, replace(hit, target_text=segment.highlighted[0])))
+    return tuple(checked)
+
+
 def _parse_kwic_hit_lines(
     lines: Sequence[object],
     source_url: str,
@@ -1178,8 +1308,8 @@ def _parse_dialect_form_summaries(
     *,
     requested_key: str,
     dialect_id: str,
-) -> tuple[tuple[_DialectFormSummary, ...], int | None]:
-    """Parse per-form dialect KWIC summaries and the optional grand total (R-028)."""
+) -> tuple[_DialectFormSummary, ...]:
+    """Parse per-form dialect KWIC summaries, checking the optional grand total (R-028)."""
 
     summaries: list[_DialectFormSummary] = []
     grand_totals: list[int] = []
@@ -1215,10 +1345,9 @@ def _parse_dialect_form_summaries(
         raise ConcordanceParseError("CAL dialect KWIC repeats its grand total")
     if grand_totals and not summaries:
         raise ConcordanceParseError("CAL dialect KWIC grand total lacks form summaries")
-    grand_total = grand_totals[0] if grand_totals else None
-    if grand_total is not None and grand_total != sum(summary.total for summary in summaries):
+    if grand_totals and grand_totals[0] != sum(summary.total for summary in summaries):
         raise ConcordanceParseError("CAL dialect KWIC grand total contradicts its forms")
-    return tuple(summaries), grand_total
+    return tuple(summaries)
 
 
 def _parse_form_lemma_key(value: str) -> str:
@@ -1254,33 +1383,20 @@ def _assign_dialect_forms(
     return tuple(assigned)
 
 
-def _parse_kwic_total(
-    lines: Sequence[object],
-    lemma_key: str,
-    scope_kind: KwicScopeKind,
-    scope_ids: tuple[str, ...],
-) -> int:
-    texts = [getattr(line, "text", "") for line in lines]
-    total_matches = [match for text in texts if (match := _TOTAL_RE.fullmatch(text)) is not None]
-    dialect_matches = [
-        match for text in texts if (match := _DIALECT_TOTAL_RE.fullmatch(text)) is not None
+def _parse_kwic_total(lines: Sequence[object], scope_kind: KwicScopeKind) -> int:
+    # Dialect pages with per-form summaries are handled before this point (R-028); what
+    # remains is CAL's single "total examples: N" line for text scope or the earlier
+    # dialect layout.
+    totals = [
+        match
+        for line in lines
+        if (match := _TOTAL_RE.fullmatch(getattr(line, "text", ""))) is not None
     ]
-
-    if scope_kind is KwicScopeKind.TEXTS:
-        if len(total_matches) != 1 or dialect_matches:
+    if len(totals) != 1:
+        if scope_kind is KwicScopeKind.TEXTS:
             raise ConcordanceParseError("CAL text-scoped KWIC lacks one unique total")
-        return int(total_matches[0].group(1))
-
-    if len(scope_ids) != 1:
-        raise ConcordanceParseError("CAL dialect KWIC requires one dialect scope")
-    if len(dialect_matches) == 1 and not total_matches:
-        match = dialect_matches[0]
-        if match.group(2) != lemma_key or match.group(3) != scope_ids[0]:
-            raise ConcordanceParseError("CAL dialect KWIC total contradicts the request")
-        return int(match.group(1))
-    if len(total_matches) == 1 and not dialect_matches:
-        return int(total_matches[0].group(1))
-    raise ConcordanceParseError("CAL dialect KWIC lacks one unique total")
+        raise ConcordanceParseError("CAL dialect KWIC lacks one unique total")
+    return int(totals[0].group(1))
 
 
 def _parse_empty_scopes(lines: Sequence[object], scope_ids: tuple[str, ...]) -> tuple[str, ...]:
@@ -1472,6 +1588,7 @@ def _hit_to_dict(item: KwicHit) -> dict[str, object]:
         "full_context_url": item.full_context_url,
         "charset": item.charset,
         "form_lemma_key": item.form_lemma_key,
+        "target_text": item.target_text,
     }
 
 

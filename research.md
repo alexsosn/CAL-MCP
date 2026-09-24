@@ -345,7 +345,7 @@ Sources:
 - https://cal.huc.edu/showdialectKWIC.php (POST)
 - https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=6
 
-**Implication:** concordance rows gain an additive `label`; KWIC hits are parsed from BR lines with the table parser kept as a strict compatibility fallback; KWIC `context` is CAL's rendered target line; dialect KWIC results gain additive `forms` and per-hit `form_lemma_key`, preserving every CAL hit under CAL's own form key; `U` becomes an accepted KWIC charset. Request counts and bounds do not change.
+**Implication:** concordance rows gain an additive `label`; KWIC hits are parsed from BR lines with the table parser kept as a strict compatibility fallback; KWIC `context` is CAL's rendered target line and additive `target_text` is CAL's highlighted token; dialect KWIC results gain additive `forms` and per-hit `form_lemma_key`, preserving every CAL hit under CAL's own form key; `U` becomes an accepted KWIC charset. Request counts and bounds do not change.
 
 ## R-027 — CAL full lexicon entries now inline non-content stylesheet text
 
