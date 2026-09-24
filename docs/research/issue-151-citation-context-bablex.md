@@ -24,3 +24,10 @@ This is the second lexical-token link family already recorded for text pages in 
 - Citation-context text rows accept both current CAL lexical-token families, `getlex.php` and `bablex.php`, with the same query-shape validation (`coord` and `word` only), coordinate/word-index checks, same-origin rule and exact returned URL.
 - One row must not mix the two families. Mixing fails closed.
 - The public schema, request count and target/not-found semantics are unchanged.
+
+## Verification (2026-09-24)
+
+- Offline, the full 14,578-byte live page parses as `found`: 19 text lines (21 rows minus 2 separators), target `ms01 pg048 sd1 ln50` reading `אלא חד בר חד עד יהושע בן נון,`, which contains the lexicon citation's `חד בר חד`.
+- Live over MCP (a wheel built from this branch, stdio, 2 sequential requests):
+  - `cal_lexicon_citation_context("7101801048150")` → `found`, `71018: BT Git`, 19 lines, `bablex.php` token URLs;
+  - `cal_lexicon_citation_context("31000424")` (a `getlex.php` text) → `found`, `31000: BA Ezra chapter 4`, 17 lines, unchanged behaviour.
