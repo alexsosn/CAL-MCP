@@ -76,3 +76,14 @@ Under the one-card-per-record rule this card becomes a "record" whose text is th
 ## Implementation verification (2026-09-24)
 
 Offline, the full raw captures parse to exactly one record per `<p>`: `br N` 6 records / 73 links, Sokoloff 49 / 96, Vocab 216 / 695, and the no-data page 0. No citation contains CAL's page title. A mutation pass that disables each new guard in turn (nested, unbalanced or unclosed records, content outside records, placeholder scope, title skipping, the marker-card rule) makes the tests fail every time.
+
+## Live verification (2026-09-24)
+
+A wheel built from this branch, driven over stdio through MCP against live CAL (4 requests, sequential):
+
+- `cal_bibliography_lemma("br N")`: 6 records;
+- `cal_bibliography_author("Sokoloff, Michael")`: 49 records;
+- `cal_bibliography_keyword("Vocab")`: 216 records;
+- `cal_bibliography_lemma("qqqqzz N")`: a valid empty result.
+
+No citation contains CAL's page title. `python -m cal_mcp.live_smoke` then completed all eight cases on 9/9 CAL requests, with the strengthened bibliography assertion.
