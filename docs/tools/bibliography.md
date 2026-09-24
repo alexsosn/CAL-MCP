@@ -79,7 +79,7 @@ The result uses the common bibliography record model with `query_kind: "lemma"`.
 
 ## Bibliography records and links
 
-Each final bibliography result preserves CAL's ordered record cards. A record contains:
+Each final bibliography result preserves CAL's ordered records. CAL currently renders every record of a result page as one `<p>` element inside a single result card, which wraps CAL's legacy result document. The earlier layout used one card per record and is still accepted. A record contains:
 
 - `citation` — CAL's rendered bibliographic text, including Unicode text and diacritics;
 - `links` — ordered record-local CAL links/tags.
@@ -93,6 +93,10 @@ Those fields are navigation metadata only. Returning a tag never causes an autom
 
 Record-local links are required to remain on the same CAL origin. Cross-origin record links or malformed bibliography navigation query semantics fail as parser drift rather than being silently trusted.
 
+CAL renders an empty tag-list entry as a link whose label and query value are both empty or whitespace-only (for example `getbiblemma.php?myauthor=` or `getbibsigla.php?myauthor=%0A`). Such a placeholder carries no data and is omitted from `links`. Any other link without a label, or a labelled link with an empty value, is still parser drift. Text inside a result card but outside its records, nested or unclosed records, title metadata inside a record, and CAL's embedded legacy result document without `<p>` record boundaries all fail closed rather than being merged into a record. Page-title metadata outside records (the page `<title>` and CAL's embedded legacy `<TITLE>`) is ignored.
+
+Known limit: if CAL ever dropped a single `</p><p>` boundary between two works while keeping the others, the two would render as one `<p>`, and nothing in the markup distinguishes that from one long record. The `live_smoke` check bounds record length to catch gross merging.
+
 ## Empty results and parser drift
 
 The current author, keyword, and lemma result endpoints use the explicit marker:
@@ -101,7 +105,7 @@ The current author, keyword, and lemma result endpoints use the explicit marker:
 NO data FOR <query> ARE CURRENTLY STORED
 ```
 
-A page with that marker and no record cards is a valid successful empty result. CAL-MCP keeps the following states separate:
+A page with that marker and no records is a valid successful empty result. On current pages the marker sits alone inside the result card. CAL-MCP keeps the following states separate:
 
 - a valid CAL empty result;
 - local input validation failure before transport;
@@ -149,7 +153,8 @@ Normal tests use reduced semantic excerpts rather than archived full CAL pages. 
 
 - multiple ordered author candidates;
 - explicit no-author matches;
-- representative author, text/subject-tag, and lemma result pages;
+- representative author, text/subject-tag, and lemma result pages, including CAL's current one-card `<p>`-record layout (2026-09-24) and the earlier one-card-per-record layout;
+- CAL's empty placeholder links and the in-card no-data marker;
 - multiple and empty results;
 - Unicode citation/title text and diacritics;
 - ordered CAL tags/links and recognized navigation metadata;
