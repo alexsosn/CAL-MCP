@@ -31,3 +31,7 @@ This is the second lexical-token link family already recorded for text pages in 
 - Live over MCP (a wheel built from this branch, stdio, 2 sequential requests):
   - `cal_lexicon_citation_context("7101801048150")` → `found`, `71018: BT Git`, 19 lines, `bablex.php` token URLs;
   - `cal_lexicon_citation_context("31000424")` (a `getlex.php` text) → `found`, `31000: BA Ezra chapter 4`, 17 lines, unchanged behaviour.
+
+## Review (2026-09-24)
+
+An independent adversarial review approved this change. It confirmed the full capture parses (19 lines, a single comment-linked target), that the fixture matches the real markup, and that each guard fails the tests when disabled (mixed families, the per-family endpoint, the query shape, the endpoint lookalike). Its minor wording point (do not generalise from two Babylonian Talmud files to all of them) is applied in `docs/tools/lexicon.md`.
