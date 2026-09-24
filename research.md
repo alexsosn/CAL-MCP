@@ -327,6 +327,26 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-028 — Current concordance/KWIC pages use display labels, BR-line hits, and per-form dialect summaries
+
+**Rechecked:** 2026-09-24.
+
+A user-level MCP end-to-end run found `cal_text_concordance`, `cal_kwic_texts`, and `cal_kwic_dialect` failing live with parser drift, and the fixed `live_smoke` release gate failing at `text_concordance`. Six bounded research requests established three upstream changes:
+
+- `newconcord.php` lemma links now display CAL's label (for example `ˀb, ˀbˀ n.m.`) instead of the lemma key; the key remains in the validated `showKWIC.php` link;
+- `showdialectKWIC.php` and `show1dialectKWIC.php` render each hit as BR-delimited before/target/after lines rather than table rows;
+- `show1dialectKWIC.php` reports results per lemma form (`N example(s) found for <form> in dialect <id>` / `No examples found for <form> in dialect <id>`, optional `Grand total … across all forms`), may include related-form hits (for example `nqh N` when `n)qh N` was requested), and uses a new `U` hit charset for Syriac.
+
+Detailed evidence: `docs/research/issue-149-concordance-kwic-drift.md`.
+
+Sources:
+
+- https://cal.huc.edu/newconcord.php?text=13250&cset=S
+- https://cal.huc.edu/showdialectKWIC.php (POST)
+- https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=6
+
+**Implication:** concordance rows gain an additive `label`; KWIC hits are parsed from BR lines with the table parser kept as a strict compatibility fallback; KWIC `context` is CAL's rendered target line; dialect KWIC results gain additive `forms` and per-hit `form_lemma_key`, preserving every CAL hit under CAL's own form key; `U` becomes an accepted KWIC charset. Request counts and bounds do not change.
+
 ## R-027 — CAL full lexicon entries now inline non-content stylesheet text
 
 **Rechecked:** 2026-09-05.
