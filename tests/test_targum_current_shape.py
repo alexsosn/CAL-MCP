@@ -114,3 +114,12 @@ def test_current_targum_reflex_heading_for_wrong_source_fails_closed() -> None:
     body = _reflex_body().replace("Onkelos correspondences", "Neofiti correspondences")
     with pytest.raises(TargumParseError, match="source/result heading"):
         _reflex(body)
+
+
+def test_current_targum_reflex_mixed_header_cell_kinds_are_not_a_header() -> None:
+    body = _reflex_body().replace(
+        "<tr><td>CAL lemma</td><td>frequency</td></tr>",
+        "<tr><th>CAL lemma</th><td>frequency</td></tr>",
+    )
+    with pytest.raises(TargumParseError, match="unrecognized result row|required semantics"):
+        _reflex(body)

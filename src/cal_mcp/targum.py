@@ -299,7 +299,7 @@ class _SemanticTableParser(HTMLParser):
         if self._ignored_depth:
             return
         attributes = dict(attrs)
-        if tag == "h1":
+        if tag in _RESULT_HEADING_TAGS:
             if self._heading_parts is not None:
                 raise TargumParseError("CAL Targum page contains nested result headings")
             self._heading_parts = []
@@ -333,7 +333,7 @@ class _SemanticTableParser(HTMLParser):
             if tag in _IGNORED_CONTENT_TAGS:
                 self._ignored_depth -= 1
             return
-        if tag == "h1" and self._heading_parts is not None:
+        if tag in _RESULT_HEADING_TAGS and self._heading_parts is not None:
             heading = _clean_text("".join(self._heading_parts))
             if heading:
                 self.headings.append(heading)
@@ -507,6 +507,12 @@ _COORDINATE_ERROR_RE = re.compile(r"\berror\s+in\s+coordinate\b", re.I)
 _TOTAL_RE = re.compile(r"\btotal\s+examples:\s*(\d+)\b", re.I)
 _PARALLEL_HEADING_PREFIX = "MT and targums for "
 _CONCORDANCE_HEADING_PREFIX = "CAL: Targum KWIC counts for "
+# Current CAL result pages identify themselves in <h3> headings or, for the Targum
+# concordance, only in the page <title> (R-031); earlier pages used <h1>.
+_RESULT_HEADING_TAGS = frozenset({"h1", "h3", "title"})
+_CONCORDANCE_STATEMENT_RE = re.compile(
+    r'\bThe lemma "([^"]+)" is attested in the following number of verses\b'
+)
 
 
 def parse_targum_parallel_page(
@@ -590,6 +596,9 @@ def parse_targum_concordance_page(
     ]
     if headings != [expected_heading]:
         raise TargumParseError("CAL Targum concordance heading does not match the submitted lemma")
+    statement_keys = _CONCORDANCE_STATEMENT_RE.findall(_clean_text(" ".join(parser.all_parts)))
+    if any(key != lemma_key for key in statement_keys):
+        raise TargumParseError("CAL Targum concordance statement names another lemma")
     if parser.table_count != 1:
         raise TargumParseError("CAL Targum concordance lacks one recognizable result table")
 
@@ -598,9 +607,12 @@ def parse_targum_concordance_page(
     for cells in parser.rows:
         if _is_table_header(cells, "Targum", "Occurrences"):
             continue
-        if len(cells) == 1 and cells[0].kind == "th":
+        if len(cells) == 1 and cells[0].kind == "td" and _TOTAL_RE.fullmatch(_cell_text(cells[0])):
+            # Current layout: the total is a single-cell row inside the table (R-031).
+            continue
+        if _is_concordance_section_row(cells):
             section = _cell_text(cells[0])
-            if not section or cells[0].hrefs:
+            if not section or any(cell.hrefs for cell in cells):
                 raise TargumParseError("CAL Targum concordance has malformed section semantics")
             current_section = section
             continue
@@ -928,10 +940,23 @@ def _cell_text(cell: _TableCell) -> str:
     return _clean_text("".join(cell.parts))
 
 
-def _is_table_header(cells: tuple[_TableCell, ...], first: str, second: str) -> bool:
+def _is_concordance_section_row(cells: tuple[_TableCell, ...]) -> bool:
+    # Earlier layout: one <th colspan> cell. Current layout: a <td> label plus an empty <td>.
+    if len(cells) == 1 and cells[0].kind == "th":
+        return True
     return (
         len(cells) == 2
-        and all(cell.kind == "th" for cell in cells)
+        and all(cell.kind == "td" for cell in cells)
+        and not _cell_text(cells[1])
+        and not cells[1].hrefs
+    )
+
+
+def _is_table_header(cells: tuple[_TableCell, ...], first: str, second: str) -> bool:
+    # Header cells are <th> on some current pages and <td> on others (R-031).
+    return (
+        len(cells) == 2
+        and len({cell.kind for cell in cells}) == 1
         and _cell_text(cells[0]) == first
         and _cell_text(cells[1]) == second
         and not cells[0].hrefs
