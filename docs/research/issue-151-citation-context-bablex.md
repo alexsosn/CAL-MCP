@@ -17,7 +17,7 @@ One GET made during the E2E triage, `https://cal.huc.edu/showachapter.php?fullco
 
 The page is complete and consistent. The parser recognises text rows only by `getlex.php` token links, so it found no text rows.
 
-This is the second lexical-token link family already recorded for text pages in R-024 (Babylonian Talmud texts such as `BT AZ` use `bablex.php`), and `texts.py` already accepts both families. The citation-context parser (#-lexicon citation context work, fixtures `Ezra 4:24` and `TgJ Ez 31:6`) was built only against `getlex.php` texts. So this is a long-standing gap for Babylonian Talmud citations, not new upstream drift.
+This is the second lexical-token link family already recorded for text pages in R-024 (Babylonian Talmud texts such as `BT AZ` use `bablex.php`), and `texts.py` already accepts both families. The citation-context parser (fixtures `Ezra 4:24` and `TgJ Ez 31:6`) was built only against `getlex.php` texts. So this is a long-standing gap for Babylonian Talmud citations, not new upstream drift.
 
 ## Consequences
 
