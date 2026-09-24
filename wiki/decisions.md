@@ -169,3 +169,17 @@ Consequences:
 - public diagnostics are one-line and bounded, and response bodies/HTML/tracebacks are never part of the error contract;
 - successful empty/not-found states remain normal success results;
 - adding a new public error class requires an explicit allowlist/classifier decision and contract coverage rather than a catch-all serializer.
+
+
+## D-014 — Dialect KWIC reports CAL's per-form grouping instead of attributing hits to the requested key
+
+**Status:** accepted — 2026-09-24 (issue #149; research R-028)
+
+CAL's one-dialect KWIC now answers a lemma-key request per lemma form, and may include forms it groups with the requested key (for example `nqh N` hits for `n)qh N`). CAL-MCP keeps every hit CAL returns and labels it with CAL's own form key (`form_lemma_key`), exposes CAL's ordered per-form counts (`forms`), and reports `total` as their sum (CAL's grand total when rendered). An all-zero page reports the requested dialect in `empty_scope_ids`, derived from CAL's explicit per-form "No examples found" summaries.
+
+Consequences:
+
+- CAL-MCP neither decides which forms are related nor drops CAL's related-form hits; it never presents a related-form hit as a hit for the requested key;
+- `total` for a requested key can count hits under other CAL forms, and callers filter by `form_lemma_key` if they need only the requested form;
+- per-form counts, positions, dialect identity, canonical keys, requested-form presence, and any grand total are cross-checked, and disagreement fails closed as parser drift;
+- the schema change is additive (`forms`, `form_lemma_key`, and the related `target_text` and concordance `label` fields); request counts and bounds are unchanged.

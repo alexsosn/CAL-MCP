@@ -13,7 +13,7 @@ v0.1.0 freezes **34 public tools** across these research families:
 - English gloss search, structured gloss-field extraction, and citation-text search;
 - text catalogue/topic discovery, one-page retrieval, explicit text-information metadata, and explicit line comments/translations via `cal_text_line_comments`;
 - token-at-coordinate lexical analysis;
-- one-text concordance, explicit text/dialect KWIC, and explicit typed KWIC full-context follow-up via `cal_kwic_full_context`;
+- one-text concordance (with CAL's displayed lemma labels), explicit text/dialect KWIC (one-dialect results report CAL's per-form grouping, including related-form hits), and explicit typed KWIC full-context follow-up via `cal_kwic_full_context`;
 - bibliography author, text/subject-tag, and lemma search;
 - dictionary spelling collation;
 - citations from sources that CAL cites but does not expose as full online texts;

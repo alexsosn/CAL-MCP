@@ -28,7 +28,8 @@ This is CAL's **one-text lemma-frequency index**. It is not itself a KWIC hit li
 The result preserves CAL's ordered rows with:
 
 - `frequency`;
-- canonical `lemma_key`;
+- canonical `lemma_key`, taken from the validated CAL KWIC link;
+- `label`, the lemma text CAL displays for the row (currently a headword/POS label such as `ˀb, ˀbˀ n.m.`, or the key itself for some rows such as proper nouns). It is presentation text, and CAL-MCP does not derive or check it against the key;
 - rendered `gloss`;
 - the CAL `kwic_url` exposed by that row.
 
@@ -66,9 +67,12 @@ The result preserves:
 - legitimate duplicate hits, including repeated target coordinates when CAL renders them as separate examples;
 - `file_id` and optional `subtext_id`;
 - `target_coordinate`;
-- rendered `context`;
+- rendered `context`: CAL's rendered target line for the hit, without its leading target coordinate. CAL also renders a line before and after each target line, but the current layout does not delimit them unambiguously from neighbouring hits or text headers, so they are not attached to hits. Use `cal_kwic_full_context` for surrounding lines. (For CAL's earlier table layout, which remains supported as a compatibility fallback, `context` is that row's rendered non-link cells, including the preceding-line cell);
+- `target_text`: the token CAL highlights as the hit on the target line. When one line holds two occurrences, CAL returns two hits with the same coordinate and line text, and `target_text` is what tells them apart. It is `null` only for the earlier table layout, which did not highlight tokens;
 - returned CAL `charset`;
 - absolute `full_context_url`;
+- `form_lemma_key`: always `null` for text-scoped KWIC, because CAL does not report forms there;
+- `forms`: always empty for text-scoped KWIC;
 - `empty_scope_ids` for requested texts CAL explicitly reports as having no examples.
 
 CAL-MCP does **not** deduplicate, rerank, or statistically summarize hits. It also does not follow `full_context_url` automatically. To inspect one selected hit, pass that hit's typed `file_id`, `target_coordinate`, `charset`, and optional `subtext_id` to `cal_kwic_full_context`. Arbitrary caller-supplied URLs are not accepted by that follow-up.
@@ -96,7 +100,22 @@ cal_kwic_dialect(
 
 This operation requests one exact CAL lemma key in one explicit decimal dialect ID. It submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
 
-The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, per-hit charset, full-context URL, and upstream total. Full context for one selected hit remains a separate explicit `cal_kwic_full_context` call.
+The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, the highlighted `target_text`, per-hit charset, and full-context URL. `total` here is the sum of CAL's per-form counts, as described under [Lemma forms](#lemma-forms). It equals CAL's grand total when CAL renders one; on single-form and all-zero pages CAL renders no grand total, and CAL-MCP computes the sum. Full context for one selected hit remains a separate explicit `cal_kwic_full_context` call.
+
+### Lemma forms
+
+CAL currently reports one-dialect KWIC **per lemma form**, and a result may include related forms CAL associates with the requested key. For example, requesting `n)qh N` in dialect `6` currently returns "No examples found for n)qh N" and one example under the form `nqh N`. CAL-MCP keeps every hit CAL returns and labels it with CAL's form rather than attributing it to the requested key:
+
+- `forms`: CAL's ordered per-form summaries as `{lemma_key, total}`, including forms with zero examples;
+- each hit's `form_lemma_key`: the CAL form whose summary covers that hit;
+- `total`: the sum over forms, which is CAL's grand total when CAL renders one;
+- `empty_scope_ids`: `[dialect_id]` when every form reports no examples.
+
+On CAL's earlier table layout, a dialect page that renders only `total examples: N` and no per-form summaries returns `forms: []` and `form_lemma_key: null` on its hits, because CAL reported no forms.
+
+CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form must appear exactly once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
+
+Large lemma/dialect combinations can exceed the 2 MiB response ceiling (for example `br N` in dialect `6` on 2026-09-24). They fail with the shared response-size error rather than returning a partial result. Use `cal_kwic_texts` with explicit texts to narrow the scope.
 
 ## `cal_kwic_full_context`
 
@@ -109,7 +128,7 @@ cal_kwic_full_context(
 )
 ```
 
-This operation consumes the typed selectors already returned on a `KwicHit`. It does not accept `full_context_url` or any other arbitrary URL. `file_id`, `target_coordinate`, and a non-null `subtext_id` must be decimal CAL identifiers. `charset` is the exact CAL hit charset and must be one of `R`, `H`, or `S`.
+This operation consumes the typed selectors already returned on a `KwicHit`. It does not accept `full_context_url` or any other arbitrary URL. `file_id`, `target_coordinate`, and a non-null `subtext_id` must be decimal CAL identifiers. `charset` is the exact CAL hit charset and must be one of `R`, `H`, `S`, or `U` (CAL's current Unicode Syriac rendering, returned by one-dialect KWIC hits such as Syriac `cset=U` links).
 
 A cache miss submits exactly one logical request to CAL's target-centered context route. Returned navigation or lexical links are validated as metadata but are not followed. The response has:
 
@@ -191,9 +210,10 @@ Duplicate-request cache hits preserve the original CAL retrieval timestamp and s
 
 ## Fixture-backed examples
 
-Normal tests use deliberately reduced semantic excerpts captured/rechecked on **2026-09-05** and **2026-09-10**. Representative contracts include:
+Normal tests use deliberately reduced semantic excerpts captured/rechecked on **2026-09-05**, **2026-09-10**, and **2026-09-24**. The earlier table-row KWIC layout remains supported as a strict compatibility fallback; the 2026-09-24 fixtures cover CAL's current BR-line layout (research: `docs/research/issue-149-concordance-kwic-drift.md`). Representative contracts include:
 
-- one-text concordance rows for CAL text `13250`;
+- one-text concordance rows for CAL text `13250`, including current display labels;
+- current BR-line multi-text KWIC and single-form, multi-form (with Unicode Syriac `U` hits), and all-zero one-dialect KWIC;
 - multi-text KWIC with one explicitly empty text scope;
 - two legitimate hits sharing target coordinate `1325006` but carrying different context;
 - a current CAL dialect selector;
