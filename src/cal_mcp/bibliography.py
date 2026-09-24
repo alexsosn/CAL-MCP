@@ -172,8 +172,21 @@ class _OpenRecordLink:
 class _RecordBuilder:
     citation_parts: list[str] = field(default_factory=list)
     links: list[BibliographyLink] = field(default_factory=list)
-    div_depth: int = 1
     open_link: _OpenRecordLink | None = None
+
+
+@dataclass(slots=True)
+class _CardBuilder:
+    """One result ``div.card``.
+
+    Current CAL pages put every record in one card as ``<p>`` elements (R-029); the
+    earlier layout used one card per record. ``loose`` collects content outside ``<p>``.
+    """
+
+    div_depth: int = 1
+    loose: _RecordBuilder = field(default_factory=_RecordBuilder)
+    paragraph: _RecordBuilder | None = None
+    has_paragraphs: bool = False
 
 
 class _BibliographyHTMLParser(HTMLParser):
@@ -184,10 +197,24 @@ class _BibliographyHTMLParser(HTMLParser):
         self.records: list[BibliographyRecord] = []
         self.all_parts: list[str] = []
         self._heading_parts: list[str] | None = None
-        self._record: _RecordBuilder | None = None
+        self._card: _CardBuilder | None = None
+        self._title_depth = 0
+
+    @property
+    def incomplete(self) -> bool:
+        return self._card is not None or self._heading_parts is not None
+
+    def _current_record(self) -> _RecordBuilder | None:
+        if self._card is None:
+            return None
+        return self._card.paragraph if self._card.paragraph is not None else self._card.loose
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
+        if tag == "title":
+            # Document metadata (the page <title> and CAL's embedded legacy <TITLE>).
+            self._title_depth += 1
+            return
         if tag == "h1":
             if self._heading_parts is not None:
                 raise BibliographyParseError("CAL bibliography contains nested headings")
@@ -196,21 +223,35 @@ class _BibliographyHTMLParser(HTMLParser):
 
         if tag == "div":
             classes = set((attributes.get("class") or "").split())
-            if self._record is None and "card" in classes:
-                self._record = _RecordBuilder()
-            elif self._record is not None:
-                self._record.div_depth += 1
+            if self._card is None and "card" in classes:
+                self._card = _CardBuilder()
+            elif self._card is not None:
+                self._card.div_depth += 1
             return
 
-        if tag == "a" and self._record is not None:
-            if self._record.open_link is not None:
+        if tag == "p" and self._card is not None:
+            if self._card.paragraph is not None:
+                raise BibliographyParseError("CAL bibliography contains nested records")
+            if self._card.loose.open_link is not None:
+                raise BibliographyParseError("CAL bibliography record link is incomplete")
+            self._card.paragraph = _RecordBuilder()
+            self._card.has_paragraphs = True
+            return
+
+        record = self._current_record()
+        if tag == "a" and record is not None:
+            if record.open_link is not None:
                 raise BibliographyParseError("CAL bibliography contains nested record links")
             href = attributes.get("href")
             if href is None or not href.strip():
                 raise BibliographyParseError("CAL bibliography record link has no target")
-            self._record.open_link = _OpenRecordLink(href=href)
+            record.open_link = _OpenRecordLink(href=href)
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "title":
+            if self._title_depth:
+                self._title_depth -= 1
+            return
         if tag == "h1" and self._heading_parts is not None:
             heading = _clean_text("".join(self._heading_parts))
             if heading:
@@ -218,41 +259,91 @@ class _BibliographyHTMLParser(HTMLParser):
             self._heading_parts = None
             return
 
-        if tag == "a" and self._record is not None and self._record.open_link is not None:
-            label = _clean_text("".join(self._record.open_link.parts))
-            self._record.links.append(
-                _parse_bibliography_link(
-                    self.source_url,
-                    self._record.open_link.href,
-                    label,
-                )
-            )
-            self._record.open_link = None
+        record = self._current_record()
+        if tag == "a" and record is not None and record.open_link is not None:
+            label = _clean_text("".join(record.open_link.parts))
+            href = record.open_link.href
+            record.open_link = None
+            if not label and _is_empty_placeholder_link(self.source_url, href):
+                # CAL renders an empty lemma/keyword list entry as a link whose label and
+                # query value are empty or whitespace-only; it carries no data (R-029).
+                return
+            record.links.append(_parse_bibliography_link(self.source_url, href, label))
             return
 
-        if tag == "div" and self._record is not None:
-            self._record.div_depth -= 1
-            if self._record.div_depth == 0:
-                if self._record.open_link is not None:
-                    raise BibliographyParseError("CAL bibliography record link is incomplete")
-                citation = _clean_text("".join(self._record.citation_parts))
-                if not citation:
-                    raise BibliographyParseError("CAL bibliography record has no citation text")
-                self.records.append(
-                    BibliographyRecord(citation=citation, links=tuple(self._record.links))
-                )
-                self._record = None
+        if tag == "p" and self._card is not None:
+            if self._card.paragraph is None:
+                raise BibliographyParseError("CAL bibliography record markup is unbalanced")
+            self.records.append(_finish_record(self._card.paragraph))
+            self._card.paragraph = None
+            return
+
+        if tag == "div" and self._card is not None:
+            self._card.div_depth -= 1
+            if self._card.div_depth == 0:
+                self._finish_card(self._card)
+                self._card = None
 
     def handle_data(self, data: str) -> None:
         self.all_parts.append(data)
+        if self._title_depth:
+            return
         if self._heading_parts is not None:
             self._heading_parts.append(data)
-        if self._record is None:
+        record = self._current_record()
+        if record is None:
             return
-        if self._record.open_link is not None:
-            self._record.open_link.parts.append(data)
+        if record.open_link is not None:
+            record.open_link.parts.append(data)
         else:
-            self._record.citation_parts.append(data)
+            record.citation_parts.append(data)
+
+    def _finish_card(self, card: _CardBuilder) -> None:
+        if card.paragraph is not None:
+            raise BibliographyParseError("CAL bibliography record is incomplete")
+        loose_text = _clean_text("".join(card.loose.citation_parts))
+        if card.has_paragraphs:
+            if loose_text or card.loose.links or card.loose.open_link is not None:
+                raise BibliographyParseError(
+                    "CAL bibliography card has content outside its records"
+                )
+            return
+        if (
+            not card.loose.links
+            and card.loose.open_link is None
+            and _EMPTY_RESULT_RE.fullmatch(loose_text) is not None
+        ):
+            # Current layout: the explicit no-data marker sits alone inside the card.
+            return
+        # Earlier layout: one card per record.
+        self.records.append(_finish_record(card.loose))
+
+
+def _finish_record(record: _RecordBuilder) -> BibliographyRecord:
+    if record.open_link is not None:
+        raise BibliographyParseError("CAL bibliography record link is incomplete")
+    citation = _clean_text("".join(record.citation_parts))
+    if not citation:
+        raise BibliographyParseError("CAL bibliography record has no citation text")
+    return BibliographyRecord(citation=citation, links=tuple(record.links))
+
+
+def _is_empty_placeholder_link(source_url: str, href: str) -> bool:
+    target = urlsplit(urljoin(source_url, href))
+    source = urlsplit(source_url)
+    if (target.scheme, target.netloc) != (source.scheme, source.netloc) or target.fragment:
+        return False
+    if target.path.lstrip("/") not in _QUERY_ENDPOINTS:
+        return False
+    query = parse_qs(target.query, keep_blank_values=True)
+    values = query.get("myauthor")
+    # Observed placeholders: ``myauthor=`` and ``myauthor=%0A`` (a lone newline).
+    return (
+        set(query) == {"myauthor"}
+        and values is not None
+        and len(values) == 1
+        and (not values[0].strip())
+    )
 
 
 _EMPTY_RESULT_RE = re.compile(
@@ -304,7 +395,7 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
     parser.feed(response.body.decode("utf-8", errors="replace"))
     parser.close()
 
-    if parser._record is not None or parser._heading_parts is not None:
+    if parser.incomplete:
         raise BibliographyParseError("CAL bibliography page contains incomplete semantic markup")
 
     headings = [

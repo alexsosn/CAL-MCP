@@ -96,6 +96,8 @@ _LAST_RECORD_END = '<a href="/getbiblemma.php?myauthor=tryn%20b">tryn b</a></p>'
         ),
         # A record nested inside another record.
         ("<p>Avishur, Y.,", "<p>Nested <p>Avishur, Y.,", "nested records"),
+        # A closing </p> with no open record.
+        ("<p>Testen, D.,", "</p><p>Testen, D.,", "unbalanced"),
         # An unclosed record.
         (_LAST_RECORD_END, _LAST_RECORD_END.removesuffix("</p>"), "incomplete"),
         # A link with a target but no label.
@@ -119,6 +121,15 @@ def test_current_lemma_page_structure_fails_closed(old: str, new: str, message: 
     assert old in body
     with pytest.raises(BibliographyParseError, match=message):
         _lemma(body.replace(old, new, 1))
+
+
+def test_newline_placeholder_variant_is_also_omitted() -> None:
+    body = _fixture("bibliography_author_sokoloff_current.html").replace(
+        '<a href="/getbiblemma.php?myauthor="></a>',
+        '<a href="/getbibsigla.php?myauthor=%0A">\n</a>',
+    )
+    page = parse_bibliography_page(_response(body, AUTHOR_URL))
+    assert [link.label for link in page.records[1].links] == ["Grammar", "CPA", "Gal", "Samar"]
 
 
 def test_placeholder_omission_requires_both_empty_label_and_empty_target() -> None:

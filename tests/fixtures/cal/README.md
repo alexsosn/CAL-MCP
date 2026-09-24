@@ -38,7 +38,10 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `bibliography_author_kaufman.html` | `https://cal.huc.edu/getbibauthor.php?myauthor=Kaufman%2C+Stephen+A.` | ordered author records, Unicode title text, subject and lemma links |
 | `bibliography_keyword_tada.html` | `https://cal.huc.edu/getbibsigla.php?myauthor=TADA` | exact CAL text/subject tag results with ordered record links |
 | `bibliography_lemma_cly_v.html` | `https://cal.huc.edu/getbiblemma.php?myauthor=cly+V` | exact CAL lemma bibliography and linked lemma keys |
-| `bibliography_empty.html` | bounded nonexistent queries against CAL bibliography result endpoints | current explicit shared bibliography no-data marker |
+| `bibliography_empty.html` | bounded nonexistent queries against CAL bibliography result endpoints | earlier layout: explicit shared bibliography no-data marker |
+| `bibliography_lemma_br_n_current.html` | `https://cal.huc.edu/getbiblemma.php?myauthor=br+N` (2026-09-24) | current layout: legacy `<TITLE>` plus three `<p>` records inside one result card; link lists shortened |
+| `bibliography_author_sokoloff_current.html` | `https://cal.huc.edu/getbibauthor.php?myauthor=Sokoloff%2C+Michael` (2026-09-24) | current layout: two `<p>` records, one ending in CAL's empty placeholder link |
+| `bibliography_empty_current.html` | `https://cal.huc.edu/getbiblemma.php?myauthor=qqqqzz+N` (2026-09-24) | current no-data marker alone inside the result card |
 | `concordance_text_13250.html` | `https://cal.huc.edu/newconcord.php?text=13250&cset=S` | earlier table-row layout: one-text lemma-frequency rows whose link text was the CAL lemma key, glosses, and explicit KWIC links |
 | `concordance_text_13250_label_current.html` | `https://cal.huc.edu/newconcord.php?text=13250&cset=S` (2026-09-24) | current BR rows whose link text is CAL's display label (`ˀb, ˀbˀ n.m.`) or, for proper nouns, the key |
 | `kwic_texts_mlk.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (`mlk N`, texts `12250 13250`, charset `R`) | multi-text result with one empty scope and ordered duplicate target coordinates |

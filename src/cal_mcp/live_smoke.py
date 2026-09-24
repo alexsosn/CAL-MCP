@@ -200,7 +200,15 @@ async def _probe_text_concordance(client: BudgetCalHttpClient) -> None:
 async def _probe_bibliography(client: BudgetCalHttpClient) -> None:
     result = await BibliographyService(client).lemma("cly V")
     payload = result.to_dict()
-    _require_nonempty_list(payload, "records", "bibliography")
+    records = _require_nonempty_list(payload, "records", "bibliography")
+    # A non-empty list alone let merged records pass (#150); CAL's page title must never
+    # leak into a record citation.
+    if any(
+        not isinstance(record, dict)
+        or "BIBLIOGRAPHY SEARCH" in str(record.get("citation", "")).upper()
+        for record in records
+    ):
+        raise LiveSmokeSemanticError("bibliography record boundaries no longer parse cleanly")
     _require_provenance(payload, "bibliography")
 
 

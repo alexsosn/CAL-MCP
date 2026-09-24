@@ -51,7 +51,7 @@ The author and keyword pages contain `<a href="/getbiblemma.php?myauthor="></a>`
 … <a href="/getbibsigla.php?myauthor=Samar">Samar</a> <a href="/getbiblemma.php?myauthor="></a></p>
 ```
 
-A link with no target value and no text carries no CAL data; it is how CAL renders an empty lemma/keyword list entry. The parser rejects any link without a label, so the whole page fails.
+A second shape, `<a href="/getbibsigla.php?myauthor=%0A">\n</a>` (a URL-encoded newline value with a newline label), appears once on the Sokoloff page and twice on Vocab. A link whose value and label are empty or whitespace-only carries no CAL data; it is how CAL renders an empty lemma/keyword list entry. The parser rejects any link without a label, so the whole page fails.
 
 ### 3. The no-data marker now sits inside the card
 
@@ -68,7 +68,11 @@ Under the one-card-per-record rule this card becomes a "record" whose text is th
 - Records are the `<p>` elements inside result cards. A card that contains `<p>` elements yields one record per `<p>`. Any non-whitespace text in such a card outside `<p>` (other than title metadata) fails closed, so content is never silently dropped or merged. Nested or unclosed `<p>` fails closed.
 - A card without `<p>` keeps the earlier one-record-per-card meaning as a strict compatibility fallback, except that a card whose entire text is the explicit no-data marker, with no links, is the marker container rather than a record.
 - `<title>` content is ignored wherever it appears.
-- A record link whose label **and** `myauthor` value are both empty is CAL's empty placeholder and is omitted. Any other unlabelled link, or a link without a target, still fails closed.
+- A record link whose label **and** `myauthor` value are both empty or whitespace-only (and whose target is a same-origin bibliography result endpoint with only that parameter) is CAL's empty placeholder and is omitted. Any other unlabelled link, or a link without a target, still fails closed.
 - The heading, query-kind, origin/endpoint validation, and the no-data/record contradiction checks are unchanged.
 - The public schema, request counts and bounds are unchanged.
 - `live_smoke`'s bibliography case also asserts that no citation contains CAL's page-title text, so a record-boundary regression cannot pass as "non-empty".
+
+## Implementation verification (2026-09-24)
+
+Offline, the full raw captures parse to exactly one record per `<p>`: `br N` 6 records / 73 links, Sokoloff 49 / 96, Vocab 216 / 695, and the no-data page 0. No citation contains CAL's page title. A mutation pass that disables each new guard in turn (nested, unbalanced or unclosed records, content outside records, placeholder scope, title skipping, the marker-card rule) makes the tests fail every time.
