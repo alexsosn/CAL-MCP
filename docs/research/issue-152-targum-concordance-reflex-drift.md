@@ -53,3 +53,14 @@ The semantics are unchanged; only markup changed:
   - `cal_targum_hebrew_lemmas("mem", "onqelos")` → 366 candidates;
   - `cal_targum_hebrew_reflexes("onqelos", "1751")` → `Onkelos`, `מַעֲקֶה`, `tyq#2 N` / 2;
   - `cal_targum_hebrew_reflexes("neofiti", "1751")` → `Neofiti`, `gypwp N` / 1, `syyg N` / 1.
+
+## Review amendment (2026-09-24)
+
+An independent review requested changes:
+
+1. **Section attribution.** Carrying the current page's single `Torah` label forward attributed every later row to `Torah`, including Former and Writing Prophets, Psalms and Chronicles. This is an inference CAL does not make, and the docs wrongly denied it. As decided with the maintainer, current-layout label rows are no longer applied to rows (`section: null`). The result gains an additive `section_labels` list (`{label, row_index}`). The earlier `<th colspan>` layout still groups rows as before.
+2. **Duplicate identical headings.** A repeated `<title>` (CAL's reflex page really repeats `<TITLE>`) or a `<title>` plus a matching body heading no longer fails; every identifying heading must name the submitted key.
+3. **Damaged result rows.** A current-layout label row now requires CAL's literal `&nbsp;` filler in its second cell, so a result row that lost its link and count is still rejected ("row lacks required semantics") instead of becoming a label row.
+4. **Total row.** A test now pins the exact `total examples: N` single-cell form.
+
+A mutation pass over the new logic (the `&nbsp;` filler, heading dedupe, exact total row, labels not carried, labels recorded) fails the tests for every mutation. On the full live capture, all 21 rows have `section: null` and `section_labels` is `[{"label": "Torah", "row_index": 0}]`.

@@ -5,6 +5,7 @@ See docs/research/issue-152-targum-concordance-reflex-drift.md.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -55,11 +56,17 @@ def test_current_targum_concordance_preserves_rows_counts_and_total() -> None:
 
     assert page.total == 26  # type: ignore[attr-defined]
     rows = page.rows  # type: ignore[attr-defined]
+    # CAL's current page renders "Torah" as a label row without applying it as a grouping
+    # (later rows include Former/Writing Prophets), so rows carry no section and the label
+    # is reported with its position instead.
     assert [(row.section, row.label, row.count) for row in rows] == [
-        ("Torah", "Onqelos", 3),
-        ("Torah", "Former Prophets", 19),
-        ("Torah", "Writing Prophets", 4),
-        ("Torah", "TgSong", 0),
+        (None, "Onqelos", 3),
+        (None, "Former Prophets", 19),
+        (None, "Writing Prophets", 4),
+        (None, "TgSong", 0),
+    ]
+    assert [(item.label, item.row_index) for item in page.section_labels] == [  # type: ignore[attr-defined]
+        ("Torah", 0)
     ]
     # CAL's own truncated selector is passed through unchanged.
     assert "51019 5102&charset=H" in rows[2].example_url
@@ -123,3 +130,56 @@ def test_current_targum_reflex_mixed_header_cell_kinds_are_not_a_header() -> Non
     )
     with pytest.raises(TargumParseError, match="unrecognized result row|required semantics"):
         _reflex(body)
+
+
+def test_current_concordance_damaged_result_row_is_not_a_label_row() -> None:
+    # A result row that lost its link and count must not be reclassified as a label row.
+    body, replaced = re.subn(
+        r"<tr><td[^>]*><div[^>]*><a [^>]*>Former Prophets</a>.*?</tr>",
+        "<tr><td>Former Prophets</td><td></td></tr>",
+        _concordance_body(),
+    )
+    assert replaced == 1
+    body = body.replace("total examples: 26", "total examples: 7")
+    with pytest.raises(TargumParseError, match="row lacks required semantics"):
+        _concordance(body)
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "<h1>CAL: Targum KWIC counts for klb N</h1>",
+        "<title>CAL: Targum KWIC counts for klb N</title>",
+    ],
+)
+def test_current_concordance_repeated_identical_heading_is_accepted(extra: str) -> None:
+    body = _concordance_body().replace(
+        '<div class="summary-card">', extra + '<div class="summary-card">'
+    )
+    page = _concordance(body)
+    assert page.total == 26  # type: ignore[attr-defined]
+
+
+def test_current_concordance_total_row_must_be_exact() -> None:
+    body = _concordance_body().replace("total examples: 26", "total examples: 26 (approx.)")
+    with pytest.raises(TargumParseError, match="unrecognized result row"):
+        _concordance(body)
+
+
+def test_concordance_result_serializes_section_labels() -> None:
+    from cal_mcp.targum import TargumConcordanceResult, _make_provenance
+
+    page = _concordance(_concordance_body())
+    result = TargumConcordanceResult(
+        lemma_key="klb N",
+        rows=page.rows,  # type: ignore[attr-defined]
+        total=page.total,  # type: ignore[attr-defined]
+        section_labels=page.section_labels,  # type: ignore[attr-defined]
+        provenance=_make_provenance(
+            CONCORDANCE_URL,
+            datetime(2026, 9, 24, tzinfo=UTC),
+            operation="targum_concordance",
+            lemma_key="klb N",
+        ),
+    ).to_dict()
+    assert result["section_labels"] == [{"label": "Torah", "row_index": 0}]
