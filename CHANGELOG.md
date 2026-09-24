@@ -14,7 +14,7 @@ v0.1.0 freezes **34 public tools** across these research families:
 - text catalogue/topic discovery, one-page retrieval, explicit text-information metadata, and explicit line comments/translations via `cal_text_line_comments`;
 - token-at-coordinate lexical analysis;
 - one-text concordance (with CAL's displayed lemma labels), explicit text/dialect KWIC (one-dialect results report CAL's per-form grouping, including related-form hits), and explicit typed KWIC full-context follow-up via `cal_kwic_full_context`;
-- bibliography author, text/subject-tag, and lemma search;
+- bibliography author, text/subject-tag, and lemma search (one record per CAL bibliography entry on CAL's current result layout);
 - dictionary spelling collation;
 - citations from sources that CAL cites but does not expose as full online texts;
 - Targum parallel verse, Targum concordance (current-layout label rows reported as `section_labels` rather than applied to rows), and MT-Hebrew reflex workflows;

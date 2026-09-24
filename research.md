@@ -339,6 +339,21 @@ Sources:
 - https://cal.huc.edu/getOmtlemma.php (POST `R1=1751`)
 
 **Implication:** result headings are read from `h1`, `h3` and `title`, and every identifying heading must name the submitted key; the body statement must name the submitted key; the in-table total form is accepted; header rows may be all-`th` or all-`td`. The current page's `Torah` label row (with CAL's literal `&nbsp;` filler) is not applied as a grouping to later rows, because the rows after it include Prophets and Writings. Rows carry `section: null`, and the result gains an additive `section_labels` field (decision D-015). Request counts are unchanged.
+## R-029 — Current bibliography result pages embed legacy `<p>` records in one card
+
+**Rechecked:** 2026-09-24.
+
+Four bounded requests (lemma `br N`, author `Sokoloff, Michael`, keyword `Vocab`, and one no-data lemma) showed that bibliography result pages now wrap CAL's whole legacy result document, including `<TITLE>CAL BIBLIOGRAPHY SEARCH</TITLE>`, in a single `div.card`, with one `<p>` per bibliographic record. Author and keyword pages include empty placeholder links (`getbiblemma.php?myauthor=` with no label), and the explicit no-data marker now sits inside the card. The one-record-per-card parser merged every work into one record (silent wrong data), rejected the placeholders, and broke empty results.
+
+Detailed evidence: `docs/research/issue-150-bibliography-drift.md`.
+
+Sources:
+
+- https://cal.huc.edu/getbiblemma.php?myauthor=br+N
+- https://cal.huc.edu/getbibauthor.php?myauthor=Sokoloff%2C+Michael
+- https://cal.huc.edu/getbibsigla.php?myauthor=Vocab
+
+**Implication:** records are parsed per `<p>` within result cards, with fail-closed checks against text outside records; title metadata is ignored; links with both an empty label and an empty target are omitted as CAL placeholders; a marker-only card is the no-data container. The earlier one-card-per-record shape remains a strict fallback. Public schema and request counts are unchanged.
 
 ## R-028 — Current concordance/KWIC pages use display labels, BR-line hits, and per-form dialect summaries
 
