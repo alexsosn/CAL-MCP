@@ -100,7 +100,7 @@ cal_kwic_dialect(
 
 This operation requests one exact CAL lemma key in one explicit decimal dialect ID. It submits at most one new logical CAL request to the shared client and never expands to neighboring/all dialects.
 
-The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, per-hit charset, full-context URL, and upstream total. Full context for one selected hit remains a separate explicit `cal_kwic_full_context` call.
+The returned hit model is the same scholarly KWIC model used by text-scoped search: ordered hits, duplicates preserved, CAL file/subtext IDs, target coordinates, rendered context, the highlighted `target_text`, per-hit charset, and full-context URL. `total` here is the sum of CAL's per-form counts, as described under [Lemma forms](#lemma-forms). It equals CAL's grand total when CAL renders one; on single-form and all-zero pages CAL renders no grand total, and CAL-MCP computes the sum. Full context for one selected hit remains a separate explicit `cal_kwic_full_context` call.
 
 ### Lemma forms
 
@@ -110,6 +110,8 @@ CAL currently reports one-dialect KWIC **per lemma form**, and a result may incl
 - each hit's `form_lemma_key`: the CAL form whose summary covers that hit;
 - `total`: the sum over forms, which is CAL's grand total when CAL renders one;
 - `empty_scope_ids`: `[dialect_id]` when every form reports no examples.
+
+On CAL's earlier table layout, a dialect page that renders only `total examples: N` and no per-form summaries returns `forms: []` and `form_lemma_key: null` on its hits, because CAL reported no forms.
 
 CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form must appear exactly once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
 

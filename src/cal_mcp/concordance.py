@@ -1163,6 +1163,15 @@ class _KwicTargetSegmentParser(HTMLParser):
             self._bold_depth += 1
             if self._bold_depth == 1:
                 self._bold_parts = []
+        elif (
+            tag == "span"
+            and self._open is not None
+            and not self._in_target_link
+            and "mono" in (dict(attrs).get("class") or "").split()
+        ):
+            # Dialect before/after lines start with a mono coordinate span; one after the
+            # target link means a missing line break merged the next line into this one.
+            raise ConcordanceParseError("CAL KWIC target line runs into another line")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS and tag not in {"br", "hr"}:

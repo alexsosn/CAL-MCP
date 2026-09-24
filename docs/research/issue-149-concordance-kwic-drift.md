@@ -114,3 +114,15 @@ An independent review of the first candidate raised these points; the resolution
 - **Documentation and decisions.** The MCP tool descriptions now describe forms and `target_text`. `wiki/decisions.md` D-014 records the per-form `total` semantics, and the fixture README lists the new fixtures.
 
 Two additional research requests were made for this amendment: `POST showdialectKWIC.php` (`br N`, text `51001`, 210 KB) and the `U` full-context page (24 KB). The `klb N`/`51001` probe (no examples) confirmed the header format for an empty Targum text.
+
+## Second review amendment (2026-09-24)
+
+An independent subagent review of `d666743` found no parser correctness defects against the full raw captures, and asked for:
+
+- **Negative tests for every new fail-closed branch.** Each guard now has a test pinned with `match=`. A mutation pass that disables each guard in turn (16 guards) makes the tests fail every time. The empty-label check is reachable only on the table layout, so it is tested there.
+- **Line merge on dialect pages.** Dialect before/after lines start with a `span.mono` coordinate. Such a span after the target link now fails closed ("runs into another line"). Text-scope pages have no such marker, so the digit-run limitation noted above still applies there.
+- **Docs.** The dialect `total` is described as the per-form sum (CAL's grand total when rendered), and the old-layout `forms: []` case is documented.
+
+Accepted, not changed: the summary-hint guard (`found for` / `grand total`) is applied to all page lines, including KWIC context lines, so an English context line containing those words would fail closed rather than parse. Every observed context line is Aramaic/Syriac/Hebrew text or transliteration, and failing closed is the safe direction. Thousands separators in counts were not observed; a count such as `1,000` would fail closed.
+
+The reviewer's CHANGELOG concern assumed `v0.1.0` had been released. It has not: the only `v0.1.0` tag was a local leftover from a refused push, and it has been deleted. The 0.1.0 entry describes the release that will include this fix.

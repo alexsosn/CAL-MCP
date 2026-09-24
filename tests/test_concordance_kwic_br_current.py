@@ -65,12 +65,17 @@ def test_current_concordance_row_preserves_display_label_and_link_key() -> None:
     ]
 
 
-def test_current_concordance_row_still_requires_a_nonempty_label() -> None:
-    body = _fixture("concordance_text_13250_label_current.html").replace(
-        ">ˀb, ˀbˀ n.m.</a>", "></a>"
+@pytest.mark.parametrize("link_text", ["", " "])
+def test_concordance_row_requires_a_nonempty_label(link_text: str) -> None:
+    # The inline BR layout rejects an empty link earlier (the link is missing from its
+    # rendered row); the table layout reaches the label check itself.
+    body = (
+        "<html><body><div>Frequencies of lemmas in text 13250</div><table><tr><td>4:</td>"
+        '<td><a href="/showKWIC.php?lemma=%29b+N&charset=S&texts=13250">'
+        f"{link_text}</a></td><td>: father</td></tr></table></body></html>"
     )
 
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match="lemma link has no label"):
         parse_text_concordance_page(
             _response(body, CONCORDANCE_URL),
             requested_text_id="13250",
@@ -420,3 +425,101 @@ def test_unicode_syriac_full_context_page_parses_offline() -> None:
     target = page.lines[1]
     assert target.tokens[-1].text == "ܢܩܬܐ"
     assert [token.word_index for token in target.tokens] == list(range(8))
+
+
+_ARYK_TABLE_URL = ARYK_URL
+
+
+def _aryk_table(body: str) -> object:
+    return parse_kwic_result(
+        _response(body, _ARYK_TABLE_URL),
+        lemma_key=")ryk#2 A",
+        scope_kind=KwicScopeKind.DIALECT,
+        scope_ids=("3",),
+    )
+
+
+@pytest.mark.parametrize(
+    ("old", "new", "message"),
+    [
+        # Form summaries mixed with a text-style total.
+        ("Grand total:", "total examples: 1<br>Grand total:", "mixes form summaries and a total"),
+        # Form summaries mixed with a scope-level empty marker.
+        ("Grand total:", "no examples found in 6<br>Grand total:", "mixes form and scope markers"),
+        # A summary-like line that is not one of CAL's summary shapes.
+        (
+            "Grand total:",
+            "<div>1 example found for <b>nqh N</b> in dialect six</div>Grand total:",
+            "unrecognized form summary",
+        ),
+        # Two grand totals.
+        (
+            "<hr>",
+            '<div dir="ltr">Grand total: <b>1</b> example across all forms</div><hr>',
+            "repeats its grand total",
+        ),
+        # A dialect target line that runs into the following coordinate line.
+        (
+            '&nbsp;<br><span class="mono" dir="ltr" style="display:inline-block;">603015324',
+            '&nbsp;<span class="mono" dir="ltr" style="display:inline-block;">603015324',
+            "runs into another line",
+        ),
+        # No whitespace between the coordinate link and the rendered line.
+        ('">603015323</span></a> ', '">603015323</span></a>', "does not start with its coordinate"),
+    ],
+)
+def test_current_dialect_kwic_structure_guards_fail_closed(
+    old: str, new: str, message: str
+) -> None:
+    body = _fixture(_FORMS)
+    assert old in body
+    with pytest.raises(ConcordanceParseError, match=message):
+        _nqh(body.replace(old, new, 1))
+
+
+def test_current_text_kwic_rejects_dialect_form_summaries() -> None:
+    body = _fixture("kwic_texts_mlk_br_current.html").replace(
+        "total examples: 3",
+        "1 example found for mlk N in dialect 13250<br>total examples: 3",
+    )
+    with pytest.raises(ConcordanceParseError, match="contains dialect form summaries"):
+        parse_kwic_result(
+            _response(body, TEXTS_URL),
+            lemma_key="mlk N",
+            scope_kind=KwicScopeKind.TEXTS,
+            scope_ids=("12250", "13250"),
+        )
+
+
+def test_earlier_table_dialect_layout_still_checks_summary_count() -> None:
+    body = _fixture("kwic_dialect_aryk2_a_biblical.html")
+    assert _aryk_table(body) is not None
+    with pytest.raises(ConcordanceParseError, match="does not match parsed target hits"):
+        _aryk_table(body.replace("1 example found for", "2 examples found for", 1))
+
+
+def test_earlier_table_dialect_layout_rejects_grand_total_without_forms() -> None:
+    body = _fixture("kwic_dialect_aryk2_a_biblical.html").replace(
+        "1 example found for )ryk#2 A in dialect 3",
+        "total examples: 1</div><div>Grand total: 1 example across all forms",
+    )
+    with pytest.raises(ConcordanceParseError, match="grand total lacks form summaries"):
+        _aryk_table(body)
+
+
+def test_target_structure_must_agree_with_parsed_hit_lines() -> None:
+    from dataclasses import replace
+
+    from cal_mcp.concordance import _apply_kwic_target_structure
+
+    response = _response(_fixture(_FORMS), NQH_URL)
+    [(index, hit)] = [(i, h) for i, h in enumerate(_nqh(_fixture(_FORMS)).hits)]
+    with pytest.raises(ConcordanceParseError, match="disagree with their links"):
+        _apply_kwic_target_structure(response, (), scope_kind=KwicScopeKind.DIALECT)
+    moved = replace(hit, full_context_url=hit.full_context_url.replace("603015323", "1"))
+    with pytest.raises(ConcordanceParseError, match="disagree with their links"):
+        _apply_kwic_target_structure(
+            response,
+            ((index, moved),),
+            scope_kind=KwicScopeKind.DIALECT,
+        )
