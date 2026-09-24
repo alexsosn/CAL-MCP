@@ -44,3 +44,12 @@ The semantics are unchanged; only markup changed:
 - A single-cell row whose text is `total examples: N` is the total. The one-total and row-sum checks are unchanged.
 - The reflex header row may be `<th>` or `<td>`.
 - Public schema, request counts and existing link/selector validation (#142/#144/#146) are unchanged.
+
+## Verification (2026-09-24)
+
+- Offline, the full live captures parse: the concordance gives 21 rows summing to the total 59; the Onqelos reflex gives `tyq#2 N` / 2. A mutation pass that disables each new guard in turn (the statement key, section-row link, same-kind header row, and the title heading source) makes the tests fail every time.
+- Live over MCP (a wheel built from this branch, stdio, 4 sequential requests):
+  - `cal_targum_concordance("klb N")` → total 59, 21 rows;
+  - `cal_targum_hebrew_lemmas("mem", "onqelos")` → 366 candidates;
+  - `cal_targum_hebrew_reflexes("onqelos", "1751")` → `Onkelos`, `מַעֲקֶה`, `tyq#2 N` / 2;
+  - `cal_targum_hebrew_reflexes("neofiti", "1751")` → `Neofiti`, `gypwp N` / 1, `syyg N` / 1.
