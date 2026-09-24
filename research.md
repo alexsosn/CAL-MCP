@@ -331,7 +331,7 @@ When new evidence changes an assumption:
 
 **Rechecked:** 2026-09-24.
 
-Two bounded POSTs showed that `showtargumKWIC.php` now identifies itself (`CAL: Targum KWIC counts for <key>`) only in the page `<title>`, with an `<h3>` statement in the body, a `<td>` section row (`Torah` plus an empty cell), and the total as a single-cell row inside the table. `getOmtlemma.php` moved its `<source> correspondences to <Hebrew lemma>` heading from `<h1>` to `<h3>`, and its header row uses `<td>` cells. Row, link, count and selector semantics are unchanged. Detailed evidence: `docs/research/issue-152-targum-concordance-reflex-drift.md`.
+Two bounded POSTs showed that `showtargumKWIC.php` now identifies itself (`CAL: Targum KWIC counts for <key>`) only in the page `<title>`, with an `<h3>` statement in the body, a `<td>` label row (`Torah` plus an `&nbsp;` filler cell), and the total as a single-cell row inside the table. `getOmtlemma.php` moved its `<source> correspondences to <Hebrew lemma>` heading from `<h1>` to `<h3>`, and its header row uses `<td>` cells. Row, link, count and selector semantics are unchanged. Detailed evidence: `docs/research/issue-152-targum-concordance-reflex-drift.md`.
 
 Sources:
 

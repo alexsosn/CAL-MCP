@@ -238,3 +238,14 @@ def test_missing_identifying_heading_fails_closed() -> None:
     )
     with pytest.raises(TargumParseError, match="heading does not match the submitted lemma"):
         _concordance(body)
+
+
+def test_consecutive_section_labels_share_a_row_index() -> None:
+    body = re.sub(
+        r"(<tr>\s*<td scope=\"col\">Torah</td>)", _LABEL_ROW + r"\1", _concordance_body(), count=1
+    )
+    page = _concordance(body)
+    assert [(item.label, item.row_index) for item in page.section_labels] == [  # type: ignore[attr-defined]
+        ("Former group", 0),
+        ("Torah", 0),
+    ]

@@ -974,7 +974,7 @@ def _cell_text(cell: _TableCell) -> str:
 
 
 def _is_concordance_section_row(cells: tuple[_TableCell, ...]) -> bool:
-    # Earlier layout: one <th colspan> cell. Current layout: a <td> label plus an empty <td>.
+    # Earlier layout: one <th colspan> cell. Current layout: a <td> label plus an &nbsp; <td>.
     if len(cells) == 1 and cells[0].kind == "th":
         return True
     # Require CAL's literal &nbsp; filler so a damaged result row (lost link and count)
