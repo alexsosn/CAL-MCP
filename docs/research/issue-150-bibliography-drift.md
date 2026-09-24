@@ -99,3 +99,5 @@ An independent adversarial review of `2ceaad7` confirmed exact record segmentati
 5. The Sokoloff fixture now keeps CAL's record order.
 6. The limitation that a single dropped `</p><p>` boundary is indistinguishable from one long record is documented.
 7. The test helpers are typed, so `mypy` is clean over the new test file.
+
+A re-review of `4ea89c9` approved it. Its one low-severity finding (the title-text smoke test was rejected by the links check before reaching the title check) is fixed: each `live_smoke` structure check (non-string or empty citation, length bound, title text, links list) now has its own test, and disabling any one fails the tests.

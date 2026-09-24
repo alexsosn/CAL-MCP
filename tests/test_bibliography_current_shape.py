@@ -156,12 +156,7 @@ def test_marker_card_with_links_is_not_treated_as_marker() -> None:
         parse_bibliography_page(_response(body, EMPTY_URL))
 
 
-@pytest.mark.anyio
-async def test_live_smoke_bibliography_probe_rejects_merged_title_citation(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    from cal_mcp import live_smoke
-
+def _smoke_service(records: list[object]) -> type:
     class _Service:
         def __init__(self, client: object) -> None:
             del client
@@ -172,7 +167,7 @@ async def test_live_smoke_bibliography_probe_rejects_merged_title_citation(
             class _Result:
                 def to_dict(self) -> dict[str, object]:
                     return {
-                        "records": [{"citation": "CAL BIBLIOGRAPHY SEARCH Millard, A.R."}],
+                        "records": records,
                         "provenance": {
                             "source_url": "https://cal.huc.edu/getbiblemma.php?myauthor=cly+V",
                             "retrieved_at": RETRIEVED_AT.isoformat(),
@@ -181,9 +176,47 @@ async def test_live_smoke_bibliography_probe_rejects_merged_title_citation(
 
             return _Result()
 
-    monkeypatch.setattr(live_smoke, "BibliographyService", _Service)
+    return _Service
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "record",
+    [
+        # Page-title text in an otherwise well-formed record.
+        {"citation": "CAL BIBLIOGRAPHY SEARCH Millard, A.R.", "links": []},
+        # Empty citation.
+        {"citation": "", "links": []},
+        # Non-string citation.
+        {"citation": 42, "links": []},
+        # Missing links list.
+        {"citation": "Millard, A.R."},
+        # Not a record object.
+        "Millard, A.R.",
+    ],
+)
+async def test_live_smoke_bibliography_probe_rejects_malformed_records(
+    record: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from cal_mcp import live_smoke
+
+    monkeypatch.setattr(live_smoke, "BibliographyService", _smoke_service([record]))
     with pytest.raises(live_smoke.LiveSmokeSemanticError, match="record boundaries"):
         await live_smoke._probe_bibliography(None)  # type: ignore[arg-type]
+
+
+@pytest.mark.anyio
+async def test_live_smoke_bibliography_probe_accepts_well_formed_records(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cal_mcp import live_smoke
+
+    monkeypatch.setattr(
+        live_smoke,
+        "BibliographyService",
+        _smoke_service([{"citation": 'Millard, A.R., "Cognates…" 1995.', "links": []}]),
+    )
+    await live_smoke._probe_bibliography(None)  # type: ignore[arg-type]
 
 
 def test_legacy_document_without_record_boundaries_fails_closed() -> None:
