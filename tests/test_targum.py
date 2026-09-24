@@ -241,6 +241,43 @@ def test_hebrew_lemma_chooser_requires_source_specific_action_and_unique_ids() -
         parse_hebrew_lemma_options_page(duplicate, targum="onqelos")
 
 
+@pytest.mark.parametrize(
+    "action",
+    [
+        "/archive/getOmtlemma.php",
+        "/getOmtlemma.php?mode=x",
+        "/getOmtlemma.php?",
+        "/getOmtlemma.php#changed",
+        "/getOmtlemma.php#",
+    ],
+)
+def test_hebrew_lemma_chooser_rejects_altered_form_action(action: str) -> None:
+    response = _inline_response(
+        "<h1>CAL: MT lemma chooser</h1>"
+        f"<form method='post' action='{action}'>"
+        "<label><input type='radio' name='R1' value='1751'>מַעֲקֶה n</label>"
+        "</form>",
+        "https://cal.huc.edu/Omtlemmas/memMTlemma.html",
+    )
+
+    with pytest.raises(TargumParseError):
+        parse_hebrew_lemma_options_page(response, targum="onqelos")
+
+
+def test_hebrew_lemma_chooser_accepts_same_origin_absolute_current_action() -> None:
+    response = _inline_response(
+        "<h1>CAL: MT lemma chooser</h1>"
+        "<form method='post' action='https://cal.huc.edu/getOmtlemma.php'>"
+        "<label><input type='radio' name='R1' value='1751'>מַעֲקֶה n</label>"
+        "</form>",
+        "https://cal.huc.edu/Omtlemmas/memMTlemma.html",
+    )
+
+    page = parse_hebrew_lemma_options_page(response, targum="onqelos")
+
+    assert [candidate.mt_lemma_id for candidate in page.candidates] == ["1751"]
+
+
 def test_onqelos_reflex_parser_preserves_mt_lemma_cal_key_display_and_frequency() -> None:
     page = parse_targum_reflex_page(
         _fixture_response(

@@ -402,7 +402,7 @@ class _HebrewLemmaChooserParser(HTMLParser):
             if (
                 action
                 and method == "post"
-                and _is_same_origin_path(self.source_url, action, self.expected_action)
+                and _is_same_origin_root_route(self.source_url, action, self.expected_action)
             ):
                 self.target_forms += 1
                 self._in_target_form = True
@@ -1023,13 +1023,15 @@ def _validated_same_origin_url(
     return resolved
 
 
-def _is_same_origin_path(source_url: str, href: str, expected_path: str) -> bool:
-    resolved = urljoin(source_url, href)
+def _is_same_origin_root_route(source_url: str, href: str, expected_action: str) -> bool:
+    # Reject even bare delimiters: URL parsing normalizes an empty "?" or "#" away.
+    if "?" in href or "#" in href:
+        return False
     source = urlsplit(source_url)
-    target = urlsplit(resolved)
-    return (target.scheme, target.netloc) == (source.scheme, source.netloc) and target.path.rsplit(
-        "/", 1
-    )[-1] == expected_path
+    target = urlsplit(urljoin(source_url, href))
+    return (target.scheme, target.netloc) == (source.scheme, source.netloc) and (
+        target.path == f"/{expected_action}"
+    )
 
 
 def _single_query_value(query: dict[str, list[str]], key: str, context: str) -> str:
