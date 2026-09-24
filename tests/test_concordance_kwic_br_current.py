@@ -161,33 +161,61 @@ _NONE_REQUESTED = "No examples found for <b>n)qh N</b> in dialect 6"
 
 
 @pytest.mark.parametrize(
-    ("old", "new"),
+    ("old", "new", "message"),
     [
-        # Form count disagrees with the hits it owns.
-        (_FOUND_NQH, "<b>2</b> examples found for <b>nqh N</b> in dialect 6"),
+        # Form count disagrees with the hits it owns (grand total kept consistent).
+        (
+            _FOUND_NQH + '</div><br><BDO dir="rtl"></BDO></span></div>'
+            '<div dir="ltr" style="font-family:sans-serif; font-size:13px;">Grand total: <b>1</b>',
+            "<b>2</b> examples found for <b>nqh N</b> in dialect 6"
+            '</div><br><BDO dir="rtl"></BDO></span></div>'
+            '<div dir="ltr" style="font-family:sans-serif; font-size:13px;">Grand total: <b>2</b>',
+            "does not match parsed target hits",
+        ),
         # Summary names another dialect.
-        (_FOUND_NQH, "<b>1</b> example found for <b>nqh N</b> in dialect 7"),
+        (
+            _FOUND_NQH,
+            "<b>1</b> example found for <b>nqh N</b> in dialect 7",
+            "contradicts the request",
+        ),
         # Requested form missing.
-        (_NONE_REQUESTED, "No examples found for <b>nqh#2 N</b> in dialect 6"),
+        (
+            _NONE_REQUESTED,
+            "No examples found for <b>nqh#2 N</b> in dialect 6",
+            "lacks the requested form",
+        ),
         # Requested form duplicated.
-        (_FOUND_NQH, "<b>1</b> example found for <b>n)qh N</b> in dialect 6"),
+        (
+            _FOUND_NQH,
+            "<b>1</b> example found for <b>n)qh N</b> in dialect 6",
+            "repeats a form summary",
+        ),
         # Non-canonical form key.
-        (_FOUND_NQH, "<b>1</b> example found for <b>nqh  N x</b> in dialect 6"),
+        (
+            _FOUND_NQH,
+            "<b>1</b> example found for <b>nqh  N x</b> in dialect 6",
+            "invalid form key",
+        ),
         # Grand total disagrees with the per-form sum.
-        ("Grand total: <b>1</b> example", "Grand total: <b>2</b> examples"),
+        (
+            "Grand total: <b>1</b> example",
+            "Grand total: <b>2</b> examples",
+            "grand total contradicts",
+        ),
         # Hit link text is not the target coordinate.
         (
             '">603015323</span></a>',
             '">603015324</span></a>',
+            "differs from its coordinate",
         ),
         # Unknown hit charset.
-        ("cset=U&target", "cset=Q&target"),
+        ("cset=U&target", "cset=Q&target", "unknown charset"),
     ],
 )
-def test_current_dialect_kwic_contradictions_fail_closed(old: str, new: str) -> None:
+def test_current_dialect_kwic_contradictions_fail_closed(old: str, new: str, message: str) -> None:
     body = _fixture(_FORMS)
     assert old in body
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match=message):
         _nqh(body.replace(old, new, 1))
 
 
@@ -203,7 +231,7 @@ def test_current_dialect_kwic_rejects_hits_owned_by_a_no_examples_form() -> None
         "</p>",
         f"</p><div>{_NONE_REQUESTED}</div>",
     )
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match="does not match parsed target hits"):
         _nqh(body)
 
 
@@ -213,7 +241,7 @@ def test_current_dialect_kwic_rejects_hit_after_last_form_summary() -> None:
         '<a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015330">'
         "603015330</a> ܢܩܬܐ<br>Grand total:",
     )
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match="follows the last form summary"):
         _nqh(body)
 
 
@@ -222,28 +250,35 @@ def test_current_dialect_kwic_rejects_repeated_form_summary() -> None:
         "Grand total:",
         "<div>No examples found for <b>nqh N</b> in dialect 6</div>Grand total:",
     )
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match="repeats a form summary"):
         _nqh(body)
 
 
 @pytest.mark.parametrize(
-    "target_line",
+    ("target_line", "message"),
     [
-        # Link text does not start the line.
-        'x <a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323">'
-        "603015323</a> ܢܩܬܐ",
-        # No rendered text after the coordinate.
-        '<a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323">603015323</a>',
-        # An extra link on the target line.
-        '<a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323">'
-        '603015323</a> ܢܩܬܐ <a href="/getlex.php?coord=1&word=0">x</a>',
+        (
+            'x <a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323">'
+            "603015323</a> ܢܩܬܐ",
+            "does not start with its coordinate",
+        ),
+        (
+            '<a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323">'
+            "603015323</a>",
+            "no rendered context",
+        ),
+        (
+            '<a href="/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323">'
+            '603015323</a> ܢܩܬܐ <a href="/getlex.php?coord=1&word=0">x</a>',
+            "unexpected links",
+        ),
     ],
 )
-def test_current_kwic_malformed_target_line_fails_closed(target_line: str) -> None:
+def test_current_kwic_malformed_target_line_fails_closed(target_line: str, message: str) -> None:
     body = _fixture(_FORMS)
     start = body.index('<a href="/get_a_kwicchapter.php')
     end = body.index("<br>", start)
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match=message):
         _nqh(body[:start] + target_line + body[end:])
 
 
