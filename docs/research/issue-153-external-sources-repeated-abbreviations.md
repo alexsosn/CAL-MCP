@@ -25,5 +25,10 @@ This is CAL's own bibliographic data: several source works share one citation ab
 ## Consequences
 
 - Source rows are returned exactly as CAL lists them, in order, including repeated abbreviations with their distinct descriptions. No merging or deduplication.
-- A repeated abbreviation is accepted only when every occurrence links to the same citations URL. The same abbreviation with different citation links is still a contradiction and fails closed.
+- The existing per-row check that a link's `abbrev` value equals its displayed abbreviation already guarantees that rows sharing an abbreviation share one citation list, so no extra guard is needed. A repeated abbreviation whose link names another value still fails closed through that check.
 - The public schema and request count are unchanged. The docs state that abbreviations are not unique keys, and that `cal_external_citations(source_abbrev)` returns CAL's combined citation list for every work sharing that abbreviation.
+
+## Verification (2026-09-24)
+
+- Offline, the full 702-row capture parses into 702 sources in CAL order.
+- Live over MCP (a wheel built from this branch, stdio, 2 sequential requests): `cal_external_citation_sources("6")` → 702 sources, including both `EbPar` rows; `cal_external_citations("EbPar")` → total 26, 26 citations.
