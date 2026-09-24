@@ -571,9 +571,10 @@ def parse_external_citation_sources_page(
     explicit_empty = _SOURCE_EMPTY_MARKER.lower() in page_text.lower()
     if explicit_empty and parser.sources:
         raise ExternalCitationParseError("CAL external-source page contradicts its empty marker")
-    abbreviations = [item.abbreviation for item in parser.sources]
-    if len(set(abbreviations)) != len(abbreviations):
-        raise ExternalCitationParseError("CAL external-source page repeats an abbreviation")
+    # Abbreviations are not unique: CAL lists some distinct works under one shared
+    # abbreviation (for example two editions under "EbPar"), in separate rows (R-032).
+    # Each row's link must carry exactly its displayed abbreviation, so rows sharing an
+    # abbreviation necessarily share one citation list.
     if not explicit_empty and not parser.sources:
         raise ExternalCitationParseError(
             "CAL external-source page contains neither source rows nor explicit empty state"

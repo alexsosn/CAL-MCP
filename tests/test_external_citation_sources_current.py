@@ -55,7 +55,9 @@ def test_repeated_abbreviations_are_kept_in_cal_order_with_distinct_descriptions
     }
 
 
-def test_repeated_abbreviation_with_a_different_citations_link_fails_closed() -> None:
+def test_repeated_abbreviation_cannot_point_to_a_different_citation_list() -> None:
+    # The link must carry exactly the displayed abbreviation, so a repeated abbreviation
+    # can never be routed to another source's citations.
     body = _body()
     second = body.rindex('href="displaycits.abbrev.php?abbrev=EbPar"')
     body = (
@@ -63,5 +65,5 @@ def test_repeated_abbreviation_with_a_different_citations_link_fails_closed() ->
         + 'href="displaycits.abbrev.php?abbrev=EbPar2"'
         + body[second + len('href="displaycits.abbrev.php?abbrev=EbPar"') :]
     )
-    with pytest.raises(ExternalCitationParseError):
+    with pytest.raises(ExternalCitationParseError, match="does not match its abbreviation"):
         _parse(body)
