@@ -40,10 +40,10 @@ The semantics are unchanged; only markup changed:
 ## Consequences
 
 - Result headings are collected from `<h1>` and `<h3>`. For the Targum concordance, CAL's current request-identifying heading is the page `<title>`, which is accepted as that heading. The body statement `The lemma "<key>" is attested …`, when present, must name the submitted key.
-- A two-`<td>` row with a non-empty unlinked first cell and an empty unlinked second cell is a section row. The earlier `<th colspan>` form remains accepted.
+- A two-`<td>` row with a non-empty unlinked first cell and CAL's literal `&nbsp;` filler as its second cell is a label row (superseded detail: the first candidate accepted any empty second cell; see the review amendment). The earlier `<th colspan>` form remains accepted.
 - A single-cell row whose text is `total examples: N` is the total. The one-total and row-sum checks are unchanged.
 - The reflex header row may be `<th>` or `<td>`.
-- Public schema, request counts and existing link/selector validation (#142/#144/#146) are unchanged.
+- Request counts and existing link/selector validation (#142/#144/#146) are unchanged. The public schema gains an additive `section_labels` field (review amendment, D-015; this supersedes the first candidate's "schema unchanged").
 
 ## Verification (2026-09-24)
 
@@ -63,4 +63,8 @@ An independent review requested changes:
 3. **Damaged result rows.** A current-layout label row now requires CAL's literal `&nbsp;` filler in its second cell, so a result row that lost its link and count is still rejected ("row lacks required semantics") instead of becoming a label row.
 4. **Total row.** A test now pins the exact `total examples: N` single-cell form.
 
-A mutation pass over the new logic (the `&nbsp;` filler, heading dedupe, exact total row, labels not carried, labels recorded) fails the tests for every mutation. On the full live capture, all 21 rows have `section: null` and `section_labels` is `[{"label": "Torah", "row_index": 0}]`.
+A mutation pass over the new logic (the `&nbsp;` filler, heading dedupe, exact total row, labels not carried, labels recorded) failed the tests for each of those mutations. A second review then found three untested paths: the service's `section_labels` hand-off, `row_index` values other than 0, and accepting a page with no identifying heading. Each now has a test that fails when that path is disabled. On the full live capture, all 21 rows have `section: null` and `section_labels` is `[{"label": "Torah", "row_index": 0}]`.
+
+### `section_labels` semantics
+
+`row_index` is the index in `rows` of the first result row after the label. A label that follows the last row has `row_index == len(rows)`, and consecutive labels share one `row_index`.

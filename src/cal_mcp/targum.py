@@ -48,8 +48,9 @@ class TargumConcordanceRow:
 class TargumConcordanceSectionLabel:
     """A CAL label row in the current concordance layout (R-031).
 
-    ``row_index`` is the index in ``rows`` of the first result row after the label. CAL's
-    current page renders such a label without applying it as a grouping to later rows.
+    ``row_index`` is the index in ``rows`` of the first result row after the label; it equals
+    ``len(rows)`` when no row follows, and consecutive labels share an index. CAL's current
+    page renders such a label without applying it as a grouping to later rows.
     """
 
     label: str

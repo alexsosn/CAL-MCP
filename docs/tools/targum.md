@@ -66,7 +66,7 @@ The result preserves:
 
 - the canonical CAL `lemma_key`;
 - ordered rows;
-- CAL's section structure separately from individual source labels. On CAL's earlier layout, explicit section headers (`<th colspan>`) group the rows after them, and those rows carry `section`. On CAL's current layout (2026-09-24) the page renders a single label row (`Torah`) followed by every Targum, including Former and Writing Prophets, Psalms and Chronicles, so it is not a grouping. Rows then carry `section: null`, and the result's additive `section_labels` lists each label row as `{label, row_index}`, where `row_index` is the index in `rows` of the first row after it. CAL-MCP does not attribute rows to a label;
+- CAL's section structure separately from individual source labels. On CAL's earlier layout, explicit section headers (`<th colspan>`) group the rows after them, and those rows carry `section`. On CAL's current layout (2026-09-24) the page renders a single label row (`Torah`) followed by every Targum, including Former and Writing Prophets, Psalms and Chronicles, so it is not a grouping. Rows then carry `section: null`, and the result's additive `section_labels` lists each label row as `{label, row_index}`, where `row_index` is the index in `rows` of the first row after it (it equals the number of rows when no row follows, and consecutive labels share an index). CAL-MCP does not attribute rows to a label;
 - exact source labels;
 - occurrence counts;
 - absolute same-origin CAL example URLs;

@@ -183,3 +183,17 @@ Consequences:
 - `total` for a requested key can count hits under other CAL forms, and callers filter by `form_lemma_key` if they need only the requested form;
 - per-form counts, positions, dialect identity, canonical keys, requested-form presence, and any grand total are cross-checked, and disagreement fails closed as parser drift;
 - the schema change is additive (`forms`, `form_lemma_key`, and the related `target_text` and concordance `label` fields); request counts and bounds are unchanged.
+
+
+## D-015 — Targum concordance label rows are reported, not applied as groupings
+
+**Status:** accepted — 2026-09-24 (issue #152; research R-031)
+
+CAL's current Targum concordance page renders a single label row (`Torah`, with an `&nbsp;` filler cell) and then every Targum as a plain row, including Former and Writing Prophets, Psalms and Chronicles. Carrying that label forward would attribute rows to a grouping CAL does not apply. As chosen by the maintainer, CAL-MCP sets `section` only from CAL's explicit earlier-layout section headers (`<th colspan>`). Current-layout label rows are reported in an additive `section_labels` list of `{label, row_index}`.
+
+Consequences:
+
+- no row is attributed to a label CAL does not apply as a grouping; callers can see where CAL placed each label;
+- the schema change is additive (`section_labels`); row, count and total semantics and request counts are unchanged;
+- a label row must carry CAL's literal `&nbsp;` filler, so a damaged result row cannot be misread as a label.
+

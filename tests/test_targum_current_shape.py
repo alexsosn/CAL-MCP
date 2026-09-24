@@ -183,3 +183,58 @@ def test_concordance_result_serializes_section_labels() -> None:
         ),
     ).to_dict()
     assert result["section_labels"] == [{"label": "Torah", "row_index": 0}]
+
+
+@pytest.mark.anyio
+async def test_service_output_carries_section_labels() -> None:
+    from cal_mcp.client import CalHttpClient
+    from cal_mcp.targum import TargumService
+
+    async def transport(request: object, config: object) -> CalResponse:
+        del request, config
+        return _response(_concordance_body(), CONCORDANCE_URL)
+
+    service = TargumService(CalHttpClient(transport=transport))  # type: ignore[arg-type]
+    payload = (await service.concordance("klb N")).to_dict()
+
+    assert payload["section_labels"] == [{"label": "Torah", "row_index": 0}]
+    rows = payload["rows"]
+    assert isinstance(rows, list)
+    assert {row["section"] for row in rows} == {None}
+
+
+_LABEL_ROW = '<tr><td scope="col">Former group</td><td scope="col">&nbsp;</td></tr>'
+
+
+def test_section_label_row_index_points_at_the_first_row_after_it() -> None:
+    body = re.sub(
+        r"(<tr><td[^>]*><div[^>]*><a [^>]*>Writing Prophets</a>)",
+        _LABEL_ROW + r"\1",
+        _concordance_body(),
+        count=1,
+    )
+    page = _concordance(body)
+    assert [(item.label, item.row_index) for item in page.section_labels] == [  # type: ignore[attr-defined]
+        ("Torah", 0),
+        ("Former group", 2),
+    ]
+    assert page.rows[2].label == "Writing Prophets"  # type: ignore[attr-defined]
+
+
+def test_section_label_after_the_last_row_has_index_equal_to_row_count() -> None:
+    body = re.sub(
+        r"(<tr><td[^>]*>total examples:)",
+        _LABEL_ROW + r"\1",
+        _concordance_body(),
+        count=1,
+    )
+    page = _concordance(body)
+    assert page.section_labels[-1].row_index == len(page.rows) == 4  # type: ignore[attr-defined]
+
+
+def test_missing_identifying_heading_fails_closed() -> None:
+    body = _concordance_body().replace(
+        "<title>CAL: Targum KWIC counts for klb N</title>", "<title>CAL</title>"
+    )
+    with pytest.raises(TargumParseError, match="heading does not match the submitted lemma"):
+        _concordance(body)
