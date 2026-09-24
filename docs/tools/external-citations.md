@@ -16,7 +16,7 @@ The dialect list is read live from CAL. CAL-MCP does not hard-code the current s
 
 Returns the ordered source abbreviations and descriptions that CAL currently lists for one explicit dialect returned by `cal_external_citation_dialects()`.
 
-Abbreviations are not unique keys. CAL lists some distinct works under one shared abbreviation, each in its own row with its own description; on the Syriac list (2026-09-24) these are `EbPar`, `JS`, `Lag,`, `PO` and `Th`. CAL-MCP returns every row as CAL lists it and does not merge or deduplicate them. All rows sharing an abbreviation link to the same CAL citation list, so `cal_external_citations(source_abbrev)` returns CAL's combined citations for all works under that abbreviation.
+Abbreviations are not unique keys. CAL lists some distinct works under one shared abbreviation, each in its own row with its own description; on the Syriac list (2026-09-24) these are `EbPar`, `JS`, `Lag,`, `PO` and `Th`. CAL-MCP returns every row as CAL lists it and does not merge or deduplicate them. All rows sharing an abbreviation link to the same CAL citation list, so `cal_external_citations(source_abbrev)` returns CAL's single citation list for that abbreviation. CAL does not say which of the listed works a citation comes from, and CAL-MCP does not attribute citations to one of them. If CAL ever listed a fully identical row twice, both rows would be returned as listed.
 
 A source result is metadata for a text with citations in CAL; it is **not** an online CAL `file_id` or passage. Descriptions are preserved as rendered by CAL rather than decomposed into inferred bibliographic fields.
 

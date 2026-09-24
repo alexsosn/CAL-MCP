@@ -32,3 +32,9 @@ This is CAL's own bibliographic data: several source works share one citation ab
 
 - Offline, the full 702-row capture parses into 702 sources in CAL order.
 - Live over MCP (a wheel built from this branch, stdio, 2 sequential requests): `cal_external_citation_sources("6")` → 702 sources, including both `EbPar` rows; `cal_external_citations("EbPar")` → total 26, 26 citations.
+
+## Review (2026-09-24)
+
+An independent adversarial review approved this change. It confirmed that the full 702-row capture parses in CAL order, that exactly five abbreviations repeat (each an adjacent pair with distinct descriptions and an identical link), and that the link/label check holds for every row. Wording fixes applied: the plan text, and the docs no longer claim the citation list "combines" the listed works.
+
+Out of scope, noted for a possible follow-up: the list also has case-variant abbreviations with distinct links (`BhBS`/`BHBS`, `DAP`/`dap`, `JshD`/`Jshd`). Whether CAL's citation endpoint treats them case-insensitively is unverified.
