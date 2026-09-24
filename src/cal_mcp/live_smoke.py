@@ -197,18 +197,27 @@ async def _probe_text_concordance(client: BudgetCalHttpClient) -> None:
     _require_provenance(payload, "text_concordance")
 
 
+_MAX_BIBLIOGRAPHY_CITATION_CHARS = 700
+
+
 async def _probe_bibliography(client: BudgetCalHttpClient) -> None:
     result = await BibliographyService(client).lemma("cly V")
     payload = result.to_dict()
     records = _require_nonempty_list(payload, "records", "bibliography")
-    # A non-empty list alone let merged records pass (#150); CAL's page title must never
-    # leak into a record citation.
-    if any(
-        not isinstance(record, dict)
-        or "BIBLIOGRAPHY SEARCH" in str(record.get("citation", "")).upper()
-        for record in records
-    ):
-        raise LiveSmokeSemanticError("bibliography record boundaries no longer parse cleanly")
+    # A non-empty list alone let merged records pass (#150). The parser now fails closed on
+    # lost record boundaries; this also bounds each record's shape. Observed CAL citations
+    # are at most ~375 characters, and merged pages exceed 1,000.
+    for record in records:
+        citation = record.get("citation") if isinstance(record, dict) else None
+        links = record.get("links") if isinstance(record, dict) else None
+        if (
+            not isinstance(citation, str)
+            or not citation
+            or len(citation) > _MAX_BIBLIOGRAPHY_CITATION_CHARS
+            or "BIBLIOGRAPHY SEARCH" in citation.upper()
+            or not isinstance(links, list)
+        ):
+            raise LiveSmokeSemanticError("bibliography record boundaries no longer parse cleanly")
     _require_provenance(payload, "bibliography")
 
 

@@ -187,6 +187,7 @@ class _CardBuilder:
     loose: _RecordBuilder = field(default_factory=_RecordBuilder)
     paragraph: _RecordBuilder | None = None
     has_paragraphs: bool = False
+    has_legacy_document: bool = False
 
 
 class _BibliographyHTMLParser(HTMLParser):
@@ -211,8 +212,13 @@ class _BibliographyHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
+        if self._card is not None and tag in _LEGACY_DOCUMENT_TAGS:
+            self._card.has_legacy_document = True
         if tag == "title":
-            # Document metadata (the page <title> and CAL's embedded legacy <TITLE>).
+            # Document metadata (the page <title> and CAL's embedded legacy <TITLE>); it is
+            # never record content, so a title inside a record is drift.
+            if self._card is not None and self._card.paragraph is not None:
+                raise BibliographyParseError("CAL bibliography record contains title metadata")
             self._title_depth += 1
             return
         if tag == "h1":
@@ -315,6 +321,12 @@ class _BibliographyHTMLParser(HTMLParser):
         ):
             # Current layout: the explicit no-data marker sits alone inside the card.
             return
+        if card.has_legacy_document:
+            # CAL's embedded legacy result document delimits records only with <p>; without
+            # them, record boundaries are lost and must not be merged into one record.
+            raise BibliographyParseError(
+                "CAL bibliography legacy result document has no record boundaries"
+            )
         # Earlier layout: one card per record.
         self.records.append(_finish_record(card.loose))
 
@@ -346,6 +358,7 @@ def _is_empty_placeholder_link(source_url: str, href: str) -> bool:
     )
 
 
+_LEGACY_DOCUMENT_TAGS = frozenset({"html", "body", "title", "font", "hr"})
 _EMPTY_RESULT_RE = re.compile(
     r"\bNO\s+data\s+FOR\s+(.+?)\s+ARE\s+CURRENTLY\s+STORED\b",
     re.I,

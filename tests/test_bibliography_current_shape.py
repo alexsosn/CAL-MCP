@@ -10,7 +10,12 @@ from pathlib import Path
 
 import pytest
 
-from cal_mcp.bibliography import BibliographyParseError, parse_bibliography_page
+from cal_mcp.bibliography import (
+    BibliographyPage,
+    BibliographyParseError,
+    BibliographyQueryKind,
+    parse_bibliography_page,
+)
 from cal_mcp.client import CalResponse
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
@@ -34,7 +39,7 @@ def _fixture(name: str) -> str:
     return (FIXTURES / name).read_text(encoding="utf-8")
 
 
-def _lemma(body: str) -> object:
+def _lemma(body: str) -> BibliographyPage:
     return parse_bibliography_page(_response(body, LEMMA_URL))
 
 
@@ -55,10 +60,10 @@ def test_current_lemma_page_returns_one_record_per_paragraph() -> None:
     assert page.records[0].citation.startswith("Jansma, T., \"Aphraate's Demonstration VII")
     assert page.records[0].citation.endswith("(1974): 21–48.")
     assert [link.label for link in page.records[0].links] == ["br N", "qym N", "m)mr N", "txwy N"]
-    assert [(link.label, link.query_kind.value) for link in page.records[2].links] == [
-        ("Grammar", "keyword"),
-        ("br N", "lemma"),
-        ("tryn b", "lemma"),
+    assert [(link.label, link.query_kind) for link in page.records[2].links] == [
+        ("Grammar", BibliographyQueryKind.KEYWORD),
+        ("br N", BibliographyQueryKind.LEMMA),
+        ("tryn b", BibliographyQueryKind.LEMMA),
     ]
 
 
@@ -68,9 +73,10 @@ def test_current_author_page_omits_cal_empty_placeholder_links() -> None:
     )
 
     assert len(page.records) == 2
-    assert [link.label for link in page.records[0].links] == ["BA"]
-    assert [link.label for link in page.records[1].links] == ["Grammar", "CPA", "Gal", "Samar"]
-    assert "[The Noun Pattern MQTWLYin Middle Western Aramaic]" in page.records[1].citation
+    # CAL order: the placeholder-bearing record comes first on the live page.
+    assert [link.label for link in page.records[0].links] == ["Grammar", "CPA", "Gal", "Samar"]
+    assert "[The Noun Pattern MQTWLYin Middle Western Aramaic]" in page.records[0].citation
+    assert [link.label for link in page.records[1].links] == ["BA"]
 
 
 def test_current_empty_page_with_marker_inside_card_is_valid_empty_result() -> None:
@@ -129,7 +135,7 @@ def test_newline_placeholder_variant_is_also_omitted() -> None:
         '<a href="/getbibsigla.php?myauthor=%0A">\n</a>',
     )
     page = parse_bibliography_page(_response(body, AUTHOR_URL))
-    assert [link.label for link in page.records[1].links] == ["Grammar", "CPA", "Gal", "Samar"]
+    assert [link.label for link in page.records[0].links] == ["Grammar", "CPA", "Gal", "Samar"]
 
 
 def test_placeholder_omission_requires_both_empty_label_and_empty_target() -> None:
@@ -151,7 +157,9 @@ def test_marker_card_with_links_is_not_treated_as_marker() -> None:
 
 
 @pytest.mark.anyio
-async def test_live_smoke_bibliography_probe_rejects_merged_title_citation() -> None:
+async def test_live_smoke_bibliography_probe_rejects_merged_title_citation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from cal_mcp import live_smoke
 
     class _Service:
@@ -173,10 +181,96 @@ async def test_live_smoke_bibliography_probe_rejects_merged_title_citation() -> 
 
             return _Result()
 
-    original = live_smoke.BibliographyService
-    live_smoke.BibliographyService = _Service  # type: ignore[assignment,misc]
-    try:
-        with pytest.raises(live_smoke.LiveSmokeSemanticError, match="record boundaries"):
-            await live_smoke._probe_bibliography(None)  # type: ignore[arg-type]
-    finally:
-        live_smoke.BibliographyService = original  # type: ignore[misc]
+    monkeypatch.setattr(live_smoke, "BibliographyService", _Service)
+    with pytest.raises(live_smoke.LiveSmokeSemanticError, match="record boundaries"):
+        await live_smoke._probe_bibliography(None)  # type: ignore[arg-type]
+
+
+def test_legacy_document_without_record_boundaries_fails_closed() -> None:
+    # If CAL dropped the <p> wrappers, the one-card-per-record fallback must not merge
+    # every work into one record again (#150 review).
+    body = _fixture("bibliography_lemma_br_n_current.html").replace("<p>", "").replace("</p>", "")
+    with pytest.raises(BibliographyParseError, match="has no record boundaries"):
+        _lemma(body)
+
+
+def test_title_metadata_inside_a_record_fails_closed() -> None:
+    body = _fixture("bibliography_lemma_br_n_current.html").replace(
+        "21–48.", "21–48. <title>Hidden text</title> tail", 1
+    )
+    with pytest.raises(BibliographyParseError, match="record contains title metadata"):
+        _lemma(body)
+
+
+_PLACEHOLDER = '<a href="/getbiblemma.php?myauthor="></a>'
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        # Cross-origin empty link.
+        '<a href="https://other.example/getbiblemma.php?myauthor="></a>',
+        # Same-origin empty link with a fragment.
+        '<a href="/getbiblemma.php?myauthor=#x"></a>',
+        # Not a bibliography result endpoint.
+        '<a href="/getlex.php?myauthor="></a>',
+        # Extra query parameter.
+        '<a href="/getbiblemma.php?myauthor=&amp;x=1"></a>',
+        # Repeated empty value.
+        '<a href="/getbiblemma.php?myauthor=&amp;myauthor="></a>',
+    ],
+)
+def test_placeholder_rule_does_not_swallow_other_empty_links(replacement: str) -> None:
+    body = _fixture("bibliography_author_sokoloff_current.html").replace(_PLACEHOLDER, replacement)
+    assert replacement in body
+    with pytest.raises(BibliographyParseError):
+        parse_bibliography_page(_response(body, AUTHOR_URL))
+
+
+def test_link_outside_records_in_record_card_fails_closed() -> None:
+    body = _fixture("bibliography_lemma_br_n_current.html").replace(
+        _LAST_RECORD_END,
+        _LAST_RECORD_END + '<a href="/getbiblemma.php?myauthor=br%20N">br N</a>',
+    )
+    with pytest.raises(BibliographyParseError, match="content outside its records"):
+        _lemma(body)
+
+
+def test_record_opening_inside_an_unclosed_card_link_fails_closed() -> None:
+    body = _fixture("bibliography_lemma_br_n_current.html").replace(
+        "<p>Jansma, T.,", '<a href="/getbiblemma.php?myauthor=br%20N"><p>Jansma, T.,', 1
+    )
+    with pytest.raises(BibliographyParseError, match="record link is incomplete"):
+        _lemma(body)
+
+
+@pytest.mark.anyio
+async def test_live_smoke_bibliography_probe_rejects_oversized_merged_citation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cal_mcp import live_smoke
+
+    merged = "Millard, A.R., " + "x" * 800
+
+    class _Service:
+        def __init__(self, client: object) -> None:
+            del client
+
+        async def lemma(self, lemma_key: str) -> object:
+            del lemma_key
+
+            class _Result:
+                def to_dict(self) -> dict[str, object]:
+                    return {
+                        "records": [{"citation": merged, "links": []}],
+                        "provenance": {
+                            "source_url": "https://cal.huc.edu/getbiblemma.php?myauthor=cly+V",
+                            "retrieved_at": RETRIEVED_AT.isoformat(),
+                        },
+                    }
+
+            return _Result()
+
+    monkeypatch.setattr(live_smoke, "BibliographyService", _Service)
+    with pytest.raises(live_smoke.LiveSmokeSemanticError, match="record boundaries"):
+        await live_smoke._probe_bibliography(None)  # type: ignore[arg-type]
