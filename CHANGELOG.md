@@ -11,7 +11,7 @@ v0.1.0 freezes **34 public tools** across these research families:
 - deterministic conversion from supported Aramaic-script/Unicode inputs to CAL code;
 - lexicon exact/root/full-form lookup, bounded prefix browsing via `cal_lexicon_browse`, and explicit linked-citation full context via `cal_lexicon_citation_context` (including Babylonian Talmud texts, whose tokens use CAL's `bablex.php` family);
 - English gloss search, structured gloss-field extraction, and citation-text search;
-- text catalogue/topic discovery (including CAL's current Mandaic catalogue), one-page retrieval (including subdivided texts, whose `subtext_id` must be passed exactly as CAL returns it), explicit text-information metadata, and explicit line comments/translations via `cal_text_line_comments`;
+- text catalogue/topic discovery (including CAL's current Mandaic catalogue), one-page retrieval (including subdivided texts, whose `subtext_id` must be passed exactly as CAL returns it; paginated texts such as the Babylonian Talmud report page, page count and line total; a page beyond the last is an `invalid_input` error; each line keeps CAL's display coordinate and comment link), explicit text-information metadata, and explicit line comments/translations via `cal_text_line_comments`;
 - token-at-coordinate lexical analysis;
 - one-text concordance (with CAL's displayed lemma labels), explicit text/dialect KWIC (one-dialect results report CAL's per-form grouping, including related-form hits), and explicit typed KWIC full-context follow-up via `cal_kwic_full_context`;
 - bibliography author, text/subject-tag, and lemma search (one record per CAL bibliography entry on CAL's current result layout);

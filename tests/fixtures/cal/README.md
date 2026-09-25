@@ -26,11 +26,15 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `text_catalogue_mandaic_current.html` | `https://cal.huc.edu/show_Mandaic.php?R1=74` (2026-09-25) | current Mandaic catalogue: script toggle, grouped `cset=R` title rows with information links (6 of 20 texts), not-available notes |
 | `text_search_tel_dan.html` | `POST https://cal.huc.edu/newsearchtxts.php` (`search=Tel Dan`) | topic-search text reference, label, and rendered description |
 | `text_page_bt_az.html` | `https://cal.huc.edu/get_a_chapter.php?file=71026&page=0` | paginated text metadata, line/display coordinates, token links, comments, and next-page navigation |
+| `text_page_bt_ber_p2_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=71001&page=1` (2026-09-25) | current paginated page: both pagination markers share lines with previous/next/show-all links; first 2 of 45 rows |
+| `text_page_bt_ber_last_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=71001&page=49` (2026-09-25) | current last page: markers with previous/show-all links only; first 2 of 16 rows |
 | `text_page_tel_dan.html` | `https://cal.huc.edu/get_a_chapter.php?file=13250&page=0` | valid short text with line/token coordinates but no page-count marker |
 | `text_page_missing.html` | `https://cal.huc.edu/get_a_chapter.php?file=13250&sub=999` | current explicit `NO LINES FOR ... ARE CURRENTLY STORED` missing-text marker |
 | `text_page_samaritan_56000_112_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0` (2026-09-25) | current subdivided page: file-info `coord` is the file id followed by the submitted `sub`; first 2 of 20 rows |
 | `text_page_ginza_right_001_current.html` | `https://cal.huc.edu/get_a_chapter.php?cset=M&file=74410&sub=001` (2026-09-25) | current Mandaic subdivided page: file-info `coord` carries the private `sub` page selector; first 2 of 24 rows plus the next-page link |
 | `text_page_samaritan_56000_prefix_11_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=56000&sub=11&page=0` (2026-09-25) | CAL's prefix match of `sub=11`: one row each from subtexts 112 and 113 of 197 rows across 112–119, under the chapter-12 label |
+| `text_page_philemon_62057_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=62057&page=0` (2026-09-25) | current table row whose coordinate cell carries CAL's "[ai]" Ask-AI link after the display coordinate; first 2 of 25 rows |
+| `text_page_samaritan_raw_lt_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0` (2026-09-25) | rows Gen12:04–05; CAL renders the first token `<w)th` with a raw, unescaped `<` |
 | `token_analysis_single.html` | `https://cal.huc.edu/getlex.php?coord=4400137054005&word=0` | one compact CAL analysis label paired with one linked lemma header |
 | `token_analysis_multiple.html` | `https://cal.huc.edu/getlex.php?coord=7102601002203&word=0` | current ordered two-analysis token (`w_ c`, `my c`) plus following non-candidate sense text |
 | `token_analysis_not_found.html` | bounded `getlex.php` probes | current explicit no-data marker shared by nonexistent decimal coordinates and out-of-range word indexes |

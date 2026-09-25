@@ -147,12 +147,16 @@ For a paginated text, the result may contain:
 
 - `page`: displayed one-based page number;
 - `page_count`: total number of rendered CAL pages when CAL reports one;
-- `total_lines`: total line count CAL reports;
+- `total_lines`: total line count CAL reports (`null` if no pagination marker on the page shows it);
 - `previous_page` and `next_page`: explicit one-based navigation targets when CAL renders them.
 
 Some short CAL texts are not rendered with a page-count marker. Ordinary unpaginated pages are returned as page 1 with `page_count`, `total_lines`, `previous_page`, and `next_page` set to `null`.
 
 Subdivided Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For that private specialized route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. Direct Mandaic page-1 responses use the ordinary/unpaginated parser semantics instead; they do not receive synthetic page numbering or relaxed specialized navigation. CAL-MCP does not invent `page_count` or `total_lines` when CAL does not provide them.
+
+CAL renders the pagination marker (`Page N of M (T lines total)`) alongside its previous/next, `show all` and manuscript-variants links, and repeats it without the line total below the text. CAL-MCP reads every copy, requires them to agree, and fails closed on a marker it cannot read exactly. `show all` and the variants toggle are not exposed.
+
+A `page` beyond the last page is an `invalid_input` error whose message names the last page. CAL itself silently shows its last page for such a request: the final `Page N of N` of a paginated text, or the only page of a short text that has no pagination marker and no navigation. Any other page mismatch is `parser_drift`.
 
 For a successful requested-page operation, the page CAL renders or explicitly selects must remain consistent with the caller's one-based `page`. If CAL supplies contradictory page metadata or non-adjacent navigation, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
 
@@ -169,6 +173,8 @@ A found page has a `text` reference plus ordered `lines`. Each line preserves th
 - `text`: the rendered text of that line;
 - `tokens`: ordered linked tokens, each with the CAL machine coordinate, zero-based CAL `word_index`, rendered token text, and absolute `lexical_url`;
 - `comment_url`: CAL's line-comment URL when CAL renders one; use the returned line `coordinate` with `cal_text_line_comments` for an explicit MCP-native follow-up.
+
+CAL renders each line as a table row with two cells: the display coordinate, and the token links. The coordinate cell is either CAL's line-comment link, whose text is the display coordinate (for example `Gen12:01)0(`), or plain text (for example `001:01`, `ms01 pg002 sd1 ln15`), sometimes followed by CAL's "[ai]" Ask-AI link, which CAL-MCP does not expose. `comment_url` is set exactly when CAL renders a comment link for the line. CAL-MCP fails closed on any other row shape: a third cell, other links, a comment link naming another line, loose text between tokens, or token links outside the text rows. Token text is kept as CAL renders it, including editorial angle brackets that CAL sometimes leaves unescaped in its HTML, such as `<w)th`. A bracket that happens to look like an HTML tag, such as a bare `<wmr>`, cannot be told apart from markup. CAL-MCP then fails closed instead of dropping it: any element in a text row other than CAL's links, spans and `<cal-variant>` is rejected.
 
 CAL currently exposes lexical token links through more than one endpoint family, including `bablex.php` and `getlex.php`. CAL-MCP preserves whichever lexical URL the page supplies and applies the same coordinate/word-index validation to both. It does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
 

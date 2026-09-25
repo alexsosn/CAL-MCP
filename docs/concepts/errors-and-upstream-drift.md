@@ -25,7 +25,7 @@ Anticipated CAL-MCP failures return an MCP tool result with `isError=true`, one 
 `upstream_reached` is deliberately three-valued:
 
 - `false` only when CAL-MCP knows the request was rejected locally before transport;
-- `true` when a CAL HTTP response was received and the failure is response/content/parser based;
+- `true` when a CAL HTTP response was received and the failure is response/content/parser based, or is caller input that only CAL's answer shows to be out of range;
 - `null` for network or timeout failures where CAL receipt cannot be known.
 
 `retryable` is caller-level advice after CAL-MCP's own bounded retry policy. Upstream HTTP errors are marked retryable only for the currently allowed transient statuses `500`, `502`, `503`, and `504`. Invalid input, parser drift, content-policy failures, oversized responses, and ordinary non-transient HTTP failures are not marked retryable. For transport failures, exhausted retryable exception categories remain retryable; terminal transport categories that the adapter intentionally does not retry are marked non-retryable.
@@ -38,7 +38,7 @@ Unexpected programming failures remain on the MCP SDK's generic sanitized error 
 
 ## Caller validation
 
-Invalid public arguments are rejected before a CAL request where the adapter can decide locally. Public caller-validation failures use the shared `CalInputError` family; request-boundary validation uses `CalRequestValidationError`. Both serialize as `invalid_input` with `upstream_reached=false` and `retryable=false`.
+Invalid public arguments are rejected before a CAL request where the adapter can decide locally. Public caller-validation failures use the shared `CalInputError` family; request-boundary validation uses `CalRequestValidationError`. Both serialize as `invalid_input` with `upstream_reached=false` and `retryable=false`. One case is only detectable after CAL answers: a requested text page beyond the last page, which CAL silently clamps to its last page (the final `Page N of N`, or the only page of an unpaginated text). That raises `CalOutOfRangeError` (a `CalInputError`), serialized as `invalid_input` with `upstream_reached=true`, and its message names the last page.
 
 Examples include malformed page references, unsupported public source selectors, invalid token indexes, unsafe/control-containing identifiers, and CAL request paths that would leave the allowed origin boundary.
 
