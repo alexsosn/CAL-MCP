@@ -13,3 +13,4 @@ Date: 2026-09-25. Research: `docs/research/issue-167-talmud-pagination.md`, comm
 6. Docs: `docs/tools/texts.md` if wording needs it, `research.md` R-034, fixture README.
 7. Verification: the full offline suite; live over MCP for 71001 pages 1, 2 and 50 and 71026 page 1.
 8. Independent adversarial review of the exact candidate SHA.
+9. Out-of-range pages, added after the live check: RED tests (`tests/test_text_page_out_of_range.py`) for a page beyond the last (paginated and single-page), a mismatch on a non-last page staying drift, and the MCP error envelope. GREEN: `CalOutOfRangeError`, classified as `invalid_input` with `upstream_reached=true`. Live verification includes `71001` page 51.

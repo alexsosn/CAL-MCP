@@ -33,7 +33,7 @@ The navigation links themselves are unchanged in meaning. `previous page` / `nex
 
 ## Consequences
 
-- A pagination marker is the text that remains on a non-token line after removing that line's link texts. It must be exactly `Page N of M`, optionally followed by `(T lines total)`. Any other leftover text means the line is not a marker.
+- A pagination marker is the text that remains on a non-token line after removing that line's link texts. It must be exactly `Page N of M`, optionally followed by `(T lines total)`. Leftover text that contains `Page N of M` anywhere but is not exactly a marker fails closed as a malformed marker. Any other leftover text means the line is not a marker.
 - All markers on a page must agree on page and count. The total is taken from the marker that shows it; two different totals fail closed.
 - If navigation is present and no marker is recognized, the page still fails closed.
 - Navigation handling, `clen`, `show all` and the variants toggle are unchanged. Public schema and request counts are unchanged.
@@ -45,3 +45,11 @@ With the rule applied, `71001` pages 1, 2 and 50 give `page`/`page_count`/`total
 ## Out-of-range pages (2026-09-25)
 
 The live check over MCP found that `cal_text_page("71001", page=51)` failed with `parser_drift` "page number differs". One more bounded GET (`get_a_chapter.php?file=71001&page=50`) shows that CAL clamps an out-of-range page to its last page: it renders `Page 50 of 50` and the last page's rows. That is a caller error, not upstream drift. When CAL renders its last page and the requested page is beyond it, the tool now raises `CalOutOfRangeError`. That error is an `invalid_input` with `upstream_reached=true`, and its message names the last page. Any other page mismatch is still drift.
+
+### Review amendment (2026-09-25)
+
+The independent re-review of `f212c27` found two more things:
+- A request for page 2 of the one-page Tel Dan text (`get_a_chapter.php?file=13250&page=1`, one GET) is also clamped by CAL, to the only page, with no pagination marker and no navigation. It still reported `parser_drift`. The tool now reads navigation before the page check and treats "no marker, no navigation, rendered page 1" as last page 1. A text whose marker disappeared but that still shows navigation keeps failing as drift. The existing test that expected `TextParseError` for this request now expects `CalOutOfRangeError`.
+- Nothing tested that a request beyond the range stays drift when CAL renders a page other than its last one. A test now does, together with an MCP-level check of the error envelope.
+
+A further live GET by the reviewer (`71002`, `page=200`) confirmed the clamp on a 101-page text: CAL renders `Page 101 of 101`.

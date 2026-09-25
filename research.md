@@ -338,7 +338,11 @@ Sources:
 - https://cal.huc.edu/get_a_chapter.php?file=71001&page=1
 - https://cal.huc.edu/get_a_chapter.php?file=71001&page=49
 
-**Implication:** a marker is the leftover text of a non-token line after its link texts are removed, and it must be exactly `Page N of M` with an optional line total; every marker on a page must agree.
+CAL also clamps a page beyond the last page to its last page (`71001` with `page=50` renders `Page 50 of 50`; a one-page text renders its only page), so a page mismatch is no longer always upstream drift.
+
+- https://cal.huc.edu/get_a_chapter.php?file=71001&page=50
+
+**Implication:** a marker is the leftover text of a non-token line after its link texts are removed, and it must be exactly `Page N of M` with an optional line total; every marker on a page must agree. A clamp to CAL's last page is reported as an `invalid_input` range error.
 
 ## R-032 — External-citation source lists repeat abbreviations for distinct works
 

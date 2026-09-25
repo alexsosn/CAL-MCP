@@ -150,7 +150,7 @@ Subdivided Mandaic pages can also omit a page-count marker while still rendering
 
 CAL renders the pagination marker (`Page N of M (T lines total)`) alongside its previous/next, `show all` and manuscript-variants links, and repeats it without the line total below the text. CAL-MCP reads every copy, requires them to agree, and fails closed on a marker it cannot read exactly. `show all` and the variants toggle are not exposed.
 
-A `page` beyond the last page is an `invalid_input` error whose message names the last page. CAL itself silently shows its last page for such a request.
+A `page` beyond the last page is an `invalid_input` error whose message names the last page. CAL itself silently shows its last page for such a request: the final `Page N of N` of a paginated text, or the only page of a short text that has no pagination marker and no navigation. Any other page mismatch is `parser_drift`.
 
 For a successful requested-page operation, the page CAL renders or explicitly selects must remain consistent with the caller's one-based `page`. If CAL supplies contradictory page metadata or non-adjacent navigation, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
 
