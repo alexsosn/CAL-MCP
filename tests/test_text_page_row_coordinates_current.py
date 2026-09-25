@@ -130,3 +130,23 @@ async def test_lexical_link_outside_a_text_row_fails_closed() -> None:
     )
     with pytest.raises(TextParseError, match="outside"):
         await _page(body.encode(), "56000", "112")
+
+
+@pytest.mark.anyio
+async def test_raw_angle_bracket_in_token_text_stays_in_its_token() -> None:
+    # CAL renders ``<a …><w)th</a>`` without escaping the editorial ``<``. It must stay
+    # the first token of its line, not swallow the link end and merge the line.
+    body = (FIXTURES / "text_page_samaritan_raw_lt_current.html").read_bytes()
+    result = await _page(body, "56000", "112")
+
+    assert result.page is not None
+    first, second = result.page.lines
+    assert first.display_coordinate == "Gen12:04)0("
+    assert [(token.word_index, token.text) for token in first.tokens[:3]] == [
+        (0, "<w)th"),
+        (1, ")brM"),
+        (2, "kmh"),
+    ]
+    assert len(first.tokens) == 18
+    assert first.text.startswith("<w)th )brM kmh")
+    assert second.display_coordinate == "Gen12:05)0("
