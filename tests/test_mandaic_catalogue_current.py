@@ -66,6 +66,29 @@ async def test_current_mandaic_catalogue_lists_texts_in_cal_order() -> None:
         ('get_file_info.php?coord=74411"', 'get_file_info.php?coord=74412"', "information link"),
         # A route link with no title.
         (">Haran Gauaita</a>", "></a>", "label|title"),
+        # A digits-only "title" on a current (cset=R) row (#169 review).
+        (">Haran Gauaita</a>", ">74401</a>", "unexpected text"),
+        # A current-script row in the earlier id-anchor shape.
+        (
+            'file=74501&cset=R">Haran Gauaita</a>',
+            'file=74501&cset=R">74501</a> Haran Gauaita',
+            "unexpected text",
+        ),
+        # An earlier-layout (cset=M) row whose anchor is a title, not the file id.
+        (
+            'file=74501&cset=R">Haran Gauaita</a>',
+            'file=74501&cset=M">Haran Gauaita</a>',
+            "mislabeled",
+        ),
+        # An earlier-layout row whose id anchor names another file, with no trailing text.
+        ('file=74501&cset=R">Haran Gauaita</a>', 'file=74501&cset=M">74401</a>', "mislabeled"),
+        # A title-less route link with a single-quoted href must not vanish.
+        (
+            "</ul>\n</details>\n\n<details>",
+            "<li><a href='/showsubtexts.php?subtext=74999&cset=R'></a></li></ul>\n</details>"
+            "\n\n<details>",
+            "without a rendered title",
+        ),
         # The same file listed twice (route and information link agree).
         (
             'subtext=74923&cset=R">Diwan Malkuta &#x2C1;laita</a> '
@@ -81,3 +104,26 @@ async def test_unexpected_current_rows_fail_closed(old: str, new: str, message: 
     assert old in body
     with pytest.raises(TextParseError, match=message):
         await _catalogue(body.replace(old, new, 1).encode())
+
+
+@pytest.mark.anyio
+async def test_information_link_with_a_return_query_is_not_a_route_link() -> None:
+    body = FIXTURE.read_text(encoding="utf-8").replace(
+        'get_file_info.php?coord=74410"',
+        'get_file_info.php?coord=74410&return=/showsubtexts.php?subtext=74410&amp;script=R"',
+        1,
+    )
+    assert "return=/showsubtexts.php" in body
+    result = await _catalogue(body.encode())
+    assert [text.file_id for text in result.texts][:2] == ["74410", "74411"]
+
+
+@pytest.mark.anyio
+async def test_route_links_inside_scripts_are_not_counted() -> None:
+    body = FIXTURE.read_text(encoding="utf-8").replace(
+        "</body>",
+        "<script>var x = '<a href=\"/showsubtexts.php?subtext=74999&cset=R\">';</script></body>",
+        1,
+    )
+    result = await _catalogue(body.encode())
+    assert len(result.texts) == 6
