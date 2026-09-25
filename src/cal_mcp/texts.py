@@ -24,6 +24,7 @@ _PAGE_MARKER_RE = re.compile(
     r"\((?P<total>\d+)\s+lines total\)$",
     re.IGNORECASE,
 )
+_RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
@@ -1462,7 +1463,11 @@ class _TextTableParser(HTMLParser):
 
 def _parse_text_table(response: CalResponse) -> _TextTable:
     parser = _TextTableParser()
-    parser.feed(response.body.decode("utf-8", errors="replace"))
+    # CAL renders some editorial angle brackets in token text unescaped (``<w)th</a>``).
+    # Such a ``<`` never starts a real tag, so it is text; without escaping, the HTML
+    # parser would swallow the link end and merge the rest of the line into one token.
+    body = _RAW_TEXT_LT_RE.sub("&lt;", response.body.decode("utf-8", errors="replace"))
+    parser.feed(body)
     parser.close()
     if parser.found and parser.lexical_links_outside_rows:
         raise TextParseError("CAL text page has lexical links outside its text rows")
