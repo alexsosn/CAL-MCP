@@ -109,11 +109,14 @@ CAL currently reports one-dialect KWIC **per lemma form**, and a result may incl
 - `forms`: CAL's ordered per-form summaries as `{lemma_key, total}`, including forms with zero examples;
 - each hit's `form_lemma_key`: the CAL form whose summary covers that hit;
 - `total`: the sum over forms, which is CAL's grand total when CAL renders one;
-- `empty_scope_ids`: `[dialect_id]` when every form reports no examples.
+- `empty_scope_ids`: `[dialect_id]` when every form reports no examples;
+- `requested_form_listed`: `true` when CAL lists the requested form among its forms, `false` when CAL lists only other forms, and `null` when CAL reports no per-form summaries (always `null` for text-scoped KWIC).
 
 On CAL's earlier table layout, a dialect page that renders only `total examples: N` and no per-form summaries returns `forms: []` and `form_lemma_key: null` on its hits, because CAL reported no forms.
 
-CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form must appear exactly once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
+In some dialects CAL lists **only other forms** and no summary at all for the requested spelling. For example, `n)qh N` in dialect 71 (Babylonian Talmud) lists JBA's `n)qt) N` with 1 example and `nqh N` with 0. The result then has `requested_form_listed: false`, and none of its hits is for the requested spelling. CAL-MCP does not invent a zero count for the requested form.
+
+CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form appears at most once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
 
 Large lemma/dialect combinations can exceed the 2 MiB response ceiling (for example `br N` in dialect `6` on 2026-09-24). They fail with the shared response-size error rather than returning a partial result. Use `cal_kwic_texts` with explicit texts to narrow the scope.
 
