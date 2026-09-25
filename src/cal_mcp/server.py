@@ -363,7 +363,9 @@ async def cal_text_page(
     """Retrieve one normal CAL text page with line/token coordinate metadata.
 
     Public page numbers are one-based. CAL's unbounded ``show all`` navigation is not
-    exposed; moving to another page requires another explicit tool call.
+    exposed; moving to another page requires another explicit tool call. Pass
+    ``subtext_id`` exactly as CAL returned it, including leading zeroes: CAL matches
+    it as a prefix, so ``1`` is not the same subtext as ``001``.
     """
 
     client = ctx.request_context.lifespan_context.client
