@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-034 — Paginated text pages share the pagination marker line with navigation links
+
+**Rechecked:** 2026-09-25.
+
+Current paginated `get_a_chapter.php` pages (BT Berakhot `71001`, BT Avodah Zarah `71026`) render `Page N of M (T lines total)` in a `<center>` together with the `previous page` / `next page` / `show all` links, directly after the "Hide manuscript variants" toggle. A second, bottom copy omits the line total. No line consists of the marker alone. Detailed evidence: `docs/research/issue-167-talmud-pagination.md`.
+
+Sources:
+
+- https://cal.huc.edu/get_a_chapter.php?file=71001&page=1
+- https://cal.huc.edu/get_a_chapter.php?file=71001&page=49
+
+**Implication:** a marker is the leftover text of a non-token line after its link texts are removed, and it must be exactly `Page N of M` with an optional line total; every marker on a page must agree.
+
 ## R-032 — External-citation source lists repeat abbreviations for distinct works
 
 **Rechecked:** 2026-09-24.
