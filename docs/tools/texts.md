@@ -133,6 +133,12 @@ cal_text_page(
 
 This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL's ordinary route and the current mixed direct/subdivided Mandaic collection-74 routes behind the same public operation. Route classification is private adapter metadata derived from current CAL navigation; it is not inferred from the `74` prefix at request time. The `74` prefix identifies only the Mandaic collection boundary; it does not tell CAL-MCP whether a particular file uses the direct or subdivided page route.
 
+### Subtexts
+
+Pass `subtext_id` exactly as CAL returned it from `cal_text_catalogue`, a KWIC hit, or another text result, including leading zeroes (`001`, not `1`). CAL matches the `sub` selector as a prefix: `cal_text_page("70700", subtext_id="1")` asks CAL for every magic bowl whose number starts with `1` (bowls 100–125) rather than bowl `001`. CAL-MCP does not pad or reinterpret the value, and such a mixed page fails closed rather than being returned as one subtext.
+
+CAL identifies the text on a subdivided page by a file-information link whose coordinate is the file identifier followed by the submitted `sub` value (for example `56000112` for `56000`/`112`; since 2026-09). CAL-MCP accepts that coordinate, or the bare file identifier used by the earlier layout, and fails closed on any coordinate naming a different file or subtext.
+
 ### Page numbering
 
 The MCP parameter is deliberately **one-based**: `page=1` means the first displayed CAL page. For ordinary text pages, CAL's current internal `page` parameter is zero-based. Current CAL Mandaic navigation is heterogeneous: known subdivided files such as Ginza Rabba Right/Left (`74410`/`74411`) use the specialized `cset=M` route with a one-based `sub` selector such as `001`, `002`, or `1000`, while direct files such as `74501` and `74717` use a direct page-1 request with no `sub` or ordinary `page` field. A direct Mandaic request for `page>1` is rejected locally until CAL exposes a researched pagination contract for that route. These upstream forms remain adapter-private, and each supported public call submits at most one new logical CAL request; a completed cache hit performs zero new upstream I/O.
