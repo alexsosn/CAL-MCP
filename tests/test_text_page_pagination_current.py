@@ -82,6 +82,15 @@ _BOTTOM = "Page 2 of 50 &nbsp; <a"
             "Page 2 of 50 &nbsp; (2251 lines total) extra &nbsp; ",
             "malformed pagination marker",
         ),
+        # Stray text before a marker is malformed too (#167 review).
+        (
+            _TOP,
+            "Talmud Page 2 of 50 &nbsp; (2251 lines total) &nbsp; ",
+            "malformed pagination marker",
+        ),
+        # Invalid bounds.
+        (_TOP, "Page 0 of 50 &nbsp; (2251 lines total) &nbsp; ", "invalid pagination metadata"),
+        (_TOP, "Page 3 of 2 &nbsp; (2251 lines total) &nbsp; ", "invalid pagination metadata"),
     ],
 )
 async def test_inconsistent_or_unrecognized_markers_fail_closed(
@@ -100,10 +109,9 @@ async def test_navigation_without_any_recognizable_marker_fails_closed() -> None
         .replace(_TOP, "Seite 2 von 50 ", 1)
         .replace(_BOTTOM, "Seite 2 von 50 <a", 1)
     )
-    with pytest.raises(
-        TextParseError, match="navigation without pagination metadata|page number differs"
-    ):
-        await _page(body.encode(), 2)
+    # Request page 1 so the page-number check cannot fire first (#167 review).
+    with pytest.raises(TextParseError, match="navigation without pagination metadata"):
+        await _page(body.encode(), 1)
 
 
 @pytest.mark.anyio
@@ -112,7 +120,6 @@ async def test_marker_text_inside_a_token_line_is_not_a_marker() -> None:
     body = PAGE_2.read_text(encoding="utf-8").replace(_TOP, "", 1).replace(_BOTTOM, "<a", 1)
     first_row_end = body.index("</td></tr>")
     body = body[:first_row_end] + " Page 2 of 50" + body[first_row_end:]
-    with pytest.raises(
-        TextParseError, match="navigation without pagination metadata|page number differs"
-    ):
-        await _page(body.encode(), 2)
+    # Request page 1 so the page-number check cannot fire first (#167 review).
+    with pytest.raises(TextParseError, match="navigation without pagination metadata"):
+        await _page(body.encode(), 1)

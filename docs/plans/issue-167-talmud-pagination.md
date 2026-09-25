@@ -7,7 +7,7 @@ Date: 2026-09-25. Research: `docs/research/issue-167-talmud-pagination.md`, comm
    - page 2 gives `page` 2, `page_count` 50, `total_lines` 2251, previous 1, next 3;
    - the last page gives 50/50/2251, previous 49, next none;
    - fail closed on markers disagreeing in page, count or total; on a marker line with stray non-link text; and on navigation with no recognizable marker.
-3. A valid RED has only the positive tests failing, with lint, format and mypy green.
+3. A valid RED has the positive tests and the tests that pin new fail-closed messages failing (6 of 8 on `b9ba0ce`), with lint, format and mypy green.
 4. GREEN: marker recognition on link-stripped non-token lines, with optional total and merged agreement.
 5. The existing `text_page_bt_az.html` and other text-page fixtures stay green.
 6. Docs: `docs/tools/texts.md` if wording needs it, `research.md` R-034, fixture README.

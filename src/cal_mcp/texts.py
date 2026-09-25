@@ -24,7 +24,7 @@ _PAGE_MARKER_RE = re.compile(
     r"(?:\s+\((?P<total>\d+)\s+lines total\))?$",
     re.IGNORECASE,
 )
-_PAGE_MARKER_START_RE = re.compile(r"^Page\s+\d+\s+of\s+\d+", re.IGNORECASE)
+_PAGE_MARKER_ANYWHERE_RE = re.compile(r"\bPage\s+\d+\s+of\s+\d+", re.IGNORECASE)
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
@@ -1254,7 +1254,7 @@ def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:
         residue = " ".join(residue.split())
         match = _PAGE_MARKER_RE.fullmatch(residue)
         if match is None:
-            if _PAGE_MARKER_START_RE.match(residue) is not None:
+            if _PAGE_MARKER_ANYWHERE_RE.search(residue) is not None:
                 raise TextParseError("CAL text page has a malformed pagination marker")
             continue
         candidate = (int(match.group("page")), int(match.group("count")))
