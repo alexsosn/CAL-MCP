@@ -532,7 +532,10 @@ async def cal_kwic_dialect(
     CAL reports this search per lemma form and may include related forms it groups with
     the requested key (for example ``nqh N`` hits for ``n)qh N``). Every hit is kept and
     carries CAL's ``form_lemma_key``; ``forms`` lists CAL's per-form counts, and ``total``
-    is their sum. Each hit's ``target_text`` is the token CAL highlights.
+    is their sum. In some dialects CAL lists only other forms (for example JBA's
+    ``n)qt) N`` for ``n)qh N``); ``requested_form_listed`` is then false, and none of the
+    hits is for the requested spelling. Each hit's ``target_text`` is the token CAL
+    highlights.
 
     It never expands to other dialects or fetches full-context pages automatically.
 
