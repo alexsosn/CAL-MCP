@@ -59,7 +59,7 @@ Row parsing of the full `56000/112` page failed with "nested link". CAL renders 
 <a href="getlex.php?coord=56000112040&word=0&hasvariant=0"><w)th</a>
 ```
 
-Python's HTML parser reads `<w)th</a>` as a start tag. It swallows the link's end, so the next link opens inside it. Elsewhere CAL escapes the same notation (`&lt;w)mr&gt;`). In the 17 captures, 34 such raw `<` occur, for example `<w)th`, `<wz(q`, `<(M`, `<ytgzr</a>` and `<)yk)`.
+Python's HTML parser reads `<w)th</a>` as a start tag. It swallows the link's end, so the next link opens inside it. Elsewhere CAL escapes the same notation (`&lt;w)mr&gt;`). The captures contain about 30 such raw `<` in token text, for example `<w)th`, `<wz(q`, `<(M`, `<ytgzr</a>` and `<)yk)`.
 
 The line mode on `main` silently corrupted these lines. For `Gen12:04`, word 0 became the whole rest of the line (`)brM kmh [dmll] …`), the real first word `<w)th` disappeared, and the other 17 tokens were lost. No error was raised.
 
