@@ -327,6 +327,20 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-033 — Subdivided text pages put file plus subtext in the file-info coordinate
+
+**Rechecked:** 2026-09-25.
+
+On pages requested with `sub`, `get_a_chapter.php` now renders the file-information link as `get_file_info.php?coord=<file_id><sub>`, with the submitted `sub` value verbatim (`coord=56000112`, `coord=74410001`). The earlier layout used the bare file identifier. CAL matches an unpadded `sub` as a prefix (`70700` with `sub=1` returns bowls 100–125). Detailed evidence: `docs/research/issue-166-subtext-file-info.md`.
+
+Sources:
+
+- https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0
+- https://cal.huc.edu/get_a_chapter.php?cset=M&file=74410&sub=001
+- https://cal.huc.edu/get_a_chapter.php?file=70700&sub=1&page=0
+
+**Implication:** the text-page parser accepts the bare file identifier or the file identifier followed by the exact submitted `sub`; anything else fails closed. Callers must pass `subtext_id` exactly as CAL returned it.
+
 ## R-032 — External-citation source lists repeat abbreviations for distinct works
 
 **Rechecked:** 2026-09-24.
