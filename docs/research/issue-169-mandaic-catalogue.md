@@ -58,6 +58,6 @@ The independent review of `174a37d` approved, with two should-fix items, both no
 - **The layout is tied to `cset`.** Before, an anchor that was not the file id was read as a title, so an earlier-layout row `<a href="…cset=M&file=74501">74401</a>` became file `74501` titled "74401". Now `cset=M` rows need the file-id anchor with the title after it, and `cset=R` rows need a non-numeric title anchor and nothing else.
 - **Route links are counted with an HTML parser that matches on the URL path, not with a regex.** A single-quoted title-less link can no longer slip past the count, and an information link whose `return=` query mentions `showsubtexts.php` no longer counts as a route.
 
-The `cset=J` catalogue page is byte-identical to the `R` page apart from the toggle's bold state. Its children still link with `cset=R`, which confirms that `cset` selects only the rendering script.
+The `cset=J` catalogue page matches the `R` page except that the toggle is bolded differently and every child link carries `cset=J`; the titles are the same Roman text. CAL-MCP never requests it, and a `cset=J` child fails closed.
 
 The review also found two new failures on the catalogue → `cal_text_page` path, outside this issue. Direct Mandaic texts are now paginated (`74501` "Page 1 of 11", `74424` "Page 1 of 14"), while the adapter limits direct texts to page 1. And some subdivided texts number their pages without zero padding (`74430` uses `sub=1…5`, while the adapter always sends `sub=001`). Both are filed as a separate issue.

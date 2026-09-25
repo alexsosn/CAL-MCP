@@ -66,6 +66,8 @@ async def test_current_mandaic_catalogue_lists_texts_in_cal_order() -> None:
         ('get_file_info.php?coord=74411"', 'get_file_info.php?coord=74412"', "information link"),
         # A route link with no title.
         (">Haran Gauaita</a>", "></a>", "label|title"),
+        # A current row must show only its title (#169 re-review).
+        (">Haran Gauaita</a>", ">Haran Gauaita</a> (fragment)", "unexpected text"),
         # A digits-only "title" on a current (cset=R) row (#169 review).
         (">Haran Gauaita</a>", ">74401</a>", "unexpected text"),
         # A current-script row in the earlier id-anchor shape.
