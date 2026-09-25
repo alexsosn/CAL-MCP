@@ -184,6 +184,8 @@ Consequences:
 - per-form counts, positions, dialect identity, canonical keys, requested-form presence, and any grand total are cross-checked, and disagreement fails closed as parser drift;
 - the schema change is additive (`forms`, `form_lemma_key`, and the related `target_text` and concordance `label` fields); request counts and bounds are unchanged.
 
+**Amendment (2026-09-25, issue #176, R-039):** CAL may omit the requested form's summary altogether and list only the forms it groups with it in that dialect. For example, `n)qh N` in dialect 71 lists JBA's `n)qt) N` and `nqh N`. Such a page is accepted, and the result says so with the additive `requested_form_listed: false`: `true` when CAL lists the requested form, `null` where CAL renders no per-form summaries. CAL-MCP does not invent a zero summary for the omitted form, and it never attributes the related-form hits to the requested key.
+
 
 ## D-015 — Targum concordance label rows are reported, not applied as groupings
 
