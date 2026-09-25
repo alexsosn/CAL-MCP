@@ -38,6 +38,13 @@ class DictionarySource(StrEnum):
 class _SourceSpec:
     code: str
     label: str
+    # Shorter title CAL's result page shows for some sources (2026-09-25); the full
+    # form label stays accepted as well.
+    result_label: str | None = None
+
+    @property
+    def accepted_labels(self) -> frozenset[str]:
+        return frozenset({self.label} | ({self.result_label} if self.result_label else set()))
 
 
 _SOURCE_SPECS: dict[DictionarySource, _SourceSpec] = {
@@ -47,16 +54,26 @@ _SOURCE_SPECS: dict[DictionarySource, _SourceSpec] = {
     DictionarySource.COMPENDIOUS_SYRIAC_DICTIONARY: _SourceSpec(
         "j", "A Compendious Syriac Dictionary"
     ),
-    DictionarySource.DJBA: _SourceSpec("B", "A Dictionary of Jewish Babylonian Aramaic"),
-    DictionarySource.DJPA: _SourceSpec("P", "A Dictionary of Jewish Palestinian Aramaic"),
+    DictionarySource.DJBA: _SourceSpec(
+        "B",
+        "A Dictionary of Jewish Babylonian Aramaic",
+        "Dictionary of Jewish Babylonian Aramaic",
+    ),
+    DictionarySource.DJPA: _SourceSpec(
+        "P",
+        "A Dictionary of Jewish Palestinian Aramaic",
+        "Dictionary of Jewish Palestinian Aramaic",
+    ),
     DictionarySource.LEVY_TARGUMIM: _SourceSpec(
-        "V", "Levy, Chaldäisches Wörterbuch ü.die Targumim"
+        "V", "Levy, Chaldäisches Wörterbuch ü.die Targumim", "Levy Chaldäisches Wörterbuch"
     ),
     DictionarySource.MANDAIC_DICTIONARY: _SourceSpec("M", "A Mandaic Dictionary"),
     DictionarySource.DNSI: _SourceSpec("W", "Dictionary of the Northwest Semitic Inscriptions"),
     DictionarySource.THESAURUS_SYRIACUS: _SourceSpec("T", "Thesaurus Syriacus"),
     DictionarySource.SAMARITAN_ARAMAIC: _SourceSpec("R", "Dictionary of Samaritan Aramaic"),
-    DictionarySource.SCHULTHESS: _SourceSpec("S", "Schulthess Lexicon Syropalaestinum"),
+    DictionarySource.SCHULTHESS: _SourceSpec(
+        "S", "Schulthess Lexicon Syropalaestinum", "Schulthess"
+    ),
     DictionarySource.DCPA: _SourceSpec("C", "A Dictionary of Christian Palestinian Aramaic"),
     DictionarySource.JUDEAN_ARAMAIC: _SourceSpec("D", "A Dictionary of Judean Aramaic"),
     DictionarySource.QUMRAN_ARAMAIC: _SourceSpec("Q", "Dictionary of Qumran Aramaic"),
@@ -458,7 +475,7 @@ class DictionaryCollationService:
             raise DictionaryCollationParseError(
                 "CAL dictionary collation result page does not match the submitted page"
             )
-        if parsed.source_label != spec.label:
+        if parsed.source_label not in spec.accepted_labels:
             raise DictionaryCollationParseError(
                 "CAL dictionary collation result source does not match the submitted source"
             )
