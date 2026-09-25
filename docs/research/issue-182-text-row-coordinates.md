@@ -50,3 +50,19 @@ The same splitter drops a cell whose text is empty together with its links. That
   - loose text in the token cell (not observed; it would otherwise be silently merged).
 - Pages without the table keep the existing line mode, as a strict fallback for the earlier layout.
 - The public schema is unchanged: both fields already exist and were documented. Request counts are unchanged.
+
+## Raw `<` in token text (found during implementation)
+
+Row parsing of the full `56000/112` page failed with "nested link". CAL renders some editorial angle brackets in token text **unescaped**:
+
+```html
+<a href="getlex.php?coord=56000112040&word=0&hasvariant=0"><w)th</a>
+```
+
+Python's HTML parser reads `<w)th</a>` as a start tag. It swallows the link's end, so the next link opens inside it. Elsewhere CAL escapes the same notation (`&lt;w)mr&gt;`). In the 17 captures, 34 such raw `<` occur, for example `<w)th`, `<wz(q`, `<(M`, `<ytgzr</a>` and `<)yk)`.
+
+The line mode on `main` silently corrupted these lines. For `Gen12:04`, word 0 became the whole rest of the line (`)brM kmh [dmll] …`), the real first word `<w)th` disappeared, and the other 17 tokens were lost. No error was raised.
+
+A real tag name is always followed by whitespace, `/` or `>`. It may contain hyphens, as in CAL's own `<cal-variant>`, which wraps manuscript variants inside token links. A `<` that cannot start a tag is therefore text. Before the text table is parsed, such a `<` is escaped. `<w)th` then stays word 0. On the full pages, every lexical link becomes exactly one token: 266 of 266 on `56000/112`, and 2,640 of 2,640 on the 197-row prefix page.
+
+Other parsers that read CAL token text (KWIC contexts, full context) may be affected by the same raw `<`. This is noted for #181.
