@@ -24,6 +24,7 @@ _PAGE_MARKER_RE = re.compile(
     r"\((?P<total>\d+)\s+lines total\)$",
     re.IGNORECASE,
 )
+_TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
@@ -1395,6 +1396,9 @@ class _TextTableParser(HTMLParser):
         if self._ignored_depth:
             return
         attributes = {key: value or "" for key, value in attrs}
+        if self._cell is not None and tag not in _TEXT_CELL_TAGS:
+            # A tag-shaped editorial bracket (``<wmr>``) would otherwise vanish silently.
+            raise TextParseError(f"CAL text row has an unexpected <{tag}> element")
         if tag == "table":
             self._end_row()
             self._in_table = "text-display" in attributes.get("class", "").split()
@@ -1402,7 +1406,9 @@ class _TextTableParser(HTMLParser):
         elif tag == "tr" and self._in_table:
             self._end_row()
             self._row = []
-        elif tag in {"td", "th"} and self._row is not None:
+        elif tag == "th" and self._row is not None:
+            raise TextParseError("CAL text table has an unexpected header cell")
+        elif tag == "td" and self._row is not None:
             self._end_cell()
             self._cell = _TableCell(loose_parts=[], links=[])
         elif tag == "a":
@@ -1436,7 +1442,11 @@ class _TextTableParser(HTMLParser):
             self._in_table = False
 
     def handle_data(self, data: str) -> None:
-        if self._ignored_depth or self._cell is None:
+        if self._ignored_depth:
+            return
+        if self._cell is None:
+            if self._row is not None and data.strip():
+                raise TextParseError("CAL text row has text outside its cells")
             return
         if self._link_href is not None:
             self._link_parts.append(data)

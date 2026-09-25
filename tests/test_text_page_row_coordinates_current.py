@@ -112,6 +112,50 @@ _SAM_TOKENS = '<td><a href="getlex.php?coord=56000112010&word=0&hasvariant=0">w)
         ),
         # Loose text in the token cell would otherwise be merged into the line.
         (_SAM_TOKENS, "<td>stray " + _SAM_TOKENS[4:], "token cell"),
+        # Two comment links for one line (#182 review).
+        (
+            _SAM_ROW,
+            '<tr><td valign="top"><a href="comment.php?coord=56000112010">x</a>'
+            '<a href="comment.php?coord=56000112010"',
+            "repeated comment links",
+        ),
+        # Text next to the comment link.
+        (_SAM_ROW, '<tr><td valign="top">extra <a href="comment.php?coord=56000112010"', "outside"),
+        # A non-lexical link among the tokens.
+        (
+            '<a href="getlex.php?coord=56000112010&word=1&hasvariant=0">yhwh</a>',
+            '<a href="oneentry.php?lemma=yhwh+N">yhwh</a>',
+            "non-lexical link",
+        ),
+        # Tokens from two different lines in one row.
+        (
+            '<a href="getlex.php?coord=56000112010&word=1&hasvariant=0">',
+            '<a href="getlex.php?coord=56000112020&word=1&hasvariant=0">',
+            "multiple machine coordinates",
+        ),
+        # A link opened inside another link.
+        (
+            '<a href="getlex.php?coord=56000112010&word=1&hasvariant=0">yhwh</a>',
+            '<a href="getlex.php?coord=56000112010&word=1&hasvariant=0">yh'
+            '<a href="getlex.php?coord=56000112010&word=2&hasvariant=0">wh</a>',
+            "nested link",
+        ),
+        # A token link left open at the end of its cell.
+        (
+            'word=11&hasvariant=0">d)xzyK</a> </td>',
+            'word=11&hasvariant=0">d)xzyK </td>',
+            "unclosed",
+        ),
+        # A tag-shaped editorial bracket inside a token would otherwise vanish.
+        (">yhwh</a>", "><yhwh>yhwh</a>", "unexpected <yhwh> element"),
+        # Text between the cells of a row.
+        (
+            '(  </a></td><td><a href="getlex.php?coord=56000112010',
+            '(  </a></td> stray <td><a href="getlex.php?coord=56000112010',
+            "outside its cells",
+        ),
+        # A header cell in the text table.
+        (_SAM_ROW, "<tr><th>Line</th></tr>" + _SAM_ROW, "header cell"),
     ],
 )
 async def test_unexpected_row_shapes_fail_closed(old: str, new: str, message: str) -> None:
@@ -119,6 +163,25 @@ async def test_unexpected_row_shapes_fail_closed(old: str, new: str, message: st
     assert old in body
     with pytest.raises(TextParseError, match=message):
         await _page(body.replace(old, new, 1).encode(), "56000", "112")
+
+
+@pytest.mark.anyio
+async def test_row_without_token_links_fails_closed() -> None:
+    body = SAMARITAN.read_text(encoding="utf-8")
+    start = body.index(_SAM_TOKENS)
+    end = body.index("</td></tr>", start)
+    body = body[:start] + "<td>" + body[end:]
+    with pytest.raises(TextParseError, match="no token links"):
+        await _page(body.encode(), "56000", "112")
+
+
+@pytest.mark.anyio
+async def test_ask_ai_link_for_another_line_fails_closed() -> None:
+    body = PHILEMON.read_text(encoding="utf-8").replace(
+        "ask_ai_prompt.php?coord=620570101&", "ask_ai_prompt.php?coord=620570102&", 1
+    )
+    with pytest.raises(TextParseError, match="names another coordinate"):
+        await _page(body.encode(), "62057")
 
 
 @pytest.mark.anyio
