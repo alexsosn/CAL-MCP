@@ -13,7 +13,7 @@ from cal_mcp.client import (
     CalRequest,
     CalResponse,
 )
-from cal_mcp.errors import CalInputError, CalParseError
+from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -731,6 +731,11 @@ def _parse_text_page(
     if mandaic_page_route and page_count is None and requested_page is not None:
         page_number = requested_page
     if requested_page is not None and page_number != requested_page:
+        if page_count is not None and page_number == page_count and requested_page > page_count:
+            # CAL clamps an out-of-range page to its last page.
+            raise CalOutOfRangeError(
+                f"page {requested_page} is beyond the last page ({page_count}) of this text"
+            )
         raise TextParseError("CAL text page number differs from the requested page")
     previous_page, next_page = _page_navigation(
         lines,

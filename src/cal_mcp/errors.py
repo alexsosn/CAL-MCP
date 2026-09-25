@@ -24,6 +24,10 @@ class CalInputError(ValueError):
     """Intentional caller-input failure safe to expose through the MCP boundary."""
 
 
+class CalOutOfRangeError(CalInputError):
+    """Caller input that CAL answered but that lies outside CAL's range (e.g. a page)."""
+
+
 class CalParseError(CalContentError):
     """Base class for fail-closed CAL semantic/parser drift."""
 
@@ -69,6 +73,14 @@ class PublicToolError:
 def classify_public_tool_error(operation: str, error: BaseException) -> PublicToolError | None:
     """Classify only explicitly allowlisted CAL-MCP failures for public serialization."""
 
+    if isinstance(error, CalOutOfRangeError):
+        return PublicToolError(
+            kind=PublicErrorKind.INVALID_INPUT,
+            operation=operation,
+            upstream_reached=True,
+            retryable=False,
+            message=_safe_message(error),
+        )
     if isinstance(error, CalInputError):
         return PublicToolError(
             kind=PublicErrorKind.INVALID_INPUT,

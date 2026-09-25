@@ -41,3 +41,7 @@ The navigation links themselves are unchanged in meaning. `previous page` / `nex
 ## Offline verification
 
 With the rule applied, `71001` pages 1, 2 and 50 give `page`/`page_count`/`total_lines` of 1/50/2251, 2/50/2251 and 50/50/2251, with previous and next navigation 2, 1–3 and 49–none. `71026` page 1 gives 1/50/2413.
+
+## Out-of-range pages (2026-09-25)
+
+The live check over MCP found that `cal_text_page("71001", page=51)` failed with `parser_drift` "page number differs". One more bounded GET (`get_a_chapter.php?file=71001&page=50`) shows that CAL clamps an out-of-range page to its last page: it renders `Page 50 of 50` and the last page's rows. That is a caller error, not upstream drift. When CAL renders its last page and the requested page is beyond it, the tool now raises `CalOutOfRangeError`. That error is an `invalid_input` with `upstream_reached=true`, and its message names the last page. Any other page mismatch is still drift.

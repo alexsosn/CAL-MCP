@@ -150,6 +150,8 @@ Subdivided Mandaic pages can also omit a page-count marker while still rendering
 
 CAL renders the pagination marker (`Page N of M (T lines total)`) alongside its previous/next, `show all` and manuscript-variants links, and repeats it without the line total below the text. CAL-MCP reads every copy, requires them to agree, and fails closed on a marker it cannot read exactly. `show all` and the variants toggle are not exposed.
 
+A `page` beyond the last page is an `invalid_input` error whose message names the last page. CAL itself silently shows its last page for such a request.
+
 For a successful requested-page operation, the page CAL renders or explicitly selects must remain consistent with the caller's one-based `page`. If CAL supplies contradictory page metadata or non-adjacent navigation, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
 
 For ordinary pagination, previous/next links must address the same `file_id` and `subtext_id` as the requested page and point to the adjacent in-range page implied by CAL's pagination marker. For the subdivided Mandaic route, navigation must retain `cset=M`, target the same file, and select the adjacent decimal `sub` page. Direct Mandaic page-1 responses do not opt into that specialized navigation contract. Foreign files/subtexts, foreign Mandaic collection selectors, malformed selectors, and non-adjacent targets are parser drift. Missing previous/next links are not invented.

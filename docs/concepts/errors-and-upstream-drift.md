@@ -38,7 +38,7 @@ Unexpected programming failures remain on the MCP SDK's generic sanitized error 
 
 ## Caller validation
 
-Invalid public arguments are rejected before a CAL request where the adapter can decide locally. Public caller-validation failures use the shared `CalInputError` family; request-boundary validation uses `CalRequestValidationError`. Both serialize as `invalid_input` with `upstream_reached=false` and `retryable=false`.
+Invalid public arguments are rejected before a CAL request where the adapter can decide locally. Public caller-validation failures use the shared `CalInputError` family; request-boundary validation uses `CalRequestValidationError`. Both serialize as `invalid_input` with `upstream_reached=false` and `retryable=false`. One case is only detectable after CAL answers: a requested text page beyond the last page, which CAL silently clamps to its last page. That raises `CalOutOfRangeError` (a `CalInputError`), serialized as `invalid_input` with `upstream_reached=true`, and its message names the last page.
 
 Examples include malformed page references, unsupported public source selectors, invalid token indexes, unsafe/control-containing identifiers, and CAL request paths that would leave the allowed origin boundary.
 
