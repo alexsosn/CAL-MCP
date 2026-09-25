@@ -11,7 +11,13 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.texts import TextPageResult, TextPageStatus, TextParseError, TextService
+from cal_mcp.texts import (
+    TextPageResult,
+    TextPageStatus,
+    TextParseError,
+    TextService,
+    parse_text_page,
+)
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 SAMARITAN = FIXTURES / "text_page_samaritan_56000_112_current.html"
@@ -100,3 +106,40 @@ async def test_mandaic_file_info_coord_with_another_page_selector_fails_closed()
     body = GINZA.read_bytes().replace(b'coord=74410001"', b'coord=74410002"')
     with pytest.raises(TextParseError, match="file identifier differs"):
         await _page(body, "74410")
+
+
+@pytest.mark.anyio
+async def test_current_mandaic_page_keeps_its_next_page_navigation() -> None:
+    result = await _page(GINZA.read_bytes(), "74410")
+
+    assert result.page is not None
+    assert (result.page.previous_page, result.page.next_page) == (None, 2)
+
+
+def test_public_parser_treats_the_requested_subtext_as_the_submitted_sub() -> None:
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0",
+        body=SAMARITAN.read_bytes(),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 9, 25, tzinfo=UTC),
+    )
+
+    page = parse_text_page(response, requested_file_id="56000", requested_subtext_id="112")
+
+    assert page is not None
+    assert page.text.subtext_id == "112"
+
+
+@pytest.mark.anyio
+async def test_prefix_matched_subtext_returns_cal_page_with_each_line_coordinate() -> None:
+    # CAL treats ``sub`` as a prefix: ``11`` returns subtexts 112-119 under the first
+    # subtext's label. CAL-MCP returns CAL's page as rendered; every line keeps its own
+    # CAL coordinate, and the docs tell callers to pass subtext_id exactly as returned.
+    body = (FIXTURES / "text_page_samaritan_56000_prefix_11_current.html").read_bytes()
+    result = await _page(body, "56000", "11")
+
+    assert result.page is not None
+    assert result.page.text.subtext_id == "11"
+    assert result.page.text.label == "SamTgJ Gen chapter 12"
+    assert [line.coordinate for line in result.page.lines] == ["56000112010", "56000113010"]

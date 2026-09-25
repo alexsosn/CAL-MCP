@@ -1223,8 +1223,9 @@ def _page_text_ref(
     submitted_sub: str | None,
 ) -> TextRef:
     # Current CAL (2026-09-25) renders the file-info coordinate of a subdivided page as the
-    # file identifier followed by the submitted ``sub`` value; the earlier layout used the
-    # bare file identifier. Anything else names a different file or subtext.
+    # file identifier followed by the submitted ``sub`` value. The bare file identifier is
+    # still accepted only for the earlier (pre-2026-09-25) layout. Anything else names a
+    # different file or subtext.
     accepted_coords = {requested_file_id}
     if submitted_sub is not None:
         accepted_coords.add(requested_file_id + submitted_sub)

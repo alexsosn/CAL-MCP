@@ -135,7 +135,7 @@ This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL'
 
 ### Subtexts
 
-Pass `subtext_id` exactly as CAL returned it from `cal_text_catalogue`, a KWIC hit, or another text result, including leading zeroes (`001`, not `1`). CAL matches the `sub` selector as a prefix: `cal_text_page("70700", subtext_id="1")` asks CAL for every magic bowl whose number starts with `1` (bowls 100–125) rather than bowl `001`. CAL-MCP does not pad or reinterpret the value, and such a mixed page fails closed rather than being returned as one subtext.
+Pass `subtext_id` exactly as CAL returned it from `cal_text_catalogue`, a KWIC hit, or another text result, including leading zeroes (`001`, not `1`). CAL matches the `sub` selector as a **prefix**, and CAL-MCP cannot tell from the returned page whether that happened. For example, `cal_text_page("56000", subtext_id="11")` returns CAL's page for every Samaritan Targum subtext starting with `11` (Genesis chapters 12–19, 197 lines), under CAL's label for the first one, "SamTgJ Gen chapter 12". CAL-MCP returns that page as CAL renders it and does not pad or reinterpret the value. Every returned line keeps its own CAL `coordinate`, which begins with the file identifier and the line's real subtext. Some such pages fail closed instead, when their lines do not follow the ordinary coordinate format (for example magic bowls `70700` with `1`).
 
 CAL identifies the text on a subdivided page by a file-information link whose coordinate is the file identifier followed by the submitted `sub` value (for example `56000112` for `56000`/`112`; since 2026-09). CAL-MCP accepts that coordinate, or the bare file identifier used by the earlier layout, and fails closed on any coordinate naming a different file or subtext.
 

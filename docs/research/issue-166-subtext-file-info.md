@@ -37,3 +37,15 @@ Pages requested without `sub` keep `coord=<file_id>`.
 ## Offline verification
 
 With the rule applied, all six captured pages parse: `30000/1` has 1 line (Gen 31:47), `56000/112` has 20, `74410` has 24, `70700/001` has 15 and `41201/001` has 1. The prefix-matched `70700/1` page still fails closed.
+
+## Review amendment (2026-09-25)
+
+An independent adversarial review of `07fc5c4` found that the claim "no mixed page is returned as one subtext" was wrong. A live `get_a_chapter.php?file=56000&sub=11&page=0` (202 KB) has file-info `coord=5600011` and the label `56000: SamTgJ Gen chapter 12`, and 197 rows from subtexts 112–119 (Gen 12–19). It parses as one page for subtext `11`. The `70700`/`1` page fails closed only because its bowl-line coordinates are not ordinary decimal coordinates.
+
+The page itself has nothing that separates the subtexts: one file-info link, no separators, and a label for the first match only. Subtext widths differ by corpus (`1` for `30000`, `112` for `56000`, `001` for `70700`), so CAL-MCP cannot detect a prefix match from the page. Validating `subtext_id` against CAL's subtext list would add a request to every text page, and that is not justified here. The page is CAL's own answer to that request, and every returned line keeps its real CAL coordinate. The documentation and tool description now state the prefix behaviour plainly, and `text_page_samaritan_56000_prefix_11_current.html` pins it.
+
+The review also found two separate problems, filed as their own issues:
+- the same file-info drift in `cal_kwic_full_context` for subtexts;
+- on current table-layout pages, `display_coordinate` and `comment_url` are silently lost for every row.
+
+It also asked for a direct test of `parse_text_page` with a subtext and a comment on the earlier-layout fallback, which are now in place. The Ginza fixture now keeps CAL's `next page` link, which the first reduction dropped.
