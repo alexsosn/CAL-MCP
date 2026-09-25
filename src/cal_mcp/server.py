@@ -709,7 +709,10 @@ async def cal_targum_concordance(
     """Return CAL's ordered Targum-specific occurrence counts for one lemma key.
 
     A complete all-zero CAL table is preserved as a valid zero-result concordance.
-    Detailed source examples remain separate explicit follow-up requests.
+    A row's ``section`` is set only when CAL renders an explicit section header; label rows
+    CAL renders without applying them as a grouping are listed in ``section_labels`` with
+    their position (``row_index``) instead. Detailed source examples remain separate
+    explicit follow-up requests.
     """
 
     client = ctx.request_context.lifespan_context.client

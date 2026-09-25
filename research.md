@@ -338,6 +338,20 @@ Source:
 - https://cal.huc.edu/display.notext.abbrevs.php?dial1=6&dial=6
 
 **Implication:** source rows are returned exactly as listed, repeats included; the existing link/label check guarantees shared abbreviations share one citation list. Public schema and request counts are unchanged.
+
+## R-031 — Current Targum concordance and Hebrew-reflex pages moved their headings
+
+**Rechecked:** 2026-09-24.
+
+Two bounded POSTs showed that `showtargumKWIC.php` now identifies itself (`CAL: Targum KWIC counts for <key>`) only in the page `<title>`, with an `<h3>` statement in the body, a `<td>` label row (`Torah` plus an `&nbsp;` filler cell), and the total as a single-cell row inside the table. `getOmtlemma.php` moved its `<source> correspondences to <Hebrew lemma>` heading from `<h1>` to `<h3>`, and its header row uses `<td>` cells. Row, link, count and selector semantics are unchanged. Detailed evidence: `docs/research/issue-152-targum-concordance-reflex-drift.md`.
+
+Sources:
+
+- https://cal.huc.edu/showtargumKWIC.php (POST `lemma=klb&pos=N`)
+- https://cal.huc.edu/getOmtlemma.php (POST `R1=1751`)
+
+**Implication:** result headings are read from `h1`, `h3` and `title`, and every identifying heading must name the submitted key; the body statement must name the submitted key; the in-table total form is accepted; header rows may be all-`th` or all-`td`. The current page's `Torah` label row (with CAL's literal `&nbsp;` filler) is not applied as a grouping to later rows, because the rows after it include Prophets and Writings. Rows carry `section: null`, and the result gains an additive `section_labels` field (decision D-015). Request counts are unchanged.
+
 ## R-030 — Citation context for Babylonian Talmud texts uses the bablex.php token family
 
 **Rechecked:** 2026-09-24.

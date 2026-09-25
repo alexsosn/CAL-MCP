@@ -45,9 +45,23 @@ class TargumConcordanceRow:
 
 
 @dataclass(frozen=True, slots=True)
+class TargumConcordanceSectionLabel:
+    """A CAL label row in the current concordance layout (R-031).
+
+    ``row_index`` is the index in ``rows`` of the first result row after the label; it equals
+    ``len(rows)`` when no row follows, and consecutive labels share an index. CAL's current
+    page renders such a label without applying it as a grouping to later rows.
+    """
+
+    label: str
+    row_index: int
+
+
+@dataclass(frozen=True, slots=True)
 class TargumConcordancePage:
     rows: tuple[TargumConcordanceRow, ...]
     total: int
+    section_labels: tuple[TargumConcordanceSectionLabel, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,12 +137,16 @@ class TargumConcordanceResult:
     rows: tuple[TargumConcordanceRow, ...]
     total: int
     provenance: TargumProvenance
+    section_labels: tuple[TargumConcordanceSectionLabel, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
             "lemma_key": self.lemma_key,
             "rows": [_concordance_row_to_dict(item) for item in self.rows],
             "total": self.total,
+            "section_labels": [
+                {"label": item.label, "row_index": item.row_index} for item in self.section_labels
+            ],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -299,7 +317,7 @@ class _SemanticTableParser(HTMLParser):
         if self._ignored_depth:
             return
         attributes = dict(attrs)
-        if tag == "h1":
+        if tag in _RESULT_HEADING_TAGS:
             if self._heading_parts is not None:
                 raise TargumParseError("CAL Targum page contains nested result headings")
             self._heading_parts = []
@@ -333,7 +351,7 @@ class _SemanticTableParser(HTMLParser):
             if tag in _IGNORED_CONTENT_TAGS:
                 self._ignored_depth -= 1
             return
-        if tag == "h1" and self._heading_parts is not None:
+        if tag in _RESULT_HEADING_TAGS and self._heading_parts is not None:
             heading = _clean_text("".join(self._heading_parts))
             if heading:
                 self.headings.append(heading)
@@ -507,6 +525,12 @@ _COORDINATE_ERROR_RE = re.compile(r"\berror\s+in\s+coordinate\b", re.I)
 _TOTAL_RE = re.compile(r"\btotal\s+examples:\s*(\d+)\b", re.I)
 _PARALLEL_HEADING_PREFIX = "MT and targums for "
 _CONCORDANCE_HEADING_PREFIX = "CAL: Targum KWIC counts for "
+# Current CAL result pages identify themselves in <h3> headings or, for the Targum
+# concordance, only in the page <title> (R-031); earlier pages used <h1>.
+_RESULT_HEADING_TAGS = frozenset({"h1", "h3", "title"})
+_CONCORDANCE_STATEMENT_RE = re.compile(
+    r'\bThe lemma "([^"]+)" is attested in the following number of verses\b'
+)
 
 
 def parse_targum_parallel_page(
@@ -585,24 +609,42 @@ def parse_targum_concordance_page(
     _require_complete_table_parser(parser)
 
     expected_heading = f"{_CONCORDANCE_HEADING_PREFIX}{lemma_key}"
-    headings = [
+    # The same identifying text may appear more than once (e.g. repeated <title>, or a
+    # <title> plus a body heading); every occurrence must name the submitted lemma.
+    headings = {
         heading for heading in parser.headings if heading.startswith(_CONCORDANCE_HEADING_PREFIX)
-    ]
-    if headings != [expected_heading]:
+    }
+    if headings != {expected_heading}:
         raise TargumParseError("CAL Targum concordance heading does not match the submitted lemma")
+    statement_keys = _CONCORDANCE_STATEMENT_RE.findall(_clean_text(" ".join(parser.all_parts)))
+    if any(key != lemma_key for key in statement_keys):
+        raise TargumParseError("CAL Targum concordance statement names another lemma")
     if parser.table_count != 1:
         raise TargumParseError("CAL Targum concordance lacks one recognizable result table")
 
     current_section: str | None = None
     rows: list[TargumConcordanceRow] = []
+    section_labels: list[TargumConcordanceSectionLabel] = []
     for cells in parser.rows:
         if _is_table_header(cells, "Targum", "Occurrences"):
             continue
-        if len(cells) == 1 and cells[0].kind == "th":
+        if len(cells) == 1 and cells[0].kind == "td" and _TOTAL_RE.fullmatch(_cell_text(cells[0])):
+            # Current layout: the total is a single-cell row inside the table (R-031).
+            continue
+        if _is_concordance_section_row(cells):
             section = _cell_text(cells[0])
-            if not section or cells[0].hrefs:
+            if not section or any(cell.hrefs for cell in cells):
                 raise TargumParseError("CAL Targum concordance has malformed section semantics")
-            current_section = section
+            if len(cells) == 1:
+                # Earlier layout: an explicit <th colspan> header groups the rows after it.
+                current_section = section
+            else:
+                # Current layout: a label row that CAL does not apply as a grouping (R-031);
+                # report where it appears rather than attributing later rows to it.
+                current_section = None
+                section_labels.append(
+                    TargumConcordanceSectionLabel(label=section, row_index=len(rows))
+                )
             continue
         if len(cells) != 2 or any(cell.kind != "td" for cell in cells):
             raise TargumParseError("CAL Targum concordance contains an unrecognized result row")
@@ -627,7 +669,9 @@ def parse_targum_concordance_page(
     total = int(totals[0])
     if sum(row.count for row in rows) != total:
         raise TargumParseError("CAL Targum concordance row counts contradict the reported total")
-    return TargumConcordancePage(rows=tuple(rows), total=total)
+    return TargumConcordancePage(
+        rows=tuple(rows), total=total, section_labels=tuple(section_labels)
+    )
 
 
 def parse_hebrew_lemma_options_page(
@@ -788,6 +832,7 @@ class TargumService:
             lemma_key=canonical_key,
             rows=result.value.rows,
             total=result.value.total,
+            section_labels=result.value.section_labels,
             provenance=_make_provenance(
                 result.source_url,
                 result.retrieved_at,
@@ -928,10 +973,25 @@ def _cell_text(cell: _TableCell) -> str:
     return _clean_text("".join(cell.parts))
 
 
-def _is_table_header(cells: tuple[_TableCell, ...], first: str, second: str) -> bool:
+def _is_concordance_section_row(cells: tuple[_TableCell, ...]) -> bool:
+    # Earlier layout: one <th colspan> cell. Current layout: a <td> label plus an &nbsp; <td>.
+    if len(cells) == 1 and cells[0].kind == "th":
+        return True
+    # Require CAL's literal &nbsp; filler so a damaged result row (lost link and count)
+    # is not reclassified as a label row.
     return (
         len(cells) == 2
-        and all(cell.kind == "th" for cell in cells)
+        and all(cell.kind == "td" for cell in cells)
+        and "".join(cells[1].parts).strip(" \t\r\n") == "\xa0"
+        and not cells[1].hrefs
+    )
+
+
+def _is_table_header(cells: tuple[_TableCell, ...], first: str, second: str) -> bool:
+    # Header cells are <th> on some current pages and <td> on others (R-031).
+    return (
+        len(cells) == 2
+        and len({cell.kind for cell in cells}) == 1
         and _cell_text(cells[0]) == first
         and _cell_text(cells[1]) == second
         and not cells[0].hrefs

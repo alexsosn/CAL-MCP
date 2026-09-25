@@ -62,6 +62,8 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `targum_hebrew_lemmas_mem_neofiti.html` | `https://cal.huc.edu/mtlemmas/memMTlemma.html` | Neofiti source-specific MT-Hebrew lemma chooser form/action semantics |
 | `targum_reflex_onqelos_1751.html` | `POST https://cal.huc.edu/getOmtlemma.php` (`R1=1751`) | selected MT Hebrew lemma plus Onqelos CAL lemma correspondence, frequency, and example URL |
 | `targum_reflex_neofiti_1751.html` | `POST https://cal.huc.edu/getNmtlemma.php` (`R1=1751`) | selected MT Hebrew lemma plus multiple ordered Neofiti CAL lemma correspondences |
+| `targum_concordance_klb_current.html` | `POST https://cal.huc.edu/showtargumKWIC.php` (`lemma=klb`, `pos=N`; 2026-09-24) | current layout: title-only identifying heading, `<h3>` statement, `<td>` section row, `<div>`-wrapped cells, CAL's truncated `texts=… 5102` selector, and an in-table total adjusted to the four retained rows |
+| `targum_reflex_onqelos_1751_current.html` | `POST https://cal.huc.edu/getOmtlemma.php` (`R1=1751`; 2026-09-24) | current `<h3>` source/result heading and `<td>` header row |
 | `targum_reflex_invalid_id.html` | bounded invalid Onqelos selector probe (`R1=999999`) | current broad invalid-ID fallback with missing selected Hebrew lemma, which must fail closed |
 | `syriac_category_metrical.html` | `https://cal.huc.edu/show_Syriac_categories.php?category=6` | dynamic Syriac category with ordered direct/group navigation and file-information links |
 | `syriac_category_ot_peshitta.html` | `https://cal.huc.edu/ot_peshitta.html` | static OT Peshitta category using the same typed text-item contract |
