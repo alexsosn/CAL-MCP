@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-035 — Text pages render each line as a two-cell table row
+
+**Rechecked:** 2026-09-25.
+
+Current `get_a_chapter.php` pages render lines in `<table class="text-display">`, one row per line. The first cell holds the display coordinate, either as a `comment.php` link or as plain text with an optional "[ai]" `ask_ai_prompt.php` link. The second cell holds only lexical token links. The text-page line splitter breaks at every cell, so the coordinate and comment link were silently lost. Detailed evidence: `docs/research/issue-182-text-row-coordinates.md`.
+
+Sources:
+
+- https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0
+- https://cal.huc.edu/get_a_chapter.php?file=62057&page=0
+
+**Implication:** table-layout pages are read per row, with `display_coordinate` and `comment_url` taken from the coordinate cell; any unexpected row shape fails closed.
+
 ## R-034 — Paginated text pages share the pagination marker line with navigation links
 
 **Rechecked:** 2026-09-25.
@@ -343,6 +356,7 @@ CAL also clamps a page beyond the last page to its last page (`71001` with `page
 - https://cal.huc.edu/get_a_chapter.php?file=71001&page=50
 
 **Implication:** a marker is the leftover text of a non-token line after its link texts are removed, and it must be exactly `Page N of M` with an optional line total; every marker on a page must agree. A clamp to CAL's last page is reported as an `invalid_input` range error.
+
 
 ## R-033 — Subdivided text pages put file plus subtext in the file-info coordinate
 
