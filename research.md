@@ -327,6 +327,17 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-032 — External-citation source lists repeat abbreviations for distinct works
+
+**Rechecked:** 2026-09-24.
+
+The Syriac external-source list (`display.notext.abbrevs.php?dial1=6&dial=6`, 702 rows) lists five abbreviations (`EbPar`, `JS`, `Lag,`, `PO`, `Th`) in two adjacent rows each. The descriptions differ (different editions or works) and the citations link is identical. This is CAL's own data, and abbreviations are not unique keys. Detailed evidence: `docs/research/issue-153-external-sources-repeated-abbreviations.md`.
+
+Source:
+
+- https://cal.huc.edu/display.notext.abbrevs.php?dial1=6&dial=6
+
+**Implication:** source rows are returned exactly as listed, repeats included; the existing link/label check guarantees shared abbreviations share one citation list. Public schema and request counts are unchanged.
 ## R-030 — Citation context for Babylonian Talmud texts uses the bablex.php token family
 
 **Rechecked:** 2026-09-24.
