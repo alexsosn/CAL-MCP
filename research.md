@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-036 — The Mandaic catalogue links texts with the Roman script selector and title-text rows
+
+**Rechecked:** 2026-09-25.
+
+`show_Mandaic.php?R1=74` now renders a Roman/Mandaic-script toggle and grouped list items. Each item is `<a href="/showsubtexts.php?subtext=<file>&cset=R">Title</a>` (or `get_a_chapter.php?file=<file>&cset=R`) followed by an information link. `cset` selects the rendering script only: `R` is CAL code, `M` is Standard Transliteration and `J` is Mandaic script. The `cset=M` page route still works. Detailed evidence: `docs/research/issue-169-mandaic-catalogue.md`.
+
+Sources:
+
+- https://cal.huc.edu/show_Mandaic.php?R1=74
+- https://cal.huc.edu/showsubtexts.php?subtext=74410&cset=R
+
+**Implication:** Mandaic catalogue children accept `cset=R` or `M`, and titles come from the link text; page routing is unchanged.
+
 ## R-033 — Subdivided text pages put file plus subtext in the file-info coordinate
 
 **Rechecked:** 2026-09-25.
