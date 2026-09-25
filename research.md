@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-037 — Dictionary-collation result headings use shorter titles for four sources
+
+**Rechecked:** 2026-09-25.
+
+`searchdicts.php` result headings now read "Dictionary of Jewish Babylonian Aramaic", "Dictionary of Jewish Palestinian Aramaic", "Levy Chaldäisches Wörterbuch" and "Schulthess". The form (`searchdicts.html`) keeps the full titles and codes; the other 11 sources are unchanged. Detailed evidence: `docs/research/issue-174-dictionary-labels.md`.
+
+Sources:
+
+- https://cal.huc.edu/searchdicts.html
+- https://cal.huc.edu/searchdicts.php (POST `dict=B`, `page=100`)
+
+**Implication:** each source accepts its form label or its current heading label; any other dictionary label fails closed.
+
 ## R-035 — Text pages render each line as a two-cell table row
 
 **Rechecked:** 2026-09-25.
@@ -339,6 +352,7 @@ Sources:
 - https://cal.huc.edu/get_a_chapter.php?file=62057&page=0
 
 **Implication:** table-layout pages are read per row, with `display_coordinate` and `comment_url` taken from the coordinate cell; any unexpected row shape fails closed.
+
 
 ## R-034 — Paginated text pages share the pagination marker line with navigation links
 

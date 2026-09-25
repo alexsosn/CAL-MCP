@@ -78,5 +78,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `syriac_peshitta_gen_1_1.html` | `POST https://cal.huc.edu/showpesh.php` (`bookname=01`, `chapter=01`, `verse=01`) | Gen 1:1 MT/Peshitta Unicode text and Peshitta chapter navigation |
 | `syriac_peshitta_not_found.html` | bounded invalid-coordinate `showpesh.php` probe | current explicit `error in coord` not-found semantics |
 | `external_citation_sources_syriac_current.html` | `https://cal.huc.edu/display.notext.abbrevs.php?dial1=6&dial=6` (2026-09-24) | current card layout: five of 702 rows in CAL order, including the `EbPar` and `JS` pairs that share an abbreviation across distinct works |
+| `dictionary_collation_djba_100_current.html` | `POST https://cal.huc.edu/searchdicts.php` (`dict=B`, `page=100`, 2026-09-25) | current shorter heading label "Dictionary of Jewish Babylonian Aramaic"; both entries |
+| `dictionary_collation_schulthess_100_current.html` | `POST https://cal.huc.edu/searchdicts.php` (`dict=S`, `page=100`, 2026-09-25) | current shorter heading label "Schulthess"; first 2 of 9 entries |
 
 The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The lexicon citation-context/search/text/token-analysis/concordance/bibliography/Targum/Syriac fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.
