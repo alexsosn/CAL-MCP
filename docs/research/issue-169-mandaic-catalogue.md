@@ -45,3 +45,8 @@ The 12 subdivided and 8 direct files in the current catalogue agree with the ada
 - Current rows are read as "route link text = title". The file identifier comes from the route query and must match the row's information link when one is present. The earlier "link text = file id, title after it" rows are still read.
 - The script-toggle links, group headings and "not currently available" notes are CAL navigation, not texts, and are not returned. Texts are returned in CAL's order.
 - The public schema, request counts and page routing are unchanged.
+
+## Implementation notes
+
+- A current row whose route link has no text would vanish silently: the shared line splitter drops a text-less line together with its links. Every `showsubtexts.php` / `get_a_chapter.php` link on the page must therefore become a returned text, and a difference fails closed.
+- Offline, the full live capture parses to all 20 texts in CAL's order with CAL's titles.
