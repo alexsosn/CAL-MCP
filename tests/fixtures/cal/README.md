@@ -23,6 +23,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `search_citations_empty.html` | `POST https://cal.huc.edu/searchcits.php` (`English=qzxvjk`) | exact current empty-citation marker |
 | `text_catalogue_root.html` | `https://cal.huc.edu/newtextmenu.html` | root category links plus a directly linked text |
 | `text_catalogue_biblical.html` | `https://cal.huc.edu/showsubtexts.php?subtext=3` | explicit subtext/file navigation identifiers |
+| `text_catalogue_mandaic_current.html` | `https://cal.huc.edu/show_Mandaic.php?R1=74` (2026-09-25) | current Mandaic catalogue: script toggle, grouped `cset=R` title rows with information links (6 of 20 texts), not-available notes |
 | `text_search_tel_dan.html` | `POST https://cal.huc.edu/newsearchtxts.php` (`search=Tel Dan`) | topic-search text reference, label, and rendered description |
 | `text_page_bt_az.html` | `https://cal.huc.edu/get_a_chapter.php?file=71026&page=0` | paginated text metadata, line/display coordinates, token links, comments, and next-page navigation |
 | `text_page_bt_ber_p2_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=71001&page=1` (2026-09-25) | current paginated page: both pagination markers share lines with previous/next/show-all links; first 2 of 45 rows |
