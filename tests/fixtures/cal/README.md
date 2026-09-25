@@ -25,6 +25,8 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `text_catalogue_biblical.html` | `https://cal.huc.edu/showsubtexts.php?subtext=3` | explicit subtext/file navigation identifiers |
 | `text_search_tel_dan.html` | `POST https://cal.huc.edu/newsearchtxts.php` (`search=Tel Dan`) | topic-search text reference, label, and rendered description |
 | `text_page_bt_az.html` | `https://cal.huc.edu/get_a_chapter.php?file=71026&page=0` | paginated text metadata, line/display coordinates, token links, comments, and next-page navigation |
+| `text_page_bt_ber_p2_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=71001&page=1` (2026-09-25) | current paginated page: both pagination markers share lines with previous/next/show-all links; first 2 of 45 rows |
+| `text_page_bt_ber_last_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=71001&page=49` (2026-09-25) | current last page: markers with previous/show-all links only; first 2 of 16 rows |
 | `text_page_tel_dan.html` | `https://cal.huc.edu/get_a_chapter.php?file=13250&page=0` | valid short text with line/token coordinates but no page-count marker |
 | `text_page_missing.html` | `https://cal.huc.edu/get_a_chapter.php?file=13250&sub=999` | current explicit `NO LINES FOR ... ARE CURRENTLY STORED` missing-text marker |
 | `text_page_samaritan_56000_112_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0` (2026-09-25) | current subdivided page: file-info `coord` is the file id followed by the submitted `sub`; first 2 of 20 rows |

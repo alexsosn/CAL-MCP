@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalOutOfRangeError
 from cal_mcp.texts import (
     TextParseError,
     TextService,
@@ -375,7 +376,8 @@ async def test_text_service_rejects_unpaginated_page_for_requested_page_after_on
     )
     service = TextService(CalHttpClient(transport=transport))
 
-    with pytest.raises(TextParseError):
+    # CAL clamps the request to the text's only page: a range error, not drift (#167).
+    with pytest.raises(CalOutOfRangeError, match=r"beyond the last page \(1\)"):
         await service.page("13250", page=2)
 
     assert len(transport.requests) == 1

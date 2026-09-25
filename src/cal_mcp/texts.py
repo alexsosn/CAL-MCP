@@ -13,17 +13,18 @@ from cal_mcp.client import (
     CalRequest,
     CalResponse,
 )
-from cal_mcp.errors import CalInputError, CalParseError
+from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
 _ID_RE = re.compile(r"^\d+$")
 _LINE_COMMENT_COORD_RE = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _PAGE_MARKER_RE = re.compile(
-    r"^Page\s+(?P<page>\d+)\s+of\s+(?P<count>\d+)\s+"
-    r"\((?P<total>\d+)\s+lines total\)$",
+    r"^Page\s+(?P<page>\d+)\s+of\s+(?P<count>\d+)"
+    r"(?:\s+\((?P<total>\d+)\s+lines total\))?$",
     re.IGNORECASE,
 )
+_PAGE_MARKER_ANYWHERE_RE = re.compile(r"\bPage\s+\d+\s+of\s+\d+", re.IGNORECASE)
 _TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
@@ -738,14 +739,23 @@ def _parse_text_page(
     page_number, page_count, total_lines = _page_metadata(lines)
     if mandaic_page_route and page_count is None and requested_page is not None:
         page_number = requested_page
-    if requested_page is not None and page_number != requested_page:
-        raise TextParseError("CAL text page number differs from the requested page")
     previous_page, next_page = _page_navigation(
         lines,
         requested_file_id=requested_file_id,
         requested_subtext_id=requested_subtext_id,
         mandaic_page_route=mandaic_page_route,
     )
+    if requested_page is not None and page_number != requested_page:
+        # CAL clamps an out-of-range page to its last page: the last "Page N of N" of a
+        # paginated text, or the only page (no marker, no navigation) of a short text.
+        last_page = page_count
+        if page_count is None and previous_page is None and next_page is None:
+            last_page = 1
+        if last_page is not None and page_number == last_page and requested_page > last_page:
+            raise CalOutOfRangeError(
+                f"page {requested_page} is beyond the last page ({last_page}) of this text"
+            )
+        raise TextParseError("CAL text page number differs from the requested page")
     _validate_page_navigation(
         page_number=page_number,
         page_count=page_count,
@@ -1259,24 +1269,37 @@ def _page_text_ref(
 
 
 def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:
-    found: tuple[int, int, int] | None = None
+    # Current CAL renders the marker in the same line as the previous/next/show-all
+    # links and the variants toggle, and a second copy without the line total. The
+    # marker is what remains of a non-token line once its link texts are removed.
+    page_count: tuple[int, int] | None = None
+    total: int | None = None
     for line in lines:
-        match = _PAGE_MARKER_RE.fullmatch(line.text)
-        if match is None:
+        if any(_is_lexical_link(link) for link in line.links):
             continue
-        candidate = (
-            int(match.group("page")),
-            int(match.group("count")),
-            int(match.group("total")),
-        )
+        residue = line.text
+        for link in line.links:
+            residue = residue.replace(link.text, " ", 1)
+        residue = " ".join(residue.split())
+        match = _PAGE_MARKER_RE.fullmatch(residue)
+        if match is None:
+            if _PAGE_MARKER_ANYWHERE_RE.search(residue) is not None:
+                raise TextParseError("CAL text page has a malformed pagination marker")
+            continue
+        candidate = (int(match.group("page")), int(match.group("count")))
         if candidate[0] < 1 or candidate[1] < candidate[0]:
             raise TextParseError("CAL text page has invalid pagination metadata")
-        if found is not None and found != candidate:
+        if page_count is not None and page_count != candidate:
             raise TextParseError("CAL text page exposes conflicting pagination metadata")
-        found = candidate
-    if found is None:
+        page_count = candidate
+        if match.group("total") is not None:
+            candidate_total = int(match.group("total"))
+            if total is not None and total != candidate_total:
+                raise TextParseError("CAL text page exposes conflicting pagination metadata")
+            total = candidate_total
+    if page_count is None:
         return 1, None, None
-    return found
+    return page_count[0], page_count[1], total
 
 
 def _page_navigation(
@@ -1577,6 +1600,10 @@ def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
 
 def _is_lexical_href(href: str) -> bool:
     return _is_path(href, "bablex.php") or _is_path(href, "getlex.php")
+
+
+def _is_lexical_link(link: _Link) -> bool:
+    return _is_lexical_href(link.href)
 
 
 def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
