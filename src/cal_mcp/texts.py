@@ -751,9 +751,13 @@ def _parse_text_page(
         next_page=next_page,
         allow_navigation_without_page_count=mandaic_page_route,
     )
-    text_lines = tuple(
-        parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
-    )
+    table = _parse_text_table(response)
+    if table.found:
+        text_lines = tuple(_text_line_from_row(row, response.url) for row in table.rows)
+    else:
+        text_lines = tuple(
+            parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
+        )
     if not text_lines:
         raise TextParseError("CAL text page contains no recognizable coordinate/token rows")
 
@@ -1352,6 +1356,172 @@ def _validate_page_navigation(
         raise TextParseError("CAL text page next-page navigation is out of range")
 
 
+@dataclass(slots=True)
+class _TableCell:
+    loose_parts: list[str]
+    links: list[_Link]
+
+
+@dataclass(frozen=True, slots=True)
+class _TextTable:
+    found: bool
+    rows: tuple[tuple[_TableCell, ...], ...]
+
+
+class _TextTableParser(HTMLParser):
+    """Read CAL's current ``text-display`` table: one text line per ``<tr>``.
+
+    CAL does not close the table; the next ``<table>`` (page navigation) or ``</table>``
+    ends it. Lexical links anywhere outside a text row are recorded so they fail closed.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.found = False
+        self.rows: list[tuple[_TableCell, ...]] = []
+        self.lexical_links_outside_rows = 0
+        self._in_table = False
+        self._row: list[_TableCell] | None = None
+        self._cell: _TableCell | None = None
+        self._link_href: str | None = None
+        self._link_parts: list[str] = []
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in {"script", "style"}:
+            self._ignored_depth += 1
+            return
+        if self._ignored_depth:
+            return
+        attributes = {key: value or "" for key, value in attrs}
+        if tag == "table":
+            self._end_row()
+            self._in_table = "text-display" in attributes.get("class", "").split()
+            self.found = self.found or self._in_table
+        elif tag == "tr" and self._in_table:
+            self._end_row()
+            self._row = []
+        elif tag in {"td", "th"} and self._row is not None:
+            self._end_cell()
+            self._cell = _TableCell(loose_parts=[], links=[])
+        elif tag == "a":
+            href = attributes.get("href", "")
+            if self._cell is None:
+                if _is_lexical_href(href):
+                    self.lexical_links_outside_rows += 1
+                return
+            if self._link_href is not None:
+                raise TextParseError("CAL text row has a nested link")
+            self._link_href = href
+            self._link_parts = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in {"script", "style"}:
+            self._ignored_depth = max(0, self._ignored_depth - 1)
+            return
+        if self._ignored_depth:
+            return
+        if tag == "a" and self._link_href is not None and self._cell is not None:
+            self._cell.links.append(
+                _Link(href=self._link_href, text=_clean_text("".join(self._link_parts)))
+            )
+            self._link_href = None
+        elif tag in {"td", "th"}:
+            self._end_cell()
+        elif tag == "tr":
+            self._end_row()
+        elif tag == "table":
+            self._end_row()
+            self._in_table = False
+
+    def handle_data(self, data: str) -> None:
+        if self._ignored_depth or self._cell is None:
+            return
+        if self._link_href is not None:
+            self._link_parts.append(data)
+        else:
+            self._cell.loose_parts.append(data)
+
+    def close(self) -> None:
+        super().close()
+        self._end_row()
+
+    def _end_cell(self) -> None:
+        if self._link_href is not None:
+            raise TextParseError("CAL text row has an unclosed link")
+        if self._cell is not None and self._row is not None:
+            self._row.append(self._cell)
+        self._cell = None
+
+    def _end_row(self) -> None:
+        self._end_cell()
+        if self._row:
+            self.rows.append(tuple(self._row))
+        self._row = None
+
+
+def _parse_text_table(response: CalResponse) -> _TextTable:
+    parser = _TextTableParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    if parser.found and parser.lexical_links_outside_rows:
+        raise TextParseError("CAL text page has lexical links outside its text rows")
+    return _TextTable(found=parser.found, rows=tuple(parser.rows))
+
+
+def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLine:
+    if len(row) != 2:
+        raise TextParseError("CAL text row does not have exactly two cells")
+    coordinate_cell, token_cell = row
+
+    if _clean_text("".join(token_cell.loose_parts)):
+        raise TextParseError("CAL text row token cell has text outside its token links")
+    tokens: list[TextToken] = []
+    for link in token_cell.links:
+        token = _token_from_link(link, source_url)
+        if token is None:
+            raise TextParseError("CAL text row token cell has a non-lexical link")
+        tokens.append(token)
+    if not tokens:
+        raise TextParseError("CAL text row has no token links")
+    coordinate = tokens[0].coordinate
+    if any(token.coordinate != coordinate for token in tokens):
+        raise TextParseError("CAL text row mixes multiple machine coordinates")
+
+    comment_link: _Link | None = None
+    for link in coordinate_cell.links:
+        if _is_path(link.href, "comment.php") or _is_path(link.href, "ask_ai_prompt.php"):
+            query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+            link_coordinate = _single_query_value(query, "coord", "text-row")
+            if link_coordinate != coordinate:
+                raise TextParseError("CAL text row comment/Ask-AI link names another coordinate")
+            if _is_path(link.href, "comment.php"):
+                if comment_link is not None:
+                    raise TextParseError("CAL text row has repeated comment links")
+                comment_link = link
+            continue
+        raise TextParseError("CAL text row coordinate cell has an unexpected link")
+
+    loose_coordinate = _clean_text("".join(coordinate_cell.loose_parts))
+    if comment_link is not None:
+        if loose_coordinate:
+            raise TextParseError("CAL text row coordinate cell has text outside its comment link")
+        display_coordinate = comment_link.text or None
+        comment_url: str | None = urljoin(source_url, comment_link.href)
+    else:
+        display_coordinate = loose_coordinate or None
+        comment_url = None
+
+    rendered_text = " ".join(token.text for token in tokens)
+    return TextLine(
+        coordinate=coordinate,
+        display_coordinate=display_coordinate,
+        text=rendered_text,
+        tokens=tuple(tokens),
+        comment_url=comment_url,
+    )
+
+
 def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     tokens = tuple(
         token for link in line.links if (token := _token_from_link(link, source_url)) is not None
@@ -1390,8 +1560,12 @@ def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     )
 
 
+def _is_lexical_href(href: str) -> bool:
+    return _is_path(href, "bablex.php") or _is_path(href, "getlex.php")
+
+
 def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
-    if not _is_path(link.href, "bablex.php") and not _is_path(link.href, "getlex.php"):
+    if not _is_lexical_href(link.href):
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     coordinate = _single_query_value(query, "coord", "token")
