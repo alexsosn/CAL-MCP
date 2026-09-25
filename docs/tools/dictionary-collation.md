@@ -14,25 +14,25 @@ Each valid explicit operation submits at most one new logical CAL request to the
 
 The public `source` parameter uses readable CAL-MCP identifiers. CAL's current one-letter HTML form controls remain internal to the adapter.
 
-| `source` | CAL dictionary label |
-| --- | --- |
-| `jastrow` | Jastrow |
-| `lexicon_syriacum` | Lexicon Syriacum |
-| `syriac_lexicon` | A Syriac Lexicon |
-| `compendious_syriac_dictionary` | A Compendious Syriac Dictionary |
-| `djba` | A Dictionary of Jewish Babylonian Aramaic |
-| `djpa` | A Dictionary of Jewish Palestinian Aramaic |
-| `levy_targumim` | Levy, Chaldäisches Wörterbuch ü.die Targumim |
-| `mandaic_dictionary` | A Mandaic Dictionary |
-| `dnsi` | Dictionary of the Northwest Semitic Inscriptions |
-| `thesaurus_syriacus` | Thesaurus Syriacus |
-| `samaritan_aramaic` | Dictionary of Samaritan Aramaic |
-| `schulthess` | Schulthess Lexicon Syropalaestinum |
-| `dcpa` | A Dictionary of Christian Palestinian Aramaic |
-| `judean_aramaic` | A Dictionary of Judean Aramaic |
-| `qumran_aramaic` | Dictionary of Qumran Aramaic |
+| `source` | CAL dictionary label (form) | Label on CAL's result page, if different (2026-09-25) |
+| --- | --- | --- |
+| `jastrow` | Jastrow | |
+| `lexicon_syriacum` | Lexicon Syriacum | |
+| `syriac_lexicon` | A Syriac Lexicon | |
+| `compendious_syriac_dictionary` | A Compendious Syriac Dictionary | |
+| `djba` | A Dictionary of Jewish Babylonian Aramaic | Dictionary of Jewish Babylonian Aramaic |
+| `djpa` | A Dictionary of Jewish Palestinian Aramaic | Dictionary of Jewish Palestinian Aramaic |
+| `levy_targumim` | Levy, Chaldäisches Wörterbuch ü.die Targumim | Levy Chaldäisches Wörterbuch |
+| `mandaic_dictionary` | A Mandaic Dictionary | |
+| `dnsi` | Dictionary of the Northwest Semitic Inscriptions | |
+| `thesaurus_syriacus` | Thesaurus Syriacus | |
+| `samaritan_aramaic` | Dictionary of Samaritan Aramaic | |
+| `schulthess` | Schulthess Lexicon Syropalaestinum | Schulthess |
+| `dcpa` | A Dictionary of Christian Palestinian Aramaic | |
+| `judean_aramaic` | A Dictionary of Judean Aramaic | |
+| `qumran_aramaic` | Dictionary of Qumran Aramaic | |
 
-These labels and their current CAL selector mapping were rechecked on **2026-09-05**. CAL-MCP validates the dictionary label echoed by the result page. If CAL changes or reassigns a selector value, the adapter fails as parser/upstream drift rather than silently returning a result for another dictionary.
+These labels and their current CAL selector mapping were rechecked on **2026-09-25**. CAL-MCP validates the dictionary label echoed by the result page: for each source it accepts the form label or that source's current result-page label, and it returns the label CAL rendered as `source_label`. If CAL changes or reassigns a selector value, the adapter fails as parser/upstream drift rather than silently returning a result for another dictionary.
 
 ## Page references
 
