@@ -14,6 +14,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `entry_abr_v.html` | `https://cal.huc.edu/oneentry.php?cits=all&lemma=%29br+V` | root cross-reference and stem-specific verb senses |
 | `lexicon_citation_context_ezra_4_24.html` | `https://cal.huc.edu/showachapter.php?fullcoord=31000424` | reduced Biblical Aramaic context around Ezra 4:24 with source info, preceding/target lines, comments, and lexical-token anchors |
 | `lexicon_citation_context_tgj_ez_31_6.html` | `https://cal.huc.edu/showachapter.php?fullcoord=5101431061` | reduced Targum context around TgJ Ez31:6 with variable-length source identity and ignored navigation links |
+| `lexicon_citation_context_bt_git_48a50.html` | `https://cal.huc.edu/showachapter.php?fullcoord=7101801048150` (2026-09-24) | Babylonian Talmud context whose tokens use `bablex.php`, with manuscript-style line labels, separator rows, and a red comment-linked target row |
 | `lexicon_citation_context_not_found.html` | `https://cal.huc.edu/showachapter.php?fullcoord=999999999999` | exact no-citations marker and selector-binding semantics for the explicit context follow-up |
 | `not_found.html` | CAL lexicon surface | explicit no-match semantic page |
 | `search_gloss_camel.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=camel#`, `secondary=true`) | ordered lemma-link + gloss result shape |
