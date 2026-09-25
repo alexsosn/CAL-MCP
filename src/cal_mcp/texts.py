@@ -20,10 +20,11 @@ from cal_mcp.syriac import syriac_text_category_slugs
 _ID_RE = re.compile(r"^\d+$")
 _LINE_COMMENT_COORD_RE = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _PAGE_MARKER_RE = re.compile(
-    r"^Page\s+(?P<page>\d+)\s+of\s+(?P<count>\d+)\s+"
-    r"\((?P<total>\d+)\s+lines total\)$",
+    r"^Page\s+(?P<page>\d+)\s+of\s+(?P<count>\d+)"
+    r"(?:\s+\((?P<total>\d+)\s+lines total\))?$",
     re.IGNORECASE,
 )
+_PAGE_MARKER_START_RE = re.compile(r"^Page\s+\d+\s+of\s+\d+", re.IGNORECASE)
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
@@ -1234,24 +1235,37 @@ def _page_text_ref(
 
 
 def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:
-    found: tuple[int, int, int] | None = None
+    # Current CAL renders the marker in the same line as the previous/next/show-all
+    # links and the variants toggle, and a second copy without the line total. The
+    # marker is what remains of a non-token line once its link texts are removed.
+    page_count: tuple[int, int] | None = None
+    total: int | None = None
     for line in lines:
-        match = _PAGE_MARKER_RE.fullmatch(line.text)
-        if match is None:
+        if any(_is_lexical_link(link) for link in line.links):
             continue
-        candidate = (
-            int(match.group("page")),
-            int(match.group("count")),
-            int(match.group("total")),
-        )
+        residue = line.text
+        for link in line.links:
+            residue = residue.replace(link.text, " ", 1)
+        residue = " ".join(residue.split())
+        match = _PAGE_MARKER_RE.fullmatch(residue)
+        if match is None:
+            if _PAGE_MARKER_START_RE.match(residue) is not None:
+                raise TextParseError("CAL text page has a malformed pagination marker")
+            continue
+        candidate = (int(match.group("page")), int(match.group("count")))
         if candidate[0] < 1 or candidate[1] < candidate[0]:
             raise TextParseError("CAL text page has invalid pagination metadata")
-        if found is not None and found != candidate:
+        if page_count is not None and page_count != candidate:
             raise TextParseError("CAL text page exposes conflicting pagination metadata")
-        found = candidate
-    if found is None:
+        page_count = candidate
+        if match.group("total") is not None:
+            candidate_total = int(match.group("total"))
+            if total is not None and total != candidate_total:
+                raise TextParseError("CAL text page exposes conflicting pagination metadata")
+            total = candidate_total
+    if page_count is None:
         return 1, None, None
-    return found
+    return page_count[0], page_count[1], total
 
 
 def _page_navigation(
@@ -1371,8 +1385,12 @@ def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     )
 
 
+def _is_lexical_link(link: _Link) -> bool:
+    return _is_path(link.href, "bablex.php") or _is_path(link.href, "getlex.php")
+
+
 def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
-    if not _is_path(link.href, "bablex.php") and not _is_path(link.href, "getlex.php"):
+    if not _is_lexical_link(link):
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     coordinate = _single_query_value(query, "coord", "token")
