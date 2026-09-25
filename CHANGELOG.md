@@ -9,7 +9,7 @@ First standalone release of CAL-MCP, a read-only MCP adapter over the Comprehens
 v0.1.0 freezes **34 public tools** across these research families:
 
 - deterministic conversion from supported Aramaic-script/Unicode inputs to CAL code;
-- lexicon exact/root/full-form lookup, bounded prefix browsing via `cal_lexicon_browse`, and explicit linked-citation full context via `cal_lexicon_citation_context`;
+- lexicon exact/root/full-form lookup, bounded prefix browsing via `cal_lexicon_browse`, and explicit linked-citation full context via `cal_lexicon_citation_context` (including Babylonian Talmud texts, whose tokens use CAL's `bablex.php` family);
 - English gloss search, structured gloss-field extraction, and citation-text search;
 - text catalogue/topic discovery, one-page retrieval, explicit text-information metadata, and explicit line comments/translations via `cal_text_line_comments`;
 - token-at-coordinate lexical analysis;

@@ -341,12 +341,18 @@ def _parse_source_info(links: list[_Link], source_url: str) -> tuple[str | None,
     return link.text, resolved
 
 
+# CAL links lexical tokens through two current endpoint families; Babylonian Talmud texts
+# use bablex.php (R-024, R-030).
+_LEXICAL_TOKEN_PATHS = ("getlex.php", "bablex.php")
+
+
+def _lexical_token_path(href: str) -> str | None:
+    return next((path for path in _LEXICAL_TOKEN_PATHS if _path_looks_like(href, path)), None)
+
+
 def _parse_text_row(row: _Row, source_url: str) -> TextLine | None:
     token_candidates = [
-        link
-        for cell in row.cells
-        for link in cell.links
-        if _path_looks_like(link.href, "getlex.php")
+        link for cell in row.cells for link in cell.links if _lexical_token_path(link.href)
     ]
     if not token_candidates:
         return None
@@ -356,17 +362,23 @@ def _parse_text_row(row: _Row, source_url: str) -> TextLine | None:
         )
 
     coordinate_cell, text_cell = row.cells
-    token_links = [link for link in text_cell.links if _path_looks_like(link.href, "getlex.php")]
+    token_links = [link for link in text_cell.links if _lexical_token_path(link.href)]
     if not token_links or len(token_links) != len(token_candidates):
         raise LexiconCitationContextParseError(
             "CAL citation-context lexical anchors moved outside the text cell"
         )
+    families = {_lexical_token_path(link.href) for link in token_links}
+    if len(families) != 1:
+        raise LexiconCitationContextParseError(
+            "CAL citation-context text row mixes lexical token families"
+        )
+    [token_path] = families
 
     tokens: list[TextToken] = []
     coordinate: str | None = None
     previous_word: int | None = None
     for link in token_links:
-        resolved = _validated_cal_url(source_url, link.href, "/getlex.php")
+        resolved = _validated_cal_url(source_url, link.href, f"/{token_path}")
         query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
         if set(query) != {"coord", "word"}:
             raise LexiconCitationContextParseError(

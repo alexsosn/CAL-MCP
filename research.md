@@ -339,6 +339,17 @@ Sources:
 - https://cal.huc.edu/getOmtlemma.php (POST `R1=1751`)
 
 **Implication:** result headings are read from `h1`, `h3` and `title`, and every identifying heading must name the submitted key; the body statement must name the submitted key; the in-table total form is accepted; header rows may be all-`th` or all-`td`. The current page's `Torah` label row (with CAL's literal `&nbsp;` filler) is not applied as a grouping to later rows, because the rows after it include Prophets and Writings. Rows carry `section: null`, and the result gains an additive `section_labels` field (decision D-015). Request counts are unchanged.
+## R-030 — Citation context for Babylonian Talmud texts uses the bablex.php token family
+
+**Rechecked:** 2026-09-24.
+
+A lexicon citation `BT Git 48a(50)` (`full_coordinate` `7101801048150`) led to a complete, well-formed `showachapter.php` context page. Its target row is present, bold and comment-linked, but every lexical token uses `bablex.php?coord=…&word=…`, the second token family already recorded for text pages in R-024. The citation-context parser recognized only `getlex.php`, so it found no text rows. This is a long-standing gap for Babylonian Talmud citations, not new drift. Detailed evidence: `docs/research/issue-151-citation-context-bablex.md`.
+
+Source:
+
+- https://cal.huc.edu/showachapter.php?fullcoord=7101801048150
+
+**Implication:** citation-context rows accept both token families with identical validation; a row mixing families fails closed. Public schema and request counts are unchanged.
 ## R-029 — Current bibliography result pages embed legacy `<p>` records in one card
 
 **Rechecked:** 2026-09-24.

@@ -156,7 +156,7 @@ A normal result contains:
 - `status`: `found` or `not_found`;
 - the exact `full_coordinate` submitted by the caller;
 - optional CAL-rendered `source_label` and validated `source_info_url`;
-- ordered `lines` using the same `TextLine`/`TextToken` structure as bounded text context;
+- ordered `lines` using the same `TextLine`/`TextToken` structure as bounded text context. Token `lexical_url` values keep CAL's own lexical endpoint: most texts use `getlex.php`, while some texts use `bablex.php`. Babylonian Talmud texts observed so far (`BT AZ`, `BT Git`, for example the citation `BT Git 48a(50)`) use `bablex.php`. Line `display_coordinate` is CAL's rendered label, which for those texts is manuscript-style (`ms01 pg048 sd1 ln50`);
 - provenance with the actual CAL context URL, retrieval timestamp, operation name, and selector.
 
 For `found`, the returned lines must contain the requested target coordinate exactly once. For `not_found`, CAL-MCP accepts only CAL's explicit no-citations marker when that marker is consistent with the requested selector and no text rows are present. A successful-looking page with neither recognizable rows nor the exact empty marker is parser drift.
