@@ -6,6 +6,7 @@ CAL clamps an out-of-range page to its last page (live 2026-09-25: ``page=50`` o
 
 from __future__ import annotations
 
+import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from pathlib import Path
@@ -112,3 +113,53 @@ async def test_out_of_range_page_reaches_mcp_callers_as_invalid_input(
             "status_code": None,
         }
     }
+
+
+_PREVIOUS_LINK = (
+    '<a href="get_a_chapter.php?file=71001&sub=&cset=R&clen=5&page=0">&laquo; previous page</a>'
+)
+
+
+def _without_markers(fixture: Path, *extra_removals: str) -> bytes:
+    body = fixture.read_text(encoding="utf-8")
+    body = re.sub(r"Page \d+ of \d+ &nbsp; (?:\(\d+ lines total\) &nbsp; )?", "", body)
+    for text in extra_removals:
+        assert text in body
+        body = body.replace(text, "")
+    assert re.search(r"Page \d+ of \d+", body) is None
+    return body.encode()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("body", "page"),
+    [
+        # Both previous and next navigation remain.
+        pytest.param(_without_markers(PAGE_2), 2, id="previous-and-next"),
+        pytest.param(_without_markers(PAGE_2), 3, id="previous-and-next-page-3"),
+        # Only previous navigation remains (a last page).
+        pytest.param(_without_markers(LAST), 2, id="previous-only"),
+        # Only next navigation remains.
+        pytest.param(_without_markers(PAGE_2, _PREVIOUS_LINK), 2, id="next-only"),
+    ],
+)
+async def test_paginated_page_that_lost_its_markers_but_keeps_navigation_is_drift(
+    body: bytes, page: int
+) -> None:
+    # Only a page with no marker and no navigation is a one-page text (#167 review).
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config, request
+        return CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/get_a_chapter.php?file=71001",
+            body=body,
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 25, tzinfo=UTC),
+        )
+
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(TextParseError, match="page number differs"):
+            await TextService(client).page("71001", page=page)
+    finally:
+        await client.aclose()
