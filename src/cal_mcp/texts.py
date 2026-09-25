@@ -730,19 +730,23 @@ def _parse_text_page(
     page_number, page_count, total_lines = _page_metadata(lines)
     if mandaic_page_route and page_count is None and requested_page is not None:
         page_number = requested_page
-    if requested_page is not None and page_number != requested_page:
-        if page_count is not None and page_number == page_count and requested_page > page_count:
-            # CAL clamps an out-of-range page to its last page.
-            raise CalOutOfRangeError(
-                f"page {requested_page} is beyond the last page ({page_count}) of this text"
-            )
-        raise TextParseError("CAL text page number differs from the requested page")
     previous_page, next_page = _page_navigation(
         lines,
         requested_file_id=requested_file_id,
         requested_subtext_id=requested_subtext_id,
         mandaic_page_route=mandaic_page_route,
     )
+    if requested_page is not None and page_number != requested_page:
+        # CAL clamps an out-of-range page to its last page: the last "Page N of N" of a
+        # paginated text, or the only page (no marker, no navigation) of a short text.
+        last_page = page_count
+        if page_count is None and previous_page is None and next_page is None:
+            last_page = 1
+        if last_page is not None and page_number == last_page and requested_page > last_page:
+            raise CalOutOfRangeError(
+                f"page {requested_page} is beyond the last page ({last_page}) of this text"
+            )
+        raise TextParseError("CAL text page number differs from the requested page")
     _validate_page_navigation(
         page_number=page_number,
         page_count=page_count,
