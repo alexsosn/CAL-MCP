@@ -35,6 +35,9 @@ _MANDAIC_COLLECTION_PREFIX = "74"
 _MANDAIC_CATEGORY_ID = "74"
 _MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
 _MANDAIC_ROOT_LABEL = "Mandaic"
+_MANDAIC_ROUTE_LINK_RE = re.compile(
+    r"<a\s[^>]*href=\"[^\"]*(?:showsubtexts|get_a_chapter)\.php", re.IGNORECASE
+)
 _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
     {
         "74401",
@@ -645,6 +648,11 @@ def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
 
     if not texts:
         raise TextParseError("CAL Mandaic catalogue contains no recognizable text rows")
+    # The shared line splitter drops a row with no text together with its links, so a
+    # route link without a title would vanish silently; every route link must be a text.
+    route_links = len(_MANDAIC_ROUTE_LINK_RE.findall(response.body.decode("utf-8", "replace")))
+    if route_links != len(texts):
+        raise TextParseError("CAL Mandaic catalogue has a text link without a rendered title")
     return TextCataloguePage(categories=(), texts=tuple(texts))
 
 
@@ -1149,17 +1157,32 @@ def _mandaic_catalogue_text_from_link(
     expected_keys = {"cset", selector}
     if set(query) != expected_keys:
         raise TextParseError("CAL Mandaic catalogue child query changed unexpectedly")
-    if query.get("cset") != ["M"]:
+    # ``cset`` selects only the rendering script: current CAL links Roman (``R``), the
+    # earlier layout Standard Transliteration (``M``). CAL-MCP never asks for ``J``.
+    if query.get("cset") not in (["R"], ["M"]):
         raise TextParseError("CAL Mandaic catalogue child cset changed unexpectedly")
     file_id = _single_query_value(query, selector, "Mandaic catalogue")
     _parse_positive_id(file_id, "file_id")
 
     anchor = link.text.strip()
-    if not anchor or anchor != file_id or anchor not in line.text:
-        raise TextParseError("CAL Mandaic catalogue file link is detached or mislabeled")
-    rendered_label = line.text.replace(anchor, "", 1).strip()
+    if not anchor or anchor not in line.text:
+        raise TextParseError("CAL Mandaic catalogue file link has no rendered title")
+    if anchor == file_id:
+        # Earlier layout: the link shows the file identifier and the title follows it.
+        rendered_label = line.text.replace(anchor, "", 1).strip()
+    else:
+        # Current layout: the link text is the title and the row shows nothing else.
+        if line.text.strip() != anchor:
+            raise TextParseError("CAL Mandaic catalogue title row has unexpected text")
+        rendered_label = anchor
     if not rendered_label:
         raise TextParseError("CAL Mandaic catalogue file row has no rendered label")
+    for other in line.links:
+        if other is link or not _is_path(other.href, "get_file_info.php"):
+            continue
+        info_query = parse_qs(urlsplit(other.href).query, keep_blank_values=True)
+        if _single_query_value(info_query, "coord", "Mandaic catalogue") != file_id:
+            raise TextParseError("CAL Mandaic catalogue information link names another file")
     return TextRef(file_id=file_id, subtext_id=None, label=rendered_label)
 
 

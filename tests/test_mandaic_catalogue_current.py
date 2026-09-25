@@ -66,8 +66,14 @@ async def test_current_mandaic_catalogue_lists_texts_in_cal_order() -> None:
         ('get_file_info.php?coord=74411"', 'get_file_info.php?coord=74412"', "information link"),
         # A route link with no title.
         (">Haran Gauaita</a>", "></a>", "label|title"),
-        # A repeated file identifier.
-        ("subtext=74923&cset=R", "subtext=74423&cset=R", "repeats a file identifier"),
+        # The same file listed twice (route and information link agree).
+        (
+            'subtext=74923&cset=R">Diwan Malkuta &#x2C1;laita</a> '
+            '<a href="/get_file_info.php?coord=74923"',
+            'subtext=74423&cset=R">Diwan Malkuta &#x2C1;laita</a> '
+            '<a href="/get_file_info.php?coord=74423"',
+            "repeats a file identifier",
+        ),
     ],
 )
 async def test_unexpected_current_rows_fail_closed(old: str, new: str, message: str) -> None:
