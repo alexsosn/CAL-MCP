@@ -710,6 +710,7 @@ def parse_text_page(
         requested_subtext_id=requested_subtext_id,
         requested_page=requested_page,
         mandaic_page_route=False,
+        submitted_sub=requested_subtext_id,
     )
 
 
@@ -720,13 +721,19 @@ def _parse_text_page(
     requested_subtext_id: str | None,
     requested_page: int | None,
     mandaic_page_route: bool,
+    submitted_sub: str | None = None,
 ) -> TextPage | None:
     lines = _parse_lines(response)
     page_text = " ".join(line.text for line in lines)
     if _NO_LINES_RE.search(page_text) is not None:
         return None
 
-    text_ref = _page_text_ref(lines, requested_file_id, requested_subtext_id)
+    text_ref = _page_text_ref(
+        lines,
+        requested_file_id,
+        requested_subtext_id,
+        submitted_sub=submitted_sub,
+    )
     page_number, page_count, total_lines = _page_metadata(lines)
     if mandaic_page_route and page_count is None and requested_page is not None:
         page_number = requested_page
@@ -941,6 +948,7 @@ class TextService:
             if normalized_subtext is not None:
                 params.append(("sub", normalized_subtext))
             params.append(("page", str(page - 1)))
+        submitted_sub = next((value for name, value in params if name == "sub"), None)
 
         def parse_requested(response: CalResponse) -> TextPage | None:
             return _parse_text_page(
@@ -949,6 +957,7 @@ class TextService:
                 requested_subtext_id=normalized_subtext,
                 requested_page=page,
                 mandaic_page_route=mandaic_page_route,
+                submitted_sub=submitted_sub,
             )
 
         result = await self._client.fetch(
@@ -1220,18 +1229,28 @@ def _page_text_ref(
     lines: list[_Line],
     requested_file_id: str,
     requested_subtext_id: str | None,
+    *,
+    submitted_sub: str | None,
 ) -> TextRef:
+    # Current CAL (2026-09-25) renders the file-info coordinate of a subdivided page as the
+    # file identifier followed by the submitted ``sub`` value. The bare file identifier is
+    # still accepted only for the earlier (pre-2026-09-25) layout. Anything else names a
+    # different file or subtext.
+    accepted_coords = {requested_file_id}
+    if submitted_sub is not None:
+        accepted_coords.add(requested_file_id + submitted_sub)
     for line in lines:
         for link in line.links:
             if not _is_path(link.href, "get_file_info.php"):
                 continue
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
-            file_id = _single_query_value(query, "coord", "file-info")
-            _parse_id(file_id, "file_id")
-            if file_id != requested_file_id:
+            coord = _single_query_value(query, "coord", "file-info")
+            _parse_id(coord, "file_id")
+            if coord not in accepted_coords:
                 raise TextParseError(
                     "CAL text page file identifier differs from the requested file"
                 )
+            file_id = requested_file_id
             prefix, separator, label = link.text.partition(":")
             if not separator or prefix.strip() != file_id or not label.strip():
                 raise TextParseError("CAL text page file-info label is malformed")
