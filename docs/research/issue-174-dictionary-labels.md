@@ -28,7 +28,7 @@ Sixteen bounded requests through the production `CalHttpClient` (project User-Ag
 | `judean_aramaic` | A Dictionary of Judean Aramaic | A Dictionary of Judean Aramaic |
 | `qumran_aramaic` | Dictionary of Qumran Aramaic | Dictionary of Qumran Aramaic |
 
-The form still uses the full titles, and the form codes are unchanged. The result heading of four sources now uses a shorter title. The result-page parser reads all 15 pages: 5, 24, 11, 22, 2, 4, 0, 11, 1, 0, 5, 9, 4, 0 and 1 entries. Three pages render CAL's "No data available for that page", which parses as a valid empty result.
+The form still uses the full titles, and the form codes are unchanged. The result heading of four sources now uses a shorter title. The result-page parser reads all 15 pages: 5, 24, 11, 22, 2, 4, 0, 11, 1, 0, 5, 9, 4, 0 and 1 entries. Three pages (Levy, Thesaurus Syriacus, Judean Aramaic) render CAL's "No data available for that page", which parses as a valid empty result. Levy's new label is therefore evidenced by the `<title>` and heading of an empty page.
 
 ## Consequences
 

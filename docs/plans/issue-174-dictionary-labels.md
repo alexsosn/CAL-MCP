@@ -6,7 +6,7 @@ Date: 2026-09-25. Research: `docs/research/issue-174-dictionary-labels.md`, comm
 2. RED tests (`tests/test_dictionary_collation_current_labels.py`) through `DictionaryCollationService`:
    - DJBA returns `source_label` "Dictionary of Jewish Babylonian Aramaic";
    - Schulthess returns "Schulthess";
-   - a table test checks that every source's accepted labels include its form label;
+   - every source's form label stays accepted (already covered for all 15 sources by the `EXPECTED_SOURCES` loop in `tests/test_dictionary_collation.py`);
    - fail closed on a heading naming another dictionary (DJPA's label on a DJBA request).
 3. A valid RED has the positive tests failing, with lint, format and mypy green.
 4. GREEN: per-source accepted labels, form label plus current heading label.
