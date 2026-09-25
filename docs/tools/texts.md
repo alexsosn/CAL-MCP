@@ -141,12 +141,14 @@ For a paginated text, the result may contain:
 
 - `page`: displayed one-based page number;
 - `page_count`: total number of rendered CAL pages when CAL reports one;
-- `total_lines`: total line count CAL reports;
+- `total_lines`: total line count CAL reports (`null` if no pagination marker on the page shows it);
 - `previous_page` and `next_page`: explicit one-based navigation targets when CAL renders them.
 
 Some short CAL texts are not rendered with a page-count marker. Ordinary unpaginated pages are returned as page 1 with `page_count`, `total_lines`, `previous_page`, and `next_page` set to `null`.
 
 Subdivided Mandaic pages can also omit a page-count marker while still rendering an adjacent previous/next link. For that private specialized route, CAL-MCP preserves the caller's explicit one-based page number and validates any rendered `cset=M` navigation as an adjacent page of the same file. Direct Mandaic page-1 responses use the ordinary/unpaginated parser semantics instead; they do not receive synthetic page numbering or relaxed specialized navigation. CAL-MCP does not invent `page_count` or `total_lines` when CAL does not provide them.
+
+CAL renders the pagination marker (`Page N of M (T lines total)`) alongside its previous/next, `show all` and manuscript-variants links, and repeats it without the line total below the text. CAL-MCP reads every copy, requires them to agree, and fails closed on a marker it cannot read exactly. `show all` and the variants toggle are not exposed.
 
 For a successful requested-page operation, the page CAL renders or explicitly selects must remain consistent with the caller's one-based `page`. If CAL supplies contradictory page metadata or non-adjacent navigation, CAL-MCP fails closed as parser drift rather than returning contradictory page/provenance metadata.
 
