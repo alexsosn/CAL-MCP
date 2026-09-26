@@ -1652,6 +1652,7 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
         empty_word_indexes=tuple(empty_word_indexes),
     )
 
+
 def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     tokens = tuple(
         token for link in line.links if (token := _token_from_link(link, source_url)) is not None
