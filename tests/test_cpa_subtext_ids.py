@@ -15,7 +15,7 @@ from cal_mcp.concordance import (
     KwicScopeKind,
     parse_kwic_result,
 )
-from cal_mcp.identifiers import is_cal_subtext_id
+from cal_mcp.identifiers import is_cal_machine_coordinate, is_cal_subtext_id
 from cal_mcp.lexicon import _Line, _Link
 from cal_mcp.texts import TextParseError, TextService, _page_navigation, parse_text_catalogue_page
 from cal_mcp.token_analysis import TokenAnalysisService
@@ -90,6 +90,26 @@ async def test_cpa_catalogue_preserves_alphanumeric_subtext_id() -> None:
 )
 def test_shared_subtext_id_grammar_is_narrow(value: object, expected: bool) -> None:
     assert is_cal_subtext_id(value) is expected
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("5500001001019001", True),
+        ("5500001001a019001", True),
+        ("1a1", True),
+        ("a5500001001019001", False),
+        ("5500001001ab019001", False),
+        ("5500001001A019001", False),
+        ("5500001001a", False),
+        ("5500001001a019b001", False),
+        ("5500001001a019001-", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_shared_machine_coordinate_grammar_is_narrow(value: object, expected: bool) -> None:
+    assert is_cal_machine_coordinate(value) is expected
 
 
 @pytest.mark.parametrize(
@@ -172,6 +192,29 @@ async def test_cpa_page_accepts_suffix_and_uses_current_cset() -> None:
     assert result.page.text.subtext_id == "01001a"
     assert result.page.lines[0].coordinate == "5500001001a019001"
     assert result.page.lines[0].text == "fixture-token"
+
+
+@pytest.mark.anyio
+async def test_cpa_page_rejects_machine_coordinate_from_another_subtext() -> None:
+    body = PAGE.read_text(encoding="utf-8")
+    assert "5500001001a019001" in body
+    body = body.replace("5500001001a019001", "5500001001b019001", 1)
+
+    class MutatedTransport(CpaTextTransport):
+        async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+            if request.path == "get_a_chapter.php":
+                self.requests.append(request)
+                query = urlencode(request.params)
+                return _response(
+                    body.encode(),
+                    f"https://cal.huc.edu/{request.path}?{query}",
+                )
+            return await super().__call__(request, config)
+
+    transport = MutatedTransport()
+    service = TextService(CalHttpClient(transport=transport))
+    with pytest.raises(TextParseError, match="requested subtext"):
+        await service.page("55000", subtext_id="01001a")
 
 
 @pytest.mark.anyio
