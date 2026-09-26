@@ -1617,8 +1617,11 @@ def _parse_text_machine_coordinate(
     value: str,
     *,
     expected_coordinate_prefix: str | None,
+    require_positive_decimal: bool = False,
 ) -> str:
     if expected_coordinate_prefix is None:
+        if require_positive_decimal:
+            return _parse_positive_id(value, "coordinate")
         return _parse_id(value, "coordinate")
     if not is_cal_machine_coordinate(value):
         raise TextParseError("CAL returned an invalid machine coordinate")
@@ -1653,6 +1656,7 @@ def _empty_word_slot(
     _parse_text_machine_coordinate(
         coordinate,
         expected_coordinate_prefix=expected_coordinate_prefix,
+        require_positive_decimal=True,
     )
 
     word = _single_query_value(query, "word", "empty-word-slot")
