@@ -14,7 +14,11 @@ from cal_mcp.client import (
     CalResponse,
 )
 from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
-from cal_mcp.identifiers import has_subtext_letter_suffix, is_cal_subtext_id
+from cal_mcp.identifiers import (
+    has_subtext_letter_suffix,
+    is_cal_machine_coordinate,
+    is_cal_subtext_id,
+)
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -796,12 +800,33 @@ def _parse_text_page(
         next_page=next_page,
         allow_navigation_without_page_count=mandaic_page_route,
     )
+    expected_coordinate_prefix = (
+        f"{requested_file_id}{requested_subtext_id}"
+        if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
+        else None
+    )
     table = _parse_text_table(response)
     if table.found:
-        text_lines = tuple(_text_line_from_row(row, response.url) for row in table.rows)
+        text_lines = tuple(
+            _text_line_from_row(
+                row,
+                response.url,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
+            for row in table.rows
+        )
     else:
         text_lines = tuple(
-            parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
+            parsed
+            for line in lines
+            if (
+                parsed := _parse_text_line(
+                    line,
+                    response.url,
+                    expected_coordinate_prefix=expected_coordinate_prefix,
+                )
+            )
+            is not None
         )
     if not text_lines:
         raise TextParseError("CAL text page contains no recognizable coordinate/token rows")
@@ -1588,7 +1613,28 @@ def _parse_text_table(response: CalResponse) -> _TextTable:
     return _TextTable(found=parser.found, rows=tuple(parser.rows))
 
 
-def _empty_word_slot(link: _Link) -> tuple[str, int]:
+def _parse_text_machine_coordinate(
+    value: str,
+    *,
+    expected_coordinate_prefix: str | None,
+) -> str:
+    if expected_coordinate_prefix is None:
+        return _parse_id(value, "coordinate")
+    if not is_cal_machine_coordinate(value):
+        raise TextParseError("CAL returned an invalid machine coordinate")
+    if not value.startswith(expected_coordinate_prefix):
+        raise TextParseError("CAL text coordinate differs from the requested subtext")
+    tail = value[len(expected_coordinate_prefix) :]
+    if not tail or not tail.isdigit():
+        raise TextParseError("CAL text coordinate lacks a decimal tail after its subtext")
+    return value
+
+
+def _empty_word_slot(
+    link: _Link,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> tuple[str, int]:
     """Validate one current CAL empty lexical slot and return coordinate/index."""
 
     parsed_href = urlsplit(link.href)
@@ -1604,7 +1650,10 @@ def _empty_word_slot(link: _Link) -> tuple[str, int]:
         raise TextParseError("CAL text row empty lexical link has unexpected selectors")
 
     coordinate = _single_query_value(query, "coord", "empty-word-slot")
-    _parse_positive_id(coordinate, "coordinate")
+    _parse_text_machine_coordinate(
+        coordinate,
+        expected_coordinate_prefix=expected_coordinate_prefix,
+    )
 
     word = _single_query_value(query, "word", "empty-word-slot")
     if not word.isdigit():
@@ -1616,7 +1665,12 @@ def _empty_word_slot(link: _Link) -> tuple[str, int]:
     return coordinate, word_index
 
 
-def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLine:
+def _text_line_from_row(
+    row: tuple[_TableCell, ...],
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> TextLine:
     if len(row) != 2:
         raise TextParseError("CAL text row does not have exactly two cells")
     coordinate_cell, token_cell = row
@@ -1630,12 +1684,21 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
     empty_slots: list[tuple[str, int]] = []
     for link in token_cell.links:
         if link.text.strip():
-            token = _token_from_link(link, source_url)
+            token = _token_from_link(
+                link,
+                source_url,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
             if token is None:
                 raise TextParseError("CAL text row token cell has a non-lexical link")
             tokens.append(token)
         else:
-            empty_slots.append(_empty_word_slot(link))
+            empty_slots.append(
+                _empty_word_slot(
+                    link,
+                    expected_coordinate_prefix=expected_coordinate_prefix,
+                )
+            )
 
     coordinates = [token.coordinate for token in tokens]
     coordinates.extend(coordinate for coordinate, _index in empty_slots)
@@ -1655,6 +1718,10 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
         if _is_path(link.href, "comment.php") or _is_path(link.href, "ask_ai_prompt.php"):
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
             link_coordinate = _single_query_value(query, "coord", "text-row")
+            _parse_text_machine_coordinate(
+                link_coordinate,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
             if link_coordinate != coordinate:
                 raise TextParseError("CAL text row comment/Ask-AI link names another coordinate")
             if _is_path(link.href, "comment.php"):
@@ -1685,9 +1752,23 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
     )
 
 
-def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
+def _parse_text_line(
+    line: _Line,
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> TextLine | None:
     tokens = tuple(
-        token for link in line.links if (token := _token_from_link(link, source_url)) is not None
+        token
+        for link in line.links
+        if (
+            token := _token_from_link(
+                link,
+                source_url,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
+        )
+        is not None
     )
     if not tokens:
         return None
@@ -1696,7 +1777,11 @@ def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     if any(token.coordinate != coordinate for token in tokens):
         raise TextParseError("CAL text row mixes multiple machine coordinates")
 
-    comment_link = _matching_comment_link(line.links, coordinate)
+    comment_link = _matching_comment_link(
+        line.links,
+        coordinate,
+        expected_coordinate_prefix=expected_coordinate_prefix,
+    )
     if comment_link is not None:
         display_coordinate = comment_link.text.strip() or None
         if display_coordinate is None or not line.text.startswith(display_coordinate):
@@ -1731,13 +1816,21 @@ def _is_lexical_link(link: _Link) -> bool:
     return _is_lexical_href(link.href)
 
 
-def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
+def _token_from_link(
+    link: _Link,
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> TextToken | None:
     if not _is_lexical_href(link.href):
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     coordinate = _single_query_value(query, "coord", "token")
     word = _single_query_value(query, "word", "token")
-    _parse_id(coordinate, "coordinate")
+    _parse_text_machine_coordinate(
+        coordinate,
+        expected_coordinate_prefix=expected_coordinate_prefix,
+    )
     if not word.isdigit():
         raise TextParseError("CAL lexical token link has a nonnumeric word index")
     text = link.text.strip()
@@ -1751,14 +1844,22 @@ def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
     )
 
 
-def _matching_comment_link(links: tuple[_Link, ...], coordinate: str) -> _Link | None:
+def _matching_comment_link(
+    links: tuple[_Link, ...],
+    coordinate: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> _Link | None:
     found: _Link | None = None
     for link in links:
         if not _is_path(link.href, "comment.php"):
             continue
         query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
         comment_coordinate = _single_query_value(query, "coord", "comment")
-        _parse_id(comment_coordinate, "coordinate")
+        _parse_text_machine_coordinate(
+            comment_coordinate,
+            expected_coordinate_prefix=expected_coordinate_prefix,
+        )
         if comment_coordinate != coordinate:
             raise TextParseError("CAL text row comment coordinate differs from token coordinate")
         if found is not None and found != link:
