@@ -69,6 +69,7 @@ async def test_cpa_catalogue_preserves_alphanumeric_subtext_id() -> None:
     assert [(text.file_id, text.subtext_id, text.label) for text in result.texts] == [
         ("55000", "01001a", "Gen 19 Damascus frag V"),
         ("55001", "002", "CPA Psalms chapter 2"),
+        ("55002", None, "CPA direct fixture title"),
     ]
     assert len(transport.requests) == 1
 
@@ -144,6 +145,27 @@ def test_cpa_catalogue_suffix_requires_exact_current_cset_route(mutated_href: st
 def test_cpa_catalogue_decimal_route_requires_exact_current_cset(mutated_href: str) -> None:
     body = CATALOGUE.read_text(encoding="utf-8")
     original = "/get_a_chapter.php?file=55001&sub=002&cset=C"
+    assert original in body
+    response = _response(
+        body.replace(original, mutated_href, 1).encode(),
+        "https://cal.huc.edu/showsubtexts.php?subtext=55",
+    )
+    with pytest.raises(TextParseError, match="CPA"):
+        parse_text_catalogue_page(response)
+
+
+@pytest.mark.parametrize(
+    "mutated_href",
+    [
+        "/get_a_chapter.php?file=55002",
+        "/get_a_chapter.php?file=55002&cset=R",
+        "/get_a_chapter.php?file=55002&cset=C&extra=1",
+        "/get_a_chapter.php?file=55002&sub=001&cset=C",
+    ],
+)
+def test_cpa_catalogue_direct_route_requires_exact_current_cset(mutated_href: str) -> None:
+    body = CATALOGUE.read_text(encoding="utf-8")
+    original = "/get_a_chapter.php?file=55002&cset=C"
     assert original in body
     response = _response(
         body.replace(original, mutated_href, 1).encode(),
@@ -263,6 +285,65 @@ async def test_decimal_cpa_page_uses_current_cset_route() -> None:
         "cset": "C",
         "page": "0",
     }
+
+
+@pytest.mark.anyio
+async def test_direct_cpa_page_uses_current_cset_route() -> None:
+    transport = DecimalCpaRouteTransport()
+    service = TextService(CalHttpClient(transport=transport))
+
+    result = await service.page("55002")
+
+    assert result.page is None
+    assert len(transport.requests) == 1
+    [request] = transport.requests
+    assert request.path == "get_a_chapter.php"
+    assert dict(request.params) == {
+        "file": "55002",
+        "cset": "C",
+        "page": "0",
+    }
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "/get_a_chapter.php?file=55002&page=1",
+        "/get_a_chapter.php?file=55002&page=1&cset=R",
+        "/get_a_chapter.php?file=55002&page=1&cset=C&extra=1",
+        "/get_a_chapter.php?file=55002&sub=001&page=1&cset=C",
+    ],
+)
+def test_direct_cpa_navigation_requires_exact_current_cset(href: str) -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(_Link(href=href, text="NEXT PAGE"),),
+        list_depth=0,
+    )
+    with pytest.raises(TextParseError, match="CPA"):
+        _page_navigation(
+            [line],
+            requested_file_id="55002",
+            requested_subtext_id=None,
+        )
+
+
+def test_direct_cpa_navigation_accepts_current_cset() -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(
+            _Link(
+                href="/get_a_chapter.php?file=55002&page=1&cset=C",
+                text="NEXT PAGE",
+            ),
+        ),
+        list_depth=0,
+    )
+    assert _page_navigation(
+        [line],
+        requested_file_id="55002",
+        requested_subtext_id=None,
+    ) == (None, 2)
 
 
 @pytest.mark.anyio
