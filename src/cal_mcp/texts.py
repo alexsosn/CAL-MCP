@@ -1613,7 +1613,7 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
 
     empty_word_indexes = [index for _coordinate, index in empty_slots]
     if len(set(empty_word_indexes)) != len(empty_word_indexes):
-        raise TextParseError("CAL text row repeats an empty word index")
+        raise TextParseError("CAL text row has a duplicate empty word index")
     rendered_word_indexes = {token.word_index for token in tokens}
     if rendered_word_indexes.intersection(empty_word_indexes):
         raise TextParseError("CAL text row empty word index collides with a rendered token")
