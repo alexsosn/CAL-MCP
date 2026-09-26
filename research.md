@@ -327,23 +327,30 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-038 — Some Syriac text rows encode a blank line as one empty word-0 link
+## R-038 — Syriac text rows can contain empty lexical word slots
 
-**Rechecked:** 2026-09-26 from the retained 2026-09-25 E2E capture; a fresh GET was not possible from the current runtime because `cal.huc.edu` DNS resolution is unavailable here.
+**Rechecked:** 2026-09-26 against current CAL from a bounded GitHub-runner probe.
 
-Ephrem text `60424` contains rows such as:
+The original 2026-09-25 E2E observation captured an all-empty row in Ephrem text `60424`:
 
 ```html
 <tr><td valign="top">1.005:08 </td><td><a href="getlex.php?coord=60424100508&word=0&hasvariant=0"></a> </td></tr>
 ```
 
-The retained capture had 29 rows of that shape. Detailed evidence and the bounded parser contract are in `docs/research/issue-168-blank-text-lines.md`.
+A 2026-09-26 live structural recheck corrected the initial interpretation. The current page has
+314 rows; 10 contain 29 empty `getlex.php` anchors. Only one row is all-empty. The other nine
+mix empty word slots with rendered lexical links, and empty slots occur at word indexes 0–11.
+All lexical links within each affected row share one machine coordinate. Detailed evidence and
+the revised representation are in `docs/research/issue-168-blank-text-lines.md`.
 
 Source:
 
 - https://cal.huc.edu/get_a_chapter.php?file=60424&page=0
 
-**Implication:** exactly one empty `getlex.php` anchor with `word=0&hasvariant=0` is a blank text line. Preserve its coordinate with empty text/tokens; do not relax empty-token validation for any other shape.
+**Implication:** rendered tokens remain `tokens`; exact current empty lexical slots are preserved
+separately as additive `empty_word_indexes`. Mixed and word>0 empty slots are valid current CAL
+data. Altered routes/selectors, coordinate disagreement, duplicate slots, or collisions with
+rendered word indexes fail closed.
 
 
 ## R-037 — Dictionary-collation result headings use shorter titles for four sources
