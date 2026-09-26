@@ -66,7 +66,7 @@ was retained.
 
 Current `60424` evidence:
 
-- the structural probe counted 314 `<tr>` elements under the current text-display region; a later installed-stdio verification returned 313 parsed two-cell lines. The row count is not an invariant for this issue;
+- 313 actual text rows. The first structural probe reported 314 because its temporary parser kept the text-table flag set until `</table>`; current CAL starts the following navigation `<table>` without closing `text-display`, so that probe counted one navigation `<tr>`. The production parser deliberately ends `text-display` when the next `<table>` starts, and installed-stdio verification returned 313 lines;
 - 10 rows contain empty `getlex.php` anchors;
 - 29 empty anchors total;
 - empty anchors occur at CAL word indexes 0 through 11;
