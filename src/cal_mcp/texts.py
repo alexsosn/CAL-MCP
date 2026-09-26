@@ -1558,9 +1558,15 @@ def _parse_text_table(response: CalResponse) -> _TextTable:
 def _blank_text_line_coordinate(link: _Link) -> str:
     """Validate CAL's researched empty word-0 sentinel and return its coordinate."""
 
-    if not _is_path(link.href, "getlex.php"):
+    parsed_href = urlsplit(link.href)
+    if (
+        parsed_href.scheme
+        or parsed_href.netloc
+        or parsed_href.fragment
+        or parsed_href.path not in {"getlex.php", "/getlex.php"}
+    ):
         raise TextParseError("CAL blank text row has an unexpected empty link route")
-    query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+    query = parse_qs(parsed_href.query, keep_blank_values=True)
     if set(query) != {"coord", "word", "hasvariant"}:
         raise TextParseError("CAL blank text row empty link has unexpected selectors")
     coordinate = _single_query_value(query, "coord", "blank-text-row")
