@@ -26,7 +26,7 @@ With no `category_id`, the tool requests the current root text catalogue. With a
 The result contains three ordered collections, each preserving order within its own route family:
 
 - `categories`: ordinary CAL category references with decimal `category_id` and rendered `label`;
-- `texts`: CAL text references with `file_id`, optional `subtext_id`, rendered `label`, and optional `description` when that surface provides one;
+- `texts`: CAL text references with decimal `file_id`, optional `subtext_id` in CAL's current digits-plus-optional-lowercase-suffix grammar, rendered `label`, and optional `description` when that surface provides one;
 - `specialized_collections`: CAL-MCP routing references for current CAL branches that cannot be represented truthfully as a decimal generic category. Each item names a `follow_up_tool`, its `selector_name`, and the selectors supported by this CAL-MCP build.
 
 Every catalogue result also includes two traversal facts for machine callers:
@@ -78,7 +78,7 @@ cal_text_information(
 
 CAL text pages expose a dedicated **Text Information** follow-up containing source-corpus, edition, editorial, numbering, manuscript/findspot, bibliography, photo, and quality/caution notes depending on the corpus. The structure is heterogeneous, so CAL-MCP preserves the ordered rendered metadata text instead of inventing fields such as `edition`, `manuscript`, or `bibliography` that CAL does not mark consistently.
 
-Use a `file_id` and optional `subtext_id` already returned by text discovery/page operations. CAL-MCP validates both as decimal identifiers and keeps the exact strings, including leading zeroes. Internally the private CAL selector is deterministic:
+Use a `file_id` and optional `subtext_id` already returned by text discovery/page operations. `file_id` remains decimal. A non-null `subtext_id` must be decimal digits with an optional single lowercase ASCII letter suffix; CAL currently uses suffix-bearing values such as `01001a` for Christian Palestinian Aramaic. CAL-MCP keeps the exact strings, including leading zeroes and any returned suffix. Internally the private CAL selector is deterministic:
 
 ```text
 subtext_id is null -> coord=<file_id>
@@ -135,9 +135,11 @@ This tool retrieves exactly one page from CAL's text browser. CAL-MCP keeps CAL'
 
 ### Subtexts
 
-Pass `subtext_id` exactly as CAL returned it from `cal_text_catalogue`, a KWIC hit, or another text result, including leading zeroes (`001`, not `1`). CAL matches the `sub` selector as a **prefix**, and CAL-MCP cannot tell from the returned page whether that happened. For example, `cal_text_page("56000", subtext_id="11")` returns CAL's page for every Samaritan Targum subtext starting with `11` (Genesis chapters 12–19 as of 2026-09-25), under CAL's label for the first one, "SamTgJ Gen chapter 12". CAL-MCP returns that page as CAL renders it and does not pad or reinterpret the value. Every returned line keeps its own CAL `coordinate`, which embeds the line's real subtext after the file identifier. Some such pages fail closed instead, when their lines do not follow the ordinary coordinate format (for example magic bowls `70700` with `1`).
+Pass `subtext_id` exactly as CAL returned it from `cal_text_catalogue`, a KWIC hit, or another text result, including leading zeroes (`001`, not `1`) and any lowercase suffix. The accepted current grammar is one or more decimal digits plus an optional single lowercase ASCII letter. Christian Palestinian Aramaic currently uses suffix-bearing selectors such as `01001a`; CAL-MCP preserves that value and uses CAL's current CPA rendering selector internally. Other letter placement, multiple-letter suffixes, uppercase suffixes, punctuation, whitespace, and arbitrary strings are rejected locally.
 
-CAL identifies the text on a subdivided page by a file-information link whose coordinate is the file identifier followed by the submitted `sub` value (for example `56000112` for `56000`/`112`; since 2026-09). CAL-MCP accepts that coordinate, or the bare file identifier used by the earlier layout, and fails closed on any coordinate naming a different file or subtext.
+For ordinary decimal subtexts, CAL matches the `sub` selector as a **prefix**, and CAL-MCP cannot tell from the returned page whether that happened. For example, `cal_text_page("56000", subtext_id="11")` returns CAL's page for every Samaritan Targum subtext starting with `11` (Genesis chapters 12–19 as of 2026-09-25), under CAL's label for the first one, "SamTgJ Gen chapter 12". CAL-MCP returns that page as CAL renders it and does not pad or reinterpret the value. Every returned line keeps its own CAL `coordinate`, which embeds the line's real subtext after the file identifier. Some such pages fail closed instead, when their lines do not follow the ordinary coordinate format (for example magic bowls `70700` with `1`).
+
+CAL identifies the text on a subdivided page by a file-information link whose coordinate is the file identifier followed by the submitted `sub` value (for example `56000112` for `56000`/`112`, and `5500001001a` for CPA `55000`/`01001a`; since 2026-09). CAL-MCP accepts that exact composed coordinate, or the bare file identifier used by the earlier layout, and fails closed on any coordinate naming a different file or subtext.
 
 ### Page numbering
 
