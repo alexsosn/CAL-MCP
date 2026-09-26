@@ -1222,9 +1222,7 @@ def _text_ref_from_link(
     elif file_id in _CPA_SUBDIVIDED_FILE_IDS and (
         set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]
     ):
-        raise TextParseError(
-            "CAL subdivided CPA text link lacks the exact current cset=C route"
-        )
+        raise TextParseError("CAL subdivided CPA text link lacks the exact current cset=C route")
 
     if sub_values is not None:
         if len(sub_values) != 1:
