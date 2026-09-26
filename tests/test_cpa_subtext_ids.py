@@ -18,6 +18,7 @@ from cal_mcp.concordance import (
 from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _Line, _Link
 from cal_mcp.texts import TextParseError, TextService, _page_navigation, parse_text_catalogue_page
+from cal_mcp.token_analysis import TokenAnalysisService
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 RETRIEVED_AT = datetime(2026, 9, 26, tzinfo=UTC)
@@ -169,6 +170,7 @@ async def test_cpa_page_accepts_suffix_and_uses_current_cset() -> None:
     assert result.page is not None
     assert result.page.text.file_id == "55000"
     assert result.page.text.subtext_id == "01001a"
+    assert result.page.lines[0].coordinate == "5500001001a019001"
     assert result.page.lines[0].text == "fixture-token"
 
 
@@ -199,6 +201,60 @@ async def test_text_services_still_reject_non_subtext_shapes(bad: str) -> None:
             else:
                 await service.information("55000", subtext_id=bad)
         assert transport.requests == []
+
+
+class TokenAnalysisTransport:
+    def __init__(self) -> None:
+        self.requests: list[CalRequest] = []
+
+    async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        self.requests.append(request)
+        query = urlencode(request.params)
+        return _response(
+            (FIXTURES / "token_analysis_not_found.html").read_bytes(),
+            f"https://cal.huc.edu/{request.path}?{query}",
+        )
+
+
+@pytest.mark.anyio
+async def test_token_analysis_accepts_coordinate_returned_by_cpa_page() -> None:
+    transport = TokenAnalysisTransport()
+    service = TokenAnalysisService(CalHttpClient(transport=transport))
+
+    result = await service.analyze("5500001001a019001", 0)
+
+    assert result.coordinate == "5500001001a019001"
+    assert len(transport.requests) == 1
+    [request] = transport.requests
+    assert request.path == "getlex.php"
+    assert dict(request.params) == {
+        "coord": "5500001001a019001",
+        "word": "0",
+    }
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "a5500001001019001",
+        "5500001001ab019001",
+        "5500001001A019001",
+        "5500001001a",
+        "5500001001a019b001",
+        "5500001001a019001-",
+    ],
+)
+async def test_token_analysis_rejects_broader_alphanumeric_coordinates(bad: str) -> None:
+    transport = TokenAnalysisTransport()
+    service = TokenAnalysisService(CalHttpClient(transport=transport))
+
+    with pytest.raises(ValueError):
+        await service.analyze(bad, 0)
+
+    assert transport.requests == []
+
 
 
 class FullContextTransport:
