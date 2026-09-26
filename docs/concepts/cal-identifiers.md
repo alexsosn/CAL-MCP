@@ -20,7 +20,7 @@ CAL-MCP preserves `file_id` as a string of decimal digits. It is not converted t
 
 An optional CAL navigation identifier used when one file has explicitly selectable subtexts/sections in the current text interfaces.
 
-It is preserved as an opaque decimal string. CAL-MCP does not infer a subtext identifier from a chapter label or from the file identifier.
+It is preserved as an opaque string in CAL's currently observed subtext grammar: one or more decimal digits with an optional single lowercase ASCII letter suffix. Most current values are decimal (for example `001` or `112`); Christian Palestinian Aramaic currently uses values such as `01001a`. CAL-MCP preserves leading zeroes and the suffix exactly and does not infer a subtext identifier from a chapter label or from the file identifier.
 
 ### `category_id`
 
@@ -58,10 +58,12 @@ A page number is therefore an adapter navigation value, not a persistent identif
 
 ## Preservation and validation
 
-For opaque decimal identifiers (`file_id`, `subtext_id`, `category_id`, machine coordinates), CAL-MCP:
+For opaque identifiers, CAL-MCP validates only the representation observed on the relevant current CAL surface. `file_id`, `category_id`, and the decimal machine-coordinate workflows remain decimal-only; `subtext_id` accepts decimal digits plus an optional single lowercase ASCII letter suffix.
+
+CAL-MCP:
 
 - validates only the representation needed for a safe current CAL request;
-- preserves the digit string exactly;
+- preserves the identifier string exactly;
 - does not cast it to an integer for storage;
 - does not normalize leading zeroes away;
 - does not derive one identifier from another;
