@@ -197,8 +197,9 @@ async def test_cpa_page_accepts_suffix_and_uses_current_cset() -> None:
 @pytest.mark.anyio
 async def test_cpa_page_rejects_machine_coordinate_from_another_subtext() -> None:
     body = PAGE.read_text(encoding="utf-8")
-    assert "5500001001a019001" in body
-    body = body.replace("5500001001a019001", "5500001001b019001", 1)
+    original = "coord=5500001001a019001"
+    assert original in body
+    body = body.replace(original, "coord=5500001001b019001", 1)
 
     class MutatedTransport(CpaTextTransport):
         async def __call__(self, request: CalRequest, config: CalClientConfig) -> CalResponse:
