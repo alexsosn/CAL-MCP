@@ -82,6 +82,13 @@ This matters for two public surfaces:
 `cal_text_line_comments` already accepts bounded ASCII alphanumeric coordinates and therefore
 does not need widening for this evidence.
 
+The final installed-stdio acceptance call then submitted the first returned CPA token
+(`5500001001a019001`, word 0) to `cal_token_analysis`. The input was accepted, CAL was reached,
+and CAL answered HTTP 200. Parsing then failed closed with
+`CAL token-analysis result marker is not followed by a candidate`. That is a separate
+token-analysis result-shape problem, not an identifier/routing failure; the evidence has been added
+to existing release blocker #179 for bounded investigation there.
+
 For a suffix-bearing text page, CAL-MCP should additionally require every token/line machine
 coordinate to start with the exact requested `file_id + subtext_id` prefix. That keeps the new
 acceptance narrow: an unrelated alphanumeric coordinate on a CPA page remains parser drift.
