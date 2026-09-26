@@ -892,9 +892,7 @@ class TextService:
         subtext_id: str | None = None,
     ) -> TextInformationResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = (
-            None if subtext_id is None else _validate_subtext_id(subtext_id)
-        )
+        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
         coord = (
             normalized_file
             if normalized_subtext is None
