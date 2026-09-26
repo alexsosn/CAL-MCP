@@ -40,3 +40,21 @@ Date: 2026-09-26. Research: `docs/research/issue-170-cpa-subtext-ids.md`.
     workflow afterward.
 11. Perform a logically independent adversarial review of the exact final SHA. Any finding is
     fixed, retested and re-reviewed before merge.
+
+## Review-finding amendment
+
+The final adversarial review discovered that `has_subtext_letter_suffix()` is not a valid CPA
+routing discriminator: current category 55 has 401 decimal-subtext routes with `cset=C` in
+addition to 150 suffix-bearing routes.
+
+Before merge:
+
+12. Add RED coverage for a current decimal CPA route (`55001/002`):
+    - catalogue parsing preserves it;
+    - `cal_text_page("55001", subtext_id="002")` must submit `cset=C`;
+    - CPA page navigation for that decimal subtext must require the exact current selector set.
+13. GREEN with an evidence-backed current CPA file allowlist; suffix detection remains only an
+    identifier/coordinate-shape concern.
+14. Re-run both CI matrices and bounded installed-stdio acceptance for both one suffix-bearing and
+    one decimal CPA route.
+15. Delete temporary workflows, then perform a new logically independent exact-head review.
