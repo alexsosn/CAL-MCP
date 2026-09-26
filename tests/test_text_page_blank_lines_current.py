@@ -54,6 +54,9 @@ async def test_all_empty_row_preserves_coordinate_and_empty_word_index() -> None
     assert line.empty_word_indexes == (0,)
     assert line.comment_url is None
 
+    public = result.to_dict()
+    assert public["page"]["lines"][0]["empty_word_indexes"] == [0]
+
 
 @pytest.mark.anyio
 async def test_mixed_row_keeps_rendered_token_and_records_empty_slot() -> None:
