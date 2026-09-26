@@ -256,7 +256,6 @@ async def test_token_analysis_rejects_broader_alphanumeric_coordinates(bad: str)
     assert transport.requests == []
 
 
-
 class FullContextTransport:
     def __init__(self) -> None:
         self.requests: list[CalRequest] = []
