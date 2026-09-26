@@ -1447,8 +1447,7 @@ def _page_navigation(
                     requested_subtext_id is not None
                     and has_subtext_letter_suffix(requested_subtext_id)
                     and (
-                        set(query) != {"file", "sub", "page", "cset"}
-                        or query.get("cset") != ["C"]
+                        set(query) != {"file", "sub", "page", "cset"} or query.get("cset") != ["C"]
                     )
                 ):
                     raise TextParseError(
