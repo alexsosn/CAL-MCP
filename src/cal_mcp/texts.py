@@ -963,9 +963,7 @@ class TextService:
         page: int = 1,
     ) -> TextPageResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = (
-            None if subtext_id is None else _validate_subtext_id(subtext_id)
-        )
+        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise CalInputError("page must be a positive integer")
 
