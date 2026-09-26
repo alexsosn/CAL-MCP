@@ -337,8 +337,10 @@ The original 2026-09-25 E2E observation captured an all-empty row in Ephrem text
 <tr><td valign="top">1.005:08 </td><td><a href="getlex.php?coord=60424100508&word=0&hasvariant=0"></a> </td></tr>
 ```
 
-A 2026-09-26 live structural recheck corrected the initial interpretation. The current page has
-314 rows; 10 contain 29 empty `getlex.php` anchors. Only one row is all-empty. The other nine
+A 2026-09-26 live structural recheck corrected the initial interpretation. The structural probe counted 314 `<tr>` elements in the current text-display region; 10 contain
+29 empty `getlex.php` anchors. A later installed-stdio verification returned 313 parsed two-cell
+lines while preserving the same 29 slots and nine mixed rows, so raw row count is not treated as
+an invariant. Only one affected row is all-empty. The other nine
 mix empty word slots with rendered lexical links, and empty slots occur at word indexes 0–11.
 All lexical links within each affected row share one machine coordinate. Detailed evidence and
 the revised representation are in `docs/research/issue-168-blank-text-lines.md`.
