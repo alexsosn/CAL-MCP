@@ -14,6 +14,7 @@ from cal_mcp.client import (
     CalResponse,
 )
 from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
+from cal_mcp.identifiers import has_subtext_letter_suffix, is_cal_subtext_id
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -891,7 +892,9 @@ class TextService:
         subtext_id: str | None = None,
     ) -> TextInformationResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
+        normalized_subtext = (
+            None if subtext_id is None else _validate_subtext_id(subtext_id)
+        )
         coord = (
             normalized_file
             if normalized_subtext is None
@@ -960,7 +963,9 @@ class TextService:
         page: int = 1,
     ) -> TextPageResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
+        normalized_subtext = (
+            None if subtext_id is None else _validate_subtext_id(subtext_id)
+        )
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise CalInputError("page must be a positive integer")
 
@@ -985,6 +990,8 @@ class TextService:
             params = [("file", normalized_file)]
             if normalized_subtext is not None:
                 params.append(("sub", normalized_subtext))
+                if has_subtext_letter_suffix(normalized_subtext):
+                    params.append(("cset", "C"))
             params.append(("page", str(page - 1)))
         submitted_sub = next((value for name, value in params if name == "sub"), None)
 
@@ -1025,6 +1032,14 @@ def _validate_id(value: str, name: str) -> str:
     return value
 
 
+def _validate_subtext_id(value: str) -> str:
+    if not is_cal_subtext_id(value):
+        raise CalInputError(
+            "subtext_id must be CAL decimal digits with an optional lowercase letter suffix"
+        )
+    return value
+
+
 def _validate_line_comment_coordinate(value: str) -> str:
     if not isinstance(value, str) or _LINE_COMMENT_COORD_RE.fullmatch(value) is None:
         raise CalInputError("coordinate must be a 1-64 character ASCII alphanumeric CAL coordinate")
@@ -1034,6 +1049,14 @@ def _validate_line_comment_coordinate(value: str) -> str:
 def _parse_id(value: str, name: str) -> str:
     if _ID_RE.fullmatch(value) is None:
         raise TextParseError(f"CAL returned a non-decimal {name}")
+    return value
+
+
+def _parse_subtext_id(value: str) -> str:
+    if not is_cal_subtext_id(value):
+        raise TextParseError(
+            "CAL returned a subtext_id outside the digits-plus-optional-lowercase-suffix contract"
+        )
     return value
 
 
@@ -1155,7 +1178,12 @@ def _text_ref_from_link(
         if len(sub_values) != 1:
             raise TextParseError("CAL text link has repeated sub identifiers")
         if sub_values[0]:
-            subtext_id = _parse_id(sub_values[0], "subtext_id")
+            subtext_id = _parse_subtext_id(sub_values[0])
+            if has_subtext_letter_suffix(subtext_id):
+                if set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]:
+                    raise TextParseError(
+                        "CAL alphanumeric subtext link lacks the current CPA cset=C route"
+                    )
 
     rendered_label = (label if label is not None else link.text).strip()
     if not rendered_label:
@@ -1300,7 +1328,6 @@ def _page_text_ref(
                 continue
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
             coord = _single_query_value(query, "coord", "file-info")
-            _parse_id(coord, "file_id")
             if coord not in accepted_coords:
                 raise TextParseError(
                     "CAL text page file identifier differs from the requested file"
@@ -1389,7 +1416,7 @@ def _page_navigation(
                             "CAL text page navigation has repeated sub identifiers"
                         )
                     if sub_values[0]:
-                        subtext_id = _parse_id(sub_values[0], "subtext_id")
+                        subtext_id = _parse_subtext_id(sub_values[0])
                 if subtext_id != requested_subtext_id:
                     raise TextParseError(
                         "CAL text page navigation subtext differs from requested subtext"
