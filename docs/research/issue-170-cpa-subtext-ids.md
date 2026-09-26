@@ -195,3 +195,24 @@ Implementation consequence:
 - do not infer CPA routing from the generic `55` prefix or from “has a suffix” alone.
 
 The review probe made exactly one CAL GET to the category-55 catalogue.
+
+## Second adversarial review amendment — CPA also has four direct `cset=C` texts
+
+The category-55 live MCP acceptance returned 555 text references, while the complete subtext-route
+audit accounted for 551. A second one-request structural review resolved the four remaining
+`get_a_chapter.php` routes. They are direct CPA texts with no `sub` selector:
+
+- `file=55002&cset=C`;
+- `file=55406&cset=C`;
+- `file=55407&cset=C`;
+- `file=55430&cset=C`.
+
+All four use the exact selector set `file,cset` and `cset=C`.
+
+This changes the routing model again: the current CPA catalogue has **551 subdivided routes**
+(`file,sub,cset=C`) and **4 direct routes** (`file,cset=C`). The adapter therefore needs
+separate evidence-backed CPA subdivided/direct file sets (or equivalent exact semantics), with
+`cset=C` on both route families. A direct CPA follow-up must not be sent as the generic
+`file,page` route without the CPA rendering selector.
+
+The review probe made exactly one CAL GET and retained only route selectors.
