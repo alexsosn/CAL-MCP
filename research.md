@@ -327,6 +327,32 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-039 — Christian Palestinian Aramaic uses suffix-bearing subtext IDs
+
+**Rechecked:** 2026-09-26 against current CAL; issue #170.
+
+The current Christian Palestinian Aramaic catalogue at
+`showsubtexts.php?subtext=55` exposes ordinary text links such as
+`get_a_chapter.php?file=55000&sub=01001a&cset=C`. Current observed selectors include
+`01001a`, `01001b`, `01001c`, `01002a`, `02003a`, and `03007a`. The first route was
+opened successfully, and its Text Information selector is the composed
+`get_file_info.php?coord=5500001001a`.
+
+Detailed evidence and the code-impact audit are in
+`docs/research/issue-170-cpa-subtext-ids.md`.
+
+Sources:
+
+- https://cal.huc.edu/showsubtexts.php?subtext=55
+- https://cal.huc.edu/get_a_chapter.php?file=55000&sub=01001a&cset=C
+- https://cal.huc.edu/get_file_info.php?coord=5500001001a
+
+**Implication:** `subtext_id` is not globally decimal. CAL-MCP preserves the currently observed
+grammar of decimal digits plus an optional single lowercase ASCII suffix and shares that grammar
+between text and KWIC/full-context workflows. File/category IDs and decimal machine-coordinate
+workflows remain decimal-only. Suffix-bearing CPA text-page routes retain CAL's current
+`cset=C`; malformed near-misses and contradictory returned routes fail closed.
+
 ## R-038 — Syriac text rows can contain empty lexical word slots
 
 **Rechecked:** 2026-09-26 against current CAL from a bounded GitHub-runner probe.
