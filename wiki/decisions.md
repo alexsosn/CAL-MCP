@@ -210,8 +210,12 @@ Consequences:
 
 - preserve leading zeroes and any lowercase suffix exactly;
 - use the same grammar for text catalogue/page/information and KWIC/full-context subtext fields;
-- do not widen generic file IDs, category IDs, text IDs, target coordinates, or decimal machine
-  coordinates;
+- do not widen generic file IDs, category IDs, text IDs, or KWIC target coordinates;
+- current text/token machine coordinates may be decimal or use CAL's observed digits + one
+  lowercase ASCII letter + decimal-tail form; suffix-bearing text pages additionally require the
+  exact requested `file_id + subtext_id` prefix;
+- `cal_token_analysis` accepts that same machine-coordinate grammar so coordinates returned by
+  `cal_text_page` remain composable;
 - suffix-bearing current CPA text-page navigation must retain `cset=C`; contradictory routes fail
   closed rather than being normalized;
 - values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
