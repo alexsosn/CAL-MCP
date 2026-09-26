@@ -1,18 +1,31 @@
-# Issue #168 plan — preserve researched blank text lines
+# Issue #168 plan — preserve CAL empty lexical word slots
 
-Date: 2026-09-26. Research: `docs/research/issue-168-blank-text-lines.md`, committed first.
+Date: 2026-09-26. Research was committed before behavior changes and amended after live verification
+showed that the initial single-blank-line hypothesis was incomplete.
 
-1. Add a reduced fixture containing the exact captured `60424` blank row.
-2. RED tests through `TextService.page`:
-   - the blank row is returned with its machine/display coordinates, empty text and no tokens;
-   - a current normal row (existing Philemon fixture) remains unchanged;
-   - an empty link at `word=1` fails closed;
-   - an empty link mixed with a real token fails closed;
-   - an altered route/selectors fail closed.
-3. Demonstrate RED in PR CI before production code is added.
-4. GREEN in the current table-row reader only; do not weaken `_token_from_link` globally.
-5. Run focused + full deterministic CI.
-6. Update `docs/tools/texts.md`, `research.md`, fixture provenance and CHANGELOG.
-7. Independently adversarially review the exact candidate SHA, including mutation-style checks of
-   every condition that distinguishes the blank-line sentinel from malformed token rows.
-8. Merge only after review approval and green CI.
+1. Preserve the original reduced all-empty row fixture for coordinate `60424100508`.
+2. Add a clearly marked structural mixed-row fixture using live-observed coordinate `60424100523`:
+   a rendered word-0 link plus the observed empty word-1 slot. No uncaptured scholarly token text is
+   represented as CAL data.
+3. RED tests through `TextService.page`:
+   - all-empty row → coordinate preserved, `text=""`, `tokens=[]`,
+     `empty_word_indexes=[0]`;
+   - mixed row → rendered token remains in `tokens`, empty slot is kept in
+     `empty_word_indexes=[1]`, and line text contains only rendered text;
+   - ordinary current rows → `empty_word_indexes=[]`;
+   - empty slot with altered route/selectors, non-positive/non-decimal coordinate or nonnumeric
+     word index fails closed;
+   - empty and rendered links naming different coordinates fail closed;
+   - duplicate empty indexes and empty/rendered index collisions fail closed.
+4. Demonstrate the new RED against the current partial implementation before revising production
+   code.
+5. GREEN only in the current table-row reader. Keep the generic `_token_from_link` contract
+   unchanged.
+6. Add additive `TextLine.empty_word_indexes` serialization and user documentation; no new tool
+   or request is introduced.
+7. Run both deterministic CI matrices.
+8. Delete the temporary live-research workflow.
+9. Verify installed `cal-mcp` over stdio against live `cal_text_page("60424")`: the operation
+   succeeds and exposes the known all-empty slot plus mixed empty slots.
+10. Perform a new logically independent adversarial review of the exact final SHA, including the
+    superseded acceptance criterion and fail-closed guards. Merge only after approval and green CI.
