@@ -366,7 +366,10 @@ subdivided routes (150 suffix-bearing and 401 decimal-subtext) plus four direct 
 (`55002`, `55406`, `55407`, `55430`). Every current route uses `cset=C`. CAL-MCP
 therefore keeps separate evidence-backed CPA subdivided/direct file sets rather than inferring
 routing from suffix presence or a generic `55` prefix. Malformed near-misses and contradictory
-returned routes fail closed.
+returned routes fail closed. Representative direct file `55002` reaches the exact
+`file=55002&cset=C&page=0` route successfully but its current linkless `text-display` content
+still fails in the independent unlemmatized/plain-text parser class tracked by release blocker
+#185.
 
 ## R-038 — Syriac text rows can contain empty lexical word slots
 
