@@ -108,9 +108,9 @@ async def test_malformed_all_empty_slot_shapes_fail_closed(old: str, new: str) -
 async def test_empty_slot_coordinate_must_match_rendered_tokens() -> None:
     body = MIXED.read_text(encoding="utf-8")
     # Change only the empty slot's coordinate.
-    marker = 'coord=60424100523&word=1'
+    marker = "coord=60424100523&word=1"
     assert marker in body
-    body = body.replace(marker, 'coord=60424100524&word=1', 1)
+    body = body.replace(marker, "coord=60424100524&word=1", 1)
     with pytest.raises(TextParseError, match="coordinate"):
         await _page(body.encode(), "60424")
 
@@ -128,8 +128,8 @@ async def test_duplicate_empty_word_index_fails_closed() -> None:
 @pytest.mark.anyio
 async def test_empty_word_index_cannot_collide_with_rendered_token() -> None:
     body = MIXED.read_text(encoding="utf-8")
-    assert "word=1&hasvariant=0\"></a>" in body
-    body = body.replace("word=1&hasvariant=0\"></a>", "word=0&hasvariant=0\"></a>", 1)
+    assert 'word=1&hasvariant=0"></a>' in body
+    body = body.replace('word=1&hasvariant=0"></a>', 'word=0&hasvariant=0"></a>', 1)
     with pytest.raises(TextParseError, match="collides"):
         await _page(body.encode(), "60424")
 
