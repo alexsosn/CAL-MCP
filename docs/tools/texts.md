@@ -170,7 +170,7 @@ CAL's current browser also exposes a `show all` navigation path. CAL-MCP **does 
 
 A found page has a `text` reference plus ordered `lines`. Each line preserves the CAL relationships that are explicit in the current page:
 
-- `coordinate`: CAL's machine coordinate used by linked operations;
+- `coordinate`: CAL's machine coordinate used by linked operations; most are decimal, while current CPA coordinates can embed the lowercase subtext suffix (for example `5500001001a019001`);
 - `display_coordinate`: the rendered scholarly line/page locator when CAL supplies one;
 - `text`: the rendered text of that line;
 - `tokens`: ordered rendered linked tokens, each with the CAL machine coordinate, zero-based CAL `word_index`, rendered token text, and absolute `lexical_url`;
@@ -181,7 +181,7 @@ CAL renders each line as a table row with two cells: the display coordinate, and
 
 CAL also renders explicit empty lexical slots on some fragmentary Syriac rows. Current CAL uses empty relative `getlex.php` anchors with the same machine coordinate as the rendered tokens, a non-negative `word` index, and `hasvariant=0`. CAL-MCP keeps rendered links in `tokens` and preserves the empty slots separately in `empty_word_indexes`. Thus an all-empty row can have `text: ""`, `tokens: []`, and `empty_word_indexes: [0]`; a mixed row keeps its rendered text/tokens and records the empty indexes alongside them. The adapter does not invent token text. Altered routes/selectors, coordinate disagreement, duplicate empty indexes, or an empty index colliding with a rendered token fail closed.
 
-CAL currently exposes lexical token links through more than one endpoint family, including `bablex.php` and `getlex.php`. CAL-MCP preserves whichever lexical URL the page supplies and applies the same coordinate/word-index validation to both. It does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
+CAL currently exposes lexical token links through more than one endpoint family, including `bablex.php` and `getlex.php`. CAL-MCP preserves whichever lexical URL the page supplies and applies the same coordinate/word-index validation to both. On suffix-bearing CPA pages, each returned machine coordinate must begin with the exact requested `file_id + subtext_id` and continue with a decimal tail; a coordinate for another subtext fails closed. CAL-MCP does not infer a missing coordinate, reconstruct a display locator, or call a token link automatically. The `lexical_url` is provenance/navigation information; use `cal_token_analysis` in a separate explicit caller-controlled step.
 
 ### Missing text and parser drift
 
