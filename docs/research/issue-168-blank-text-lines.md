@@ -66,7 +66,7 @@ was retained.
 
 Current `60424` evidence:
 
-- 314 text rows total;
+- the structural probe counted 314 `<tr>` elements under the current text-display region; a later installed-stdio verification returned 313 parsed two-cell lines. The row count is not an invariant for this issue;
 - 10 rows contain empty `getlex.php` anchors;
 - 29 empty anchors total;
 - empty anchors occur at CAL word indexes 0 through 11;
@@ -103,3 +103,11 @@ lexical links in one row must name the same coordinate. Duplicate empty indexes 
 that collides with a rendered token index fail closed.
 
 This is an additive output-schema change. It does not add requests or expose a new operation.
+
+### Final live verification
+
+On 2026-09-26, an installed `cal-mcp` candidate was launched over stdio and
+`cal_text_page("60424")` was called once against current CAL. The call succeeded and returned
+29 `empty_word_indexes` slots across 9 mixed rows plus the known all-empty row. The serialized
+page contained 313 parsed lines. The earlier structural probe's 314 count referred to raw
+`<tr>` elements and is deliberately not treated as a public line-count contract.
