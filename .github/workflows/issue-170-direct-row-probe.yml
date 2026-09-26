@@ -16,11 +16,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Inspect direct CPA text row structure
+      - name: Inspect direct CPA structural markers
         run: |
           python - <<'PY'
           import urllib.request
+          from collections import Counter
           from html.parser import HTMLParser
+          from urllib.parse import urlsplit
 
           url = "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=0"
           req = urllib.request.Request(
@@ -30,49 +32,43 @@ jobs:
           with urllib.request.urlopen(req, timeout=20) as response:
               body = response.read().decode("utf-8", "replace")
 
-          class Rows(HTMLParser):
+          class Shape(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.in_text = False
-                  self.row = None
-                  self.cell = None
-                  self.rows = []
+                  self.tags = Counter()
+                  self.table_classes = Counter()
+                  self.span_classes = Counter()
+                  self.link_routes = Counter()
+                  self.text_chunks_by_parent = Counter()
+                  self.stack = []
               def handle_starttag(self, tag, attrs):
                   a = dict(attrs)
+                  self.tags[tag] += 1
+                  self.stack.append(tag)
                   if tag == "table":
-                      classes = (a.get("class") or "").split()
-                      if "text-display" in classes:
-                          self.in_text = True
-                      elif self.in_text:
-                          self.in_text = False
-                  elif self.in_text and tag == "tr":
-                      self.row = []
-                  elif self.row is not None and tag == "td":
-                      self.cell = {"links": 0, "has_text": False}
-                      self.row.append(self.cell)
-                  elif self.cell is not None and tag == "a":
-                      self.cell["links"] += 1
-              def handle_data(self, data):
-                  if self.cell is not None and data.strip():
-                      self.cell["has_text"] = True
+                      self.table_classes[a.get("class") or "<none>"] += 1
+                  if tag == "span":
+                      self.span_classes[a.get("class") or "<none>"] += 1
+                  if tag == "a":
+                      path = urlsplit(a.get("href") or "").path
+                      self.link_routes[path.rsplit("/", 1)[-1] or "<empty>"] += 1
               def handle_endtag(self, tag):
-                  if tag == "td":
-                      self.cell = None
-                  elif tag == "tr" and self.row is not None:
-                      self.rows.append(tuple((c["links"], c["has_text"]) for c in self.row))
-                      self.row = None
-                      self.cell = None
+                  for i in range(len(self.stack)-1, -1, -1):
+                      if self.stack[i] == tag:
+                          del self.stack[i:]
+                          break
+              def handle_data(self, data):
+                  if data.strip():
+                      self.text_chunks_by_parent[self.stack[-1] if self.stack else "<root>"] += 1
 
-          p = Rows()
+          p = Shape()
           p.feed(body)
-          two_cell = [r for r in p.rows if len(r) == 2]
-          plain = [r for r in two_cell if r[0][1] and r[1][1] and r[1][0] == 0]
-          linked = [r for r in two_cell if r[1][0] > 0]
           print({
-              "text_rows": len(p.rows),
-              "two_cell_rows": len(two_cell),
-              "plain_text_rows": len(plain),
-              "linked_token_rows": len(linked),
-              "row_shapes": sorted(set(p.rows)),
+              "bytes": len(body.encode("utf-8")),
+              "tags": dict(p.tags),
+              "table_classes": dict(p.table_classes),
+              "span_classes": dict(p.span_classes),
+              "link_routes": dict(p.link_routes),
+              "text_chunks_by_parent": dict(p.text_chunks_by_parent),
           })
           PY
