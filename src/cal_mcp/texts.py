@@ -1418,6 +1418,14 @@ def _page_navigation(
                     raise TextParseError(
                         "CAL text page navigation subtext differs from requested subtext"
                     )
+                if (
+                    requested_subtext_id is not None
+                    and has_subtext_letter_suffix(requested_subtext_id)
+                    and query.get("cset") != ["C"]
+                ):
+                    raise TextParseError(
+                        "CAL alphanumeric subtext navigation lacks the current CPA cset=C route"
+                    )
 
                 upstream_page = _single_query_value(query, "page", "page-navigation")
                 if not upstream_page.isdigit():
