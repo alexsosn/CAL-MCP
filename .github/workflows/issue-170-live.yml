@@ -1,0 +1,81 @@
+name: Issue 170 live stdio verification
+
+on:
+  push:
+    branches:
+      - dev/issue-170-cpa-subtext-ids
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify CPA catalogue and page through installed stdio MCP
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          async def main() -> None:
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  catalogue = await client.call_tool(
+                      "cal_text_catalogue",
+                      {"category_id": "55"},
+                  )
+                  if catalogue.is_error:
+                      raise RuntimeError(f"CPA catalogue failed: {catalogue.content!r}")
+                  data = catalogue.structured_content
+                  if not isinstance(data, dict):
+                      raise RuntimeError("CPA catalogue missing structured content")
+                  texts = data.get("texts")
+                  if not isinstance(texts, list):
+                      raise RuntimeError("CPA catalogue missing texts")
+                  match = next(
+                      (
+                          item
+                          for item in texts
+                          if isinstance(item, dict)
+                          and item.get("subtext_id") == "01001a"
+                      ),
+                      None,
+                  )
+                  if match is None:
+                      raise RuntimeError("CPA catalogue does not expose subtext 01001a")
+                  file_id = match.get("file_id")
+                  if file_id != "55000":
+                      raise RuntimeError(f"unexpected CPA file for 01001a: {file_id!r}")
+
+                  page = await client.call_tool(
+                      "cal_text_page",
+                      {"file_id": file_id, "subtext_id": "01001a"},
+                  )
+                  if page.is_error:
+                      raise RuntimeError(f"CPA page failed: {page.content!r}")
+                  pdata = page.structured_content
+                  if not isinstance(pdata, dict) or not isinstance(pdata.get("page"), dict):
+                      raise RuntimeError("CPA page missing structured content")
+                  text_ref = pdata["page"].get("text")
+                  if not isinstance(text_ref, dict):
+                      raise RuntimeError("CPA page missing text reference")
+                  if text_ref.get("file_id") != "55000" or text_ref.get("subtext_id") != "01001a":
+                      raise RuntimeError(f"CPA page identity mismatch: {text_ref!r}")
+                  lines = pdata["page"].get("lines")
+                  if not isinstance(lines, list) or not lines:
+                      raise RuntimeError("CPA page returned no lines")
+
+                  print(
+                      f"live stdio OK: catalogue_texts={len(texts)} "
+                      f"file={file_id} sub=01001a lines={len(lines)}"
+                  )
+
+          asyncio.run(main())
+          PY
