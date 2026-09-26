@@ -132,8 +132,8 @@ def test_cpa_catalogue_suffix_requires_exact_current_cset_route(mutated_href: st
         parse_text_catalogue_page(response)
 
 
-@pytest.mark.parametrize("cset", ["R", "", "CC"])
-def test_cpa_navigation_requires_current_cset(cset: str) -> None:
+@pytest.mark.parametrize("cset", ["R", "", "CC", "C&extra=1"])
+def test_cpa_navigation_requires_exact_current_route(cset: str) -> None:
     suffix = f"&cset={cset}" if cset else ""
     line = _Line(
         text="NEXT PAGE",
