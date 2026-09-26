@@ -1555,6 +1555,23 @@ def _parse_text_table(response: CalResponse) -> _TextTable:
     return _TextTable(found=parser.found, rows=tuple(parser.rows))
 
 
+def _blank_text_line_coordinate(link: _Link) -> str:
+    """Validate CAL's researched empty word-0 sentinel and return its coordinate."""
+
+    if not _is_path(link.href, "getlex.php"):
+        raise TextParseError("CAL blank text row has an unexpected empty link route")
+    query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+    if set(query) != {"coord", "word", "hasvariant"}:
+        raise TextParseError("CAL blank text row empty link has unexpected selectors")
+    coordinate = _single_query_value(query, "coord", "blank-text-row")
+    _parse_id(coordinate, "coordinate")
+    if query.get("word") != ["0"]:
+        raise TextParseError("CAL blank text row empty link must use word=0")
+    if query.get("hasvariant") != ["0"]:
+        raise TextParseError("CAL blank text row empty link must use hasvariant=0")
+    return coordinate
+
+
 def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLine:
     if len(row) != 2:
         raise TextParseError("CAL text row does not have exactly two cells")
@@ -1562,17 +1579,21 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
 
     if _clean_text("".join(token_cell.loose_parts)):
         raise TextParseError("CAL text row token cell has text outside its token links")
+
     tokens: list[TextToken] = []
-    for link in token_cell.links:
-        token = _token_from_link(link, source_url)
-        if token is None:
-            raise TextParseError("CAL text row token cell has a non-lexical link")
-        tokens.append(token)
-    if not tokens:
-        raise TextParseError("CAL text row has no token links")
-    coordinate = tokens[0].coordinate
-    if any(token.coordinate != coordinate for token in tokens):
-        raise TextParseError("CAL text row mixes multiple machine coordinates")
+    if len(token_cell.links) == 1 and not token_cell.links[0].text.strip():
+        coordinate = _blank_text_line_coordinate(token_cell.links[0])
+    else:
+        for link in token_cell.links:
+            token = _token_from_link(link, source_url)
+            if token is None:
+                raise TextParseError("CAL text row token cell has a non-lexical link")
+            tokens.append(token)
+        if not tokens:
+            raise TextParseError("CAL text row has no token links")
+        coordinate = tokens[0].coordinate
+        if any(token.coordinate != coordinate for token in tokens):
+            raise TextParseError("CAL text row mixes multiple machine coordinates")
 
     comment_link: _Link | None = None
     for link in coordinate_cell.links:
