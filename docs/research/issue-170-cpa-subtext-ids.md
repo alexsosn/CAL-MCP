@@ -107,8 +107,9 @@ acceptance narrow: an unrelated alphanumeric coordinate on a CPA page remains pa
 - token and line-coordinate parsing still assumes decimal and must be widened only to the newly
   observed machine-coordinate grammar, with an exact CPA prefix check.
 
-For a suffix-bearing subtext request, the page request preserves CAL's current CPA rendering
-selector `cset=C`. Ordinary decimal subtexts keep their existing route.
+This paragraph's initial routing hypothesis was superseded by the two adversarial-review
+amendments below. Current CPA routing is file-identity based: all observed CPA text routes retain
+`cset=C`, including suffix-bearing subdivided, decimal subdivided, and direct texts.
 
 The information request itself needs no extra script selector: current CAL accepts
 `get_file_info.php?coord=5500001001a`.
@@ -160,9 +161,9 @@ coordinate implementation:
 
 ## Request/data impact
 
-No extra hidden requests or traversal. Each operation retains its existing request bound. The CPA
-page call adds only the current `cset=C` selector to the same one request when the subtext ID has
-the researched lowercase suffix. No CAL corpus data is bundled.
+No extra hidden requests or traversal. Each operation retains its existing request bound. A page
+call for an evidence-backed current CPA file adds only the private `cset=C` selector to the same
+one request; no discovery request is performed at runtime. No CAL corpus data is bundled.
 
 ## Adversarial review amendment — CPA decimal subtexts also require `cset=C`
 
