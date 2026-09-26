@@ -43,7 +43,7 @@ _MANDAIC_COLLECTION_PREFIX = "74"
 _MANDAIC_CATEGORY_ID = "74"
 _MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
 _MANDAIC_ROOT_LABEL = "Mandaic"
-_CPA_TEXT_FILE_IDS = frozenset(
+_CPA_SUBDIVIDED_FILE_IDS = frozenset(
     {
         "55000",
         "55001",
@@ -62,6 +62,8 @@ _CPA_TEXT_FILE_IDS = frozenset(
         "55423",
     }
 )
+_CPA_DIRECT_FILE_IDS = frozenset({"55002", "55406", "55407", "55430"})
+_CPA_TEXT_FILE_IDS = _CPA_SUBDIVIDED_FILE_IDS | _CPA_DIRECT_FILE_IDS
 _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
     {
         "74401",
@@ -1030,8 +1032,8 @@ class TextService:
             params = [("file", normalized_file)]
             if normalized_subtext is not None:
                 params.append(("sub", normalized_subtext))
-                if normalized_file in _CPA_TEXT_FILE_IDS:
-                    params.append(("cset", "C"))
+            if normalized_file in _CPA_TEXT_FILE_IDS:
+                params.append(("cset", "C"))
             params.append(("page", str(page - 1)))
         submitted_sub = next((value for name, value in params if name == "sub"), None)
 
@@ -1214,15 +1216,20 @@ def _text_ref_from_link(
 
     subtext_id: str | None = None
     sub_values = query.get("sub")
+    if file_id in _CPA_DIRECT_FILE_IDS:
+        if set(query) != {"file", "cset"} or query.get("cset") != ["C"]:
+            raise TextParseError("CAL direct CPA text link lacks the exact current cset=C route")
+    elif file_id in _CPA_SUBDIVIDED_FILE_IDS:
+        if set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]:
+            raise TextParseError("CAL subdivided CPA text link lacks the exact current cset=C route")
+
     if sub_values is not None:
         if len(sub_values) != 1:
             raise TextParseError("CAL text link has repeated sub identifiers")
         if sub_values[0]:
             subtext_id = _parse_subtext_id(sub_values[0])
-            if file_id in _CPA_TEXT_FILE_IDS and (
-                set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]
-            ):
-                raise TextParseError("CAL CPA text link lacks the exact current cset=C route")
+    if file_id in _CPA_SUBDIVIDED_FILE_IDS and subtext_id is None:
+        raise TextParseError("CAL subdivided CPA text link lacks a subtext identifier")
 
     rendered_label = (label if label is not None else link.text).strip()
     if not rendered_label:
@@ -1447,6 +1454,15 @@ def _page_navigation(
                 _parse_id(upstream_sub, "subtext_id")
                 public_page = int(upstream_sub)
             else:
+                if requested_file_id in _CPA_TEXT_FILE_IDS:
+                    expected_keys = {"file", "page", "cset"}
+                    if requested_subtext_id is not None:
+                        expected_keys.add("sub")
+                    if set(query) != expected_keys or query.get("cset") != ["C"]:
+                        raise TextParseError(
+                            "CAL CPA text navigation lacks the exact current cset=C route"
+                        )
+
                 subtext_id: str | None = None
                 sub_values = query.get("sub")
                 if sub_values is not None:
@@ -1460,17 +1476,6 @@ def _page_navigation(
                     raise TextParseError(
                         "CAL text page navigation subtext differs from requested subtext"
                     )
-                if (
-                    requested_subtext_id is not None
-                    and requested_file_id in _CPA_TEXT_FILE_IDS
-                    and (
-                        set(query) != {"file", "sub", "page", "cset"} or query.get("cset") != ["C"]
-                    )
-                ):
-                    raise TextParseError(
-                        "CAL CPA text navigation lacks the exact current cset=C route"
-                    )
-
                 upstream_page = _single_query_value(query, "page", "page-navigation")
                 if not upstream_page.isdigit():
                     raise TextParseError("CAL text page navigation has a nonnumeric page")
