@@ -21,12 +21,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Inspect current empty lexical anchors with one bounded GET
+      - name: Inspect affected current rows with one bounded GET
         run: |
           python - <<'PY'
+          import html
           import re
           import urllib.request
-          from collections import Counter
+          from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlsplit
 
           url = "https://cal.huc.edu/get_a_chapter.php?file=60424&page=0"
@@ -37,31 +38,70 @@ jobs:
           with urllib.request.urlopen(req, timeout=20) as response:
               body = response.read().decode("utf-8", "replace")
 
-          empty = []
-          for match in re.finditer(r'<a\b([^>]*)>\s*</a>', body, flags=re.IGNORECASE):
-              attrs = match.group(1)
-              href_match = re.search(r'href=["\']([^"\']+)["\']', attrs, flags=re.IGNORECASE)
-              if href_match:
-                  href = href_match.group(1)
-                  if "getlex.php" in href or "bablex.php" in href:
-                      empty.append(href)
+          class Rows(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.in_text = False
+                  self.row = None
+                  self.cell = None
+                  self.link = None
+                  self.rows = []
+              def handle_starttag(self, tag, attrs):
+                  a = dict(attrs)
+                  if tag == "table" and "text-display" in (a.get("class") or "").split():
+                      self.in_text = True
+                  elif self.in_text and tag == "tr":
+                      self.row = [[], []]
+                      self.cell = -1
+                  elif self.row is not None and tag == "td":
+                      self.cell += 1
+                  elif self.row is not None and tag == "a" and self.cell in (0,1):
+                      self.link = [a.get("href") or "", []]
+                      self.row[self.cell].append(self.link)
+              def handle_data(self, data):
+                  if self.link is not None:
+                      self.link[1].append(data)
+              def handle_endtag(self, tag):
+                  if tag == "a":
+                      self.link = None
+                  elif tag == "tr" and self.row is not None:
+                      self.rows.append(self.row)
+                      self.row = None
+                      self.cell = None
+                  elif tag == "table" and self.in_text:
+                      self.in_text = False
 
-          print("empty lexical anchors:", len(empty))
-          shapes = Counter()
-          for href in empty:
-              parsed = urlsplit(href)
-              query = parse_qs(parsed.query, keep_blank_values=True)
-              shape = (
-                  parsed.scheme,
-                  parsed.netloc,
-                  parsed.path,
-                  tuple(sorted((key, tuple(values)) for key, values in query.items() if key != "coord")),
-                  bool(parsed.fragment),
-              )
-              shapes[shape] += 1
-          for shape, count in shapes.items():
-              print(count, shape)
-          print("first hrefs:")
-          for href in empty[:40]:
-              print(href)
+          p = Rows()
+          p.feed(body)
+          affected = 0
+          all_empty_rows = 0
+          for row in p.rows:
+              if len(row) != 2:
+                  continue
+              links = []
+              for href, parts in row[1]:
+                  parsed = urlsplit(href)
+                  if parsed.path != "getlex.php":
+                      continue
+                  q = parse_qs(parsed.query, keep_blank_values=True)
+                  coord = (q.get("coord") or ["?"])[0]
+                  word = (q.get("word") or ["?"])[0]
+                  rendered = bool("".join(parts).strip())
+                  links.append((coord, word, rendered))
+              empties = [int(word) for _coord, word, rendered in links if not rendered and word.isdigit()]
+              if not empties:
+                  continue
+              affected += 1
+              rendered_words = [int(word) for _coord, word, rendered in links if rendered and word.isdigit()]
+              coords = sorted({coord for coord, _word, _rendered in links})
+              if not rendered_words:
+                  all_empty_rows += 1
+              print({
+                  "coords": coords,
+                  "empty_words": empties,
+                  "rendered_word_count": len(rendered_words),
+                  "rendered_word_min": min(rendered_words) if rendered_words else None,
+                  "rendered_word_max": max(rendered_words) if rendered_words else None,
+              })
+          print({"affected_rows": affected, "all_empty_rows": all_empty_rows, "total_rows": len(p.rows)})
           PY
