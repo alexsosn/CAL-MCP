@@ -347,10 +347,19 @@ Sources:
 - https://cal.huc.edu/get_a_chapter.php?file=55000&sub=01001a&cset=C
 - https://cal.huc.edu/get_file_info.php?coord=5500001001a
 
+A subsequent installed-stdio acceptance run reached the CPA page but exposed one more related
+assumption: CPA token and comment machine coordinates also embed the suffix, for example
+`5500001001a019001`. A one-request structural probe confirmed the pattern without retaining
+scholarly text.
+
 **Implication:** `subtext_id` is not globally decimal. CAL-MCP preserves the currently observed
 grammar of decimal digits plus an optional single lowercase ASCII suffix and shares that grammar
-between text and KWIC/full-context workflows. File/category IDs and decimal machine-coordinate
-workflows remain decimal-only. Suffix-bearing CPA text-page routes retain CAL's current
+between text and KWIC/full-context workflows. Current text/token machine coordinates are accepted
+only as decimal strings or the observed digits + one lowercase ASCII letter + decimal-tail form.
+On a suffix-bearing page, returned coordinates must begin with the exact requested
+`file_id + subtext_id`. `cal_token_analysis` accepts the same narrow coordinate grammar so an
+explicit token returned by `cal_text_page` remains usable. File/category IDs and KWIC target
+coordinates remain decimal-only. Suffix-bearing CPA text-page routes retain CAL's current
 `cset=C`; malformed near-misses and contradictory returned routes fail closed.
 
 ## R-038 — Syriac text rows can contain empty lexical word slots
