@@ -1452,7 +1452,8 @@ def _page_navigation(
                     )
                 ):
                     raise TextParseError(
-                        "CAL alphanumeric subtext navigation lacks the exact current CPA cset=C route"
+                        "CAL alphanumeric subtext navigation lacks the exact current "
+                        "CPA cset=C route"
                     )
 
                 upstream_page = _single_query_value(query, "page", "page-navigation")
