@@ -1563,14 +1563,14 @@ def _blank_text_line_coordinate(link: _Link) -> str:
         parsed_href.scheme
         or parsed_href.netloc
         or parsed_href.fragment
-        or parsed_href.path not in {"getlex.php", "/getlex.php"}
+        or parsed_href.path != "getlex.php"
     ):
         raise TextParseError("CAL blank text row has an unexpected empty link route")
     query = parse_qs(parsed_href.query, keep_blank_values=True)
     if set(query) != {"coord", "word", "hasvariant"}:
         raise TextParseError("CAL blank text row empty link has unexpected selectors")
     coordinate = _single_query_value(query, "coord", "blank-text-row")
-    _parse_id(coordinate, "coordinate")
+    _parse_positive_id(coordinate, "coordinate")
     if query.get("word") != ["0"]:
         raise TextParseError("CAL blank text row empty link must use word=0")
     if query.get("hasvariant") != ["0"]:
