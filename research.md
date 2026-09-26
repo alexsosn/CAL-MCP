@@ -361,10 +361,12 @@ On a suffix-bearing page, returned coordinates must begin with the exact request
 input boundary, so a returned CPA coordinate reaches CAL rather than being rejected locally.
 Current CPA token-analysis response parsing still fails closed and is tracked separately in
 release blocker #179. File/category IDs and KWIC target coordinates remain decimal-only.
-A complete one-request category-55 route audit found 551 current CPA text routes: 150 suffix-bearing
-and 401 decimal-subtext routes, all with `cset=C`. CAL-MCP therefore keys this private routing to
-the observed CPA file set rather than to suffix presence or a generic `55` prefix. Malformed
-near-misses and contradictory returned routes fail closed.
+A complete category-55 route audit accounted for all 555 current CPA text references: 551
+subdivided routes (150 suffix-bearing and 401 decimal-subtext) plus four direct routes
+(`55002`, `55406`, `55407`, `55430`). Every current route uses `cset=C`. CAL-MCP
+therefore keeps separate evidence-backed CPA subdivided/direct file sets rather than inferring
+routing from suffix presence or a generic `55` prefix. Malformed near-misses and contradictory
+returned routes fail closed.
 
 ## R-038 — Syriac text rows can contain empty lexical word slots
 
