@@ -1219,9 +1219,12 @@ def _text_ref_from_link(
     if file_id in _CPA_DIRECT_FILE_IDS:
         if set(query) != {"file", "cset"} or query.get("cset") != ["C"]:
             raise TextParseError("CAL direct CPA text link lacks the exact current cset=C route")
-    elif file_id in _CPA_SUBDIVIDED_FILE_IDS:
-        if set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]:
-            raise TextParseError("CAL subdivided CPA text link lacks the exact current cset=C route")
+    elif file_id in _CPA_SUBDIVIDED_FILE_IDS and (
+        set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]
+    ):
+        raise TextParseError(
+            "CAL subdivided CPA text link lacks the exact current cset=C route"
+        )
 
     if sub_values is not None:
         if len(sub_values) != 1:
