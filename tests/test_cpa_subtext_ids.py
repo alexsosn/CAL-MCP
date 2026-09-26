@@ -15,7 +15,8 @@ from cal_mcp.concordance import (
     KwicScopeKind,
     parse_kwic_result,
 )
-from cal_mcp.texts import TextService
+from cal_mcp.identifiers import is_cal_subtext_id
+from cal_mcp.texts import TextParseError, TextService, parse_text_catalogue_page
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 RETRIEVED_AT = datetime(2026, 9, 26, tzinfo=UTC)
@@ -67,6 +68,49 @@ async def test_cpa_catalogue_preserves_alphanumeric_subtext_id() -> None:
         ("55000", "01001a", "Gen 19 Damascus frag V")
     ]
     assert len(transport.requests) == 1
+
+
+
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ("1", True),
+        ("001", True),
+        ("01001a", True),
+        ("9z", True),
+        ("a01001", False),
+        ("01001ab", False),
+        ("01001A", False),
+        ("01-001a", False),
+        (" 01001a", False),
+        ("", False),
+        (None, False),
+    ],
+)
+def test_shared_subtext_id_grammar_is_narrow(value: object, expected: bool) -> None:
+    assert is_cal_subtext_id(value) is expected
+
+
+@pytest.mark.parametrize(
+    "mutated_href",
+    [
+        "/get_a_chapter.php?file=55000&sub=01001a&cset=R",
+        "/get_a_chapter.php?file=55000&sub=01001a",
+        "/get_a_chapter.php?file=55000&sub=01001a&cset=C&extra=1",
+    ],
+)
+def test_cpa_catalogue_suffix_requires_exact_current_cset_route(mutated_href: str) -> None:
+    body = CATALOGUE.read_text(encoding="utf-8")
+    original = "/get_a_chapter.php?file=55000&sub=01001a&cset=C"
+    assert original in body
+    response = _response(
+        body.replace(original, mutated_href, 1).encode(),
+        "https://cal.huc.edu/showsubtexts.php?subtext=55",
+    )
+    with pytest.raises(TextParseError):
+        parse_text_catalogue_page(response)
 
 
 @pytest.mark.anyio
