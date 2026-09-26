@@ -357,10 +357,12 @@ grammar of decimal digits plus an optional single lowercase ASCII suffix and sha
 between text and KWIC/full-context workflows. Current text/token machine coordinates are accepted
 only as decimal strings or the observed digits + one lowercase ASCII letter + decimal-tail form.
 On a suffix-bearing page, returned coordinates must begin with the exact requested
-`file_id + subtext_id`. `cal_token_analysis` accepts the same narrow coordinate grammar so an
-explicit token returned by `cal_text_page` remains usable. File/category IDs and KWIC target
-coordinates remain decimal-only. Suffix-bearing CPA text-page routes retain CAL's current
-`cset=C`; malformed near-misses and contradictory returned routes fail closed.
+`file_id + subtext_id`. `cal_token_analysis` accepts the same narrow coordinate grammar at the
+input boundary, so a returned CPA coordinate reaches CAL rather than being rejected locally.
+Current CPA token-analysis response parsing still fails closed and is tracked separately in
+release blocker #179. File/category IDs and KWIC target coordinates remain decimal-only.
+Suffix-bearing CPA text-page routes retain CAL's current `cset=C`; malformed near-misses and
+contradictory returned routes fail closed.
 
 ## R-038 — Syriac text rows can contain empty lexical word slots
 
