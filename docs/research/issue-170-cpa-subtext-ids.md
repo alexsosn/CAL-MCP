@@ -163,3 +163,35 @@ coordinate implementation:
 No extra hidden requests or traversal. Each operation retains its existing request bound. The CPA
 page call adds only the current `cset=C` selector to the same one request when the subtext ID has
 the researched lowercase suffix. No CAL corpus data is bundled.
+
+## Adversarial review amendment — CPA decimal subtexts also require `cset=C`
+
+A fresh one-request structural review of the complete current category-55 catalogue on 2026-09-27
+checked only `get_a_chapter.php` selectors, without retaining scholarly text. It found **551**
+direct text routes:
+
+- **150** suffix-bearing subtexts, all `file=55000`, all with exact selector set
+  `file,sub,cset` and `cset=C`;
+- **401** decimal subtexts, also all with exact selector set `file,sub,cset` and `cset=C`,
+  across current files
+  `55001`, `55003`, `55006`, `55007`,
+  `55400`–`55405`, and `55420`–`55423`.
+
+Example current decimal CPA route: `file=55001&sub=002&cset=C` (CPA Psalms chapter 2).
+
+This disproves the intermediate implementation assumption that a lowercase suffix itself is the
+private routing discriminator. The suffix determines the widened public identifier grammar and the
+machine-coordinate prefix behavior, but **CPA page routing must be selected by the current CPA file
+identity**, including decimal subtexts.
+
+Implementation consequence:
+
+- keep the shared subtext grammar unchanged;
+- introduce a current evidence-backed CPA file allowlist for text-page routing, analogous to the
+  existing evidence-backed Mandaic per-file routing table;
+- for any allowlisted CPA file with a public subtext, submit `cset=C`;
+- validate current CPA catalogue/page-navigation links with exact `cset=C` selector semantics
+  regardless of whether that particular subtext has a suffix;
+- do not infer CPA routing from the generic `55` prefix or from “has a suffix” alone.
+
+The review probe made exactly one CAL GET to the category-55 catalogue.
