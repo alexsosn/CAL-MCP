@@ -35,6 +35,8 @@ Date: 2026-09-26. Research: `docs/research/issue-170-cpa-subtext-ids.md`.
 10. Installed-stdio live verification: `cal_text_catalogue("55")` succeeds and returned
     `01001a` opens with `cal_text_page`; verify at least one returned token coordinate has the
     researched suffix-bearing form and can be submitted to `cal_token_analysis` without local
-    rejection. Keep the live calls bounded and remove the temporary workflow afterward.
+    rejection. A downstream token-result `parser_drift` is tracked under #179 and does not turn
+    back into an #170 identifier failure. Keep the live calls bounded and remove the temporary
+    workflow afterward.
 11. Perform a logically independent adversarial review of the exact final SHA. Any finding is
     fixed, retested and re-reviewed before merge.
