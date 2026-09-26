@@ -10,6 +10,7 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
+from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.normalization import InputRepresentation, normalize_query
 from cal_mcp.texts import TextLine, TextToken
@@ -779,9 +780,7 @@ class ConcordanceService:
         normalized_target = _validate_decimal_id(target_coordinate, "target_coordinate")
         if not isinstance(charset, str) or charset not in _KWIC_CHARSETS:
             raise CalInputError("charset must be one of: H, R, S, U")
-        normalized_sub = (
-            None if subtext_id is None else _validate_decimal_id(subtext_id, "subtext_id")
-        )
+        normalized_sub = None if subtext_id is None else _validate_subtext_id(subtext_id)
 
         def parse_requested(response: CalResponse) -> KwicFullContextPage:
             return parse_kwic_full_context_page(
@@ -912,7 +911,7 @@ def _validate_full_context_response_url(
         raise ConcordanceParseError("CAL full-context subtext parameter is missing or repeated")
     subtext_id = sub_values[0] or None
     if subtext_id is not None:
-        subtext_id = _parse_decimal_id(subtext_id, "subtext_id")
+        subtext_id = _parse_subtext_id(subtext_id)
     if charset not in _KWIC_CHARSETS:
         raise ConcordanceParseError("CAL full-context response has an unknown charset")
     if (
@@ -1292,7 +1291,7 @@ def _kwic_hit_from_link(source_url: str, *, href: str, link_text: str, context: 
     charset = _single_query_value(query, "cset", "KWIC charset")
     if charset not in _KWIC_CHARSETS:
         raise ConcordanceParseError("CAL KWIC target link has an unknown charset")
-    subtext_id = _optional_decimal_query_value(query, "sub", "subtext_id")
+    subtext_id = _optional_subtext_query_value(query, "sub")
     if link_text != target:
         raise ConcordanceParseError("CAL KWIC target link text differs from its coordinate")
     return KwicHit(
@@ -1497,6 +1496,22 @@ def _parse_decimal_id(value: str, name: str) -> str:
     return value
 
 
+def _validate_subtext_id(value: str) -> str:
+    if not is_cal_subtext_id(value):
+        raise CalInputError(
+            "subtext_id must be CAL decimal digits with an optional lowercase letter suffix"
+        )
+    return value
+
+
+def _parse_subtext_id(value: str) -> str:
+    if not is_cal_subtext_id(value):
+        raise ConcordanceParseError(
+            "CAL returned a subtext_id outside the digits-plus-optional-lowercase-suffix contract"
+        )
+    return value
+
+
 def _validate_text_ids(values: Sequence[str]) -> tuple[str, ...]:
     if isinstance(values, (str, bytes)):
         raise CalInputError("text_ids must be a sequence of CAL decimal identifiers")
@@ -1539,6 +1554,20 @@ def _optional_decimal_query_value(
     if not values[0]:
         return None
     return _parse_decimal_id(values[0], name)
+
+
+def _optional_subtext_query_value(
+    query: dict[str, list[str]],
+    key: str,
+) -> str | None:
+    values = query.get(key)
+    if values is None:
+        return None
+    if len(values) != 1:
+        raise ConcordanceParseError("CAL returned repeated subtext_id parameters")
+    if not values[0]:
+        return None
+    return _parse_subtext_id(values[0])
 
 
 def _single_form_value(inputs: dict[str, list[str]], name: str) -> str:
