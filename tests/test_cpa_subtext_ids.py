@@ -16,7 +16,8 @@ from cal_mcp.concordance import (
     parse_kwic_result,
 )
 from cal_mcp.identifiers import is_cal_subtext_id
-from cal_mcp.texts import TextParseError, TextService, parse_text_catalogue_page
+from cal_mcp.lexicon import _Line, _Link
+from cal_mcp.texts import TextParseError, TextService, _page_navigation, parse_text_catalogue_page
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 RETRIEVED_AT = datetime(2026, 9, 26, tzinfo=UTC)
@@ -70,9 +71,6 @@ async def test_cpa_catalogue_preserves_alphanumeric_subtext_id() -> None:
     assert len(transport.requests) == 1
 
 
-
-
-
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
@@ -111,6 +109,45 @@ def test_cpa_catalogue_suffix_requires_exact_current_cset_route(mutated_href: st
     )
     with pytest.raises(TextParseError):
         parse_text_catalogue_page(response)
+
+
+@pytest.mark.parametrize("cset", ["R", "", "CC"])
+def test_cpa_navigation_requires_current_cset(cset: str) -> None:
+    suffix = f"&cset={cset}" if cset else ""
+    line = _Line(
+        text="NEXT PAGE",
+        links=(
+            _Link(
+                href=f"/get_a_chapter.php?file=55000&sub=01001a&page=1{suffix}",
+                text="NEXT PAGE",
+            ),
+        ),
+        list_depth=0,
+    )
+    with pytest.raises(TextParseError, match="cset=C"):
+        _page_navigation(
+            [line],
+            requested_file_id="55000",
+            requested_subtext_id="01001a",
+        )
+
+
+def test_cpa_navigation_accepts_current_cset() -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(
+            _Link(
+                href="/get_a_chapter.php?file=55000&sub=01001a&page=1&cset=C",
+                text="NEXT PAGE",
+            ),
+        ),
+        list_depth=0,
+    )
+    assert _page_navigation(
+        [line],
+        requested_file_id="55000",
+        requested_subtext_id="01001a",
+    ) == (None, 2)
 
 
 @pytest.mark.anyio
