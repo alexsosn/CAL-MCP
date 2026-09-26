@@ -58,3 +58,21 @@ Before merge:
 14. Re-run both CI matrices and bounded installed-stdio acceptance for both one suffix-bearing and
     one decimal CPA route.
 15. Delete temporary workflows, then perform a new logically independent exact-head review.
+
+## Second review-finding amendment
+
+A follow-up route-count reconciliation found four direct CPA text routes
+(`55002`, `55406`, `55407`, `55430`) with no `sub`, all requiring `cset=C`.
+
+Before merge:
+
+16. RED:
+    - include one current direct CPA route (`55002&cset=C`) in the reduced catalogue fixture;
+    - mutated direct CPA catalogue routes with missing/wrong/extra selectors fail closed;
+    - `cal_text_page("55002")` submits `cset=C`;
+    - direct CPA page navigation, if present, requires exact `file,page,cset=C`.
+17. GREEN with distinct current CPA subdivided/direct file sets and their union for private
+    `cset=C` routing.
+18. Re-run complete CI and installed-stdio acceptance for suffix-bearing subdivided, decimal
+    subdivided, and direct CPA examples.
+19. Remove temporary workflows and perform a fresh exact-head adversarial review.
