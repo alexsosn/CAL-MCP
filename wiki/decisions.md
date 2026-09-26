@@ -217,9 +217,10 @@ Consequences:
 - `cal_token_analysis` accepts that same machine-coordinate grammar at its input boundary, so a
   coordinate returned by `cal_text_page` is not rejected locally; current CPA token-analysis
   response parsing is a separate compatibility concern tracked by release blocker #179;
-- current CPA text-page routing is selected by an evidence-backed file allowlist: both decimal and
-  suffix-bearing CPA subtexts retain `cset=C`; suffix presence and the generic `55` prefix are
-  not treated as route classifiers; contradictory routes fail closed rather than being normalized;
+- current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
+  current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
+  direct texts; suffix presence and the generic `55` prefix are not treated as route classifiers;
+  contradictory routes fail closed rather than being normalized;
 - values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
   whitespace, or arbitrary strings remain invalid;
 - future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
