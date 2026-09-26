@@ -89,7 +89,10 @@ async def test_empty_link_mixed_with_real_token_fails_closed() -> None:
     "old,new",
     [
         ("getlex.php?coord=", "bablex.php?coord="),
+        ("getlex.php?coord=", "/getlex.php?coord="),
         ("getlex.php?coord=", "https://example.invalid/getlex.php?coord="),
+        ("coord=60424100508", "coord=not-a-coordinate"),
+        ("coord=60424100508", "coord=0"),
         ("&hasvariant=0", ""),
         ("&hasvariant=0", "&hasvariant=1"),
         ("&hasvariant=0", "&hasvariant=0&extra=1"),
