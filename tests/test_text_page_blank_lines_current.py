@@ -1,4 +1,4 @@
-"""Issue #168: preserve CAL's researched blank text-line sentinel."""
+"""Issue #168: preserve CAL's explicit empty lexical word slots."""
 
 from __future__ import annotations
 
@@ -11,7 +11,8 @@ from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalRespon
 from cal_mcp.texts import TextPageResult, TextParseError, TextService
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
-BLANK = FIXTURES / "text_page_blank_word0_60424_current.html"
+ALL_EMPTY = FIXTURES / "text_page_blank_word0_60424_current.html"
+MIXED = FIXTURES / "text_page_empty_slots_mixed_60424_structural.html"
 PHILEMON = FIXTURES / "text_page_philemon_62057_current.html"
 
 
@@ -40,8 +41,8 @@ async def _page(body: bytes, file_id: str) -> TextPageResult:
 
 
 @pytest.mark.anyio
-async def test_single_empty_word_zero_link_is_preserved_as_blank_line() -> None:
-    result = await _page(BLANK.read_bytes(), "60424")
+async def test_all_empty_row_preserves_coordinate_and_empty_word_index() -> None:
+    result = await _page(ALL_EMPTY.read_bytes(), "60424")
 
     assert result.page is not None
     assert len(result.page.lines) == 1
@@ -50,11 +51,25 @@ async def test_single_empty_word_zero_link_is_preserved_as_blank_line() -> None:
     assert line.display_coordinate == "1.005:08"
     assert line.text == ""
     assert line.tokens == ()
+    assert line.empty_word_indexes == (0,)
     assert line.comment_url is None
 
 
 @pytest.mark.anyio
-async def test_normal_current_text_row_remains_tokenized() -> None:
+async def test_mixed_row_keeps_rendered_token_and_records_empty_slot() -> None:
+    result = await _page(MIXED.read_bytes(), "60424")
+
+    assert result.page is not None
+    line = result.page.lines[0]
+    assert line.coordinate == "60424100523"
+    assert line.display_coordinate == "fixture-line"
+    assert line.text == "fixture-token"
+    assert [(token.word_index, token.text) for token in line.tokens] == [(0, "fixture-token")]
+    assert line.empty_word_indexes == (1,)
+
+
+@pytest.mark.anyio
+async def test_normal_current_text_row_has_no_empty_word_indexes() -> None:
     result = await _page(PHILEMON.read_bytes(), "62057")
 
     assert result.page is not None
@@ -63,44 +78,78 @@ async def test_normal_current_text_row_remains_tokenized() -> None:
     assert first.display_coordinate == "01"
     assert first.text.startswith("p.awlAws )asyireh")
     assert first.tokens
-    assert first.tokens[0].word_index == 0
-    assert first.tokens[0].text == "p.awlAws"
-
-
-@pytest.mark.anyio
-async def test_empty_link_at_word_greater_than_zero_fails_closed() -> None:
-    body = BLANK.read_text(encoding="utf-8").replace("word=0&hasvariant=0", "word=1&hasvariant=0")
-    with pytest.raises(TextParseError):
-        await _page(body.encode(), "60424")
-
-
-@pytest.mark.anyio
-async def test_empty_link_mixed_with_real_token_fails_closed() -> None:
-    body = BLANK.read_text(encoding="utf-8").replace(
-        "</a> </td>",
-        '</a> <a href="getlex.php?coord=60424100508&word=1&hasvariant=0">x</a> </td>',
-    )
-    with pytest.raises(TextParseError):
-        await _page(body.encode(), "60424")
+    assert first.empty_word_indexes == ()
 
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "old,new",
+    ("old", "new"),
     [
         ("getlex.php?coord=", "bablex.php?coord="),
         ("getlex.php?coord=", "/getlex.php?coord="),
         ("getlex.php?coord=", "https://example.invalid/getlex.php?coord="),
         ("coord=60424100508", "coord=not-a-coordinate"),
         ("coord=60424100508", "coord=0"),
+        ("word=0", "word=not-a-number"),
         ("&hasvariant=0", ""),
         ("&hasvariant=0", "&hasvariant=1"),
         ("&hasvariant=0", "&hasvariant=0&extra=1"),
         ("&hasvariant=0", "&hasvariant=0#fragment"),
     ],
 )
-async def test_other_empty_anchor_shapes_fail_closed(old: str, new: str) -> None:
-    body = BLANK.read_text(encoding="utf-8")
+async def test_malformed_all_empty_slot_shapes_fail_closed(old: str, new: str) -> None:
+    body = ALL_EMPTY.read_text(encoding="utf-8")
     assert old in body
     with pytest.raises(TextParseError):
         await _page(body.replace(old, new, 1).encode(), "60424")
+
+
+@pytest.mark.anyio
+async def test_empty_slot_coordinate_must_match_rendered_tokens() -> None:
+    body = MIXED.read_text(encoding="utf-8")
+    # Change only the empty slot's coordinate.
+    marker = 'coord=60424100523&word=1'
+    assert marker in body
+    body = body.replace(marker, 'coord=60424100524&word=1', 1)
+    with pytest.raises(TextParseError, match="coordinate"):
+        await _page(body.encode(), "60424")
+
+
+@pytest.mark.anyio
+async def test_duplicate_empty_word_index_fails_closed() -> None:
+    body = MIXED.read_text(encoding="utf-8")
+    empty = '<a href="getlex.php?coord=60424100523&word=1&hasvariant=0"></a>'
+    assert empty in body
+    body = body.replace(empty, empty + " " + empty, 1)
+    with pytest.raises(TextParseError, match="duplicate"):
+        await _page(body.encode(), "60424")
+
+
+@pytest.mark.anyio
+async def test_empty_word_index_cannot_collide_with_rendered_token() -> None:
+    body = MIXED.read_text(encoding="utf-8")
+    assert "word=1&hasvariant=0\"></a>" in body
+    body = body.replace("word=1&hasvariant=0\"></a>", "word=0&hasvariant=0\"></a>", 1)
+    with pytest.raises(TextParseError, match="collides"):
+        await _page(body.encode(), "60424")
+
+
+@pytest.mark.anyio
+async def test_empty_slot_with_loose_text_still_fails_closed() -> None:
+    body = ALL_EMPTY.read_text(encoding="utf-8")
+    assert "</a> </td>" in body
+    body = body.replace("</a> </td>", "</a> stray </td>", 1)
+    with pytest.raises(TextParseError, match="text outside"):
+        await _page(body.encode(), "60424")
+
+
+@pytest.mark.anyio
+async def test_empty_slot_does_not_weaken_normal_empty_token_parser() -> None:
+    # The generic token parser is intentionally unchanged. A legacy non-table line containing
+    # an empty lexical anchor remains invalid rather than inheriting the table-slot exception.
+    body = b"""<html><body>
+    <a href="/get_file_info.php?coord=60424">60424: fixture</a>
+    <div>fixture <a href="getlex.php?coord=60424100508&word=0&hasvariant=0"></a></div>
+    </body></html>"""
+    with pytest.raises(TextParseError):
+        await _page(body, "60424")
