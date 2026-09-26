@@ -55,3 +55,51 @@ normal Ephrem row that is not present in the retained evidence.
 ## Upstream/request impact
 
 Parsing only. No additional CAL requests, retries, traversal, caching, or hidden pagination.
+
+
+## 2026-09-26 live amendment — empty anchors are lexical slots, not only blank lines
+
+The first installed-stdio live verification of PR #191 reached current CAL successfully (HTTP 200)
+but still failed with `CAL lexical token link has no rendered token`. Two bounded follow-up GETs
+then inspected only the structure of empty lexical anchors and affected rows; no full scholarly text
+was retained.
+
+Current `60424` evidence:
+
+- 314 text rows total;
+- 10 rows contain empty `getlex.php` anchors;
+- 29 empty anchors total;
+- empty anchors occur at CAL word indexes 0 through 11;
+- only coordinate `60424100508` is an all-empty row (one empty slot, word 0);
+- the other 9 affected rows mix empty slots with rendered lexical links;
+- every affected row has one machine coordinate across all of its lexical links;
+- for example, coordinate `60424100509` has empty slots
+  `0,1,2,3,8,9,10,11` plus four rendered lexical links;
+- coordinate `60424100523` has an empty slot at word 1 and rendered links including word 0.
+
+This supersedes the earlier hypothesis that every empty anchor is the sole `word=0` link of a
+blank line. It also supersedes the original issue acceptance statement that an empty link at
+`word>0` or mixed with rendered tokens must fail closed.
+
+### Revised representation
+
+An empty lexical anchor is an explicit CAL **word slot with no rendered token text**. Silently
+dropping it would erase information that CAL exposes: its word index. Returning it as a
+`TextToken(text="")` would make the existing `tokens` field mix rendered tokens with
+non-rendered placeholders.
+
+Therefore each `TextLine` gains additive `empty_word_indexes`:
+
+- `tokens` continues to contain only rendered lexical links;
+- `empty_word_indexes` preserves the ordered indexes of exact current empty `getlex.php` slots;
+- `text` is still composed only from rendered token text;
+- an all-empty row has `text=""`, `tokens=[]`, and e.g. `empty_word_indexes=[0]`;
+- a mixed row keeps its rendered tokens and records the empty slots separately.
+
+For every empty slot, the accepted current shape is narrowly bounded to the relative
+`getlex.php` route with exactly `coord`, `word`, and `hasvariant`; `coord` must be a
+positive decimal, `word` a non-negative decimal, and `hasvariant=0`. All rendered and empty
+lexical links in one row must name the same coordinate. Duplicate empty indexes or an empty index
+that collides with a rendered token index fail closed.
+
+This is an additive output-schema change. It does not add requests or expose a new operation.
