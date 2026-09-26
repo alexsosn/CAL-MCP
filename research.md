@@ -327,6 +327,25 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-038 — Some Syriac text rows encode a blank line as one empty word-0 link
+
+**Rechecked:** 2026-09-26 from the retained 2026-09-25 E2E capture; a fresh GET was not possible from the current runtime because `cal.huc.edu` DNS resolution is unavailable here.
+
+Ephrem text `60424` contains rows such as:
+
+```html
+<tr><td valign="top">1.005:08 </td><td><a href="getlex.php?coord=60424100508&word=0&hasvariant=0"></a> </td></tr>
+```
+
+The retained capture had 29 rows of that shape. Detailed evidence and the bounded parser contract are in `docs/research/issue-168-blank-text-lines.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_chapter.php?file=60424&page=0
+
+**Implication:** exactly one empty `getlex.php` anchor with `word=0&hasvariant=0` is a blank text line. Preserve its coordinate with empty text/tokens; do not relax empty-token validation for any other shape.
+
+
 ## R-037 — Dictionary-collation result headings use shorter titles for four sources
 
 **Rechecked:** 2026-09-25.
