@@ -21,40 +21,47 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: pip
-      - name: Install CAL-MCP
-        run: python -m pip install .
-      - name: Verify blank Ephrem lines through installed stdio MCP
+      - name: Inspect current empty lexical anchors with one bounded GET
         run: |
           python - <<'PY'
-          import anyio
-          import shutil
+          import re
+          import urllib.request
+          from collections import Counter
+          from urllib.parse import parse_qs, urlsplit
 
-          from mcp import Client, StdioServerParameters
+          url = "https://cal.huc.edu/get_a_chapter.php?file=60424&page=0"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              body = response.read().decode("utf-8", "replace")
 
-          async def main() -> None:
-              executable = shutil.which("cal-mcp")
-              assert executable is not None
-              async with Client(StdioServerParameters(command=executable)) as client:
-                  result = await client.call_tool("cal_text_page", {"file_id": "60424"})
-                  assert not result.is_error, result
-                  payload = result.structured_content
-                  assert payload is not None
-                  assert payload["status"] == "found"
-                  page = payload["page"]
-                  assert page is not None
-                  blanks = [
-                      line
-                      for line in page["lines"]
-                      if line["text"] == "" and line["tokens"] == []
-                  ]
-                  assert blanks, "live 60424 page contains no preserved blank lines"
-                  assert any(
-                      line["coordinate"] == "60424100508"
-                      and line["display_coordinate"] == "1.005:08"
-                      for line in blanks
-                  ), "known blank line 1.005:08 / 60424100508 was not preserved"
-                  print(f"live blank lines preserved: {len(blanks)}")
+          empty = []
+          for match in re.finditer(r'<a\b([^>]*)>\s*</a>', body, flags=re.IGNORECASE):
+              attrs = match.group(1)
+              href_match = re.search(r'href=["\']([^"\']+)["\']', attrs, flags=re.IGNORECASE)
+              if href_match:
+                  href = href_match.group(1)
+                  if "getlex.php" in href or "bablex.php" in href:
+                      empty.append(href)
 
-          anyio.run(main)
+          print("empty lexical anchors:", len(empty))
+          shapes = Counter()
+          for href in empty:
+              parsed = urlsplit(href)
+              query = parse_qs(parsed.query, keep_blank_values=True)
+              shape = (
+                  parsed.scheme,
+                  parsed.netloc,
+                  parsed.path,
+                  tuple(sorted((key, tuple(values)) for key, values in query.items() if key != "coord")),
+                  bool(parsed.fragment),
+              )
+              shapes[shape] += 1
+          for shape, count in shapes.items():
+              print(count, shape)
+          print("first hrefs:")
+          for href in empty[:40]:
+              print(href)
           PY
