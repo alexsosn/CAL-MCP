@@ -1179,11 +1179,13 @@ def _text_ref_from_link(
             raise TextParseError("CAL text link has repeated sub identifiers")
         if sub_values[0]:
             subtext_id = _parse_subtext_id(sub_values[0])
-            if has_subtext_letter_suffix(subtext_id):
-                if set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]:
-                    raise TextParseError(
-                        "CAL alphanumeric subtext link lacks the current CPA cset=C route"
-                    )
+            if (
+                has_subtext_letter_suffix(subtext_id)
+                and (set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"])
+            ):
+                raise TextParseError(
+                    "CAL alphanumeric subtext link lacks the current CPA cset=C route"
+                )
 
     rendered_label = (label if label is not None else link.text).strip()
     if not rendered_label:
