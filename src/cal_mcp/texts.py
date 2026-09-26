@@ -43,6 +43,25 @@ _MANDAIC_COLLECTION_PREFIX = "74"
 _MANDAIC_CATEGORY_ID = "74"
 _MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
 _MANDAIC_ROOT_LABEL = "Mandaic"
+_CPA_TEXT_FILE_IDS = frozenset(
+    {
+        "55000",
+        "55001",
+        "55003",
+        "55006",
+        "55007",
+        "55400",
+        "55401",
+        "55402",
+        "55403",
+        "55404",
+        "55405",
+        "55420",
+        "55421",
+        "55422",
+        "55423",
+    }
+)
 _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
     {
         "74401",
@@ -1011,7 +1030,7 @@ class TextService:
             params = [("file", normalized_file)]
             if normalized_subtext is not None:
                 params.append(("sub", normalized_subtext))
-                if has_subtext_letter_suffix(normalized_subtext):
+                if normalized_file in _CPA_TEXT_FILE_IDS:
                     params.append(("cset", "C"))
             params.append(("page", str(page - 1)))
         submitted_sub = next((value for name, value in params if name == "sub"), None)
@@ -1200,12 +1219,10 @@ def _text_ref_from_link(
             raise TextParseError("CAL text link has repeated sub identifiers")
         if sub_values[0]:
             subtext_id = _parse_subtext_id(sub_values[0])
-            if has_subtext_letter_suffix(subtext_id) and (
+            if file_id in _CPA_TEXT_FILE_IDS and (
                 set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]
             ):
-                raise TextParseError(
-                    "CAL alphanumeric subtext link lacks the current CPA cset=C route"
-                )
+                raise TextParseError("CAL CPA text link lacks the exact current cset=C route")
 
     rendered_label = (label if label is not None else link.text).strip()
     if not rendered_label:
@@ -1445,14 +1462,13 @@ def _page_navigation(
                     )
                 if (
                     requested_subtext_id is not None
-                    and has_subtext_letter_suffix(requested_subtext_id)
+                    and requested_file_id in _CPA_TEXT_FILE_IDS
                     and (
                         set(query) != {"file", "sub", "page", "cset"} or query.get("cset") != ["C"]
                     )
                 ):
                     raise TextParseError(
-                        "CAL alphanumeric subtext navigation lacks the exact current "
-                        "CPA cset=C route"
+                        "CAL CPA text navigation lacks the exact current cset=C route"
                     )
 
                 upstream_page = _single_query_value(query, "page", "page-navigation")
