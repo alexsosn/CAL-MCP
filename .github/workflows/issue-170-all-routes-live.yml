@@ -1,0 +1,87 @@
+name: Issue 170 all CPA route acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-170-cpa-subtext-ids
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify suffix, decimal-subtext, and direct CPA routes over stdio
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          async def call_ok(client, name, args):
+              result = await client.call_tool(name, args)
+              if result.is_error:
+                  raise RuntimeError(f"{name} failed: {result.structured_content!r}")
+              data = result.structured_content
+              if not isinstance(data, dict):
+                  raise RuntimeError(f"{name} missing structured content")
+              return data
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  cat = await call_ok(client, "cal_text_catalogue", {"category_id": "55"})
+                  texts = cat.get("texts")
+                  if not isinstance(texts, list):
+                      raise RuntimeError("CPA catalogue missing texts")
+                  refs = {
+                      (item.get("file_id"), item.get("subtext_id"))
+                      for item in texts if isinstance(item, dict)
+                  }
+                  expected = {
+                      ("55000", "01001a"),
+                      ("55001", "002"),
+                      ("55002", None),
+                  }
+                  if not expected <= refs:
+                      raise RuntimeError(f"missing representative CPA refs: {sorted(expected - refs, key=str)!r}")
+
+                  calls = [
+                      ("55000", "01001a"),
+                      ("55001", "002"),
+                      ("55002", None),
+                  ]
+                  observed = []
+                  for file_id, subtext_id in calls:
+                      args = {"file_id": file_id}
+                      if subtext_id is not None:
+                          args["subtext_id"] = subtext_id
+                      data = await call_ok(client, "cal_text_page", args)
+                      page = data.get("page")
+                      if not isinstance(page, dict):
+                          raise RuntimeError(f"missing page for {file_id}/{subtext_id}")
+                      ref = page.get("text")
+                      if (
+                          not isinstance(ref, dict)
+                          or ref.get("file_id") != file_id
+                          or ref.get("subtext_id") != subtext_id
+                      ):
+                          raise RuntimeError(f"identity mismatch for {file_id}/{subtext_id}: {ref!r}")
+                      lines = page.get("lines")
+                      if not isinstance(lines, list) or not lines:
+                          raise RuntimeError(f"no lines for {file_id}/{subtext_id}")
+                      observed.append((file_id, subtext_id, len(lines)))
+
+                  print(
+                      "live #170 all routes OK: "
+                      + ", ".join(f"{f}/{s}:lines={n}" for f, s, n in observed)
+                  )
+
+          asyncio.run(main())
+          PY
