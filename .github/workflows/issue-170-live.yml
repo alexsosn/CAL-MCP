@@ -1,4 +1,4 @@
-name: Issue 170 live stdio verification
+name: Issue 170 live structural probe
 
 on:
   push:
@@ -17,65 +17,57 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install candidate
-        run: python -m pip install .
-      - name: Verify CPA catalogue and page through installed stdio MCP
+      - name: Inspect CPA coordinate structure with one bounded GET
         run: |
           python - <<'PY'
-          import asyncio
-          from mcp import Client, StdioServerParameters
+          import re
+          import urllib.request
+          from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlsplit
 
-          async def main() -> None:
-              async with Client(StdioServerParameters(command="cal-mcp")) as client:
-                  catalogue = await client.call_tool(
-                      "cal_text_catalogue",
-                      {"category_id": "55"},
-                  )
-                  if catalogue.is_error:
-                      raise RuntimeError(f"CPA catalogue failed: {catalogue.content!r}")
-                  data = catalogue.structured_content
-                  if not isinstance(data, dict):
-                      raise RuntimeError("CPA catalogue missing structured content")
-                  texts = data.get("texts")
-                  if not isinstance(texts, list):
-                      raise RuntimeError("CPA catalogue missing texts")
-                  match = next(
-                      (
-                          item
-                          for item in texts
-                          if isinstance(item, dict)
-                          and item.get("subtext_id") == "01001a"
-                      ),
-                      None,
-                  )
-                  if match is None:
-                      raise RuntimeError("CPA catalogue does not expose subtext 01001a")
-                  file_id = match.get("file_id")
-                  if file_id != "55000":
-                      raise RuntimeError(f"unexpected CPA file for 01001a: {file_id!r}")
+          url = "https://cal.huc.edu/get_a_chapter.php?file=55000&sub=01001a&cset=C&page=0"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              body = response.read(512 * 1024).decode("utf-8", "replace")
 
-                  page = await client.call_tool(
-                      "cal_text_page",
-                      {"file_id": file_id, "subtext_id": "01001a"},
-                  )
-                  if page.is_error:
-                      raise RuntimeError(f"CPA page failed: {page.content!r}")
-                  pdata = page.structured_content
-                  if not isinstance(pdata, dict) or not isinstance(pdata.get("page"), dict):
-                      raise RuntimeError("CPA page missing structured content")
-                  text_ref = pdata["page"].get("text")
-                  if not isinstance(text_ref, dict):
-                      raise RuntimeError("CPA page missing text reference")
-                  if text_ref.get("file_id") != "55000" or text_ref.get("subtext_id") != "01001a":
-                      raise RuntimeError(f"CPA page identity mismatch: {text_ref!r}")
-                  lines = pdata["page"].get("lines")
-                  if not isinstance(lines, list) or not lines:
-                      raise RuntimeError("CPA page returned no lines")
+          class Links(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.hrefs = []
+              def handle_starttag(self, tag, attrs):
+                  if tag == "a":
+                      href = dict(attrs).get("href")
+                      if href:
+                          self.hrefs.append(href)
 
-                  print(
-                      f"live stdio OK: catalogue_texts={len(texts)} "
-                      f"file={file_id} sub=01001a lines={len(lines)}"
-                  )
+          p = Links()
+          p.feed(body)
+          by_route = {}
+          for href in p.hrefs:
+              parsed = urlsplit(href)
+              route = parsed.path.rsplit("/", 1)[-1]
+              if route not in {"getlex.php", "bablex.php", "comment.php", "ask_ai_prompt.php", "get_file_info.php"}:
+                  continue
+              q = parse_qs(parsed.query, keep_blank_values=True)
+              key = "coord"
+              value = (q.get(key) or [""])[0]
+              by_route.setdefault(route, []).append(value)
 
-          asyncio.run(main())
+          for route, values in sorted(by_route.items()):
+              unique = list(dict.fromkeys(values))
+              print({
+                  "route": route,
+                  "count": len(values),
+                  "unique_count": len(unique),
+                  "samples": unique[:8],
+                  "all_decimal": all(v.isdigit() for v in unique if v),
+                  "patterns": sorted({
+                      re.sub(r"[0-9]+", "#", v)
+                      for v in unique
+                      if v
+                  })[:12],
+              })
           PY
