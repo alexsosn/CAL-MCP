@@ -214,8 +214,9 @@ Consequences:
 - current text/token machine coordinates may be decimal or use CAL's observed digits + one
   lowercase ASCII letter + decimal-tail form; suffix-bearing text pages additionally require the
   exact requested `file_id + subtext_id` prefix;
-- `cal_token_analysis` accepts that same machine-coordinate grammar so coordinates returned by
-  `cal_text_page` remain composable;
+- `cal_token_analysis` accepts that same machine-coordinate grammar at its input boundary, so a
+  coordinate returned by `cal_text_page` is not rejected locally; current CPA token-analysis
+  response parsing is a separate compatibility concern tracked by release blocker #179;
 - suffix-bearing current CPA text-page navigation must retain `cset=C`; contradictory routes fail
   closed rather than being normalized;
 - values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
