@@ -24,7 +24,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `text_catalogue_root.html` | `https://cal.huc.edu/newtextmenu.html` | root category links plus a directly linked text |
 | `text_catalogue_biblical.html` | `https://cal.huc.edu/showsubtexts.php?subtext=3` | explicit subtext/file navigation identifiers |
 | `text_catalogue_mandaic_current.html` | `https://cal.huc.edu/show_Mandaic.php?R1=74` (2026-09-25) | current Mandaic catalogue: script toggle, grouped `cset=R` title rows with information links (6 of 20 texts), not-available notes |
-| `cpa_catalogue_alphanumeric_current.html` | reduced current `https://cal.huc.edu/showsubtexts.php?subtext=55` (rechecked 2026-09-26) | verbatim CPA title route `file=55000&sub=01001a&cset=C` demonstrating suffix-bearing subtext IDs |
+| `cpa_catalogue_alphanumeric_current.html` | reduced current `https://cal.huc.edu/showsubtexts.php?subtext=55` (rechecked 2026-09-26/27) | verbatim CPA routes `55000/01001a` and `55001/002`, both with `cset=C`, demonstrating suffix-bearing and decimal CPA subtexts |
 | `cpa_text_page_alphanumeric_structural.html` | structural fixture from current `file=55000&sub=01001a&cset=C` (2026-09-26) | observed file-info identity `5500001001a` and token machine-coordinate form `5500001001a019001`; display coordinate/token text are explicitly synthetic |
 | `text_search_tel_dan.html` | `POST https://cal.huc.edu/newsearchtxts.php` (`search=Tel Dan`) | topic-search text reference, label, and rendered description |
 | `text_page_bt_az.html` | `https://cal.huc.edu/get_a_chapter.php?file=71026&page=0` | paginated text metadata, line/display coordinates, token links, comments, and next-page navigation |
