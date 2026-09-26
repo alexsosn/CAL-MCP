@@ -217,3 +217,20 @@ separate evidence-backed CPA subdivided/direct file sets (or equivalent exact se
 `file,page` route without the CPA rendering selector.
 
 The review probe made exactly one CAL GET and retained only route selectors.
+
+## Direct-route parser boundary
+
+Installed-stdio verification of representative direct CPA file `55002` submitted the corrected
+route `get_a_chapter.php?file=55002&cset=C&page=0` and received HTTP 200. Parsing then failed
+closed with `CAL text page contains no recognizable coordinate/token rows`.
+
+A bounded structural follow-up showed that the current page does contain a `text-display` table,
+but its relevant structure has one `tr`, two `bdo` elements and one `span.psyr`, with no
+`td` elements and no `getlex.php`/`bablex.php` links. This is a linkless/unlemmatized text
+layout and belongs to release blocker #185, whose scope already covers CAL pages with scholarly
+text but no machine token links.
+
+Therefore #170 owns discovery, identifier preservation, and exact private CPA routing. For direct
+CPA routes, live acceptance proves that the correct `cset=C` request reaches CAL; reading the
+linkless returned content is deliberately deferred to #185's independent research/TDD/review loop.
+Suffix-bearing `55000/01001a` and decimal-subtext `55001/002` both parse successfully today.
