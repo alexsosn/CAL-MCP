@@ -432,9 +432,10 @@ async def cal_token_analysis(
 ) -> dict[str, object]:
     """Return every CAL lexical analysis for one explicit text coordinate/token index.
 
-    ``coordinate`` is CAL's opaque decimal machine coordinate and ``word_index`` is
-    zero-based, matching the token metadata returned by ``cal_text_page``. Candidate lexicon
-    entries are never expanded automatically.
+    ``coordinate`` is CAL's opaque machine coordinate and ``word_index`` is zero-based,
+    matching the token metadata returned by ``cal_text_page``. Most current coordinates are
+    decimal; CPA can embed one lowercase subtext suffix between decimal segments. Candidate
+    lexicon entries are never expanded automatically.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
