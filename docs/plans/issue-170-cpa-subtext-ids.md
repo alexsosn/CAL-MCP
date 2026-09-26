@@ -1,24 +1,40 @@
-# Issue #170 plan — widen only CAL subtext IDs
+# Issue #170 plan — widen CAL subtext IDs and preserve CPA machine coordinates
 
 Date: 2026-09-26. Research: `docs/research/issue-170-cpa-subtext-ids.md`.
 
-1. Add one tiny shared identifier module whose only new contract is `^[0-9]+[a-z]?$` for CAL subtext IDs. Keep every existing decimal-ID helper intact.
-2. Add reduced/synthetic-provenance fixtures for:
-   - current CPA catalogue link `file=55000&sub=01001a&cset=C`;
-   - one current-shape CPA text row whose file-info identity is `5500001001a`.
-3. RED tests before implementation:
-   - catalogue returns `TextRef(file_id="55000", subtext_id="01001a", ...)`;
-   - page accepts `01001a`, submits exactly one request including `cset=C`, and preserves the public subtext ID;
-   - information accepts `01001a` and requests `coord=5500001001a`;
-   - KWIC full-context accepts `01001a` and sends it unchanged;
-   - returned KWIC/full-context sub selectors can use the same grammar;
-   - malformed near-misses are rejected both as caller input and returned CAL data.
-4. GREEN:
-   - `texts.py`: dedicated subtext validate/parse wrappers; catalogue, page, information, navigation and composed file-info identity use them;
-   - for a suffix-bearing subtext only, page routing adds `cset=C`, matching current CPA links;
-   - `concordance.py`: dedicated subtext validate/parse wrappers and optional-query helper;
-   - no widening of file IDs, category IDs, target coordinates or generic decimal helpers.
-5. Update user docs, `research.md`, `wiki/decisions.md`, fixture provenance and CHANGELOG.
-6. Run focused tests and both full deterministic CI matrices.
-7. User-level live verification from an installed candidate over stdio: `cal_text_catalogue("55")` succeeds and one returned `01001a` entry opens via `cal_text_page`; keep the probe bounded and delete any temporary workflow afterward.
-8. Perform a logically independent adversarial review of the exact final SHA. Fix/retest/re-review any finding before merge.
+1. Keep one shared subtext-ID predicate: decimal digits plus an optional single lowercase ASCII
+   suffix. Generic decimal-ID helpers stay unchanged.
+2. Keep reduced/synthetic-provenance fixtures for the current CPA catalogue and page route.
+3. Initial RED (already recorded before implementation):
+   - catalogue parses `file=55000&sub=01001a&cset=C`;
+   - page/information/KWIC full-context accept `01001a`;
+   - returned KWIC/full-context sub selectors use the same grammar;
+   - malformed near-miss subtext IDs stay invalid.
+4. Initial GREEN:
+   - `texts.py` uses dedicated subtext validate/parse wrappers;
+   - suffix-bearing text-page requests and navigation require current `cset=C`;
+   - `concordance.py` uses the same subtext grammar;
+   - file/category/target-coordinate decimal contracts are unchanged.
+5. Live stdio acceptance then exposed a second issue: CPA token/comment coordinates include the
+   lowercase subtext suffix, e.g. `5500001001a019001`.
+6. Before changing coordinate handling, add a second RED:
+   - revise the structural CPA page fixture to carry the observed machine-coordinate form;
+   - page parsing fails on the existing decimal-only coordinate check;
+   - token-analysis input rejects that returned coordinate before transport;
+   - malformed broader alphanumeric coordinates remain rejected.
+7. Second GREEN:
+   - add a shared narrow machine-coordinate predicate accepting decimal or one embedded lowercase
+     ASCII letter followed by decimal tail;
+   - page token/comment parsing uses it;
+   - suffix-bearing pages additionally require the exact requested `file_id + subtext_id` prefix;
+   - `cal_token_analysis` accepts the same narrow grammar so returned CPA tokens remain usable;
+   - do not widen concordance target coordinates without separate live evidence.
+8. Update MCP descriptions, user docs, `research.md`, `wiki/decisions.md`, fixture provenance
+   and CHANGELOG.
+9. Run both complete CI matrices.
+10. Installed-stdio live verification: `cal_text_catalogue("55")` succeeds and returned
+    `01001a` opens with `cal_text_page`; verify at least one returned token coordinate has the
+    researched suffix-bearing form and can be submitted to `cal_token_analysis` without local
+    rejection. Keep the live calls bounded and remove the temporary workflow afterward.
+11. Perform a logically independent adversarial review of the exact final SHA. Any finding is
+    fixed, retested and re-reviewed before merge.
