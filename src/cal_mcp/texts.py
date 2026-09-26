@@ -126,6 +126,7 @@ class TextLine:
     text: str
     tokens: tuple[TextToken, ...]
     comment_url: str | None
+    empty_word_indexes: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -1555,6 +1556,34 @@ def _parse_text_table(response: CalResponse) -> _TextTable:
     return _TextTable(found=parser.found, rows=tuple(parser.rows))
 
 
+def _empty_word_slot(link: _Link) -> tuple[str, int]:
+    """Validate one current CAL empty lexical slot and return coordinate/index."""
+
+    parsed_href = urlsplit(link.href)
+    if (
+        parsed_href.scheme
+        or parsed_href.netloc
+        or parsed_href.fragment
+        or parsed_href.path != "getlex.php"
+    ):
+        raise TextParseError("CAL text row has an unexpected empty lexical-link route")
+    query = parse_qs(parsed_href.query, keep_blank_values=True)
+    if set(query) != {"coord", "word", "hasvariant"}:
+        raise TextParseError("CAL text row empty lexical link has unexpected selectors")
+
+    coordinate = _single_query_value(query, "coord", "empty-word-slot")
+    _parse_positive_id(coordinate, "coordinate")
+
+    word = _single_query_value(query, "word", "empty-word-slot")
+    if not word.isdigit():
+        raise TextParseError("CAL text row empty lexical link has a nonnumeric word index")
+    word_index = int(word)
+
+    if query.get("hasvariant") != ["0"]:
+        raise TextParseError("CAL text row empty lexical link must use hasvariant=0")
+    return coordinate, word_index
+
+
 def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLine:
     if len(row) != 2:
         raise TextParseError("CAL text row does not have exactly two cells")
@@ -1562,17 +1591,32 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
 
     if _clean_text("".join(token_cell.loose_parts)):
         raise TextParseError("CAL text row token cell has text outside its token links")
-    tokens: list[TextToken] = []
-    for link in token_cell.links:
-        token = _token_from_link(link, source_url)
-        if token is None:
-            raise TextParseError("CAL text row token cell has a non-lexical link")
-        tokens.append(token)
-    if not tokens:
+    if not token_cell.links:
         raise TextParseError("CAL text row has no token links")
-    coordinate = tokens[0].coordinate
-    if any(token.coordinate != coordinate for token in tokens):
+
+    tokens: list[TextToken] = []
+    empty_slots: list[tuple[str, int]] = []
+    for link in token_cell.links:
+        if link.text.strip():
+            token = _token_from_link(link, source_url)
+            if token is None:
+                raise TextParseError("CAL text row token cell has a non-lexical link")
+            tokens.append(token)
+        else:
+            empty_slots.append(_empty_word_slot(link))
+
+    coordinates = [token.coordinate for token in tokens]
+    coordinates.extend(coordinate for coordinate, _index in empty_slots)
+    coordinate = coordinates[0]
+    if any(candidate != coordinate for candidate in coordinates[1:]):
         raise TextParseError("CAL text row mixes multiple machine coordinates")
+
+    empty_word_indexes = [index for _coordinate, index in empty_slots]
+    if len(set(empty_word_indexes)) != len(empty_word_indexes):
+        raise TextParseError("CAL text row has a duplicate empty word index")
+    rendered_word_indexes = {token.word_index for token in tokens}
+    if rendered_word_indexes.intersection(empty_word_indexes):
+        raise TextParseError("CAL text row empty word index collides with a rendered token")
 
     comment_link: _Link | None = None
     for link in coordinate_cell.links:
@@ -1605,6 +1649,7 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
         text=rendered_text,
         tokens=tuple(tokens),
         comment_url=comment_url,
+        empty_word_indexes=tuple(empty_word_indexes),
     )
 
 
@@ -1760,6 +1805,7 @@ def _line_to_dict(line: TextLine) -> dict[str, object]:
         "display_coordinate": line.display_coordinate,
         "text": line.text,
         "tokens": [_token_to_dict(item) for item in line.tokens],
+        "empty_word_indexes": list(line.empty_word_indexes),
         "comment_url": line.comment_url,
     }
 

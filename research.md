@@ -327,6 +327,34 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-038 — Syriac text rows can contain empty lexical word slots
+
+**Rechecked:** 2026-09-26 against current CAL from a bounded GitHub-runner probe.
+
+The original 2026-09-25 E2E observation captured an all-empty row in Ephrem text `60424`:
+
+```html
+<tr><td valign="top">1.005:08 </td><td><a href="getlex.php?coord=60424100508&word=0&hasvariant=0"></a> </td></tr>
+```
+
+A 2026-09-26 live structural recheck corrected the initial interpretation. The structural probe counted 314 `<tr>` elements in the current text-display region; 10 contain
+29 empty `getlex.php` anchors. A later installed-stdio verification returned 313 parsed two-cell
+lines while preserving the same 29 slots and nine mixed rows, so raw row count is not treated as
+an invariant. Only one affected row is all-empty. The other nine
+mix empty word slots with rendered lexical links, and empty slots occur at word indexes 0–11.
+All lexical links within each affected row share one machine coordinate. Detailed evidence and
+the revised representation are in `docs/research/issue-168-blank-text-lines.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_chapter.php?file=60424&page=0
+
+**Implication:** rendered tokens remain `tokens`; exact current empty lexical slots are preserved
+separately as additive `empty_word_indexes`. Mixed and word>0 empty slots are valid current CAL
+data. Altered routes/selectors, coordinate disagreement, duplicate slots, or collisions with
+rendered word indexes fail closed.
+
+
 ## R-037 — Dictionary-collation result headings use shorter titles for four sources
 
 **Rechecked:** 2026-09-25.
