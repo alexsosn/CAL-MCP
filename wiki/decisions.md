@@ -197,3 +197,24 @@ Consequences:
 - the schema change is additive (`section_labels`); row, count and total semantics and request counts are unchanged;
 - a label row must carry CAL's literal `&nbsp;` filler, so a damaged result row cannot be misread as a label.
 
+## D-016 — Subtext IDs use a dedicated researched grammar
+
+**Status:** accepted — 2026-09-26 (issue #170; research R-039)
+
+CAL's current Christian Palestinian Aramaic catalogue disproves the earlier implicit assumption
+that every subtext selector is decimal: CPA uses values such as `01001a`. For v0.1,
+`subtext_id` therefore has its own shared grammar: one or more decimal digits followed by at most
+one lowercase ASCII letter.
+
+Consequences:
+
+- preserve leading zeroes and any lowercase suffix exactly;
+- use the same grammar for text catalogue/page/information and KWIC/full-context subtext fields;
+- do not widen generic file IDs, category IDs, text IDs, target coordinates, or decimal machine
+  coordinates;
+- suffix-bearing current CPA text-page navigation must retain `cset=C`; contradictory routes fail
+  closed rather than being normalized;
+- values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
+  whitespace, or arbitrary strings remain invalid;
+- future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
+  amendment rather than silently broadening this rule.
