@@ -109,3 +109,24 @@ Before merge:
     researched suffix whose target equals the linked lemma key.
 11. Re-run both full CI matrices and perform the final exact-head adversarial review.
 
+## Current-table fallback amendment
+
+Exact-head review of `df5d9631` found two ways a malformed current non-redirect result table can
+escape strict validation:
+
+- changing/removing `class=lexlink` on the current Targum table can prevent the strict parser
+  from activating and allow legacy alternating-line fallback;
+- non-whitespace rendered text in the result cell outside the single linked header is ignored.
+
+Before merge:
+
+12. RED:
+    - mutate the current Targum anchor class away from `lexlink` and require parser drift;
+    - add rendered text after the current linked header inside the result cell and require parser
+      drift.
+13. GREEN:
+    - activate the strict current-table path from the researched unique H2 analysis marker plus
+      result-table shape, while still requiring exact `class=lexlink` inside that path;
+    - retain and reject non-whitespace table text outside the linked header.
+14. Run both full CI matrices and perform a fresh exact-head adversarial review.
+
