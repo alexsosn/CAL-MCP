@@ -18,7 +18,8 @@ A successful result preserves:
 - `coordinate`: the exact CAL machine coordinate supplied by the caller;
 - `word_index`: CAL's zero-based token index;
 - `status`: `found` or `not_found`;
-- `candidates`: CAL's ordered lexical analyses for that token;
+- `candidates`: CAL's ordered **linked** lexical analyses for that token;
+- `unlinked_summaries`: ordered rendered CAL analysis-summary lines when the current result has no linked lemma-entry identity; otherwise an empty list;
 - `provenance`: CAL source URL and timezone-aware retrieval timestamp plus the requested coordinate and token index.
 
 Each candidate contains:
@@ -67,7 +68,7 @@ The current no-lemma sentence is accepted only together with exactly one normal 
 
 Current linked result pages can use a one-row `a.lexlink` table followed by a full lexicon sense outline. CAL-MCP treats the table close as the candidate boundary and does not reinterpret following sense lines as additional token analyses. When CAL renders an explicit `SOURCE --> TARGET` suffix (current Peshitta example), TARGET must equal the linked `lemma` selector and SOURCE becomes `analyzed_lemma_key`. Current Targum also uses the same `lexlink` table without redirect notation; in that case `analyzed_lemma_key` remains `null` rather than being inferred from the free-form label.
 
-CAL also currently returns **linkless** successful token-analysis summaries for some Peshitta and CPA proper-name/other tokens. Their candidate grammar is not yet sufficiently established to construct a truthful `LemmaRef`, so they remain parser drift under release blocker #193 rather than being guessed into this result model or mislabeled `not_found`.
+CAL also currently returns **linkless** successful token-analysis summaries for some Peshitta and CPA tokens. These pages have the normal result marker but no result table and no lemma-entry link. CAL-MCP preserves their ordered rendered lines in `unlinked_summaries` and leaves `candidates` empty. It does not interpret POS-looking text, `=`, or `-->` as typed lemma/redirect semantics because CAL exposes no linked identity against which those interpretations can be validated. A result with one or more such summaries has `status: "found"`; explicit CAL no-data/no-lemma states remain `not_found` with both collections empty.
 
 ## Request bound
 
@@ -102,6 +103,8 @@ Offline tests use reduced semantic excerpts rechecked against current CAL behavi
 - CAL's current result-marker plus `unrecognizable query or no such lemma found` empty-analysis state;
 - contradictory current empty-state markup with a lemma link;
 - current empty-state text without the required result marker;
+- current one- and two-line linkless Peshitta summaries plus a CPA linkless summary;
+- linkless-summary drift with unexpected links, tables, or mixed linked/unlinked structure;
 - incomplete/missing lemma-link markup;
 - unknown successful markup;
 - local coordinate/token-index validation, including current CPA suffix-bearing coordinates and malformed near-misses;
