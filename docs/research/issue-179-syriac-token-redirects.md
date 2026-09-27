@@ -16,7 +16,11 @@ timeouts, a 256 KiB response cap, no retries, no link traversal, and no neighbor
 Research workflow runs:
 
 - `36287513174`: Peshitta word 0, Peshitta word 1, CPA word 0;
-- `36287548078`: one additional Peshitta word 2 control.
+- `36287548078`: one additional Peshitta word 2 control;
+- `36287854410`: one additional fixed GET of Peshitta word 1 through the production semantic
+  line parser to isolate the exact failure mechanism.
+
+Total live research load: five fixed CAL GETs.
 
 ## Linked Syriac redirect shape
 
@@ -55,6 +59,29 @@ The markup is mis-nested in the current upstream HTML. The structural event orde
 Thus the link closes while `span.mgP` is still open. The page then renders a full sense outline
 outside the result table (three `sense-line` blocks and one `subsense-block` in this response).
 That outline is lexicon-entry content, not an additional token-analysis candidate.
+
+The final production-parser probe showed why the current adapter fails. `_parse_lines` returns
+the following relevant sequence:
+
+```text
+2  Click on a headword to see a complete lexicon entry
+3  )syr noun sg. emphatic= )syr N --> )syr A
+4  ˀsyr (ˀăsīr) adj. captured; forbidden        [oneentry link]
+5  1 captive, bound Com, -OA -BA. ▶ more        [no link]
+6  --(a) ... prison : see s.v. byt ˀsyryn ...   [no link]
+...
+12 ← Return to the Text Browser
+```
+
+The legacy alternating-line loop correctly parses lines 3–4 as the first candidate, then advances
+to line 5 and treats lines 5–6 as a possible second candidate. Because line 6 contains `s.v.`,
+the generic lemma-header heuristic considers it lemma-like; since it has no entry link, the parser
+raises `CAL token-analysis candidate lemma header is missing its lemma link`.
+
+Therefore the regression is not failure to see the current `lexlink`. It is failure to stop the
+token-analysis candidate region at the end of the current result table. The #179 parser must use
+the current table boundary explicitly and must not feed subsequent sense-outline lines back into
+the alternating legacy candidate loop.
 
 The redirect is explicit in CAL's rendered analysis label:
 
