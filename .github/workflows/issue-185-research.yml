@@ -1,4 +1,4 @@
-name: Issue 185 bounded plain-text research
+name: Issue 185 corrected plain-text research
 
 on:
   push:
@@ -16,13 +16,13 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe four current text pages
+      - name: Probe four text pages with CAL table boundary
         run: |
           python - <<'PY'
           import json
           import urllib.request
           from html.parser import HTMLParser
-          from urllib.parse import parse_qs, urlsplit
+          from urllib.parse import urlsplit
 
           URLS = [
               ("mandaic-74420", "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74420"),
@@ -38,146 +38,150 @@ jobs:
                   body = response.read(524289)
                   if len(body) > 524288:
                       raise RuntimeError("response exceeded 512 KiB")
-                  return response.status, response.geturl(), body.decode("utf-8", "replace")
+                  return response.status, body.decode("utf-8", "replace")
 
           class Probe(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.in_text_table = False
-                  self.table_depth = 0
+                  self.in_table = False
                   self.in_row = False
+                  self.row = None
                   self.rows = []
-                  self.current_row = None
-                  self.in_td = False
-                  self.current_td = None
-                  self.element_stack = []
-                  self.special = []
-                  self.text_table_count = 0
+                  self.cell = None
+                  self.link = None
+                  self.special_stack = []
+
+              def finish_row(self):
+                  if self.row is not None:
+                      if self.cell is not None:
+                          self.finish_cell()
+                      self.row["loose_text"] = " ".join("".join(self.row["loose"]).split())
+                      self.rows.append(self.row)
+                  self.row = None
+                  self.in_row = False
+
+              def finish_cell(self):
+                  if self.cell is not None and self.row is not None:
+                      self.cell["text"] = " ".join("".join(self.cell["parts"]).split())
+                      self.row["tds"].append(self.cell)
+                  self.cell = None
 
               def handle_starttag(self, tag, attrs):
                   d = dict(attrs)
-                  classes = set((d.get("class") or "").split())
+                  classes = (d.get("class") or "").split()
                   if tag == "table":
-                      if self.in_text_table:
-                          self.table_depth += 1
-                      elif "text-display" in classes:
-                          self.in_text_table = True
-                          self.table_depth = 1
-                          self.text_table_count += 1
+                      if self.in_table:
+                          # CAL often does not close text-display before navigation table.
+                          self.finish_row()
+                          self.in_table = False
                           return
-                  if not self.in_text_table:
+                      if "text-display" in classes:
+                          self.in_table = True
+                      return
+                  if not self.in_table:
                       return
                   if tag == "tr":
+                      self.finish_row()
                       self.in_row = True
-                      self.current_row = {"tds": [], "links": [], "special": [], "loose": []}
-                  elif tag == "td" and self.in_row:
-                      self.in_td = True
-                      self.current_td = {"parts": [], "links": []}
-                  elif tag == "a" and self.in_row:
-                      href = d.get("href") or ""
-                      p = urlsplit(href)
-                      q = parse_qs(p.query, keep_blank_values=True)
-                      rec = {
-                          "path": p.path.rsplit("/", 1)[-1],
-                          "keys": sorted(q),
-                          "coord": (q.get("coord") or [None])[0],
-                          "word": (q.get("word") or [None])[0],
+                      self.row = {
+                          "tds": [], "links": [], "loose": [], "events": [],
                       }
-                      self.current_row["links"].append(rec)
-                      if self.in_td:
-                          self.current_td["links"].append(rec)
-                  elif tag in {"bdo", "span"} and self.in_row:
-                      rec = {
-                          "tag": tag,
-                          "class": d.get("class"),
-                          "dir": d.get("dir"),
-                          "parts": [],
-                      }
-                      self.current_row["special"].append(rec)
-                      self.element_stack.append(rec)
+                      return
+                  if not self.in_row:
+                      return
+                  self.row["events"].append({
+                      "kind": "start", "tag": tag, "class": d.get("class"), "dir": d.get("dir")
+                  })
+                  if tag == "td":
+                      self.finish_cell()
+                      self.cell = {"parts": [], "links": []}
+                  elif tag == "a":
+                      self.link = d.get("href") or ""
+                      self.row["links"].append(self.link)
+                      if self.cell is not None:
+                          self.cell["links"].append(self.link)
+                  elif tag in {"bdo", "span"}:
+                      self.special_stack.append({
+                          "tag": tag, "class": d.get("class"), "dir": d.get("dir"), "parts": []
+                      })
 
               def handle_endtag(self, tag):
-                  if not self.in_text_table:
+                  if not self.in_table:
                       return
-                  if tag == "td" and self.in_td:
-                      self.current_td["text"] = " ".join("".join(self.current_td["parts"]).split())
-                      self.current_row["tds"].append(self.current_td)
-                      self.in_td = False
-                      self.current_td = None
-                  elif tag in {"bdo", "span"} and self.element_stack:
-                      if self.element_stack[-1]["tag"] == tag:
-                          rec = self.element_stack.pop()
-                          rec["text"] = " ".join("".join(rec["parts"]).split())
-                  elif tag == "tr" and self.in_row:
-                      self.current_row["loose_text"] = " ".join(
-                          "".join(self.current_row["loose"]).split()
+                  if self.in_row:
+                      self.row["events"].append({"kind": "end", "tag": tag})
+                  if tag == "td":
+                      self.finish_cell()
+                  elif tag == "tr":
+                      self.finish_row()
+                  elif tag == "a":
+                      self.link = None
+                  elif tag in {"bdo", "span"} and self.special_stack:
+                      # close nearest matching element; CAL markup is not always balanced
+                      idx = next(
+                          (i for i in range(len(self.special_stack)-1, -1, -1)
+                           if self.special_stack[i]["tag"] == tag),
+                          None,
                       )
-                      self.rows.append(self.current_row)
-                      self.current_row = None
-                      self.in_row = False
+                      if idx is not None:
+                          rec = self.special_stack.pop(idx)
+                          rec["text"] = " ".join("".join(rec["parts"]).split())
+                          if self.row is not None:
+                              self.row.setdefault("special", []).append(rec)
                   elif tag == "table":
-                      self.table_depth -= 1
-                      if self.table_depth <= 0:
-                          self.in_text_table = False
-                          self.table_depth = 0
+                      self.finish_row()
+                      self.in_table = False
 
               def handle_data(self, data):
-                  if not self.in_text_table or not self.in_row:
+                  if not self.in_table or not self.in_row:
                       return
-                  if self.in_td:
-                      self.current_td["parts"].append(data)
+                  if self.cell is not None:
+                      self.cell["parts"].append(data)
                   else:
-                      self.current_row["loose"].append(data)
-                  for rec in self.element_stack:
+                      self.row["loose"].append(data)
+                  for rec in self.special_stack:
                       rec["parts"].append(data)
 
-          output = []
-          for name, url in URLS:
-              status, final, body = get(url)
-              p = Probe()
-              p.feed(body)
-              p.close()
-              rows = p.rows
-              row_summary = []
-              for row in rows:
-                  lexical = [
-                      link for link in row["links"]
-                      if link["path"] in {"getlex.php", "bablex.php"}
+              def close(self):
+                  super().close()
+                  self.finish_row()
+
+          out=[]
+          for name,url in URLS:
+              status, body = get(url)
+              p=Probe(); p.feed(body); p.close()
+              summaries=[]
+              for row in p.rows:
+                  lexical=[
+                      h for h in row["links"]
+                      if urlsplit(h).path.rsplit("/",1)[-1] in {"getlex.php","bablex.php"}
                   ]
-                  row_summary.append({
+                  summaries.append({
                       "td_count": len(row["tds"]),
+                      "td_texts": [x["text"][:100] for x in row["tds"]],
                       "lexical_link_count": len(lexical),
                       "other_link_paths": [
-                          x["path"] for x in row["links"]
-                          if x["path"] not in {"getlex.php", "bablex.php"}
-                      ],
-                      "td_texts": [td["text"][:120] for td in row["tds"]],
-                      "special": [
-                          {
-                              "tag": x["tag"],
-                              "class": x["class"],
-                              "dir": x["dir"],
-                              "text": x.get("text", "")[:120],
-                          }
-                          for x in row["special"]
+                          urlsplit(h).path.rsplit("/",1)[-1]
+                          for h in row["links"]
+                          if urlsplit(h).path.rsplit("/",1)[-1] not in {"getlex.php","bablex.php"}
                       ],
                       "loose_text": row["loose_text"][:160],
+                      "special": [
+                          {
+                              "tag": x["tag"], "class": x["class"], "dir": x["dir"],
+                              "text": x.get("text","")[:120],
+                          }
+                          for x in row.get("special", [])
+                      ],
+                      "events": row["events"][:24],
                   })
-              output.append({
+              out.append({
                   "case": name,
                   "status": status,
-                  "final_path": urlsplit(final).path.rsplit("/", 1)[-1],
-                  "text_table_count": p.text_table_count,
-                  "row_count": len(rows),
-                  "rows_with_lexical_links": sum(
-                      any(x["path"] in {"getlex.php", "bablex.php"} for x in r["links"])
-                      for r in rows
-                  ),
-                  "rows_without_lexical_links": sum(
-                      not any(x["path"] in {"getlex.php", "bablex.php"} for x in r["links"])
-                      for r in rows
-                  ),
-                  "first_rows": row_summary[:3],
+                  "row_count": len(p.rows),
+                  "linked_rows": sum(x["lexical_link_count"] > 0 for x in summaries),
+                  "plain_rows": sum(x["lexical_link_count"] == 0 for x in summaries),
+                  "first_rows": summaries[:2],
               })
-          print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+          print(json.dumps(out, ensure_ascii=False, sort_keys=True))
           PY
