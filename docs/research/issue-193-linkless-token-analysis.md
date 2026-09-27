@@ -172,3 +172,17 @@ with exactly the three researched token-analysis calls:
 No lemma-entry follow-up was performed. The live gate validates the public serialization and the
 decision not to invent linked candidates.
 
+## Final post-hardening installed-stdio acceptance
+
+After the empty-state contradiction guards and typing fix, run `36326609176` rebuilt and
+installed the candidate wheel and exercised the public MCP server over stdio with exactly the
+three researched live calls. All returned HTTP 200 and matched the public contract:
+
+- Peshitta `620570101`, word 0: `status=found`, `candidates=[]`, one exact ordered summary;
+- Peshitta `620570101`, word 2: `status=found`, `candidates=[]`, the two researched summaries
+  in exact order;
+- CPA `5500001001a019001`, word 0: `status=found`, `candidates=[]`, one exact summary.
+
+The run printed no scholarly response text beyond the expected assertion values and performed no
+lemma-entry follow-up. The temporary workflow was removed immediately after the successful gate.
+
