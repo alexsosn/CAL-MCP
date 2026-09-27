@@ -186,3 +186,34 @@ three researched live calls. All returned HTTP 200 and matched the public contra
 The run printed no scholarly response text beyond the expected assertion values and performed no
 lemma-entry follow-up. The temporary workflow was removed immediately after the successful gate.
 
+## Final review amendment — current explicit no-data page chrome
+
+Exact-head review found that the first no-data hardening pass checked only lines after the
+recognized marker. Before tightening the branch further, current CAL was rechecked with one fixed
+request:
+
+```text
+getlex.php?coord=9999999999999&word=0
+```
+
+Bounded structural run: `36326949979`.
+
+The production semantic line parser currently returns exactly:
+
+```text
+0  The Comprehensive Aramaic Lexicon                    [no link]
+1  ← Back                                               [javascript:history.back()]
+2  there is no data for this word — ...                [no link]
+```
+
+There is no return-to-text-browser link on this explicit no-data page.
+
+**Implication:** complete-region validation must distinguish the two observed CAL chrome lines from
+result semantics. For the current no-data state, the adapter may accept the exact current title/back
+prefix (or no prefix in the reduced fixture), but after excluding that recognized chrome there must
+be exactly one non-empty semantic line: the unlinked line containing CAL's explicit no-data marker.
+Any other pre/post semantic line or any link on the no-data line is parser drift.
+
+This amendment uses one additional fixed CAL GET, no traversal, no retries beyond the shared client
+policy, and no corpus data.
+
