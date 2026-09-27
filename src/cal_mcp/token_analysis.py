@@ -195,6 +195,15 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
     if not current_shape_hint:
         return None
 
+    if not analysis_label:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate has an empty analysis label"
+        )
+    if "-->" in analysis_label and redirect is None:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate has malformed redirect notation"
+        )
+
     if parser.marker_h2_count != 1:
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate lacks one unique result marker"
