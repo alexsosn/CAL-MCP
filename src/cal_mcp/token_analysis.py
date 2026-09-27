@@ -209,11 +209,6 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate does not have exactly one linked header"
         )
-    if redirect is None:
-        raise TokenAnalysisParseError(
-            "CAL current token-analysis candidate has an unrecognized redirect label"
-        )
-
     link = parser.links[0]
     if link.classes != ("lexlink",):
         raise TokenAnalysisParseError(
@@ -245,12 +240,15 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
             "CAL current token-analysis candidate lemma link has an invalid lemma key"
         )
 
-    analyzed_lemma_key = redirect.group("source")
-    rendered_target = redirect.group("target")
-    if rendered_target != lemma_key:
-        raise TokenAnalysisParseError(
-            "CAL token-analysis redirect target differs from its linked lemma key"
-        )
+    analyzed_lemma_key: str | None = None
+    if redirect is not None:
+        analyzed_lemma_key = redirect.group("source")
+        rendered_target = redirect.group("target")
+        if rendered_target != lemma_key:
+            raise TokenAnalysisParseError(
+                "CAL token-analysis redirect target differs from its linked lemma key"
+            )
+
     lemma = _parse_lemma_header(
         link.text,
         lemma_key=lemma_key,
