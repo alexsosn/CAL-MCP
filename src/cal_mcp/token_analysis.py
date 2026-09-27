@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
-from urllib.parse import urlsplit
+from html.parser import HTMLParser
+from urllib.parse import parse_qs, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
@@ -19,6 +21,9 @@ from cal_mcp.lexicon import (
 _ANALYSIS_MARKER = "click on a headword to see a complete lexicon entry"
 _NO_DATA_MARKER = "there is no data for this word"
 _NO_LEMMA_MARKER = "unrecognizable query or no such lemma found"
+_REDIRECT_SUFFIX_RE = re.compile(
+    r"(?P<source>\S+\s+\S+)\s+-->\s+(?P<target>\S+\s+\S+)\s*$"
+)
 
 
 class TokenAnalysisParseError(CalParseError):
@@ -34,6 +39,7 @@ class TokenAnalysisStatus(StrEnum):
 class TokenAnalysisCandidate:
     analysis_label: str
     lemma: LemmaRef
+    analyzed_lemma_key: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +74,207 @@ class TokenAnalysisResult:
         }
 
 
+@dataclass(slots=True)
+class _CurrentLinkBuilder:
+    href: str
+    classes: tuple[str, ...]
+    parts: list[str]
+
+
+@dataclass(frozen=True, slots=True)
+class _CurrentLink:
+    href: str
+    classes: tuple[str, ...]
+    text: str
+
+
+class _CurrentLinkedRedirectParser(HTMLParser):
+    """Read the bounded current lexlink result-table shape without consuming its sense outline."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.marker_h2_count = 0
+        self._in_h2 = False
+        self._h2_parts: list[str] = []
+        self._after_marker = False
+        self.label_parts: list[str] = []
+        self.table_started = False
+        self.table_closed = False
+        self.table_depth = 0
+        self.nested_table = False
+        self.row_count = 0
+        self.cell_count = 0
+        self.links: list[_CurrentLink] = []
+        self._open_link: _CurrentLinkBuilder | None = None
+        self.unclosed_link = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        attrs_d = dict(attrs)
+        if tag == "h2":
+            self._in_h2 = True
+            self._h2_parts = []
+            return
+
+        if not self._after_marker:
+            return
+
+        if not self.table_started:
+            if tag == "table":
+                self.table_started = True
+                self.table_depth = 1
+            return
+
+        if self.table_depth < 1:
+            return
+        if tag == "table":
+            self.nested_table = True
+            self.table_depth += 1
+        elif tag == "tr":
+            self.row_count += 1
+        elif tag == "td":
+            self.cell_count += 1
+        elif tag == "a":
+            if self._open_link is not None:
+                self.unclosed_link = True
+            classes = tuple((attrs_d.get("class") or "").split())
+            self._open_link = _CurrentLinkBuilder(
+                href=attrs_d.get("href") or "",
+                classes=classes,
+                parts=[],
+            )
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "h2" and self._in_h2:
+            marker = _clean_text("".join(self._h2_parts))
+            if marker.lower() == _ANALYSIS_MARKER:
+                self.marker_h2_count += 1
+                self._after_marker = True
+            self._in_h2 = False
+            self._h2_parts = []
+            return
+
+        if not self.table_started or self.table_depth < 1:
+            return
+        if tag == "a" and self._open_link is not None:
+            self.links.append(
+                _CurrentLink(
+                    href=self._open_link.href,
+                    classes=self._open_link.classes,
+                    text=_clean_text("".join(self._open_link.parts)),
+                )
+            )
+            self._open_link = None
+        elif tag == "table":
+            self.table_depth -= 1
+            if self.table_depth == 0:
+                if self._open_link is not None:
+                    self.unclosed_link = True
+                self.table_closed = True
+
+    def handle_data(self, data: str) -> None:
+        if self._in_h2:
+            self._h2_parts.append(data)
+            return
+        if not self._after_marker:
+            return
+        if not self.table_started:
+            self.label_parts.append(data)
+        elif self.table_depth > 0 and self._open_link is not None:
+            self._open_link.parts.append(data)
+
+
+def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCandidate | None:
+    parser = _CurrentLinkedRedirectParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+
+    analysis_label = _clean_text("".join(parser.label_parts))
+    redirect = _REDIRECT_SUFFIX_RE.search(analysis_label)
+    has_lexlink = any(link.classes == ("lexlink",) for link in parser.links)
+    current_shape_hint = has_lexlink or (
+        parser.marker_h2_count > 0
+        and parser.table_started
+        and "-->" in analysis_label
+    )
+    if not current_shape_hint:
+        return None
+
+    if parser.marker_h2_count != 1:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate lacks one unique result marker"
+        )
+    if not parser.table_started or not parser.table_closed or parser.table_depth != 0:
+        raise TokenAnalysisParseError("CAL current token-analysis candidate table is incomplete")
+    if parser.nested_table or parser.row_count != 1 or parser.cell_count != 1:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate table has an unexpected structure"
+        )
+    if parser.unclosed_link or len(parser.links) != 1:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate does not have exactly one linked header"
+        )
+    if redirect is None:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate has an unrecognized redirect label"
+        )
+
+    link = parser.links[0]
+    if link.classes != ("lexlink",):
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate is missing its lexlink header"
+        )
+    parsed_href = urlsplit(link.href)
+    if (
+        parsed_href.scheme
+        or parsed_href.netloc
+        or parsed_href.fragment
+        or parsed_href.path not in {"oneentry.php", "/oneentry.php"}
+    ):
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate has an unexpected lemma-link route"
+        )
+    query = parse_qs(parsed_href.query, keep_blank_values=True)
+    if set(query) != {"lemma", "cits"} or query.get("cits") != ["all"]:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate lemma link has unexpected selectors"
+        )
+    lemma_values = query.get("lemma")
+    if lemma_values is None or len(lemma_values) != 1 or not lemma_values[0].strip():
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate lemma link lacks one lemma key"
+        )
+    lemma_key = _lemma_key_from_href(link.href)
+    if lemma_key is None or lemma_key != lemma_values[0]:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate lemma link has an invalid lemma key"
+        )
+
+    analyzed_lemma_key = redirect.group("source")
+    rendered_target = redirect.group("target")
+    if rendered_target != lemma_key:
+        raise TokenAnalysisParseError(
+            "CAL token-analysis redirect target differs from its linked lemma key"
+        )
+    lemma = _parse_lemma_header(
+        link.text,
+        lemma_key=lemma_key,
+        require_gloss=True,
+    )
+    if lemma is None:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate has an unrecognized lemma header"
+        )
+    return TokenAnalysisCandidate(
+        analysis_label=analysis_label,
+        lemma=lemma,
+        analyzed_lemma_key=analyzed_lemma_key,
+    )
+
+
+def _clean_text(value: str) -> str:
+    return " ".join(value.split())
+
+
 def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
     lines = _parse_lines(response)
     page_text = " ".join(line.text.lower() for line in lines)
@@ -92,6 +299,10 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
 
     if len(marker_indices) != 1:
         raise TokenAnalysisParseError("CAL token-analysis page is missing its unique result marker")
+
+    current_candidate = _current_linked_redirect_candidate(response)
+    if current_candidate is not None:
+        return TokenAnalysisPage(candidates=(current_candidate,))
 
     candidates: list[TokenAnalysisCandidate] = []
     index = marker_indices[0] + 1
@@ -152,7 +363,13 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
                 "CAL token-analysis candidate has an unrecognized lemma header"
             )
 
-        candidates.append(TokenAnalysisCandidate(analysis_label=analysis_label, lemma=lemma))
+        candidates.append(
+            TokenAnalysisCandidate(
+                analysis_label=analysis_label,
+                lemma=lemma,
+                analyzed_lemma_key=None,
+            )
+        )
         index += 2
 
     if not candidates:
@@ -229,6 +446,7 @@ def _is_return_to_text_browser(line: object) -> bool:
 def _candidate_to_dict(candidate: TokenAnalysisCandidate) -> dict[str, object]:
     return {
         "analysis_label": candidate.analysis_label,
+        "analyzed_lemma_key": candidate.analyzed_lemma_key,
         "lemma": _lemma_to_dict(candidate.lemma),
     }
 
