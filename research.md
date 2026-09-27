@@ -327,6 +327,38 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-040 — Current linked Syriac token analysis can redirect to another lemma entry
+
+**Rechecked:** 2026-09-27 against current CAL; issue #179.
+
+Peshitta Philemon 1:1 token `620570101`, word 1 currently renders the analysis label
+`)syr noun sg. emphatic= )syr N --> )syr A` and links one malformed-nesting
+`a.lexlink` header to `oneentry.php?lemma=)syr A&cits=all`. CAL therefore distinguishes the
+analysed/source key `)syr N` from the linked target key `)syr A`.
+
+The same page appends the target entry's sense outline after the one-row result table. The legacy
+alternating-line parser correctly read the first candidate, then mistook two following sense lines
+for a second candidate and failed because a line containing `s.v.` looked lemma-like but had no
+link. The current result-table close is therefore the reliable candidate boundary for this
+researched shape.
+
+Bounded research also found valid successful token-analysis pages with no `oneentry.php` link at
+all: Peshitta words 0 and 2 on the same line and CPA
+`5500001001a019001`, word 0. Their semantics are structurally different and are tracked by #193
+instead of being guessed into the linked-candidate model.
+
+Detailed evidence, request counts and parser contract:
+`docs/research/issue-179-syriac-token-redirects.md`.
+
+Source:
+
+- https://cal.huc.edu/getlex.php?coord=620570101&word=1
+
+**Implication:** linked current redirects expose additive `analyzed_lemma_key` while
+`lemma.lemma_key` remains the validated linked target. The parser bounds the current candidate by
+its result table and ignores the following sense outline for token-analysis purposes. Linkless
+successful summaries remain explicit parser drift pending #193.
+
 ## R-039 — Christian Palestinian Aramaic uses suffix-bearing subtext IDs
 
 **Rechecked:** 2026-09-26 against current CAL; issue #170.
