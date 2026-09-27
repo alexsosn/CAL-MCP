@@ -23,10 +23,13 @@ A successful result preserves:
 
 Each candidate contains:
 
-- `analysis_label`: CAL's compact analysis label exactly as rendered for that candidate, for example `xd n02` or `w_ c`;
-- `lemma`: the same typed `LemmaRef` structure used by CAL-MCP lexicon lookup, preserving CAL's lemma key, rendered headword(s), pronunciation, part of speech, gloss, and aliases where the linked header supplies them.
+- `analysis_label`: CAL's compact analysis label exactly as rendered for that candidate, for example `xd n02`, `w_ c`, or the current Syriac redirect label `)syr noun sg. emphatic= )syr N --> )syr A`;
+- `analyzed_lemma_key`: the source/analysed CAL lemma key when CAL explicitly renders a linked redirect; otherwise `null`;
+- `lemma`: the same typed `LemmaRef` structure used by CAL-MCP lexicon lookup. Its `lemma_key` is the **linked target entry**, with rendered headword(s), pronunciation, part of speech, gloss, and aliases where the linked header supplies them.
 
-CAL-MCP deliberately does **not** interpret the compact analysis label into a new morphology schema. It also does not choose a preferred analysis.
+For example, current Peshitta Philemon 1:1 word 1 is analysed as `)syr N` but redirects to linked entry `)syr A`. CAL-MCP returns `analyzed_lemma_key: ")syr N"` and `lemma.lemma_key: ")syr A"`; it does not collapse the two identities.
+
+CAL-MCP deliberately does **not** interpret the rest of the compact analysis label into a new morphology schema. It also does not choose a preferred analysis.
 
 ## Ambiguity
 
@@ -61,6 +64,10 @@ The states are intentionally distinct:
 `status: "not_found"` deliberately does not claim a finer cause than CAL exposes. The legacy no-data page is currently used for cases such as a nonexistent coordinate or out-of-range word index, while the current no-lemma sentence itself conflates an unrecognizable query with an absent lemma. CAL-MCP therefore reports only the observable upstream no-candidate state rather than inventing a scholarly distinction.
 
 The current no-lemma sentence is accepted only together with exactly one normal token-analysis result marker and no lemma-entry link. If CAL mixes that sentence with lemma markup, omits the result marker, or returns some other unexplained successful shape, the parser fails closed instead of silently treating drift as an empty result.
+
+Current linked Syriac redirect pages use a one-row result table with an `a.lexlink` header whose HTML is slightly mis-nested and is followed by a full lexicon sense outline. CAL-MCP treats the table close as the candidate boundary, validates the explicit `SOURCE --> TARGET` redirect against the linked `lemma` selector, and does not reinterpret the following sense lines as additional token analyses.
+
+CAL also currently returns **linkless** successful token-analysis summaries for some Peshitta and CPA proper-name/other tokens. Their candidate grammar is not yet sufficiently established to construct a truthful `LemmaRef`, so they remain parser drift under release blocker #193 rather than being guessed into this result model or mislabeled `not_found`.
 
 ## Request bound
 
