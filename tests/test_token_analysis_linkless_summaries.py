@@ -197,4 +197,3 @@ def test_no_data_state_mixed_with_unrelated_text_fails_closed() -> None:
                 url="https://cal.huc.edu/getlex.php?coord=9999999999999&word=0",
             )
         )
-
