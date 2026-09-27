@@ -1,0 +1,112 @@
+name: Issue 193 bounded linkless research
+
+on:
+  push:
+    branches:
+      - research/issue-193-linkless-token-analysis
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install current main
+        run: python -m pip install .
+      - name: Probe three known linkless token-analysis pages
+        run: |
+          python - <<'PY'
+          import asyncio
+          import json
+          from html.parser import HTMLParser
+          from urllib.parse import urlsplit
+
+          from cal_mcp.client import CalHttpClient, CalRequest
+          from cal_mcp.lexicon import _parse_lines
+
+          CASES = [
+              ("peshitta-simple", "620570101", 0),
+              ("peshitta-redirect-summary", "620570101", 2),
+              ("cpa-simple", "5500001001a019001", 0),
+          ]
+
+          class Structure(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.tags = []
+                  self.links = []
+                  self.classes = []
+              def handle_starttag(self, tag, attrs):
+                  d = dict(attrs)
+                  self.tags.append(tag)
+                  if d.get("class"):
+                      self.classes.append((tag, d["class"]))
+                  if tag == "a":
+                      self.links.append(d.get("href") or "")
+
+          async def main():
+              output = []
+              async with CalHttpClient() as client:
+                  for name, coord, word in CASES:
+                      result = await client.fetch(
+                          CalRequest(
+                              method="GET",
+                              path="getlex.php",
+                              params=(("coord", coord), ("word", str(word))),
+                          ),
+                          parser=lambda response: response,
+                          cache_namespace=f"issue-193-research-{name}",
+                      )
+                      response = result.value
+                      lines = _parse_lines(response)
+                      parser = Structure()
+                      parser.feed(response.body.decode("utf-8", errors="replace"))
+                      parser.close()
+
+                      marker = "click on a headword to see a complete lexicon entry"
+                      marker_indices = [
+                          i for i, line in enumerate(lines) if line.text.lower() == marker
+                      ]
+                      if len(marker_indices) != 1:
+                          raise RuntimeError(f"{name}: unexpected marker count {marker_indices}")
+                      start = marker_indices[0] + 1
+                      semantic = []
+                      for line in lines[start:]:
+                          if any(
+                              urlsplit(link.href).path.endswith("newtextmenu.html")
+                              for link in line.links
+                          ):
+                              break
+                          semantic.append({
+                              "text": line.text,
+                              "links": [
+                                  {
+                                      "path": urlsplit(link.href).path.rsplit("/", 1)[-1],
+                                      "text": link.text,
+                                  }
+                                  for link in line.links
+                              ],
+                          })
+
+                      output.append({
+                          "case": name,
+                          "status": response.status_code,
+                          "semantic_lines": semantic,
+                          "oneentry_links": sum(
+                              urlsplit(h).path.rsplit("/", 1)[-1] == "oneentry.php"
+                              for h in parser.links
+                          ),
+                          "classes": parser.classes,
+                          "table_count": parser.tags.count("table"),
+                          "br_count": parser.tags.count("br"),
+                      })
+              print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+
+          asyncio.run(main())
+          PY
