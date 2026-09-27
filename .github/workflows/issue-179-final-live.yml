@@ -1,4 +1,4 @@
-name: Issue 179 Tel Dan current-token probe
+name: Issue 179 final live stdio acceptance
 
 on:
   push:
@@ -9,79 +9,67 @@ permissions:
   contents: read
 
 jobs:
-  probe:
+  verify:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe current Tel Dan lexical tokens
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify Peshitta, Targum and current Tel Dan over stdio
         run: |
           python - <<'PY'
-          import json
-          import urllib.request
-          from html.parser import HTMLParser
-          from urllib.parse import parse_qs, urlsplit
+          import asyncio
+          from mcp import Client, StdioServerParameters
 
-          UA = {"User-Agent": "CAL-MCP review/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
+          async def call(client, coordinate, word_index):
+              result = await client.call_tool(
+                  "cal_token_analysis",
+                  {"coordinate": coordinate, "word_index": word_index},
+              )
+              if result.is_error:
+                  raise RuntimeError(
+                      f"{coordinate}/{word_index} failed: {result.content!r}"
+                  )
+              data = result.structured_content
+              if not isinstance(data, dict):
+                  raise RuntimeError(f"{coordinate}/{word_index} lacks structured content")
+              candidates = data.get("candidates")
+              if not isinstance(candidates, list) or not candidates:
+                  raise RuntimeError(f"{coordinate}/{word_index} has no candidates")
+              return candidates
 
-          def get(url):
-              req = urllib.request.Request(url, headers=UA)
-              with urllib.request.urlopen(req, timeout=20) as response:
-                  body = response.read(262145)
-                  if len(body) > 262144:
-                      raise RuntimeError("response exceeded 256 KiB")
-                  return body.decode("utf-8", "replace")
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  syriac = await call(client, "620570101", 1)
+                  if len(syriac) != 1:
+                      raise RuntimeError(f"Syriac candidate count changed: {syriac!r}")
+                  candidate = syriac[0]
+                  if candidate.get("analyzed_lemma_key") != ")syr N":
+                      raise RuntimeError(f"wrong Syriac analyzed key: {candidate!r}")
+                  lemma = candidate.get("lemma")
+                  if not isinstance(lemma, dict) or lemma.get("lemma_key") != ")syr A":
+                      raise RuntimeError(f"wrong Syriac linked target: {candidate!r}")
 
-          class Links(HTMLParser):
-              def __init__(self):
-                  super().__init__(convert_charrefs=True)
-                  self.hrefs = []
-              def handle_starttag(self, tag, attrs):
-                  if tag == "a":
-                      href = dict(attrs).get("href")
-                      if href:
-                          self.hrefs.append(href)
+                  targum = await call(client, "5101801011", 0)
+                  if any(item.get("analyzed_lemma_key") is not None for item in targum):
+                      raise RuntimeError(f"Targum fabricated redirect key: {targum!r}")
 
-          page = get("https://cal.huc.edu/get_a_chapter.php?file=13250&page=0")
-          p = Links(); p.feed(page); p.close()
-          tokens = []
-          for href in p.hrefs:
-              u = urlsplit(href)
-              if u.path.rsplit("/", 1)[-1] != "getlex.php":
-                  continue
-              q = parse_qs(u.query, keep_blank_values=True)
-              tokens.append(((q.get("coord") or [None])[0], (q.get("word") or [None])[0]))
-          unique = []
-          for item in tokens:
-              if item not in unique:
-                  unique.append(item)
+                  tel_dan = await call(client, "1325001", 4)
+                  if len(tel_dan) < 2:
+                      raise RuntimeError(f"Tel Dan lost current ambiguity: {tel_dan!r}")
+                  if any(item.get("analyzed_lemma_key") is not None for item in tel_dan):
+                      raise RuntimeError(f"Tel Dan fabricated redirect key: {tel_dan!r}")
 
-          probes = []
-          for coord, word in unique[:8]:
-              body = get(f"https://cal.huc.edu/getlex.php?coord={coord}&word={word}")
-              lp = Links(); lp.feed(body); lp.close()
-              low = body.lower()
-              probes.append({
-                  "coord": coord,
-                  "word": word,
-                  "oneentry_links": sum(
-                      urlsplit(h).path.rsplit("/", 1)[-1] == "oneentry.php" for h in lp.hrefs
-                  ),
-                  "has_marker": "click on a headword to see a complete lexicon entry" in low,
-                  "has_no_data": "there is no data for this word" in low,
-              })
-              if probes[-1]["oneentry_links"] or (
-                  probes[-1]["has_marker"] and not probes[-1]["has_no_data"]
-              ):
-                  break
+                  print(
+                      "live #179 OK: "
+                      f"syriac={len(syriac)} "
+                      f"targum={len(targum)} "
+                      f"tel_dan={len(tel_dan)}"
+                  )
 
-          print(json.dumps({
-              "token_route_count": len(tokens),
-              "first_unique_routes": unique[:8],
-              "probes": probes,
-          }, sort_keys=True))
-          if not any(p["oneentry_links"] for p in probes):
-              raise RuntimeError("no linked current Tel Dan control found in first eight token routes")
+          asyncio.run(main())
           PY
