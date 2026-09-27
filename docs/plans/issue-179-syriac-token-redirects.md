@@ -44,3 +44,18 @@ Date: 2026-09-27. Research: `docs/research/issue-179-syriac-token-redirects.md`.
 9. Delete any temporary live workflow.
 10. Perform a fresh logically independent adversarial review of the exact final SHA. Fix, retest,
     and re-review every finding before merge.
+
+## Live compatibility amendment
+
+The first live acceptance caught that current Targum `5101801011/0` also uses the strict
+one-row `lexlink` result table but has no `-->` redirect.
+
+Before changing production again:
+
+11. Add a reduced current Targum `lexlink` fixture and RED test proving the current implementation
+    rejects it.
+12. Generalize only the researched current-table parser:
+    - strict table/link/selectors stay identical;
+    - explicit redirect -> validate and expose `analyzed_lemma_key`;
+    - no redirect -> `analyzed_lemma_key=None`, with no inferred source key.
+13. Re-run full CI and the three-call installed-stdio acceptance.
