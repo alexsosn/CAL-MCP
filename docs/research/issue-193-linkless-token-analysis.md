@@ -157,3 +157,18 @@ RED must cover at least:
 Production request volume is unchanged: one explicit `cal_token_analysis` call performs at most
 one logical CAL request. No summary link is followed, no lexicon entry is synthesized, and no CAL
 corpus data is bundled.
+
+## Installed-stdio acceptance
+
+Run `36318994287` installed the candidate wheel and exercised the public MCP server over stdio
+with exactly the three researched token-analysis calls:
+
+- Peshitta `620570101`, word 0 → HTTP 200, `status=found`, no linked candidates, one summary;
+- Peshitta `620570101`, word 2 → HTTP 200, `status=found`, no linked candidates, the two
+  researched summary lines in order;
+- CPA `5500001001a019001`, word 0 → HTTP 200, `status=found`, no linked candidates, one
+  summary.
+
+No lemma-entry follow-up was performed. The live gate validates the public serialization and the
+decision not to invent linked candidates.
+
