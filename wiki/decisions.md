@@ -219,7 +219,8 @@ Consequences:
   response parsing is a separate compatibility concern tracked by release blocker #179;
 - current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
   current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
-  direct texts; suffix presence and the generic `55` prefix are not treated as route classifiers;
+  direct texts; known direct files reject a caller-supplied subtext and known subdivided files
+  require one; suffix presence and the generic `55` prefix are not treated as route classifiers;
   contradictory routes fail closed rather than being normalized;
 - values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
   whitespace, or arbitrary strings remain invalid;
