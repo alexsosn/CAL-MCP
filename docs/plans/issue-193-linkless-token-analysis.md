@@ -41,3 +41,24 @@ Date: 2026-09-27. Research: `docs/research/issue-193-linkless-token-analysis.md`
    plus no automatic entry traversal.
 9. Remove any temporary workflow, re-run workflow-free CI on the exact final head, and perform a
    logically independent adversarial review. Fix/retest/re-review every finding before merge.
+
+## Adversarial-review amendment — empty-state/content contradiction
+
+A pre-merge adversarial pass found that the existing explicit no-data/no-lemma branches verify
+marker/link consistency but do not reject unrelated rendered result text. With #193 introducing a
+successful unlinked-summary state, that ambiguity must be closed explicitly.
+
+Before merge:
+
+10. RED:
+    - current no-lemma marker plus an extra opaque summary line fails closed;
+    - legacy explicit no-data marker plus unrelated extra rendered text fails closed.
+11. GREEN:
+    - validate the complete semantic empty-state region rather than matching the marker substring
+      alone;
+    - current no-lemma must contain exactly its recognized message between the unique result marker
+      and the return-navigation boundary, with no semantic links;
+    - legacy no-data must not coexist with unrelated semantic result text or analysis markup.
+12. Re-run full CI, repeat the bounded installed-stdio #193 acceptance if parser ordering changes,
+    remove temporary workflows, and perform a fresh exact-head review.
+
