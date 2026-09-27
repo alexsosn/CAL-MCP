@@ -230,4 +230,3 @@ def test_no_data_state_rejects_linked_marker_line() -> None:
                 url="https://cal.huc.edu/getlex.php?coord=9999999999999&word=0",
             )
         )
-
