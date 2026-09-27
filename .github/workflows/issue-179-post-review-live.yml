@@ -1,0 +1,67 @@
+name: Issue 179 post-review live acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-179-syriac-token-redirects
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify current linked token shapes over stdio
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          async def candidates(client, coordinate, word_index):
+              result = await client.call_tool(
+                  "cal_token_analysis",
+                  {"coordinate": coordinate, "word_index": word_index},
+              )
+              if result.is_error:
+                  raise RuntimeError(f"{coordinate}/{word_index}: {result.content!r}")
+              data = result.structured_content
+              if not isinstance(data, dict) or not isinstance(data.get("candidates"), list):
+                  raise RuntimeError(f"{coordinate}/{word_index}: missing candidates")
+              if not data["candidates"]:
+                  raise RuntimeError(f"{coordinate}/{word_index}: empty candidates")
+              return data["candidates"]
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  syr = await candidates(client, "620570101", 1)
+                  if len(syr) != 1:
+                      raise RuntimeError(f"Syriac count changed: {syr!r}")
+                  if syr[0].get("analyzed_lemma_key") != ")syr N":
+                      raise RuntimeError(f"Syriac source changed: {syr!r}")
+                  lemma = syr[0].get("lemma")
+                  if not isinstance(lemma, dict) or lemma.get("lemma_key") != ")syr A":
+                      raise RuntimeError(f"Syriac target changed: {syr!r}")
+
+                  targum = await candidates(client, "5101801011", 0)
+                  if any(x.get("analyzed_lemma_key") is not None for x in targum):
+                      raise RuntimeError(f"Targum fabricated redirect: {targum!r}")
+
+                  tel_dan = await candidates(client, "1325001", 4)
+                  if any(x.get("analyzed_lemma_key") is not None for x in tel_dan):
+                      raise RuntimeError(f"Tel Dan fabricated redirect: {tel_dan!r}")
+
+                  print(
+                      "post-review live #179 OK: "
+                      f"syriac={len(syr)} targum={len(targum)} tel_dan={len(tel_dan)}"
+                  )
+
+          asyncio.run(main())
+          PY
