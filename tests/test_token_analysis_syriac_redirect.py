@@ -14,6 +14,7 @@ from cal_mcp.token_analysis import (
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 CURRENT = FIXTURES / "token_analysis_syriac_redirect_current.html"
+TARGUM_CURRENT = FIXTURES / "token_analysis_targum_lexlink_current.html"
 LEGACY = FIXTURES / "token_analysis_single.html"
 RETRIEVED_AT = datetime(2026, 9, 27, tzinfo=UTC)
 URL = "https://cal.huc.edu/getlex.php?coord=620570101&word=1"
@@ -58,6 +59,24 @@ def test_legacy_linked_candidate_has_no_separate_analyzed_key() -> None:
     page = parse_token_analysis_page(_response(LEGACY.read_text(encoding="utf-8")))
     assert len(page.candidates) == 1
     assert page.candidates[0].analyzed_lemma_key is None
+
+
+def test_current_targum_lexlink_without_redirect_keeps_null_analyzed_key() -> None:
+    page = parse_token_analysis_page(
+        _response(
+            TARGUM_CURRENT.read_text(encoding="utf-8"),
+            url="https://cal.huc.edu/getlex.php?coord=5101801011&word=0",
+        )
+    )
+
+    assert len(page.candidates) == 1
+    candidate = page.candidates[0]
+    assert candidate.analysis_label == "nbw)h noun sg. emphatic"
+    assert candidate.analyzed_lemma_key is None
+    assert candidate.lemma.lemma_key == "nbw)h N"
+    assert candidate.lemma.headwords == ("nbwˀh", "nbwˀtˀ")
+    assert candidate.lemma.part_of_speech == "n.f."
+    assert candidate.lemma.gloss == "prophecy"
 
 
 @pytest.mark.parametrize(
