@@ -46,7 +46,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `token_analysis_linkless_peshitta_multi_current.html` | reduced current `https://cal.huc.edu/getlex.php?coord=620570101&word=2` (rechecked 2026-09-27) | normal result marker plus two exact ordered unlinked summary lines, preserving CAL's rendered `=` / `-->` text without interpretation |
 | `token_analysis_linkless_cpa_simple_current.html` | reduced current `https://cal.huc.edu/getlex.php?coord=5500001001a019001&word=0` (rechecked 2026-09-27) | normal result marker plus one exact CPA unlinked summary line; no result table or lemma-entry link |
 | `token_analysis_multiple.html` | `https://cal.huc.edu/getlex.php?coord=7102601002203&word=0` | current ordered two-analysis token (`w_ c`, `my c`) plus following non-candidate sense text |
-| `token_analysis_not_found.html` | bounded `getlex.php` probes | current explicit no-data marker shared by nonexistent decimal coordinates and out-of-range word indexes |
+| `token_analysis_not_found.html` | bounded `getlex.php` probes; semantic structure rechecked 2026-09-27 | current CAL title + history-back chrome followed by the single unlinked explicit no-data line used by nonexistent coordinates/out-of-range word indexes |
 | `token_analysis_unicode.html` | reduced current token-analysis shape | Syriac rendered headword preservation |
 | `token_analysis_hebrew.html` | reduced current token-analysis shape | Hebrew rendered headword preservation |
 | `token_analysis_marker_only.html` | synthetic drift from current token-analysis marker | analysis shell with no candidate must fail closed |
