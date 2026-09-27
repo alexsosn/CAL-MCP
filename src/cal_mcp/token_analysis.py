@@ -313,10 +313,17 @@ def _current_linkless_summaries(
     summaries: list[str] = []
     saw_return = False
     for line in lines[marker_index + 1 :]:
-        if _is_return_to_text_browser(line):
+        links = tuple(getattr(line, "links", ()))
+        return_links = tuple(
+            link for link in links if urlsplit(link.href).path.endswith("newtextmenu.html")
+        )
+        if return_links:
+            if len(links) != 1 or len(return_links) != 1:
+                raise TokenAnalysisParseError(
+                    "CAL current linkless token-analysis return boundary contains extra links"
+                )
             saw_return = True
             break
-        links = getattr(line, "links", ())
         if links:
             raise TokenAnalysisParseError(
                 "CAL current linkless token-analysis summary unexpectedly contains links"
