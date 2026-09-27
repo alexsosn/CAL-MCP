@@ -28,9 +28,7 @@ jobs:
 
           BASE = "https://cal.huc.edu/getlex.php"
           CASES = [
-              ("peshitta-word0", "620570101", 0),
-              ("peshitta-word1", "620570101", 1),
-              ("cpa-word0", "5500001001a019001", 0),
+              ("peshitta-word2", "620570101", 2),
           ]
           MAX_BYTES = 256 * 1024
 
