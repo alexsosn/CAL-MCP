@@ -282,3 +282,18 @@ from the current live text page rather than a stale captured fixture coordinate,
 must assert successful parsed candidates rather than equating raw entry-link count with candidate
 count. This finding does not require a production-code change for #179.
 
+## Final installed-stdio acceptance
+
+After the Targum compatibility fix and the Tel Dan live-coordinate recheck, run `36307681700`
+installed the candidate wheel and exercised the public MCP server over stdio. It made exactly
+three CAL token-analysis requests:
+
+- Peshitta `620570101`, word 1 → HTTP 200, one candidate, analysed key `)syr N`,
+  linked target `)syr A`;
+- Targum `5101801011`, word 0 → HTTP 200, one linked candidate,
+  `analyzed_lemma_key=null`;
+- current Tel Dan `1325001`, word 4 → HTTP 200, one linked candidate,
+  `analyzed_lemma_key=null`.
+
+The temporary acceptance workflow was removed immediately afterward.
+
