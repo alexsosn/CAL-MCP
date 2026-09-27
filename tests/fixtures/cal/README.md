@@ -40,6 +40,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `text_page_philemon_62057_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=62057&page=0` (2026-09-25) | current table row whose coordinate cell carries CAL's "[ai]" Ask-AI link after the display coordinate; first 2 of 25 rows |
 | `text_page_samaritan_raw_lt_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0` (2026-09-25) | rows Gen12:04–05; CAL renders the first token `<w)th` with a raw, unescaped `<` |
 | `token_analysis_single.html` | `https://cal.huc.edu/getlex.php?coord=4400137054005&word=0` | one compact CAL analysis label paired with one linked lemma header |
+| `token_analysis_syriac_redirect_current.html` | reduced current `https://cal.huc.edu/getlex.php?coord=620570101&word=1` (rechecked 2026-09-27) | linked Syriac redirect `)syr N → )syr A`, current mis-nested `lexlink` header, and minimal post-table sense-outline boundary |
 | `token_analysis_multiple.html` | `https://cal.huc.edu/getlex.php?coord=7102601002203&word=0` | current ordered two-analysis token (`w_ c`, `my c`) plus following non-candidate sense text |
 | `token_analysis_not_found.html` | bounded `getlex.php` probes | current explicit no-data marker shared by nonexistent decimal coordinates and out-of-range word indexes |
 | `token_analysis_unicode.html` | reduced current token-analysis shape | Syriac rendered headword preservation |
