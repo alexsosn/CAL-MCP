@@ -197,3 +197,37 @@ def test_no_data_state_mixed_with_unrelated_text_fails_closed() -> None:
                 url="https://cal.huc.edu/getlex.php?coord=9999999999999&word=0",
             )
         )
+
+
+def test_no_data_state_rejects_unrelated_text_before_marker() -> None:
+    body = (
+        "<html><body>"
+        "<div>opaque extra summary</div>"
+        "<div>there is no data for this word — it may be undecipherable or simply not Aramaic</div>"
+        "</body></html>"
+    )
+    with pytest.raises(TokenAnalysisParseError):
+        parse_token_analysis_page(
+            _response(
+                body,
+                url="https://cal.huc.edu/getlex.php?coord=9999999999999&word=0",
+            )
+        )
+
+
+def test_no_data_state_rejects_linked_marker_line() -> None:
+    body = (
+        "<html><body>"
+        '<div><a href="/unexpected.php">'
+        "there is no data for this word — it may be undecipherable or simply not Aramaic"
+        "</a></div>"
+        "</body></html>"
+    )
+    with pytest.raises(TokenAnalysisParseError):
+        parse_token_analysis_page(
+            _response(
+                body,
+                url="https://cal.huc.edu/getlex.php?coord=9999999999999&word=0",
+            )
+        )
+
