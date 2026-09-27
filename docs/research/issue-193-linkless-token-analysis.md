@@ -217,3 +217,16 @@ Any other pre/post semantic line or any link on the no-data line is parser drift
 This amendment uses one additional fixed CAL GET, no traversal, no retries beyond the shared client
 policy, and no corpus data.
 
+## Post-review empty-state acceptance
+
+After the complete no-data-region GREEN, run `36327169454` installed the candidate wheel and
+made exactly four public stdio MCP calls against current CAL:
+
+- the three researched linkless Peshitta/CPA examples remained `status=found` with no linked
+  candidates and exact ordered `unlinked_summaries`;
+- `9999999999999`, word 0 matched the live title/history-back/no-data shape and remained
+  `status=not_found` with both result collections empty.
+
+All four upstream requests returned HTTP 200. No lemma link was followed. The temporary workflow
+was removed after the successful gate.
+
