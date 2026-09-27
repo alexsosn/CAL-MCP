@@ -365,9 +365,10 @@ async def cal_text_page(
     Public page numbers are one-based. CAL's unbounded ``show all`` navigation is not
     exposed; moving to another page requires another explicit tool call. Pass
     ``subtext_id`` exactly as CAL returned it, including leading zeroes and an optional
-    single lowercase suffix (for example CPA ``01001a``). Decimal subtext selectors can
-    be prefix-matched by CAL, so a shortened value can return several subtexts under the
-    first one's label. Each returned line keeps its own CAL coordinate.
+    single lowercase suffix (for example CPA ``01001a``). Known current CPA direct files
+    reject a subtext and known CPA subdivided files require one. Decimal subtext selectors can
+    be prefix-matched by CAL, so a shortened value can return several subtexts under the first
+    one's label. Each returned line keeps its own CAL coordinate.
     """
 
     client = ctx.request_context.lifespan_context.client
