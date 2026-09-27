@@ -305,6 +305,28 @@ async def test_direct_cpa_page_uses_current_cset_route() -> None:
     }
 
 
+@pytest.mark.anyio
+async def test_direct_cpa_page_rejects_subtext_before_transport() -> None:
+    transport = DecimalCpaRouteTransport()
+    service = TextService(CalHttpClient(transport=transport))
+
+    with pytest.raises(ValueError, match="direct CPA"):
+        await service.page("55002", subtext_id="001")
+
+    assert transport.requests == []
+
+
+@pytest.mark.anyio
+async def test_subdivided_cpa_page_requires_subtext_before_transport() -> None:
+    transport = DecimalCpaRouteTransport()
+    service = TextService(CalHttpClient(transport=transport))
+
+    with pytest.raises(ValueError, match="subdivided CPA"):
+        await service.page("55000")
+
+    assert transport.requests == []
+
+
 @pytest.mark.parametrize(
     "href",
     [
