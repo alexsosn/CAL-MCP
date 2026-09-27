@@ -199,9 +199,7 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate has an empty analysis label"
         )
-    if "-->" in analysis_label and (
-        analysis_label.count("-->") != 1 or redirect is None
-    ):
+    if "-->" in analysis_label and (analysis_label.count("-->") != 1 or redirect is None):
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate has malformed redirect notation"
         )
