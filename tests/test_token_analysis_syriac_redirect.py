@@ -71,6 +71,16 @@ def test_current_explicit_redirect_must_match_researched_suffix() -> None:
         parse_token_analysis_page(_response(body.replace(redirect, ")syr N --> )syrA", 1)))
 
 
+def test_current_explicit_redirect_must_be_unique() -> None:
+    body = _current_body()
+    redirect = ")syr N --> )syr A"
+    assert redirect in body
+    with pytest.raises(TokenAnalysisParseError, match="redirect"):
+        parse_token_analysis_page(
+            _response(body.replace(redirect, ")syr N --> )syr X --> )syr A", 1))
+        )
+
+
 def test_legacy_linked_candidate_has_no_separate_analyzed_key() -> None:
     page = parse_token_analysis_page(_response(LEGACY.read_text(encoding="utf-8")))
     assert len(page.candidates) == 1
