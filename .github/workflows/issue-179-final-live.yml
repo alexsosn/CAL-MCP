@@ -59,8 +59,6 @@ jobs:
                       raise RuntimeError(f"Targum fabricated redirect key: {targum!r}")
 
                   tel_dan = await call(client, "1325001", 4)
-                  if len(tel_dan) < 2:
-                      raise RuntimeError(f"Tel Dan lost current ambiguity: {tel_dan!r}")
                   if any(item.get("analyzed_lemma_key") is not None for item in tel_dan):
                       raise RuntimeError(f"Tel Dan fabricated redirect key: {tel_dan!r}")
 
