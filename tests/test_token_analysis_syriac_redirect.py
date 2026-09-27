@@ -104,6 +104,32 @@ def test_current_targum_lexlink_without_redirect_keeps_null_analyzed_key() -> No
     assert candidate.lemma.gloss == "prophecy"
 
 
+def test_current_targum_changed_lexlink_class_does_not_fall_back() -> None:
+    body = TARGUM_CURRENT.read_text(encoding="utf-8")
+    assert 'class="lexlink"' in body
+    mutated = body.replace('class="lexlink"', 'class="other"', 1)
+    with pytest.raises(TokenAnalysisParseError, match="lexlink"):
+        parse_token_analysis_page(
+            _response(
+                mutated,
+                url="https://cal.huc.edu/getlex.php?coord=5101801011&word=0",
+            )
+        )
+
+
+def test_current_result_table_rejects_loose_rendered_text_outside_link() -> None:
+    body = TARGUM_CURRENT.read_text(encoding="utf-8")
+    assert "</a><br>" in body
+    mutated = body.replace("</a><br>", "</a> EXTRA-ANALYSIS<br>", 1)
+    with pytest.raises(TokenAnalysisParseError, match="outside"):
+        parse_token_analysis_page(
+            _response(
+                mutated,
+                url="https://cal.huc.edu/getlex.php?coord=5101801011&word=0",
+            )
+        )
+
+
 @pytest.mark.parametrize(
     ("old", "new"),
     [
