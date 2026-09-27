@@ -1,0 +1,76 @@
+name: Issue 179 live stdio acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-179-syriac-token-redirects
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify linked redirect, compatibility control, and linkless boundary
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          async def call(client, coordinate, word_index):
+              return await client.call_tool(
+                  "cal_token_analysis",
+                  {"coordinate": coordinate, "word_index": word_index},
+              )
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  syriac = await call(client, "620570101", 1)
+                  if syriac.is_error:
+                      raise RuntimeError(f"Syriac redirect failed: {syriac.content!r}")
+                  data = syriac.structured_content
+                  if not isinstance(data, dict):
+                      raise RuntimeError("Syriac redirect lacks structured content")
+                  candidates = data.get("candidates")
+                  if not isinstance(candidates, list) or len(candidates) != 1:
+                      raise RuntimeError("Syriac redirect candidate count changed")
+                  candidate = candidates[0]
+                  if candidate.get("analyzed_lemma_key") != ")syr N":
+                      raise RuntimeError("Syriac analyzed source key was not preserved")
+                  lemma = candidate.get("lemma")
+                  if not isinstance(lemma, dict) or lemma.get("lemma_key") != ")syr A":
+                      raise RuntimeError("Syriac linked target key was not preserved")
+
+                  targum = await call(client, "5101801011", 0)
+                  if targum.is_error:
+                      raise RuntimeError(f"Targum compatibility control failed: {targum.content!r}")
+                  tdata = targum.structured_content
+                  if not isinstance(tdata, dict) or not tdata.get("candidates"):
+                      raise RuntimeError("Targum compatibility control lost its candidates")
+
+                  linkless = await call(client, "620570101", 0)
+                  if not linkless.is_error:
+                      raise RuntimeError("linkless #193 boundary was misclassified as success")
+                  edata = linkless.structured_content
+                  if isinstance(edata, dict):
+                      error = edata.get("error")
+                      if isinstance(error, dict) and error.get("kind") not in {None, "parser_drift"}:
+                          raise RuntimeError(
+                              f"linkless #193 boundary changed error kind: {error.get('kind')!r}"
+                          )
+
+                  print(
+                      "live #179 OK: Syriac redirect preserves source+target; "
+                      "Targum control succeeds; linkless Peshitta remains #193 drift"
+                  )
+
+          asyncio.run(main())
+          PY
