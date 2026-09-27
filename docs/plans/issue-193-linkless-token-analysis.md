@@ -62,3 +62,20 @@ Before merge:
 12. Re-run full CI, repeat the bounded installed-stdio #193 acceptance if parser ordering changes,
     remove temporary workflows, and perform a fresh exact-head review.
 
+## Final adversarial-review amendment — complete no-data region
+
+Exact-head review of `80247539` found that the no-data branch validates only lines after the
+recognized marker. That permits unexplained rendered result text before the marker to be silently
+collapsed into `not_found`, contrary to the complete-region requirement above.
+
+Before merge:
+
+13. RED:
+    - unrelated rendered text before the no-data marker fails closed;
+    - a no-data marker carried by an unexpected link fails closed.
+14. GREEN:
+    - the legacy no-data state must contain exactly one non-empty semantic line;
+    - that line must contain the recognized CAL no-data marker and have no links;
+    - any additional semantic line or link is parser drift.
+15. Re-run both CI matrices and perform a fresh exact-head adversarial review.
+
