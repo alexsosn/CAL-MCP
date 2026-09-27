@@ -59,3 +59,21 @@ Before changing production again:
     - explicit redirect -> validate and expose `analyzed_lemma_key`;
     - no redirect -> `analyzed_lemma_key=None`, with no inferred source key.
 13. Re-run full CI and the three-call installed-stdio acceptance.
+
+## Adversarial-review amendment — final installed-stdio controls
+
+Exact-head review of `f94ad277` found that the first installed-stdio acceptance run caught the
+Targum regression, but the temporary workflow was removed before the Targum GREEN. The final
+branch therefore lacks a successful user-level acceptance after all parser changes.
+
+Before merge:
+
+1. Add a bounded temporary installed-wheel/stdio workflow with exactly three token-analysis calls:
+   - Peshitta `620570101`, word 1: preserve analysed `)syr N` and linked target `)syr A`;
+   - Targum `5101801011`, word 0: succeed and keep `analyzed_lemma_key=null`;
+   - Tel Dan `1325000000002`, word 0: confirm the pre-existing linked control still succeeds.
+2. If Tel Dan exposes a newly drifted shape, research and record it before changing production.
+3. Remove the temporary workflow after the acceptance result.
+4. Run both full CI matrices on the workflow-free exact head.
+5. Perform a new logically independent exact-head adversarial review.
+
