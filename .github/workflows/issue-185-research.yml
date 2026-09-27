@@ -1,4 +1,4 @@
-name: Issue 185 corrected plain-text research
+name: Issue 185 CPA raw structure probe
 
 on:
   push:
@@ -16,172 +16,72 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe four text pages with CAL table boundary
+      - name: Probe raw CPA 55002 text-display events
         run: |
           python - <<'PY'
           import json
           import urllib.request
           from html.parser import HTMLParser
-          from urllib.parse import urlsplit
 
-          URLS = [
-              ("mandaic-74420", "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74420"),
-              ("mandaic-74501", "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74501"),
-              ("cpa-55002", "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C"),
-              ("cpa-55406", "https://cal.huc.edu/get_a_chapter.php?file=55406&cset=C"),
-          ]
-          UA = {"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
+          url = "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              body = response.read(262145)
+              if len(body) > 262144:
+                  raise RuntimeError("response exceeded 256 KiB")
+              html = body.decode("utf-8", "replace")
 
-          def get(url):
-              req = urllib.request.Request(url, headers=UA)
-              with urllib.request.urlopen(req, timeout=20) as response:
-                  body = response.read(524289)
-                  if len(body) > 524288:
-                      raise RuntimeError("response exceeded 512 KiB")
-                  return response.status, body.decode("utf-8", "replace")
-
-          class Probe(HTMLParser):
+          class Events(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.in_table = False
-                  self.in_row = False
-                  self.row = None
-                  self.rows = []
-                  self.cell = None
-                  self.link = None
-                  self.special_stack = []
-
-              def finish_row(self):
-                  if self.row is not None:
-                      if self.cell is not None:
-                          self.finish_cell()
-                      self.row["loose_text"] = " ".join("".join(self.row["loose"]).split())
-                      self.rows.append(self.row)
-                  self.row = None
-                  self.in_row = False
-
-              def finish_cell(self):
-                  if self.cell is not None and self.row is not None:
-                      self.cell["text"] = " ".join("".join(self.cell["parts"]).split())
-                      self.row["tds"].append(self.cell)
-                  self.cell = None
+                  self.seen = False
+                  self.depth = 0
+                  self.events = []
 
               def handle_starttag(self, tag, attrs):
                   d = dict(attrs)
-                  classes = (d.get("class") or "").split()
+                  if tag == "table" and "text-display" in (d.get("class") or "").split():
+                      self.seen = True
+                      self.depth = 1
+                      self.events.append({"kind":"start","tag":"table","class":"text-display"})
+                      return
+                  if not self.seen or self.depth <= 0:
+                      return
                   if tag == "table":
-                      if self.in_table:
-                          # CAL often does not close text-display before navigation table.
-                          self.finish_row()
-                          self.in_table = False
-                          return
-                      if "text-display" in classes:
-                          self.in_table = True
-                      return
-                  if not self.in_table:
-                      return
-                  if tag == "tr":
-                      self.finish_row()
-                      self.in_row = True
-                      self.row = {
-                          "tds": [], "links": [], "loose": [], "events": [],
-                      }
-                      return
-                  if not self.in_row:
-                      return
-                  self.row["events"].append({
-                      "kind": "start", "tag": tag, "class": d.get("class"), "dir": d.get("dir")
-                  })
-                  if tag == "td":
-                      self.finish_cell()
-                      self.cell = {"parts": [], "links": []}
-                  elif tag == "a":
-                      self.link = d.get("href") or ""
-                      self.row["links"].append(self.link)
-                      if self.cell is not None:
-                          self.cell["links"].append(self.link)
-                  elif tag in {"bdo", "span"}:
-                      self.special_stack.append({
-                          "tag": tag, "class": d.get("class"), "dir": d.get("dir"), "parts": []
+                      self.depth += 1
+                  if len(self.events) < 100:
+                      self.events.append({
+                          "kind":"start",
+                          "tag":tag,
+                          "class":d.get("class"),
+                          "dir":d.get("dir"),
+                          "href":d.get("href"),
                       })
 
               def handle_endtag(self, tag):
-                  if not self.in_table:
+                  if not self.seen or self.depth <= 0:
                       return
-                  if self.in_row:
-                      self.row["events"].append({"kind": "end", "tag": tag})
-                  if tag == "td":
-                      self.finish_cell()
-                  elif tag == "tr":
-                      self.finish_row()
-                  elif tag == "a":
-                      self.link = None
-                  elif tag in {"bdo", "span"} and self.special_stack:
-                      # close nearest matching element; CAL markup is not always balanced
-                      idx = next(
-                          (i for i in range(len(self.special_stack)-1, -1, -1)
-                           if self.special_stack[i]["tag"] == tag),
-                          None,
-                      )
-                      if idx is not None:
-                          rec = self.special_stack.pop(idx)
-                          rec["text"] = " ".join("".join(rec["parts"]).split())
-                          if self.row is not None:
-                              self.row.setdefault("special", []).append(rec)
-                  elif tag == "table":
-                      self.finish_row()
-                      self.in_table = False
+                  if len(self.events) < 100:
+                      self.events.append({"kind":"end","tag":tag})
+                  if tag == "table":
+                      self.depth -= 1
 
               def handle_data(self, data):
-                  if not self.in_table or not self.in_row:
+                  if not self.seen or self.depth <= 0:
                       return
-                  if self.cell is not None:
-                      self.cell["parts"].append(data)
-                  else:
-                      self.row["loose"].append(data)
-                  for rec in self.special_stack:
-                      rec["parts"].append(data)
+                  text = " ".join(data.split())
+                  if text and len(self.events) < 100:
+                      self.events.append({
+                          "kind":"text",
+                          "text":text[:140],
+                      })
 
-              def close(self):
-                  super().close()
-                  self.finish_row()
-
-          out=[]
-          for name,url in URLS:
-              status, body = get(url)
-              p=Probe(); p.feed(body); p.close()
-              summaries=[]
-              for row in p.rows:
-                  lexical=[
-                      h for h in row["links"]
-                      if urlsplit(h).path.rsplit("/",1)[-1] in {"getlex.php","bablex.php"}
-                  ]
-                  summaries.append({
-                      "td_count": len(row["tds"]),
-                      "td_texts": [x["text"][:100] for x in row["tds"]],
-                      "lexical_link_count": len(lexical),
-                      "other_link_paths": [
-                          urlsplit(h).path.rsplit("/",1)[-1]
-                          for h in row["links"]
-                          if urlsplit(h).path.rsplit("/",1)[-1] not in {"getlex.php","bablex.php"}
-                      ],
-                      "loose_text": row["loose_text"][:160],
-                      "special": [
-                          {
-                              "tag": x["tag"], "class": x["class"], "dir": x["dir"],
-                              "text": x.get("text","")[:120],
-                          }
-                          for x in row.get("special", [])
-                      ],
-                      "events": row["events"][:24],
-                  })
-              out.append({
-                  "case": name,
-                  "status": status,
-                  "row_count": len(p.rows),
-                  "linked_rows": sum(x["lexical_link_count"] > 0 for x in summaries),
-                  "plain_rows": sum(x["lexical_link_count"] == 0 for x in summaries),
-                  "first_rows": summaries[:2],
-              })
-          print(json.dumps(out, ensure_ascii=False, sort_keys=True))
+          p=Events(); p.feed(html); p.close()
+          print(json.dumps({
+              "seen":p.seen,
+              "events":p.events,
+          }, ensure_ascii=False))
           PY
