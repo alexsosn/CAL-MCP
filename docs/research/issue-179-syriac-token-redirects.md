@@ -297,3 +297,15 @@ three CAL token-analysis requests:
 
 The temporary acceptance workflow was removed immediately afterward.
 
+## Post-review strict-parser acceptance
+
+After the final current-table activation, loose-text, and redirect-cardinality guards, run
+`36308423546` reinstalled the candidate wheel and repeated the bounded three-call stdio
+acceptance. All three current CAL requests returned HTTP 200 and parsed successfully:
+
+- Peshitta `620570101`, word 1: one redirect candidate;
+- Targum `5101801011`, word 0: one non-redirect linked candidate;
+- Tel Dan `1325001`, word 4: one non-redirect linked candidate.
+
+The workflow was removed after the successful run.
+
