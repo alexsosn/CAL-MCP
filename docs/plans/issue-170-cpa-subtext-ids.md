@@ -76,3 +76,23 @@ Before merge:
 18. Re-run complete CI and installed-stdio acceptance for suffix-bearing subdivided, decimal
     subdivided, and direct CPA examples.
 19. Remove temporary workflows and perform a fresh exact-head adversarial review.
+
+## Third adversarial-review amendment — caller input must respect CPA route family
+
+Exact-head review of `51d299ac` found that the evidence-backed direct/subdivided distinction is
+enforced on returned catalogue links but not on caller-supplied `cal_text_page` arguments.
+Consequently a known direct file can be sent with a `subtext_id`, and a known subdivided file can
+be sent without one, producing upstream routes absent from the current CPA catalogue.
+
+Before merge:
+
+20. RED:
+    - `TextService.page("55002", subtext_id="001")` fails locally and performs zero requests;
+    - `TextService.page("55000")` fails locally and performs zero requests;
+    - representative valid direct, decimal-subdivided, and suffix-subdivided calls remain covered.
+21. GREEN:
+    - known `_CPA_DIRECT_FILE_IDS` reject any non-null `subtext_id`;
+    - known `_CPA_SUBDIVIDED_FILE_IDS` require a non-null `subtext_id`;
+    - do not classify arbitrary `55...` files by prefix.
+22. Run both full CI matrices, then perform a fresh exact-head adversarial review.
+
