@@ -370,9 +370,7 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
                 "CAL token-analysis explicit no-data marker unexpectedly contains links"
             )
 
-        prefix = [
-            line for line in lines[:no_data_index] if line.text.strip() or line.links
-        ]
+        prefix = [line for line in lines[:no_data_index] if line.text.strip() or line.links]
         if prefix:
             if len(prefix) != 2:
                 raise TokenAnalysisParseError(
