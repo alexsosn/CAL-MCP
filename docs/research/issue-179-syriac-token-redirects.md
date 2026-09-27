@@ -249,3 +249,32 @@ The sense outline after the table is outside token-analysis candidate parsing in
 Evidence:
 - failed installed-stdio acceptance run `36288166906` (Peshitta repaired; Targum regression caught);
 - bounded Targum structure run `36288207528` (one CAL GET).
+
+## Adversarial-review live amendment — current Tel Dan control
+
+The final-review acceptance initially used `1325000000002`, word 0 from the reduced Tel Dan
+fixture captured on 2026-09-04. On 2026-09-27 that coordinate returned CAL's explicit no-data
+state, so it was not a valid current compatibility control.
+
+A bounded structural recheck first fetched the current Tel Dan page
+`get_a_chapter.php?file=13250&page=0`. Current CAL exposes 80 `getlex.php` token routes and now
+uses shorter line coordinates such as `1325001` and `1325002`. The first token routes are
+punctuation/no-data. Probing the first distinct routes found a current linked analysis at:
+
+```text
+getlex.php?coord=1325001&word=4
+```
+
+That response has the normal analysis marker and exactly two `oneentry.php` links. The structural
+probe did not retain or print scholarly token/entry text.
+
+Evidence:
+- run `36307521099`: confirms the current text page itself routes tokens through `getlex.php`
+  and that the old fixture coordinate is no longer a current analysis coordinate;
+- run `36307565712`: identifies `1325001`, word 4 as a current linked Tel Dan compatibility
+  control.
+
+Implication: the Tel Dan acceptance criterion remains valid, but must use a coordinate selected
+from the current live text page rather than a stale captured fixture coordinate. This finding does
+not require a production-code change for #179.
+
