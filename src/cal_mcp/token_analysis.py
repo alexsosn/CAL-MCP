@@ -103,6 +103,7 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         self.row_count = 0
         self.cell_count = 0
         self.links: list[_CurrentLink] = []
+        self.table_loose_parts: list[str] = []
         self._open_link: _CurrentLinkBuilder | None = None
         self.unclosed_link = False
 
@@ -177,8 +178,11 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             return
         if not self.table_started:
             self.label_parts.append(data)
-        elif self.table_depth > 0 and self._open_link is not None:
-            self._open_link.parts.append(data)
+        elif self.table_depth > 0:
+            if self._open_link is not None:
+                self._open_link.parts.append(data)
+            else:
+                self.table_loose_parts.append(data)
 
 
 def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCandidate | None:
@@ -188,10 +192,7 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
 
     analysis_label = _clean_text("".join(parser.label_parts))
     redirect = _REDIRECT_SUFFIX_RE.search(analysis_label)
-    has_lexlink = any(link.classes == ("lexlink",) for link in parser.links)
-    current_shape_hint = has_lexlink or (
-        parser.marker_h2_count > 0 and parser.table_started and "-->" in analysis_label
-    )
+    current_shape_hint = parser.marker_h2_count > 0 and parser.table_started
     if not current_shape_hint:
         return None
 
@@ -213,6 +214,10 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
     if parser.nested_table or parser.row_count != 1 or parser.cell_count != 1:
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate table has an unexpected structure"
+        )
+    if _clean_text("".join(parser.table_loose_parts)):
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate table has rendered text outside its linked header"
         )
     if parser.unclosed_link or len(parser.links) != 1:
         raise TokenAnalysisParseError(
