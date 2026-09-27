@@ -65,7 +65,7 @@ The states are intentionally distinct:
 
 The current no-lemma sentence is accepted only together with exactly one normal token-analysis result marker and no lemma-entry link. If CAL mixes that sentence with lemma markup, omits the result marker, or returns some other unexplained successful shape, the parser fails closed instead of silently treating drift as an empty result.
 
-Current linked Syriac redirect pages use a one-row result table with an `a.lexlink` header whose HTML is slightly mis-nested and is followed by a full lexicon sense outline. CAL-MCP treats the table close as the candidate boundary, validates the explicit `SOURCE --> TARGET` redirect against the linked `lemma` selector, and does not reinterpret the following sense lines as additional token analyses.
+Current linked result pages can use a one-row `a.lexlink` table followed by a full lexicon sense outline. CAL-MCP treats the table close as the candidate boundary and does not reinterpret following sense lines as additional token analyses. When CAL renders an explicit `SOURCE --> TARGET` suffix (current Peshitta example), TARGET must equal the linked `lemma` selector and SOURCE becomes `analyzed_lemma_key`. Current Targum also uses the same `lexlink` table without redirect notation; in that case `analyzed_lemma_key` remains `null` rather than being inferred from the free-form label.
 
 CAL also currently returns **linkless** successful token-analysis summaries for some Peshitta and CPA proper-name/other tokens. Their candidate grammar is not yet sufficiently established to construct a truthful `LemmaRef`, so they remain parser drift under release blocker #193 rather than being guessed into this result model or mislabeled `not_found`.
 
