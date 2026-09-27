@@ -213,3 +213,39 @@ Linkless summaries remain parser drift under #179 and move to #193.
 Production request count is unchanged: one explicit token-analysis call is still at most one new
 logical CAL request. No entry link or sense-outline link is followed. No CAL corpus or full page is
 bundled; the test fixture should retain only the minimal parser-relevant current structure.
+
+## Live acceptance amendment — current Targum also uses the lexlink result table
+
+The first installed-stdio acceptance attempt repaired the Peshitta redirect successfully, then
+caught a compatibility regression before merge: current Targum token
+`5101801011`, word 0 also uses an `a.lexlink` result table, but **without** redirect notation.
+The candidate parser initially treated every `lexlink` as a redirect and rejected it.
+
+A single fixed structural GET then recorded the current Targum shape:
+
+```text
+2  Click on a headword to see a complete lexicon entry
+3  nbw)h noun sg. emphatic
+4  nbwˀh, nbwˀtˀ n.f. prophecy       [oneentry.php?lemma=nbw)h+N&cits=all]
+5  prophecy BA-Ez, JLAtg, PTA, CPA, JBA, LJLA. ▶ more
+6  --(a) prophetic book JBA.
+7  ← Return to the Text Browser
+```
+
+The entry anchor has class `lexlink`, exactly the `lemma,cits` selectors, and target
+`nbw)h N`. CAL does not render a separate analysed lemma key or `-->` redirect on this token.
+
+Therefore the current table contract is:
+
+- one strict linked `lexlink` candidate bounded by the result table;
+- redirect notation is **optional**;
+- when an explicit `SOURCE --> TARGET` suffix exists, expose SOURCE as
+  `analyzed_lemma_key` and require TARGET to equal the linked lemma key;
+- when no redirect is rendered, `analyzed_lemma_key` is null; do not infer it from the free-form
+  analysis label.
+
+The sense outline after the table is outside token-analysis candidate parsing in both variants.
+
+Evidence:
+- failed installed-stdio acceptance run `36288166906` (Peshitta repaired; Targum regression caught);
+- bounded Targum structure run `36288207528` (one CAL GET).
