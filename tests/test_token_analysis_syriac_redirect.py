@@ -55,6 +55,22 @@ def test_current_syriac_sense_outline_is_not_an_extra_candidate() -> None:
     assert "OUT-OF-SCOPE-SENSE" not in page.candidates[0].lemma.gloss
 
 
+def test_current_lexlink_requires_nonempty_analysis_label() -> None:
+    body = _current_body()
+    label = ")syr noun sg. emphatic= )syr N --> )syr A"
+    assert label in body
+    with pytest.raises(TokenAnalysisParseError, match="analysis label"):
+        parse_token_analysis_page(_response(body.replace(label, "   ", 1)))
+
+
+def test_current_explicit_redirect_must_match_researched_suffix() -> None:
+    body = _current_body()
+    redirect = ")syr N --> )syr A"
+    assert redirect in body
+    with pytest.raises(TokenAnalysisParseError, match="redirect"):
+        parse_token_analysis_page(_response(body.replace(redirect, ")syr N --> )syrA", 1)))
+
+
 def test_legacy_linked_candidate_has_no_separate_analyzed_key() -> None:
     page = parse_token_analysis_page(_response(LEGACY.read_text(encoding="utf-8")))
     assert len(page.candidates) == 1
