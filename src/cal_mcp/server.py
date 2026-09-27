@@ -437,8 +437,10 @@ async def cal_token_analysis(
     matching the token metadata returned by ``cal_text_page``. Most current coordinates are
     decimal; CPA can embed one lowercase subtext suffix between decimal segments. When CAL
     explicitly redirects an analysed lemma to another linked entry, the candidate preserves the
-    source as ``analyzed_lemma_key`` and the linked target as ``lemma.lemma_key``. Candidate
-    lexicon entries are never expanded automatically.
+    source as ``analyzed_lemma_key`` and the linked target as ``lemma.lemma_key``. When current
+    CAL returns successful analysis text without a linked lemma identity, the ordered rendered
+    lines are preserved separately as ``unlinked_summaries`` rather than converted into invented
+    lemma candidates. Candidate lexicon entries are never expanded automatically.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
