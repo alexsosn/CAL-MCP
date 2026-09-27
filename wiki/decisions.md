@@ -215,8 +215,9 @@ Consequences:
   lowercase ASCII letter + decimal-tail form; suffix-bearing text pages additionally require the
   exact requested `file_id + subtext_id` prefix;
 - `cal_token_analysis` accepts that same machine-coordinate grammar at its input boundary, so a
-  coordinate returned by `cal_text_page` is not rejected locally; current CPA token-analysis
-  response parsing is a separate compatibility concern tracked by release blocker #179;
+  coordinate returned by `cal_text_page` is not rejected locally; current linked and linkless
+  CPA token-analysis response shapes are handled under the evidence-backed token-analysis
+  contracts in R-040/R-041;
 - current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
   current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
   direct texts; known direct files reject a caller-supplied subtext and known subdivided files
@@ -226,3 +227,23 @@ Consequences:
   whitespace, or arbitrary strings remain invalid;
 - future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
   amendment rather than silently broadening this rule.
+
+## D-017 — Linkless token-analysis success stays opaque and separate from linked candidates
+
+**Status:** accepted — 2026-09-27 (issue #193; research R-041)
+
+Current CAL can return a successful token-analysis result marker followed by one or more rendered
+analysis-summary lines without any result table or lemma-entry link. The adapter cannot validate a
+canonical lemma identity, candidate boundary, or redirect target from that shape.
+
+Consequences:
+
+- existing `candidates` remain reserved for analyses with a validated linked `LemmaRef`;
+- linkless success is exposed additively as ordered `unlinked_summaries`;
+- `status=found` when either linked candidates or unlinked summaries exist;
+- `=`, `-->`, POS-looking text, and gloss-looking text inside unlinked summaries remain opaque
+  rendered CAL text;
+- no linked lemma key, entry URL, morphology, or redirect relation is synthesized;
+- explicit CAL no-data/no-lemma states stay `not_found` with both collections empty;
+- a current linkless-looking region that contains links, tables, or mixed linked/unlinked
+  structure fails closed rather than falling back to the older loose candidate parser.
