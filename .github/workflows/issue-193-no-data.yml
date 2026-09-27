@@ -1,0 +1,55 @@
+name: Issue 193 no-data structure probe
+
+on:
+  push:
+    branches:
+      - research/issue-193-no-data-region
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install main
+        run: python -m pip install .
+      - name: Probe current no-data semantic lines
+        run: |
+          python - <<'PY'
+          import asyncio, json
+          from urllib.parse import urlsplit
+          from cal_mcp.client import CalHttpClient, CalRequest
+          from cal_mcp.lexicon import _parse_lines
+
+          async def main():
+              async with CalHttpClient() as client:
+                  result = await client.fetch(
+                      CalRequest(
+                          method="GET",
+                          path="getlex.php",
+                          params=(("coord", "9999999999999"), ("word", "0")),
+                      ),
+                      parser=lambda response: response,
+                      cache_namespace="issue-193-no-data-structure",
+                  )
+              response = result.value
+              lines = _parse_lines(response)
+              print(json.dumps([
+                  {
+                      "index": i,
+                      "text": line.text,
+                      "links": [
+                          urlsplit(link.href).path.rsplit("/", 1)[-1]
+                          for link in line.links
+                      ],
+                  }
+                  for i, line in enumerate(lines)
+              ], ensure_ascii=False))
+          asyncio.run(main())
+          PY
