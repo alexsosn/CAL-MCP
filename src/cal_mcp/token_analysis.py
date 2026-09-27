@@ -43,6 +43,7 @@ class TokenAnalysisCandidate:
 @dataclass(frozen=True, slots=True)
 class TokenAnalysisPage:
     candidates: tuple[TokenAnalysisCandidate, ...]
+    unlinked_summaries: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +62,7 @@ class TokenAnalysisResult:
     word_index: int
     candidates: tuple[TokenAnalysisCandidate, ...]
     provenance: TokenAnalysisProvenance
+    unlinked_summaries: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -68,6 +70,7 @@ class TokenAnalysisResult:
             "coordinate": self.coordinate,
             "word_index": self.word_index,
             "candidates": [_candidate_to_dict(item) for item in self.candidates],
+            "unlinked_summaries": list(self.unlinked_summaries),
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -283,6 +286,56 @@ def _clean_text(value: str) -> str:
     return " ".join(value.split())
 
 
+def _current_linkless_summaries(
+    response: CalResponse,
+    lines: tuple[object, ...],
+    *,
+    marker_index: int,
+) -> tuple[str, ...] | None:
+    """Preserve current H2-marker summaries without inventing lemma candidates."""
+
+    structure = _CurrentLinkedRedirectParser()
+    structure.feed(response.body.decode("utf-8", errors="replace"))
+    structure.close()
+
+    if structure.marker_h2_count == 0:
+        return None
+    if structure.marker_h2_count != 1:
+        raise TokenAnalysisParseError(
+            "CAL current linkless token-analysis page lacks one unique H2 result marker"
+        )
+    if structure.table_started:
+        # Any current H2 + table shape belongs to the strict linked-table parser above.
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis result table did not satisfy the linked-table contract"
+        )
+
+    summaries: list[str] = []
+    saw_return = False
+    for line in lines[marker_index + 1 :]:
+        if _is_return_to_text_browser(line):
+            saw_return = True
+            break
+        links = getattr(line, "links", ())
+        if links:
+            raise TokenAnalysisParseError(
+                "CAL current linkless token-analysis summary unexpectedly contains links"
+            )
+        text = _clean_text(getattr(line, "text", ""))
+        if text:
+            summaries.append(text)
+
+    if not saw_return:
+        raise TokenAnalysisParseError(
+            "CAL current linkless token-analysis page lacks its return-navigation boundary"
+        )
+    if not summaries:
+        raise TokenAnalysisParseError(
+            "CAL current linkless token-analysis result marker has no summary text"
+        )
+    return tuple(summaries)
+
+
 def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
     lines = _parse_lines(response)
     page_text = " ".join(line.text.lower() for line in lines)
@@ -311,6 +364,14 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
     current_candidate = _current_linked_redirect_candidate(response)
     if current_candidate is not None:
         return TokenAnalysisPage(candidates=(current_candidate,))
+
+    unlinked_summaries = _current_linkless_summaries(
+        response,
+        tuple(lines),
+        marker_index=marker_indices[0],
+    )
+    if unlinked_summaries is not None:
+        return TokenAnalysisPage(candidates=(), unlinked_summaries=unlinked_summaries)
 
     candidates: list[TokenAnalysisCandidate] = []
     index = marker_indices[0] + 1
@@ -408,7 +469,9 @@ class TokenAnalysisService:
             cache_namespace="token-analysis-v1",
         )
         status = (
-            TokenAnalysisStatus.FOUND if result.value.candidates else TokenAnalysisStatus.NOT_FOUND
+            TokenAnalysisStatus.FOUND
+            if result.value.candidates or result.value.unlinked_summaries
+            else TokenAnalysisStatus.NOT_FOUND
         )
         provenance = TokenAnalysisProvenance(
             source="CAL",
@@ -423,6 +486,7 @@ class TokenAnalysisService:
             word_index=normalized_word_index,
             candidates=result.value.candidates,
             provenance=provenance,
+            unlinked_summaries=result.value.unlinked_summaries,
         )
 
 
