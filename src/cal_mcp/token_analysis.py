@@ -377,19 +377,19 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
             raise TokenAnalysisParseError(
                 "CAL token-analysis page has inconsistent current no-lemma markup"
             )
-        no_lemma_lines: list[object] = []
+        no_lemma_lines: list[tuple[str, bool]] = []
         saw_return = False
         for line in lines[marker_indices[0] + 1 :]:
             if _is_return_to_text_browser(line):
                 saw_return = True
                 break
             if line.text.strip() or line.links:
-                no_lemma_lines.append(line)
+                no_lemma_lines.append((line.text, bool(line.links)))
         if (
             not saw_return
             or len(no_lemma_lines) != 1
-            or getattr(no_lemma_lines[0], "links", ())
-            or _NO_LEMMA_MARKER not in getattr(no_lemma_lines[0], "text", "").lower()
+            or no_lemma_lines[0][1]
+            or _NO_LEMMA_MARKER not in no_lemma_lines[0][0].lower()
         ):
             raise TokenAnalysisParseError(
                 "CAL token-analysis page mixes current no-lemma state with rendered result text"
