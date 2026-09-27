@@ -77,3 +77,23 @@ Before merge:
 4. Run both full CI matrices on the workflow-free exact head.
 5. Perform a new logically independent exact-head adversarial review.
 
+## Final adversarial-review amendment — fail closed on malformed current labels
+
+Exact-head review of `445c7224` found two missing guards in the new current `lexlink` parser:
+
+- a valid result table can currently succeed with an empty rendered analysis label;
+- an analysis label containing `-->` but not matching the researched `SOURCE --> TARGET` suffix
+  can currently fall through as a non-redirect candidate with `analyzed_lemma_key=null`.
+
+Before merge:
+
+6. RED:
+   - remove the rendered pre-table analysis label from the current Syriac fixture and require
+     `TokenAnalysisParseError`;
+   - mutate the explicit redirect to a malformed target such as `)syr N --> )syrA` and require
+     `TokenAnalysisParseError`.
+7. GREEN:
+   - require a non-empty analysis label for the current `lexlink` shape;
+   - if `-->` occurs, require the researched redirect regex to match before returning success.
+8. Run both full CI matrices and perform a fresh exact-head adversarial review.
+
