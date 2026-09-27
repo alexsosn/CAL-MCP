@@ -163,3 +163,38 @@ def test_linked_current_shape_keeps_empty_unlinked_summary_collection() -> None:
 
     assert len(page.candidates) == 1
     assert page.unlinked_summaries == ()
+
+
+def test_no_lemma_state_mixed_with_unlinked_summary_fails_closed() -> None:
+    body = (
+        "<html><body>"
+        "<div>Click on a headword to see a complete lexicon entry</div>"
+        '<div>| W.D. "unrecognizable query or no such lemma found"</div>'
+        "<div>opaque extra summary</div>"
+        '<div><a href="/newtextmenu.html">Return to the Text Browser</a></div>'
+        "</body></html>"
+    )
+    with pytest.raises(TokenAnalysisParseError):
+        parse_token_analysis_page(
+            _response(
+                body,
+                url="https://cal.huc.edu/getlex.php?coord=1325007&word=1",
+            )
+        )
+
+
+def test_no_data_state_mixed_with_unrelated_text_fails_closed() -> None:
+    body = (
+        "<html><body>"
+        "<div>there is no data for this word — it may be undecipherable or simply not Aramaic</div>"
+        "<div>opaque extra summary</div>"
+        "</body></html>"
+    )
+    with pytest.raises(TokenAnalysisParseError):
+        parse_token_analysis_page(
+            _response(
+                body,
+                url="https://cal.huc.edu/getlex.php?coord=9999999999999&word=0",
+            )
+        )
+
