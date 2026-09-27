@@ -75,10 +75,9 @@ def test_current_explicit_redirect_must_be_unique() -> None:
     body = _current_body()
     redirect = ")syr N --> )syr A"
     assert redirect in body
+    mutated = body.replace(redirect, ")syr N --> )syr X --> )syr A", 1)
     with pytest.raises(TokenAnalysisParseError, match="redirect"):
-        parse_token_analysis_page(
-            _response(body.replace(redirect, ")syr N --> )syr X --> )syr A", 1))
-        )
+        parse_token_analysis_page(_response(mutated))
 
 
 def test_legacy_linked_candidate_has_no_separate_analyzed_key() -> None:
