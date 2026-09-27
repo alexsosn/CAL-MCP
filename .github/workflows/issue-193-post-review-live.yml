@@ -1,0 +1,78 @@
+name: Issue 193 post-review live acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-193-linkless-token-analysis
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify linkless and no-data states over stdio
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          LINKLESS = [
+              ("620570101", 0, ["pwlws PN Personal name"]),
+              (
+                  "620570101",
+                  2,
+                  ["d_ p = d_ p --> dy p", "y$w( PN Personal name"],
+              ),
+              ("5500001001a019001", 0, ["lwT PN Personal name"]),
+          ]
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  for coordinate, word_index, expected in LINKLESS:
+                      result = await client.call_tool(
+                          "cal_token_analysis",
+                          {"coordinate": coordinate, "word_index": word_index},
+                      )
+                      if result.is_error:
+                          raise RuntimeError(
+                              f"{coordinate}/{word_index} failed: {result.content!r}"
+                          )
+                      data = result.structured_content
+                      if not isinstance(data, dict):
+                          raise RuntimeError("missing structured content")
+                      if data.get("status") != "found":
+                          raise RuntimeError(f"{coordinate}/{word_index}: expected found")
+                      if data.get("candidates") != []:
+                          raise RuntimeError(f"{coordinate}/{word_index}: invented candidates")
+                      if data.get("unlinked_summaries") != expected:
+                          raise RuntimeError(f"{coordinate}/{word_index}: summary drift")
+
+                  missing = await client.call_tool(
+                      "cal_token_analysis",
+                      {"coordinate": "9999999999999", "word_index": 0},
+                  )
+                  if missing.is_error:
+                      raise RuntimeError(f"current no-data page became an error: {missing.content!r}")
+                  data = missing.structured_content
+                  if not isinstance(data, dict):
+                      raise RuntimeError("no-data call lacks structured content")
+                  if (
+                      data.get("status") != "not_found"
+                      or data.get("candidates") != []
+                      or data.get("unlinked_summaries") != []
+                  ):
+                      raise RuntimeError(f"current no-data contract changed: {data!r}")
+
+                  print("live #193 OK: 3 linkless found + current no-data not_found")
+
+          asyncio.run(main())
+          PY
