@@ -1010,6 +1010,10 @@ class TextService:
         normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise CalInputError("page must be a positive integer")
+        if normalized_file in _CPA_DIRECT_FILE_IDS and normalized_subtext is not None:
+            raise CalInputError("direct CPA texts do not accept subtext_id")
+        if normalized_file in _CPA_SUBDIVIDED_FILE_IDS and normalized_subtext is None:
+            raise CalInputError("subdivided CPA texts require subtext_id")
 
         mandaic_collection_route = normalized_subtext is None and normalized_file.startswith(
             _MANDAIC_COLLECTION_PREFIX
