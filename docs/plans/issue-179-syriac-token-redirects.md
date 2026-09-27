@@ -97,3 +97,15 @@ Before merge:
    - if `-->` occurs, require the researched redirect regex to match before returning success.
 8. Run both full CI matrices and perform a fresh exact-head adversarial review.
 
+## Final redirect-cardinality amendment
+
+Re-review of `f3dfb627` found that a label with multiple `-->` operators can still match the
+last researched-looking suffix and silently discard an earlier source key.
+
+Before merge:
+
+9. RED: mutate the current redirect into a two-arrow chain and require parser drift.
+10. GREEN: whenever redirect notation is present, require exactly one `-->` and a valid
+    researched suffix whose target equals the linked lemma key.
+11. Re-run both full CI matrices and perform the final exact-head adversarial review.
+
