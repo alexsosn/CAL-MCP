@@ -363,9 +363,43 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
             raise TokenAnalysisParseError(
                 "CAL token-analysis page has inconsistent explicit no-data markup"
             )
-        for line in lines[no_data_indices[0] + 1 :]:
-            if _is_return_to_text_browser(line):
-                break
+        no_data_index = no_data_indices[0]
+        no_data_line = lines[no_data_index]
+        if no_data_line.links:
+            raise TokenAnalysisParseError(
+                "CAL token-analysis explicit no-data marker unexpectedly contains links"
+            )
+
+        prefix = [
+            line for line in lines[:no_data_index] if line.text.strip() or line.links
+        ]
+        if prefix:
+            if len(prefix) != 2:
+                raise TokenAnalysisParseError(
+                    "CAL token-analysis page has unexpected content before explicit no-data"
+                )
+            title_line, back_line = prefix
+            if title_line.text.strip() != "The Comprehensive Aramaic Lexicon" or title_line.links:
+                raise TokenAnalysisParseError(
+                    "CAL token-analysis page has unexpected content before explicit no-data"
+                )
+            if back_line.text.strip() != "← Back" or len(back_line.links) != 1:
+                raise TokenAnalysisParseError(
+                    "CAL token-analysis page has unexpected navigation before explicit no-data"
+                )
+            back_href = urlsplit(back_line.links[0].href)
+            if (
+                back_href.scheme != "javascript"
+                or back_href.netloc
+                or back_href.path != "history.back()"
+                or back_href.query
+                or back_href.fragment
+            ):
+                raise TokenAnalysisParseError(
+                    "CAL token-analysis page has unexpected navigation before explicit no-data"
+                )
+
+        for line in lines[no_data_index + 1 :]:
             if line.text.strip() or line.links:
                 raise TokenAnalysisParseError(
                     "CAL token-analysis page mixes explicit no-data with rendered result text"
