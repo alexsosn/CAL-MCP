@@ -356,12 +356,43 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
             raise TokenAnalysisParseError(
                 "CAL token-analysis page mixes explicit no-data with analysis markup"
             )
+        no_data_indices = [
+            index for index, line in enumerate(lines) if _NO_DATA_MARKER in line.text.lower()
+        ]
+        if len(no_data_indices) != 1:
+            raise TokenAnalysisParseError(
+                "CAL token-analysis page has inconsistent explicit no-data markup"
+            )
+        for line in lines[no_data_indices[0] + 1 :]:
+            if _is_return_to_text_browser(line):
+                break
+            if line.text.strip() or line.links:
+                raise TokenAnalysisParseError(
+                    "CAL token-analysis page mixes explicit no-data with rendered result text"
+                )
         return TokenAnalysisPage(candidates=())
 
     if _NO_LEMMA_MARKER in page_text:
         if len(marker_indices) != 1 or has_lemma_path:
             raise TokenAnalysisParseError(
                 "CAL token-analysis page has inconsistent current no-lemma markup"
+            )
+        no_lemma_lines: list[object] = []
+        saw_return = False
+        for line in lines[marker_indices[0] + 1 :]:
+            if _is_return_to_text_browser(line):
+                saw_return = True
+                break
+            if line.text.strip() or line.links:
+                no_lemma_lines.append(line)
+        if (
+            not saw_return
+            or len(no_lemma_lines) != 1
+            or getattr(no_lemma_lines[0], "links", ())
+            or _NO_LEMMA_MARKER not in getattr(no_lemma_lines[0], "text", "").lower()
+        ):
+            raise TokenAnalysisParseError(
+                "CAL token-analysis page mixes current no-lemma state with rendered result text"
             )
         return TokenAnalysisPage(candidates=())
 
