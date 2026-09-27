@@ -265,8 +265,11 @@ punctuation/no-data. Probing the first distinct routes found a current linked an
 getlex.php?coord=1325001&word=4
 ```
 
-That response has the normal analysis marker and exactly two `oneentry.php` links. The structural
-probe did not retain or print scholarly token/entry text.
+That response has the normal analysis marker and two raw `oneentry.php` links. A subsequent
+installed-stdio call showed that these must not be interpreted as two token candidates: the
+production parser correctly returns one linked token-analysis candidate (`w_ c`), while the second
+entry link belongs to other page content. The structural probe did not retain or print scholarly
+token/entry text.
 
 Evidence:
 - run `36307521099`: confirms the current text page itself routes tokens through `getlex.php`
@@ -275,6 +278,7 @@ Evidence:
   control.
 
 Implication: the Tel Dan acceptance criterion remains valid, but must use a coordinate selected
-from the current live text page rather than a stale captured fixture coordinate. This finding does
-not require a production-code change for #179.
+from the current live text page rather than a stale captured fixture coordinate, and acceptance
+must assert successful parsed candidates rather than equating raw entry-link count with candidate
+count. This finding does not require a production-code change for #179.
 
