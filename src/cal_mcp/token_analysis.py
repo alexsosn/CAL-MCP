@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
@@ -8,6 +7,7 @@ from urllib.parse import urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
+from cal_mcp.identifiers import is_cal_machine_coordinate
 from cal_mcp.lexicon import (
     LemmaRef,
     _lemma_key_from_href,
@@ -16,7 +16,6 @@ from cal_mcp.lexicon import (
     _parse_lines,
 )
 
-_COORDINATE_RE = re.compile(r"^[0-9]+$")
 _ANALYSIS_MARKER = "click on a headword to see a complete lexicon entry"
 _NO_DATA_MARKER = "there is no data for this word"
 _NO_LEMMA_MARKER = "unrecognizable query or no such lemma found"
@@ -203,8 +202,11 @@ class TokenAnalysisService:
 
 
 def _validate_coordinate(value: str) -> str:
-    if not isinstance(value, str) or _COORDINATE_RE.fullmatch(value) is None:
-        raise CalInputError("coordinate must be a CAL decimal machine coordinate")
+    if not is_cal_machine_coordinate(value):
+        raise CalInputError(
+            "coordinate must be a CAL decimal coordinate or contain one lowercase letter "
+            "between decimal segments"
+        )
     return value
 
 

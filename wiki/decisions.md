@@ -197,3 +197,32 @@ Consequences:
 - the schema change is additive (`section_labels`); row, count and total semantics and request counts are unchanged;
 - a label row must carry CAL's literal `&nbsp;` filler, so a damaged result row cannot be misread as a label.
 
+## D-016 — Subtext IDs use a dedicated researched grammar
+
+**Status:** accepted — 2026-09-26 (issue #170; research R-039)
+
+CAL's current Christian Palestinian Aramaic catalogue disproves the earlier implicit assumption
+that every subtext selector is decimal: CPA uses values such as `01001a`. For v0.1,
+`subtext_id` therefore has its own shared grammar: one or more decimal digits followed by at most
+one lowercase ASCII letter.
+
+Consequences:
+
+- preserve leading zeroes and any lowercase suffix exactly;
+- use the same grammar for text catalogue/page/information and KWIC/full-context subtext fields;
+- do not widen generic file IDs, category IDs, text IDs, or KWIC target coordinates;
+- current text/token machine coordinates may be decimal or use CAL's observed digits + one
+  lowercase ASCII letter + decimal-tail form; suffix-bearing text pages additionally require the
+  exact requested `file_id + subtext_id` prefix;
+- `cal_token_analysis` accepts that same machine-coordinate grammar at its input boundary, so a
+  coordinate returned by `cal_text_page` is not rejected locally; current CPA token-analysis
+  response parsing is a separate compatibility concern tracked by release blocker #179;
+- current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
+  current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
+  direct texts; known direct files reject a caller-supplied subtext and known subdivided files
+  require one; suffix presence and the generic `55` prefix are not treated as route classifiers;
+  contradictory routes fail closed rather than being normalized;
+- values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
+  whitespace, or arbitrary strings remain invalid;
+- future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
+  amendment rather than silently broadening this rule.

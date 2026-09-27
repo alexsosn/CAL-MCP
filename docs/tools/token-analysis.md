@@ -15,7 +15,7 @@ Use `cal_text_page` to obtain the `coordinate` and `word_index` for a rendered C
 
 A successful result preserves:
 
-- `coordinate`: the exact decimal CAL machine coordinate supplied by the caller;
+- `coordinate`: the exact CAL machine coordinate supplied by the caller;
 - `word_index`: CAL's zero-based token index;
 - `status`: `found` or `not_found`;
 - `candidates`: CAL's ordered lexical analyses for that token;
@@ -43,7 +43,7 @@ CAL-MCP returns both. It does not rank, merge, or silently choose between them.
 
 ## Coordinates and token indexes
 
-`coordinate` is an opaque CAL identifier. CAL-MCP validates only that it is a non-empty decimal string and otherwise preserves it verbatim; it does not decode semantic fields from its digits or claim that CAL identifiers are permanently stable.
+`coordinate` is an opaque CAL identifier. Most observed values are decimal; current Christian Palestinian Aramaic text pages return coordinates such as `5500001001a019001`, embedding one lowercase subtext suffix between decimal segments. CAL-MCP therefore accepts only a decimal string or the researched decimal + one lowercase ASCII letter + non-empty decimal-tail form and preserves it verbatim. It does not decode semantic fields from the coordinate or claim that CAL identifiers are permanently stable.
 
 `word_index` is zero-based because that is the index CAL exposes in text-browser token links. It must be an integer greater than or equal to zero. Boolean, negative, and non-integer values are rejected locally.
 
@@ -53,7 +53,7 @@ These conventions match the token metadata returned by `cal_text_page`; see [`..
 
 The states are intentionally distinct:
 
-- **invalid caller input** — a non-decimal coordinate or invalid `word_index` raises local validation failure before any CAL request;
+- **invalid caller input** — a coordinate outside the researched decimal-or-single-embedded-lowercase-letter grammar, or an invalid `word_index`, raises local validation failure before any CAL request;
 - **not found** — CAL returned one of the adapter's explicitly recognized no-candidate states. These currently include the legacy `there is no data for this word ...` page and a normal token-analysis result marker followed by CAL's exact `unrecognizable query or no such lemma found` message with no lemma-entry link. Both map to `status: "not_found"` and an empty candidate list;
 - **upstream/transport failure** — HTTP/content/request failures remain shared CAL client errors;
 - **parser drift** — a successful CAL page that has neither a complete recognized analysis nor one of the explicitly recognized no-candidate states fails closed as `TokenAnalysisParseError`.
@@ -97,7 +97,7 @@ Offline tests use reduced semantic excerpts rechecked against current CAL behavi
 - current empty-state text without the required result marker;
 - incomplete/missing lemma-link markup;
 - unknown successful markup;
-- local coordinate/token-index validation;
+- local coordinate/token-index validation, including current CPA suffix-bearing coordinates and malformed near-misses;
 - single-fetch request construction and provenance;
 - MCP schema exposure without private upstream `coord` / `word` parameter names.
 

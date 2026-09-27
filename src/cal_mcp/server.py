@@ -364,8 +364,10 @@ async def cal_text_page(
 
     Public page numbers are one-based. CAL's unbounded ``show all`` navigation is not
     exposed; moving to another page requires another explicit tool call. Pass
-    ``subtext_id`` exactly as CAL returned it, including leading zeroes: CAL matches
-    it as a prefix, so a shortened value can return several subtexts under the first
+    ``subtext_id`` exactly as CAL returned it, including leading zeroes and an optional
+    single lowercase suffix (for example CPA ``01001a``). Known current CPA direct files
+    reject a subtext and known CPA subdivided files require one. Decimal subtext selectors can
+    be prefix-matched by CAL, so a shortened value can return several subtexts under the first
     one's label. Each returned line keeps its own CAL coordinate.
     """
 
@@ -387,8 +389,9 @@ async def cal_text_information(
     """Retrieve CAL's explicit Text Information metadata for one text or subtext.
 
     Metadata is returned as CAL's ordered free-form text rather than inferred bibliographic
-    fields. One explicit call submits at most one new logical CAL request and follows no
-    metadata links. A completed cache hit performs no new upstream I/O.
+    fields. Optional ``subtext_id`` accepts CAL's current digits-plus-optional-single-lowercase-
+    suffix grammar and is preserved exactly. One explicit call submits at most one new logical CAL
+    request and follows no metadata links. A completed cache hit performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
@@ -430,9 +433,10 @@ async def cal_token_analysis(
 ) -> dict[str, object]:
     """Return every CAL lexical analysis for one explicit text coordinate/token index.
 
-    ``coordinate`` is CAL's opaque decimal machine coordinate and ``word_index`` is
-    zero-based, matching the token metadata returned by ``cal_text_page``. Candidate lexicon
-    entries are never expanded automatically.
+    ``coordinate`` is CAL's opaque machine coordinate and ``word_index`` is zero-based,
+    matching the token metadata returned by ``cal_text_page``. Most current coordinates are
+    decimal; CPA can embed one lowercase subtext suffix between decimal segments. Candidate
+    lexicon entries are never expanded automatically.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
@@ -560,9 +564,10 @@ async def cal_kwic_full_context(
     """Follow one returned CAL KWIC hit into its bounded full-context page.
 
     Pass the hit's ``file_id``, ``target_coordinate``, ``charset``, and optional
-    ``subtext_id``. Arbitrary URLs are not accepted and no returned links are followed.
-    One explicit call submits at most one new logical CAL request; a completed cache hit
-    performs no new upstream I/O.
+    ``subtext_id``. The subtext value accepts CAL's current digits-plus-optional-single-
+    lowercase-suffix grammar and is preserved exactly. Arbitrary URLs are not accepted and no
+    returned links are followed. One explicit call submits at most one new logical CAL request;
+    a completed cache hit performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client

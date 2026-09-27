@@ -14,6 +14,11 @@ from cal_mcp.client import (
     CalResponse,
 )
 from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
+from cal_mcp.identifiers import (
+    has_subtext_letter_suffix,
+    is_cal_machine_coordinate,
+    is_cal_subtext_id,
+)
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
@@ -38,6 +43,27 @@ _MANDAIC_COLLECTION_PREFIX = "74"
 _MANDAIC_CATEGORY_ID = "74"
 _MANDAIC_CATALOGUE_PATH = "show_Mandaic.php"
 _MANDAIC_ROOT_LABEL = "Mandaic"
+_CPA_SUBDIVIDED_FILE_IDS = frozenset(
+    {
+        "55000",
+        "55001",
+        "55003",
+        "55006",
+        "55007",
+        "55400",
+        "55401",
+        "55402",
+        "55403",
+        "55404",
+        "55405",
+        "55420",
+        "55421",
+        "55422",
+        "55423",
+    }
+)
+_CPA_DIRECT_FILE_IDS = frozenset({"55002", "55406", "55407", "55430"})
+_CPA_TEXT_FILE_IDS = _CPA_SUBDIVIDED_FILE_IDS | _CPA_DIRECT_FILE_IDS
 _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
     {
         "74401",
@@ -795,12 +821,33 @@ def _parse_text_page(
         next_page=next_page,
         allow_navigation_without_page_count=mandaic_page_route,
     )
+    expected_coordinate_prefix = (
+        f"{requested_file_id}{requested_subtext_id}"
+        if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
+        else None
+    )
     table = _parse_text_table(response)
     if table.found:
-        text_lines = tuple(_text_line_from_row(row, response.url) for row in table.rows)
+        text_lines = tuple(
+            _text_line_from_row(
+                row,
+                response.url,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
+            for row in table.rows
+        )
     else:
         text_lines = tuple(
-            parsed for line in lines if (parsed := _parse_text_line(line, response.url)) is not None
+            parsed
+            for line in lines
+            if (
+                parsed := _parse_text_line(
+                    line,
+                    response.url,
+                    expected_coordinate_prefix=expected_coordinate_prefix,
+                )
+            )
+            is not None
         )
     if not text_lines:
         raise TextParseError("CAL text page contains no recognizable coordinate/token rows")
@@ -891,7 +938,7 @@ class TextService:
         subtext_id: str | None = None,
     ) -> TextInformationResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
+        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
         coord = (
             normalized_file
             if normalized_subtext is None
@@ -960,9 +1007,13 @@ class TextService:
         page: int = 1,
     ) -> TextPageResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_id(subtext_id, "subtext_id")
+        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise CalInputError("page must be a positive integer")
+        if normalized_file in _CPA_DIRECT_FILE_IDS and normalized_subtext is not None:
+            raise CalInputError("direct CPA texts do not accept subtext_id")
+        if normalized_file in _CPA_SUBDIVIDED_FILE_IDS and normalized_subtext is None:
+            raise CalInputError("subdivided CPA texts require subtext_id")
 
         mandaic_collection_route = normalized_subtext is None and normalized_file.startswith(
             _MANDAIC_COLLECTION_PREFIX
@@ -985,6 +1036,8 @@ class TextService:
             params = [("file", normalized_file)]
             if normalized_subtext is not None:
                 params.append(("sub", normalized_subtext))
+            if normalized_file in _CPA_TEXT_FILE_IDS:
+                params.append(("cset", "C"))
             params.append(("page", str(page - 1)))
         submitted_sub = next((value for name, value in params if name == "sub"), None)
 
@@ -1025,6 +1078,14 @@ def _validate_id(value: str, name: str) -> str:
     return value
 
 
+def _validate_subtext_id(value: str) -> str:
+    if not is_cal_subtext_id(value):
+        raise CalInputError(
+            "subtext_id must be CAL decimal digits with an optional lowercase letter suffix"
+        )
+    return value
+
+
 def _validate_line_comment_coordinate(value: str) -> str:
     if not isinstance(value, str) or _LINE_COMMENT_COORD_RE.fullmatch(value) is None:
         raise CalInputError("coordinate must be a 1-64 character ASCII alphanumeric CAL coordinate")
@@ -1034,6 +1095,14 @@ def _validate_line_comment_coordinate(value: str) -> str:
 def _parse_id(value: str, name: str) -> str:
     if _ID_RE.fullmatch(value) is None:
         raise TextParseError(f"CAL returned a non-decimal {name}")
+    return value
+
+
+def _parse_subtext_id(value: str) -> str:
+    if not is_cal_subtext_id(value):
+        raise TextParseError(
+            "CAL returned a subtext_id outside the digits-plus-optional-lowercase-suffix contract"
+        )
     return value
 
 
@@ -1151,11 +1220,21 @@ def _text_ref_from_link(
 
     subtext_id: str | None = None
     sub_values = query.get("sub")
+    if file_id in _CPA_DIRECT_FILE_IDS:
+        if set(query) != {"file", "cset"} or query.get("cset") != ["C"]:
+            raise TextParseError("CAL direct CPA text link lacks the exact current cset=C route")
+    elif file_id in _CPA_SUBDIVIDED_FILE_IDS and (
+        set(query) != {"file", "sub", "cset"} or query.get("cset") != ["C"]
+    ):
+        raise TextParseError("CAL subdivided CPA text link lacks the exact current cset=C route")
+
     if sub_values is not None:
         if len(sub_values) != 1:
             raise TextParseError("CAL text link has repeated sub identifiers")
         if sub_values[0]:
-            subtext_id = _parse_id(sub_values[0], "subtext_id")
+            subtext_id = _parse_subtext_id(sub_values[0])
+    if file_id in _CPA_SUBDIVIDED_FILE_IDS and subtext_id is None:
+        raise TextParseError("CAL subdivided CPA text link lacks a subtext identifier")
 
     rendered_label = (label if label is not None else link.text).strip()
     if not rendered_label:
@@ -1300,7 +1379,6 @@ def _page_text_ref(
                 continue
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
             coord = _single_query_value(query, "coord", "file-info")
-            _parse_id(coord, "file_id")
             if coord not in accepted_coords:
                 raise TextParseError(
                     "CAL text page file identifier differs from the requested file"
@@ -1381,6 +1459,15 @@ def _page_navigation(
                 _parse_id(upstream_sub, "subtext_id")
                 public_page = int(upstream_sub)
             else:
+                if requested_file_id in _CPA_TEXT_FILE_IDS:
+                    expected_keys = {"file", "page", "cset"}
+                    if requested_subtext_id is not None:
+                        expected_keys.add("sub")
+                    if set(query) != expected_keys or query.get("cset") != ["C"]:
+                        raise TextParseError(
+                            "CAL CPA text navigation lacks the exact current cset=C route"
+                        )
+
                 subtext_id: str | None = None
                 sub_values = query.get("sub")
                 if sub_values is not None:
@@ -1389,12 +1476,11 @@ def _page_navigation(
                             "CAL text page navigation has repeated sub identifiers"
                         )
                     if sub_values[0]:
-                        subtext_id = _parse_id(sub_values[0], "subtext_id")
+                        subtext_id = _parse_subtext_id(sub_values[0])
                 if subtext_id != requested_subtext_id:
                     raise TextParseError(
                         "CAL text page navigation subtext differs from requested subtext"
                     )
-
                 upstream_page = _single_query_value(query, "page", "page-navigation")
                 if not upstream_page.isdigit():
                     raise TextParseError("CAL text page navigation has a nonnumeric page")
@@ -1556,7 +1642,31 @@ def _parse_text_table(response: CalResponse) -> _TextTable:
     return _TextTable(found=parser.found, rows=tuple(parser.rows))
 
 
-def _empty_word_slot(link: _Link) -> tuple[str, int]:
+def _parse_text_machine_coordinate(
+    value: str,
+    *,
+    expected_coordinate_prefix: str | None,
+    require_positive_decimal: bool = False,
+) -> str:
+    if expected_coordinate_prefix is None:
+        if require_positive_decimal:
+            return _parse_positive_id(value, "coordinate")
+        return _parse_id(value, "coordinate")
+    if not is_cal_machine_coordinate(value):
+        raise TextParseError("CAL returned an invalid machine coordinate")
+    if not value.startswith(expected_coordinate_prefix):
+        raise TextParseError("CAL text coordinate differs from the requested subtext")
+    tail = value[len(expected_coordinate_prefix) :]
+    if not tail or not tail.isdigit():
+        raise TextParseError("CAL text coordinate lacks a decimal tail after its subtext")
+    return value
+
+
+def _empty_word_slot(
+    link: _Link,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> tuple[str, int]:
     """Validate one current CAL empty lexical slot and return coordinate/index."""
 
     parsed_href = urlsplit(link.href)
@@ -1572,7 +1682,11 @@ def _empty_word_slot(link: _Link) -> tuple[str, int]:
         raise TextParseError("CAL text row empty lexical link has unexpected selectors")
 
     coordinate = _single_query_value(query, "coord", "empty-word-slot")
-    _parse_positive_id(coordinate, "coordinate")
+    _parse_text_machine_coordinate(
+        coordinate,
+        expected_coordinate_prefix=expected_coordinate_prefix,
+        require_positive_decimal=True,
+    )
 
     word = _single_query_value(query, "word", "empty-word-slot")
     if not word.isdigit():
@@ -1584,7 +1698,12 @@ def _empty_word_slot(link: _Link) -> tuple[str, int]:
     return coordinate, word_index
 
 
-def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLine:
+def _text_line_from_row(
+    row: tuple[_TableCell, ...],
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> TextLine:
     if len(row) != 2:
         raise TextParseError("CAL text row does not have exactly two cells")
     coordinate_cell, token_cell = row
@@ -1598,12 +1717,21 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
     empty_slots: list[tuple[str, int]] = []
     for link in token_cell.links:
         if link.text.strip():
-            token = _token_from_link(link, source_url)
+            token = _token_from_link(
+                link,
+                source_url,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
             if token is None:
                 raise TextParseError("CAL text row token cell has a non-lexical link")
             tokens.append(token)
         else:
-            empty_slots.append(_empty_word_slot(link))
+            empty_slots.append(
+                _empty_word_slot(
+                    link,
+                    expected_coordinate_prefix=expected_coordinate_prefix,
+                )
+            )
 
     coordinates = [token.coordinate for token in tokens]
     coordinates.extend(coordinate for coordinate, _index in empty_slots)
@@ -1623,6 +1751,10 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
         if _is_path(link.href, "comment.php") or _is_path(link.href, "ask_ai_prompt.php"):
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
             link_coordinate = _single_query_value(query, "coord", "text-row")
+            _parse_text_machine_coordinate(
+                link_coordinate,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
             if link_coordinate != coordinate:
                 raise TextParseError("CAL text row comment/Ask-AI link names another coordinate")
             if _is_path(link.href, "comment.php"):
@@ -1653,9 +1785,23 @@ def _text_line_from_row(row: tuple[_TableCell, ...], source_url: str) -> TextLin
     )
 
 
-def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
+def _parse_text_line(
+    line: _Line,
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> TextLine | None:
     tokens = tuple(
-        token for link in line.links if (token := _token_from_link(link, source_url)) is not None
+        token
+        for link in line.links
+        if (
+            token := _token_from_link(
+                link,
+                source_url,
+                expected_coordinate_prefix=expected_coordinate_prefix,
+            )
+        )
+        is not None
     )
     if not tokens:
         return None
@@ -1664,7 +1810,11 @@ def _parse_text_line(line: _Line, source_url: str) -> TextLine | None:
     if any(token.coordinate != coordinate for token in tokens):
         raise TextParseError("CAL text row mixes multiple machine coordinates")
 
-    comment_link = _matching_comment_link(line.links, coordinate)
+    comment_link = _matching_comment_link(
+        line.links,
+        coordinate,
+        expected_coordinate_prefix=expected_coordinate_prefix,
+    )
     if comment_link is not None:
         display_coordinate = comment_link.text.strip() or None
         if display_coordinate is None or not line.text.startswith(display_coordinate):
@@ -1699,13 +1849,21 @@ def _is_lexical_link(link: _Link) -> bool:
     return _is_lexical_href(link.href)
 
 
-def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
+def _token_from_link(
+    link: _Link,
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> TextToken | None:
     if not _is_lexical_href(link.href):
         return None
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     coordinate = _single_query_value(query, "coord", "token")
     word = _single_query_value(query, "word", "token")
-    _parse_id(coordinate, "coordinate")
+    _parse_text_machine_coordinate(
+        coordinate,
+        expected_coordinate_prefix=expected_coordinate_prefix,
+    )
     if not word.isdigit():
         raise TextParseError("CAL lexical token link has a nonnumeric word index")
     text = link.text.strip()
@@ -1719,14 +1877,22 @@ def _token_from_link(link: _Link, source_url: str) -> TextToken | None:
     )
 
 
-def _matching_comment_link(links: tuple[_Link, ...], coordinate: str) -> _Link | None:
+def _matching_comment_link(
+    links: tuple[_Link, ...],
+    coordinate: str,
+    *,
+    expected_coordinate_prefix: str | None = None,
+) -> _Link | None:
     found: _Link | None = None
     for link in links:
         if not _is_path(link.href, "comment.php"):
             continue
         query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
         comment_coordinate = _single_query_value(query, "coord", "comment")
-        _parse_id(comment_coordinate, "coordinate")
+        _parse_text_machine_coordinate(
+            comment_coordinate,
+            expected_coordinate_prefix=expected_coordinate_prefix,
+        )
         if comment_coordinate != coordinate:
             raise TextParseError("CAL text row comment coordinate differs from token coordinate")
         if found is not None and found != link:
