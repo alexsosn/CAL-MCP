@@ -21,9 +21,7 @@ from cal_mcp.lexicon import (
 _ANALYSIS_MARKER = "click on a headword to see a complete lexicon entry"
 _NO_DATA_MARKER = "there is no data for this word"
 _NO_LEMMA_MARKER = "unrecognizable query or no such lemma found"
-_REDIRECT_SUFFIX_RE = re.compile(
-    r"(?P<source>\S+\s+\S+)\s+-->\s+(?P<target>\S+\s+\S+)\s*$"
-)
+_REDIRECT_SUFFIX_RE = re.compile(r"(?P<source>\S+\s+\S+)\s+-->\s+(?P<target>\S+\s+\S+)\s*$")
 
 
 class TokenAnalysisParseError(CalParseError):
@@ -192,9 +190,7 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
     redirect = _REDIRECT_SUFFIX_RE.search(analysis_label)
     has_lexlink = any(link.classes == ("lexlink",) for link in parser.links)
     current_shape_hint = has_lexlink or (
-        parser.marker_h2_count > 0
-        and parser.table_started
-        and "-->" in analysis_label
+        parser.marker_h2_count > 0 and parser.table_started and "-->" in analysis_label
     )
     if not current_shape_hint:
         return None
