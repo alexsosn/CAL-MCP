@@ -221,8 +221,10 @@ Consequences:
 - current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
   current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
   direct texts; known direct files reject a caller-supplied subtext and known subdivided files
-  require one; suffix presence and the generic `55` prefix are not treated as route classifiers;
-  contradictory routes fail closed rather than being normalized;
+  require one; current paginated direct `55430` navigation may additionally carry the exact
+  private `sub=&clen=5` returned-link variant, while subdivided routes remain strict; suffix
+  presence and the generic `55` prefix are not treated as route classifiers; contradictory routes
+  fail closed rather than being normalized;
 - values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
   whitespace, or arbitrary strings remain invalid;
 - future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
