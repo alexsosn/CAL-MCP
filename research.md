@@ -327,6 +327,38 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-041 — Current token analysis can succeed without a linked lemma entry
+
+**Rechecked:** 2026-09-27 against current CAL; issue #193.
+
+A bounded three-request recheck of current Peshitta and Christian Palestinian Aramaic token
+analysis confirmed a success shape distinct from R-040's linked `lexlink` table. These pages have
+the normal token-analysis result marker, no result table, and zero lemma-entry links.
+
+Observed rendered summary regions:
+
+- Peshitta `620570101`, word 0: one line, `pwlws PN Personal name`;
+- Peshitta `620570101`, word 2: two ordered lines,
+  `d_ p = d_ p --> dy p` and `y$w( PN Personal name`;
+- CPA `5500001001a019001`, word 0: one line, `lwT PN Personal name`.
+
+The two-line example provides no linked key or structural candidate delimiter that would justify
+interpreting `=` / `-->` as the same verified redirect relation used by R-040.
+
+Detailed evidence and request bounds:
+`docs/research/issue-193-linkless-token-analysis.md`.
+
+Sources:
+
+- https://cal.huc.edu/getlex.php?coord=620570101&word=0
+- https://cal.huc.edu/getlex.php?coord=620570101&word=2
+- https://cal.huc.edu/getlex.php?coord=5500001001a019001&word=0
+
+**Implication:** CAL-MCP preserves these ordered rendered lines as additive
+`unlinked_summaries`, keeps linked `candidates` empty, and reports the operation as `found`.
+It does not synthesize `LemmaRef` data or decode free-form relation/POS/gloss text. Explicit
+no-data/no-lemma states remain `not_found` with both collections empty.
+
 ## R-040 — Current linked Syriac token analysis can redirect to another lemma entry
 
 **Rechecked:** 2026-09-27 against current CAL; issue #179.
