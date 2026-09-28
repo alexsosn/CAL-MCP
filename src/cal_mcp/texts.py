@@ -1672,11 +1672,11 @@ def _plain_text_line_from_row(
         raise TextParseError("CAL plain text row does not have exactly two cells")
     coordinate_cell, text_cell = row
 
+    if text_cell.links:
+        raise TextParseError("CAL plain text row text cell unexpectedly contains a link")
     text = _clean_text("".join(text_cell.loose_parts))
     if not text:
         raise TextParseError("CAL plain text row has no rendered text")
-    if text_cell.links:
-        raise TextParseError("CAL plain text row text cell unexpectedly contains a link")
 
     coordinate: str | None = None
     comment_url: str | None = None
@@ -1704,10 +1704,17 @@ def _plain_text_line_from_row(
         if set(query) != {"coord"}:
             raise TextParseError("CAL plain text row comment link has unexpected selectors")
         coordinate = _single_query_value(query, "coord", "plain-text-comment")
-        _parse_text_machine_coordinate(
-            coordinate,
-            expected_coordinate_prefix=expected_coordinate_prefix,
-        )
+        if not is_cal_machine_coordinate(coordinate):
+            raise TextParseError("CAL plain text row comment has an invalid coordinate")
+        coordinate_tail = coordinate[len(expected_coordinate_prefix) :]
+        if (
+            not coordinate.startswith(expected_coordinate_prefix)
+            or not coordinate_tail
+            or not coordinate_tail.isdigit()
+        ):
+            raise TextParseError(
+                "CAL plain text row comment coordinate differs from the requested text identity"
+            )
         display_coordinate = _clean_text(link.text)
         if not display_coordinate:
             raise TextParseError("CAL plain text row has no display coordinate")
