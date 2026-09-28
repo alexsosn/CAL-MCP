@@ -1,4 +1,4 @@
-name: Issue 185 CPA 55430 row contract
+name: Issue 185 CPA 55430 exceptional rows
 
 on:
   push:
@@ -16,13 +16,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Verify exact two-cell plain-row shape
+      - name: Classify only nonconforming 55430 rows
         run: |
           python - <<'PY'
           import json
           import urllib.request
           from html.parser import HTMLParser
-          from urllib.parse import urlsplit
 
           url = "https://cal.huc.edu/get_a_chapter.php?file=55430&cset=C&page=0"
           req = urllib.request.Request(
@@ -56,12 +55,14 @@ jobs:
                       return
                   if tag == "tr":
                       self._end_row()
-                      self.row = []
-                  elif tag == "td" and self.row is not None:
-                      self.cell = {"parts": [], "links": 0}
-                      self.row.append(self.cell)
-                  elif tag == "a" and self.cell is not None:
-                      self.cell["links"] += 1
+                      self.row = {"cells": [], "tags": {}}
+                  elif self.row is not None:
+                      self.row["tags"][tag] = self.row["tags"].get(tag, 0) + 1
+                      if tag == "td":
+                          self.cell = {"parts": [], "links": 0}
+                          self.row["cells"].append(self.cell)
+                      elif tag == "a" and self.cell is not None:
+                          self.cell["links"] += 1
               def handle_endtag(self, tag):
                   if not self.in_text:
                       return
@@ -76,35 +77,30 @@ jobs:
                   if text:
                       self.cell["parts"].append(text)
               def _end_row(self):
-                  if self.row:
+                  if self.row is not None and self.row["cells"]:
                       self.rows.append(self.row)
                   self.row = None
                   self.cell = None
 
-          p = Probe()
-          p.feed(html)
-          p.close()
-          normalized = []
-          for row in p.rows:
-              normalized.append([
-                  {"text": " ".join(cell["parts"]), "links": cell["links"]}
-                  for cell in row
-              ])
-
-          if not normalized:
-              raise RuntimeError("no rows")
-          exact = [
-              row for row in normalized
-              if len(row) == 2
-              and all(cell["text"] for cell in row)
-              and not any(cell["links"] for cell in row)
-          ]
-          print(json.dumps({
-              "row_count": len(normalized),
-              "exact_plain_two_cell_rows": len(exact),
-              "first_display_coordinates": [row[0]["text"] for row in exact[:5]],
-              "first_text_lengths": [len(row[1]["text"]) for row in exact[:5]],
-          }, ensure_ascii=False, sort_keys=True))
-          if len(exact) != len(normalized):
-              raise RuntimeError("not every row satisfies the two-cell plain contract")
+          p = Probe(); p.feed(html); p.close()
+          exceptional = []
+          for index, row in enumerate(p.rows):
+              cells = row["cells"]
+              texts = [" ".join(cell["parts"]) for cell in cells]
+              exact = (
+                  len(cells) == 2
+                  and all(texts)
+                  and not any(cell["links"] for cell in cells)
+              )
+              if exact:
+                  continue
+              exceptional.append({
+                  "row_index": index,
+                  "td_count": len(cells),
+                  "cell_text_lengths": [len(x) for x in texts],
+                  "first_cell_text": texts[0] if texts else None,
+                  "cell_link_counts": [cell["links"] for cell in cells],
+                  "tags": row["tags"],
+              })
+          print(json.dumps(exceptional, ensure_ascii=False, sort_keys=True))
           PY
