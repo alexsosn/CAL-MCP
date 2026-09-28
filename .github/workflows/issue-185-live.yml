@@ -1,4 +1,4 @@
-name: Issue 185 CPA navigation probe
+name: Issue 185 direct CPA navigation audit
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe current 55430 pagination links
+      - name: Audit current direct CPA pagination selectors
         run: |
           python - <<'PY'
           import json
@@ -24,16 +24,8 @@ jobs:
           from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlsplit
 
-          url = "https://cal.huc.edu/get_a_chapter.php?file=55430&cset=C&page=0"
-          req = urllib.request.Request(
-              url,
-              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
-          )
-          with urllib.request.urlopen(req, timeout=20) as response:
-              body = response.read(262145)
-              if len(body) > 262144:
-                  raise RuntimeError("response exceeded 256 KiB")
-              html = body.decode("utf-8", "replace")
+          FILES = ["55406", "55407", "55430"]
+          UA = {"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
 
           class Links(HTMLParser):
               def __init__(self):
@@ -42,28 +34,34 @@ jobs:
                   self.links = []
               def handle_starttag(self, tag, attrs):
                   if tag == "a":
-                      d = dict(attrs)
-                      self.open = [d.get("href") or "", []]
+                      self.open = [dict(attrs).get("href") or "", []]
               def handle_data(self, data):
                   if self.open is not None:
                       self.open[1].append(data)
               def handle_endtag(self, tag):
-                  if tag == "a" and self.open is not None:
-                      href, parts = self.open
-                      label = " ".join("".join(parts).split())
-                      if "previous page" in label.lower() or "next page" in label.lower():
-                          u = urlsplit(href)
-                          q = parse_qs(u.query, keep_blank_values=True)
-                          self.links.append({
-                              "path": u.path.rsplit("/", 1)[-1],
-                              "label": label,
-                              "keys": sorted(q),
-                              "values": {key: q[key] for key in sorted(q)},
-                          })
-                      self.open = None
+                  if tag != "a" or self.open is None:
+                      return
+                  href, parts = self.open
+                  label = " ".join("".join(parts).split()).lower()
+                  if "previous page" in label or "next page" in label:
+                      u = urlsplit(href)
+                      q = parse_qs(u.query, keep_blank_values=True)
+                      self.links.append({
+                          "path": u.path.rsplit("/", 1)[-1],
+                          "keys": sorted(q),
+                          "values": {key: q[key] for key in sorted(q)},
+                      })
+                  self.open = None
 
-          p=Links(); p.feed(html); p.close()
-          print(json.dumps({"navigation": p.links}, sort_keys=True))
-          if not p.links:
-              raise RuntimeError("no current previous/next navigation links found")
+          output = []
+          for file_id in FILES:
+              url = f"https://cal.huc.edu/get_a_chapter.php?file={file_id}&cset=C&page=0"
+              req = urllib.request.Request(url, headers=UA)
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  body = response.read(262145)
+                  if len(body) > 262144:
+                      raise RuntimeError(f"{file_id}: response exceeded 256 KiB")
+              p=Links(); p.feed(body.decode("utf-8","replace")); p.close()
+              output.append({"file_id": file_id, "navigation": p.links})
+          print(json.dumps(output, sort_keys=True))
           PY
