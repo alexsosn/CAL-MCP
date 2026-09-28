@@ -147,7 +147,7 @@ class TextToken:
 
 @dataclass(frozen=True, slots=True)
 class TextLine:
-    coordinate: str
+    coordinate: str | None
     display_coordinate: str | None
     text: str
     tokens: tuple[TextToken, ...]
@@ -828,14 +828,30 @@ def _parse_text_page(
     )
     table = _parse_text_table(response)
     if table.found:
-        text_lines = tuple(
-            _text_line_from_row(
-                row,
-                response.url,
-                expected_coordinate_prefix=expected_coordinate_prefix,
+        lexical_rows = tuple(_row_has_lexical_link(row) for row in table.rows)
+        if any(lexical_rows) and not all(lexical_rows):
+            raise TextParseError("CAL text table mixes linked and plain text rows")
+        if lexical_rows and all(lexical_rows):
+            text_lines = tuple(
+                _text_line_from_row(
+                    row,
+                    response.url,
+                    expected_coordinate_prefix=expected_coordinate_prefix,
+                )
+                for row in table.rows
             )
-            for row in table.rows
-        )
+        elif table.rows:
+            plain_coordinate_prefix = f"{requested_file_id}{requested_subtext_id or ''}"
+            text_lines = tuple(
+                _plain_text_line_from_row(
+                    row,
+                    response.url,
+                    expected_coordinate_prefix=plain_coordinate_prefix,
+                )
+                for row in table.rows
+            )
+        else:
+            text_lines = ()
     else:
         text_lines = tuple(
             parsed
@@ -1640,6 +1656,71 @@ def _parse_text_table(response: CalResponse) -> _TextTable:
     if parser.found and parser.lexical_links_outside_rows:
         raise TextParseError("CAL text page has lexical links outside its text rows")
     return _TextTable(found=parser.found, rows=tuple(parser.rows))
+
+
+def _row_has_lexical_link(row: tuple[_TableCell, ...]) -> bool:
+    return any(_is_lexical_link(link) for cell in row for link in cell.links)
+
+
+def _plain_text_line_from_row(
+    row: tuple[_TableCell, ...],
+    source_url: str,
+    *,
+    expected_coordinate_prefix: str,
+) -> TextLine:
+    if len(row) != 2:
+        raise TextParseError("CAL plain text row does not have exactly two cells")
+    coordinate_cell, text_cell = row
+
+    text = _clean_text("".join(text_cell.loose_parts))
+    if not text:
+        raise TextParseError("CAL plain text row has no rendered text")
+    if text_cell.links:
+        raise TextParseError("CAL plain text row text cell unexpectedly contains a link")
+
+    coordinate: str | None = None
+    comment_url: str | None = None
+    if not coordinate_cell.links:
+        display_coordinate = _clean_text("".join(coordinate_cell.loose_parts))
+        if not display_coordinate:
+            raise TextParseError("CAL plain text row has no display coordinate")
+    else:
+        if len(coordinate_cell.links) != 1:
+            raise TextParseError("CAL plain text row coordinate cell must contain exactly one link")
+        if _clean_text("".join(coordinate_cell.loose_parts)):
+            raise TextParseError(
+                "CAL plain text row has loose display text outside its coordinate link"
+            )
+        link = coordinate_cell.links[0]
+        parsed_href = urlsplit(link.href)
+        if (
+            parsed_href.scheme
+            or parsed_href.netloc
+            or parsed_href.fragment
+            or parsed_href.path not in {"comment.php", "/comment.php"}
+        ):
+            raise TextParseError("CAL plain text row coordinate cell has an unexpected link")
+        query = parse_qs(parsed_href.query, keep_blank_values=True)
+        if set(query) != {"coord"}:
+            raise TextParseError("CAL plain text row comment link has unexpected selectors")
+        coordinate = _single_query_value(query, "coord", "plain-text-comment")
+        _parse_text_machine_coordinate(
+            coordinate,
+            expected_coordinate_prefix=expected_coordinate_prefix,
+        )
+        display_coordinate = _clean_text(link.text)
+        if not display_coordinate:
+            raise TextParseError("CAL plain text row has no display coordinate")
+        comment_url = urljoin(source_url, link.href)
+
+    return TextLine(
+        coordinate=coordinate,
+        display_coordinate=display_coordinate,
+        text=text,
+        tokens=(),
+        comment_url=comment_url,
+        empty_word_indexes=(),
+    )
 
 
 def _parse_text_machine_coordinate(
