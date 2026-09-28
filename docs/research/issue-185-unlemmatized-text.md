@@ -188,3 +188,35 @@ from `str` to `str | None`. Documentation must explain:
 
 Production remains one upstream page request per explicit `cal_text_page` call. Parsing is local;
 no token/comment links are followed automatically.
+
+## Live-acceptance amendment — paginated direct CPA navigation
+
+The first installed-stdio acceptance run (`36478612332`) showed that plain-row parsing itself
+succeeds for Mandaic `74420`, then direct CPA `55430` fails earlier in the page assembly on the
+exact CPA navigation guard inherited from #170.
+
+A fixed structural GET of `55430` (run `36478762860`) found two duplicate rendered
+`next page »` links with the same selector set:
+
+```text
+get_a_chapter.php?file=55430&sub=&cset=C&page=1&clen=5
+```
+
+Selectors are exactly `file,sub,cset,page,clen`; `sub` is the empty string, `cset=C`, and
+`clen=5`.
+
+A three-file direct-CPA audit (run `36478860533`) found no previous/next links on current
+`55406` or `55407`, while `55430` repeated the same exact `sub=&clen=5` variant. This is
+therefore evidence for a **paginated direct-CPA navigation variant**, not a reason to loosen
+subdivided CPA navigation or accept arbitrary extra selectors.
+
+Implementation consequence:
+
+- direct CPA navigation with no public `subtext_id` may use either the earlier exact
+  `file,page,cset=C` selector set or the current paginated exact
+  `file,page,cset=C,sub=,clen=5` selector set;
+- subdivided CPA keeps its existing exact selector contract;
+- non-empty `sub`, another `clen`, or any other extra selector still fails closed.
+
+The request route emitted by CAL-MCP remains unchanged; this only validates CAL's returned
+navigation links.
