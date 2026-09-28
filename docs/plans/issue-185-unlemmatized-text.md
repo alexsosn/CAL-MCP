@@ -49,3 +49,18 @@ Date: 2026-09-28. Research: `docs/research/issue-185-unlemmatized-text.md`.
      the two positive pages, without printing scholarly text.
 10. Remove temporary workflow, re-run workflow-free CI on the exact head, then perform a logically
     independent adversarial review. Fix/retest/re-review every finding before merge.
+
+## Live-acceptance amendment — direct CPA pagination selectors
+
+The initial live gate found that current paginated direct CPA `55430` returns navigation links
+with exact extra selectors `sub=&clen=5`, while preserving `cset=C`. Bounded follow-up found no
+navigation on current direct controls `55406`/`55407`.
+
+Before repeating live acceptance:
+
+11. RED the navigation parser with a direct CPA link
+    `file=55430&sub=&cset=C&page=1&clen=5`, plus near-miss guards for non-empty `sub`,
+    `clen!=5`, and unknown extras.
+12. GREEN only the exact direct-CPA variant above (plus the already supported earlier exact core
+    selector set). Do not widen subdivided CPA navigation.
+13. Re-run full CI before the final installed-stdio acceptance.
