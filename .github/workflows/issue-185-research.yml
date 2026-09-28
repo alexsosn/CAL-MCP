@@ -1,4 +1,4 @@
-name: Issue 185 CPA structural follow-up
+name: Issue 185 direct CPA audit
 
 on:
   push:
@@ -16,60 +16,68 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe one fixed CPA page
+      - name: Audit four current direct CPA files
         run: |
           python - <<'PY'
           import json
           import urllib.request
           from html.parser import HTMLParser
+          from urllib.parse import urlsplit
 
-          url = "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=0"
-          req = urllib.request.Request(
-              url,
-              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
-          )
-          with urllib.request.urlopen(req, timeout=20) as response:
-              body = response.read(262145)
-              if len(body) > 262144:
-                  raise RuntimeError("response exceeded 256 KiB")
-              html = body.decode("utf-8", "replace")
+          FILES = ["55002", "55406", "55407", "55430"]
+          UA = {"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
 
-          class Events(HTMLParser):
+          class Probe(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
                   self.in_text = False
-                  self.depth = 0
-                  self.events = []
+                  self.nonempty_data = 0
+                  self.data_chars = 0
+                  self.lexical_links = 0
+                  self.tags = {}
               def handle_starttag(self, tag, attrs):
                   d = dict(attrs)
                   if tag == "table":
                       if self.in_text:
-                          self.events.append(["next-table"])
                           self.in_text = False
                           return
                       if "text-display" in (d.get("class") or "").split():
                           self.in_text = True
-                          self.events.append(["start-table", {"class": d.get("class")}])
                           return
-                  if not self.in_text or len(self.events) >= 80:
+                  if not self.in_text:
                       return
-                  keep = {}
-                  for key in ("class", "dir", "lang", "id"):
-                      if d.get(key):
-                          keep[key] = d[key]
-                  self.events.append(["start", tag, keep])
-              def handle_endtag(self, tag):
-                  if self.in_text and len(self.events) < 80:
-                      self.events.append(["end", tag])
+                  self.tags[tag] = self.tags.get(tag, 0) + 1
+                  if tag == "a":
+                      path = urlsplit(d.get("href") or "").path.rsplit("/", 1)[-1]
+                      if path in {"getlex.php", "bablex.php"}:
+                          self.lexical_links += 1
               def handle_data(self, data):
-                  if not self.in_text or len(self.events) >= 80:
+                  if not self.in_text:
                       return
                   text = " ".join(data.split())
                   if text:
-                      self.events.append(["data", len(text), text[:80]])
+                      self.nonempty_data += 1
+                      self.data_chars += len(text)
 
-          p = Events()
-          p.feed(html)
-          p.close()
-          print(json.dumps(p.events, ensure_ascii=False))
+          output = []
+          for file_id in FILES:
+              url = f"https://cal.huc.edu/get_a_chapter.php?file={file_id}&cset=C&page=0"
+              req = urllib.request.Request(url, headers=UA)
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  body = response.read(262145)
+                  if len(body) > 262144:
+                      raise RuntimeError(f"{file_id}: response exceeded 256 KiB")
+                  p = Probe()
+                  p.feed(body.decode("utf-8", "replace"))
+                  p.close()
+                  output.append({
+                      "file_id": file_id,
+                      "status": response.status,
+                      "final_path": urlsplit(response.geturl()).path.rsplit("/", 1)[-1],
+                      "nonempty_text_nodes": p.nonempty_data,
+                      "text_chars": p.data_chars,
+                      "lexical_links": p.lexical_links,
+                      "tags": p.tags,
+                  })
+          print(json.dumps(output, sort_keys=True))
           PY
