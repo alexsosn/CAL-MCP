@@ -24,7 +24,7 @@ Date: 2026-09-28. Research: `docs/research/issue-185-unlemmatized-text.md`.
    - any link in the text cell;
    - unknown/multiple links in coordinate cell;
    - comment link with extra/missing selectors, non-decimal coordinate, coordinate outside the
-     requested text identity, or rendered-link/display mismatch.
+     requested text identity, or loose display text beside the comment link.
 5. GREEN page classification:
    - classify a non-empty `text-display` table as linked when every row contains a lexical link;
    - classify it as plain when no row contains a lexical link;
