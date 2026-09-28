@@ -1476,10 +1476,17 @@ def _page_navigation(
                 public_page = int(upstream_sub)
             else:
                 if requested_file_id in _CPA_TEXT_FILE_IDS:
-                    expected_keys = {"file", "page", "cset"}
-                    if requested_subtext_id is not None:
-                        expected_keys.add("sub")
-                    if set(query) != expected_keys or query.get("cset") != ["C"]:
+                    if requested_subtext_id is None:
+                        core_route = set(query) == {"file", "page", "cset"}
+                        paginated_direct_route = (
+                            set(query) == {"file", "page", "cset", "sub", "clen"}
+                            and query.get("sub") == [""]
+                            and query.get("clen") == ["5"]
+                        )
+                        exact_cpa_route = core_route or paginated_direct_route
+                    else:
+                        exact_cpa_route = set(query) == {"file", "page", "cset", "sub"}
+                    if not exact_cpa_route or query.get("cset") != ["C"]:
                         raise TextParseError(
                             "CAL CPA text navigation lacks the exact current cset=C route"
                         )
