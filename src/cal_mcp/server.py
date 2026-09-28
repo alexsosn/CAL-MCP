@@ -368,7 +368,9 @@ async def cal_text_page(
     single lowercase suffix (for example CPA ``01001a``). Known current CPA direct files
     reject a subtext and known CPA subdivided files require one. Decimal subtext selectors can
     be prefix-matched by CAL, so a shortened value can return several subtexts under the first
-    one's label. Each returned line keeps its own CAL coordinate.
+    one's label. Linked rows keep their token coordinate. Current plain/unlemmatized rows have
+    no tokens; their line-level ``coordinate`` is null unless CAL exposes a validated comment
+    coordinate. Token analysis should use only the coordinate + word index returned on a token.
     """
 
     client = ctx.request_context.lifespan_context.client
