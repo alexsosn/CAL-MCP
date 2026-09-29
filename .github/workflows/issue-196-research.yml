@@ -1,4 +1,4 @@
-name: Issue 196 production-line probe
+name: Issue 196 marker-link probe
 
 on:
   push:
@@ -19,17 +19,15 @@ jobs:
           python-version: "3.11"
       - name: Install candidate
         run: python -m pip install .
-      - name: Inspect production semantic lines for explicit no-lines marker
+      - name: Record exact semantic marker link shape
         run: |
           python - <<'PY'
           import asyncio
           import json
-          import re
+          from urllib.parse import parse_qs, urlsplit
 
           from cal_mcp.client import CalHttpClient, CalRequest
           from cal_mcp.lexicon import _parse_lines
-
-          PATTERN = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 
           async def main():
               async with CalHttpClient() as client:
@@ -40,27 +38,40 @@ jobs:
                           params=(("file", "55002"), ("cset", "C"), ("page", "0")),
                       ),
                       parser=lambda response: response,
-                      cache_namespace="issue-196-line-probe",
+                      cache_namespace="issue-196-marker-link",
                   )
               lines = _parse_lines(result.value)
-              page_text = " ".join(line.text for line in lines)
-              suspects = [
-                  {
+              matches = []
+              for i, line in enumerate(lines):
+                  if "NO LINES FOR" not in line.text:
+                      continue
+                  matches.append({
                       "index": i,
-                      "text_repr": repr(line.text),
-                      "links": len(line.links),
-                      "codepoints": [ord(ch) for ch in line.text],
-                  }
-                  for i, line in enumerate(lines)
-                  if "NO" in line.text.upper()
-                  or "LINES" in line.text.upper()
-                  or "STORED" in line.text.upper()
-              ]
-              print(json.dumps({
-                  "line_count": len(lines),
-                  "pattern_matches_page_text": PATTERN.search(page_text) is not None,
-                  "suspects": suspects,
-              }, sort_keys=True))
+                      "line_text": line.text,
+                      "links": [
+                          {
+                              "text": link.text,
+                              "path": urlsplit(link.href).path.rsplit("/", 1)[-1],
+                              "keys": sorted(parse_qs(urlsplit(link.href).query, keep_blank_values=True)),
+                              "values": {
+                                  key: parse_qs(
+                                      urlsplit(link.href).query,
+                                      keep_blank_values=True,
+                                  )[key]
+                                  for key in sorted(
+                                      parse_qs(
+                                          urlsplit(link.href).query,
+                                          keep_blank_values=True,
+                                      )
+                                  )
+                              },
+                          }
+                          for link in line.links
+                      ],
+                  })
+              if len(matches) != 1:
+                  raise RuntimeError(f"unexpected marker-line count: {len(matches)}")
+              print(json.dumps(matches, sort_keys=True))
 
           asyncio.run(main())
           PY
