@@ -32,7 +32,14 @@ _PAGE_MARKER_RE = re.compile(
 _PAGE_MARKER_ANYWHERE_RE = re.compile(r"\bPage\s+\d+\s+of\s+\d+", re.IGNORECASE)
 _TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
-_NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
+_NO_LINES_RE = re.compile(
+    r"^NO LINES FOR (?P<file>\\d+)(?: (?P<selector>\\d+))? ARE CURRENTLY STORED$",
+    re.IGNORECASE,
+)
+_NO_LINES_ANYWHERE_RE = re.compile(
+    r"NO LINES FOR.*ARE CURRENTLY STORED",
+    re.IGNORECASE,
+)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
@@ -758,6 +765,66 @@ def parse_text_information_page(response: CalResponse) -> TextInformationPage:
     return TextInformationPage(status=TextInformationStatus.FOUND, metadata=metadata)
 
 
+def _has_explicit_no_lines_marker(
+    lines: list[_Line],
+    *,
+    requested_file_id: str,
+    requested_subtext_id: str | None,
+) -> bool:
+    matches: list[re.Match[str]] = []
+    for line in lines:
+        residue = line.text
+        marker_like = _NO_LINES_ANYWHERE_RE.search(residue) is not None
+        if not marker_like:
+            continue
+
+        for link in line.links:
+            parsed = urlsplit(link.href)
+            query = parse_qs(parsed.query, keep_blank_values=True)
+            if (
+                parsed.scheme
+                or parsed.netloc
+                or parsed.fragment
+                or parsed.path not in {"get_a_chapter.php", "/get_a_chapter.php"}
+                or set(query) != {"file", "sub", "cset", "variants"}
+                or query.get("file") != [requested_file_id]
+                or query.get("sub") != [""]
+                or query.get("cset") != ["C"]
+                or query.get("variants") != ["0"]
+            ):
+                raise TextParseError(
+                    "CAL no-lines marker has an unexpected inline manuscript-variant link"
+                )
+            if not link.text or link.text not in residue:
+                raise TextParseError("CAL no-lines marker link is detached from its rendered text")
+            residue = residue.replace(link.text, " ", 1)
+
+        residue = _clean_text(residue)
+        match = _NO_LINES_RE.fullmatch(residue)
+        if match is None:
+            raise TextParseError("CAL text page has a malformed no-lines marker")
+        matches.append(match)
+
+    if len(matches) > 1:
+        raise TextParseError("CAL text page has multiple no-lines markers")
+    if not matches:
+        return False
+
+    match = matches[0]
+    marker_file = match.group("file")
+    if marker_file != requested_file_id:
+        raise TextParseError("CAL no-lines marker file differs from the requested file")
+
+    marker_selector = match.group("selector")
+    if (
+        marker_selector is not None
+        and requested_subtext_id is not None
+        and marker_selector != requested_subtext_id
+    ):
+        raise TextParseError("CAL no-lines marker subtext differs from the requested subtext")
+    return True
+
+
 def parse_text_page(
     response: CalResponse,
     *,
@@ -785,8 +852,11 @@ def _parse_text_page(
     submitted_sub: str | None = None,
 ) -> TextPage | None:
     lines = _parse_lines(response)
-    page_text = " ".join(line.text for line in lines)
-    if _NO_LINES_RE.search(page_text) is not None:
+    if _has_explicit_no_lines_marker(
+        lines,
+        requested_file_id=requested_file_id,
+        requested_subtext_id=requested_subtext_id,
+    ):
         return None
 
     text_ref = _page_text_ref(
