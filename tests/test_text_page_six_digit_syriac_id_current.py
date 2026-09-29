@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.errors import CalParseError
+from cal_mcp.errors import CalOutOfRangeError, CalParseError
 from cal_mcp.texts import TextPageResult, TextPageStatus, TextService
 
 FIXTURE = Path(__file__).parent / "fixtures" / "cal" / "text_page_634081_current.html"
@@ -35,11 +35,13 @@ class FixtureTransport:
         )
 
 
-async def _page(body: bytes, file_id: str) -> tuple[TextPageResult, FixtureTransport]:
+async def _page(
+    body: bytes, file_id: str, page: int = 1
+) -> tuple[TextPageResult, FixtureTransport]:
     transport = FixtureTransport(body)
     client = CalHttpClient(transport=transport)
     try:
-        return await TextService(client).page(file_id), transport
+        return await TextService(client).page(file_id, page=page), transport
     finally:
         await client.aclose()
 
@@ -53,7 +55,9 @@ async def test_six_digit_syriac_id_page_is_read_under_the_requested_id() -> None
     assert result.page.text.file_id == "634081"
     assert result.page.text.subtext_id is None
     assert result.page.text.label == "Tamar and Judah"
-    assert [line.coordinate for line in result.page.lines][:1] == ["634081001"]
+    assert [line.coordinate for line in result.page.lines] == ["634081001", "634081002"]
+    assert (result.page.page, result.page.page_count, result.page.total_lines) == (1, 9, 420)
+    assert (result.page.previous_page, result.page.next_page) == (None, 2)
     assert transport.requests[0].params == (("file", "634081"), ("page", "0"))
 
 
@@ -89,3 +93,60 @@ async def test_split_label_without_any_cal_page_links_fails_closed() -> None:
 
     with pytest.raises(CalParseError):
         await _page(body, "634081")
+
+
+_NEXT = b'<a href="get_a_chapter.php?file=63408&sub=1&cset=R&clen=5&page=1">next page &raquo;'
+_PREVIOUS = (
+    b'<a href="get_a_chapter.php?file=63408&sub=1&cset=R&clen=5&page={}">&laquo; previous page'
+)
+
+
+def _as_page(page: int, *, last: bool = False) -> bytes:
+    body = FIXTURE.read_bytes().replace(b"Page 1 of 9", f"Page {page} of 9".encode())
+    previous = _PREVIOUS.replace(b"{}", str(page - 2).encode())
+    if last:
+        return body.replace(_NEXT, previous)
+    return body.replace(
+        _NEXT, previous + b"</a> " + _NEXT.replace(b"page=1", f"page={page}".encode())
+    )
+
+
+@pytest.mark.anyio
+async def test_split_id_navigates_by_cal_file_and_sub() -> None:
+    result, transport = await _page(_as_page(2), "634081", page=2)
+
+    assert result.page is not None
+    assert (result.page.page, result.page.previous_page, result.page.next_page) == (2, 1, 3)
+    assert transport.requests[0].params == (("file", "634081"), ("page", "1"))
+
+
+@pytest.mark.anyio
+async def test_split_id_past_the_last_page_is_out_of_range() -> None:
+    with pytest.raises(CalOutOfRangeError):
+        await _page(_as_page(9, last=True), "634081", page=20)
+
+
+@pytest.mark.anyio
+async def test_split_id_rows_must_carry_the_requested_id() -> None:
+    body = FIXTURE.read_bytes().replace(b"coord=634081001", b"coord=999999001")
+
+    with pytest.raises(CalParseError):
+        await _page(body, "634081")
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        # links naming two different subs
+        (b"&amp;sub=1&amp;cset=R&amp;page=all", b"&amp;sub=2&amp;cset=R&amp;page=all"),
+        # a link repeating sub
+        (b"&amp;sub=1&amp;cset=R&amp;page=all", b"&amp;sub=1&amp;sub=2&amp;cset=R&amp;page=all"),
+    ],
+)
+async def test_contradictory_cal_links_fail_closed(old: bytes, new: bytes) -> None:
+    body = FIXTURE.read_bytes()
+    assert old in body
+
+    with pytest.raises(CalParseError):
+        await _page(body.replace(old, new), "634081")
