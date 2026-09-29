@@ -10,6 +10,6 @@ Date: 2026-09-25. Research: `docs/research/issue-176-kwic-omitted-form.md`, comm
    - fail closed when a summary's count contradicts its hits, or when no summaries remain.
 3. A valid RED has the new tests failing, with lint, format and mypy green.
 4. GREEN: relax the "requested form exactly once" rule to "at most once"; add `requested_form_listed` to the result, the page model and `to_dict`.
-5. Docs: `docs/tools/concordance.md` (Lemma forms), server tool description, `wiki/decisions.md` D-014 amendment, `research.md` R-039, fixture README, CHANGELOG.
+5. Docs: `docs/tools/concordance.md` (Lemma forms), server tool description, `wiki/decisions.md` D-014 amendment, `research.md` R-043, fixture README, CHANGELOG.
 6. Verification: the full offline suite; live over MCP for `n)qh N` in 71 and 6.
 7. Independent adversarial review of the exact candidate SHA.

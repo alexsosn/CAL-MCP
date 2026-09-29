@@ -171,7 +171,7 @@ async def test_row_without_token_links_fails_closed() -> None:
     start = body.index(_SAM_TOKENS)
     end = body.index("</td></tr>", start)
     body = body[:start] + "<td>" + body[end:]
-    with pytest.raises(TextParseError, match="no token links"):
+    with pytest.raises(TextParseError, match="mixes linked and plain"):
         await _page(body.encode(), "56000", "112")
 
 

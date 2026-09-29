@@ -327,7 +327,7 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-039 — Dialect KWIC can omit the requested form and list only the dialect's own forms
+## R-043 — Dialect KWIC can omit the requested form and list only the dialect's own forms
 
 **Rechecked:** 2026-09-25.
 
@@ -338,6 +338,175 @@ Source:
 - https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71
 
 **Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
+
+## R-042 — Current CAL has two-cell plain/unlemmatized text rows
+
+**Rechecked:** 2026-09-28 against current CAL; issue #185.
+
+Bounded structural checks confirmed the same plain-row semantics on Mandaic `74420` and direct
+Christian Palestinian Aramaic `55430`: each actual text row has two cells, the first carrying a
+rendered display coordinate and the second rendered scholarly text, with no lexical token links.
+Mandaic `74501` and Peshitta `62057` were linked controls; no sampled actual text table mixed
+linked and plain rows.
+
+Some plain rows still expose a CAL line identity through the first cell's exact
+`comment.php?coord=...` link. Current `74420` has 3 such rows among 46; current `55430` has
+4 among 50. Other plain rows have no machine/line coordinate at all. This means the original #185
+assumption that every plain row has `coordinate: null` was too strong.
+
+The direct CPA audit also found that current `55002` is now an empty `text-display` shell rather
+than a plain-text page; its classification is tracked separately by #196.
+
+Detailed request bounds and row evidence:
+`docs/research/issue-185-unlemmatized-text.md`.
+
+Sources:
+
+- https://cal.huc.edu/get_a_chapter.php?cset=M&file=74420&page=0
+- https://cal.huc.edu/get_a_chapter.php?file=55430&cset=C&page=0
+- https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=0
+
+**Implication:** plain rows preserve rendered text and display coordinates with empty token
+collections. `TextLine.coordinate` is nullable; a strict comment link supplies a line/comment
+coordinate when CAL exposes one. Token analysis remains composable only from returned token
+objects, which carry both a token coordinate and word index. Mixed linked/plain tables and empty
+text shells fail closed.
+
+## R-041 — Current token analysis can succeed without a linked lemma entry
+
+**Rechecked:** 2026-09-27 against current CAL; issue #193.
+
+A bounded three-request recheck of current Peshitta and Christian Palestinian Aramaic token
+analysis confirmed a success shape distinct from R-040's linked `lexlink` table. These pages have
+the normal token-analysis result marker, no result table, and zero lemma-entry links.
+
+Observed rendered summary regions:
+
+- Peshitta `620570101`, word 0: one line, `pwlws PN Personal name`;
+- Peshitta `620570101`, word 2: two ordered lines,
+  `d_ p = d_ p --> dy p` and `y$w( PN Personal name`;
+- CPA `5500001001a019001`, word 0: one line, `lwT PN Personal name`.
+
+The two-line example provides no linked key or structural candidate delimiter that would justify
+interpreting `=` / `-->` as the same verified redirect relation used by R-040.
+
+Detailed evidence and request bounds:
+`docs/research/issue-193-linkless-token-analysis.md`.
+
+Sources:
+
+- https://cal.huc.edu/getlex.php?coord=620570101&word=0
+- https://cal.huc.edu/getlex.php?coord=620570101&word=2
+- https://cal.huc.edu/getlex.php?coord=5500001001a019001&word=0
+
+**Implication:** CAL-MCP preserves these ordered rendered lines as additive
+`unlinked_summaries`, keeps linked `candidates` empty, and reports the operation as `found`.
+It does not synthesize `LemmaRef` data or decode free-form relation/POS/gloss text. Explicit
+no-data/no-lemma states remain `not_found` with both collections empty.
+
+## R-040 — Current linked Syriac token analysis can redirect to another lemma entry
+
+**Rechecked:** 2026-09-27 against current CAL; issue #179.
+
+Peshitta Philemon 1:1 token `620570101`, word 1 currently renders the analysis label
+`)syr noun sg. emphatic= )syr N --> )syr A` and links one malformed-nesting
+`a.lexlink` header to `oneentry.php?lemma=)syr A&cits=all`. CAL therefore distinguishes the
+analysed/source key `)syr N` from the linked target key `)syr A`.
+
+The same page appends the target entry's sense outline after the one-row result table. The legacy
+alternating-line parser correctly read the first candidate, then mistook two following sense lines
+for a second candidate and failed because a line containing `s.v.` looked lemma-like but had no
+link. The current result-table close is therefore the reliable candidate boundary for this
+researched shape.
+
+Bounded research also found valid successful token-analysis pages with no `oneentry.php` link at
+all: Peshitta words 0 and 2 on the same line and CPA
+`5500001001a019001`, word 0. Their semantics are structurally different and are tracked by #193
+instead of being guessed into the linked-candidate model.
+
+Detailed evidence, request counts and parser contract:
+`docs/research/issue-179-syriac-token-redirects.md`.
+
+Source:
+
+- https://cal.huc.edu/getlex.php?coord=620570101&word=1
+
+**Implication:** linked current redirects expose additive `analyzed_lemma_key` while
+`lemma.lemma_key` remains the validated linked target. The parser bounds the current candidate by
+its result table and ignores the following sense outline for token-analysis purposes. Linkless
+successful summaries remain explicit parser drift pending #193.
+
+## R-039 — Christian Palestinian Aramaic uses suffix-bearing subtext IDs
+
+**Rechecked:** 2026-09-26 against current CAL; issue #170.
+
+The current Christian Palestinian Aramaic catalogue at
+`showsubtexts.php?subtext=55` exposes ordinary text links such as
+`get_a_chapter.php?file=55000&sub=01001a&cset=C`. Current observed selectors include
+`01001a`, `01001b`, `01001c`, `01002a`, `02003a`, and `03007a`. The first route was
+opened successfully, and its Text Information selector is the composed
+`get_file_info.php?coord=5500001001a`.
+
+Detailed evidence and the code-impact audit are in
+`docs/research/issue-170-cpa-subtext-ids.md`.
+
+Sources:
+
+- https://cal.huc.edu/showsubtexts.php?subtext=55
+- https://cal.huc.edu/get_a_chapter.php?file=55000&sub=01001a&cset=C
+- https://cal.huc.edu/get_file_info.php?coord=5500001001a
+
+A subsequent installed-stdio acceptance run reached the CPA page but exposed one more related
+assumption: CPA token and comment machine coordinates also embed the suffix, for example
+`5500001001a019001`. A one-request structural probe confirmed the pattern without retaining
+scholarly text.
+
+**Implication:** `subtext_id` is not globally decimal. CAL-MCP preserves the currently observed
+grammar of decimal digits plus an optional single lowercase ASCII suffix and shares that grammar
+between text and KWIC/full-context workflows. Current text/token machine coordinates are accepted
+only as decimal strings or the observed digits + one lowercase ASCII letter + decimal-tail form.
+On a suffix-bearing page, returned coordinates must begin with the exact requested
+`file_id + subtext_id`. `cal_token_analysis` accepts the same narrow coordinate grammar at the
+input boundary, so a returned CPA coordinate reaches CAL rather than being rejected locally.
+Current CPA token-analysis response parsing still fails closed and is tracked separately in
+release blocker #179. File/category IDs and KWIC target coordinates remain decimal-only.
+A complete category-55 route audit accounted for all 555 current CPA text references: 551
+subdivided routes (150 suffix-bearing and 401 decimal-subtext) plus four direct routes
+(`55002`, `55406`, `55407`, `55430`). Every current route uses `cset=C`. CAL-MCP
+therefore keeps separate evidence-backed CPA subdivided/direct file sets rather than inferring
+routing from suffix presence or a generic `55` prefix. Malformed near-misses and contradictory
+returned routes fail closed. Representative direct file `55002` reaches the exact
+`file=55002&cset=C&page=0` route successfully but its current linkless `text-display` content
+still fails in the independent unlemmatized/plain-text parser class tracked by release blocker
+#185.
+
+## R-038 — Syriac text rows can contain empty lexical word slots
+
+**Rechecked:** 2026-09-26 against current CAL from a bounded GitHub-runner probe.
+
+The original 2026-09-25 E2E observation captured an all-empty row in Ephrem text `60424`:
+
+```html
+<tr><td valign="top">1.005:08 </td><td><a href="getlex.php?coord=60424100508&word=0&hasvariant=0"></a> </td></tr>
+```
+
+A 2026-09-26 live structural recheck corrected the initial interpretation. The structural probe counted 314 `<tr>` elements in the current text-display region; 10 contain
+29 empty `getlex.php` anchors. A later installed-stdio verification returned 313 parsed two-cell
+lines while preserving the same 29 slots and nine mixed rows, so raw row count is not treated as
+an invariant. Only one affected row is all-empty. The other nine
+mix empty word slots with rendered lexical links, and empty slots occur at word indexes 0–11.
+All lexical links within each affected row share one machine coordinate. Detailed evidence and
+the revised representation are in `docs/research/issue-168-blank-text-lines.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_chapter.php?file=60424&page=0
+
+**Implication:** rendered tokens remain `tokens`; exact current empty lexical slots are preserved
+separately as additive `empty_word_indexes`. Mixed and word>0 empty slots are valid current CAL
+data. Altered routes/selectors, coordinate disagreement, duplicate slots, or collisions with
+rendered word indexes fail closed.
+
 
 ## R-037 — Dictionary-collation result headings use shorter titles for four sources
 
@@ -351,6 +520,20 @@ Sources:
 - https://cal.huc.edu/searchdicts.php (POST `dict=B`, `page=100`)
 
 **Implication:** each source accepts its form label or its current heading label; any other dictionary label fails closed.
+
+
+## R-036 — The Mandaic catalogue links texts with the Roman script selector and title-text rows
+
+**Rechecked:** 2026-09-25.
+
+`show_Mandaic.php?R1=74` now renders a Roman/Mandaic-script toggle and grouped list items. Each item is `<a href="/showsubtexts.php?subtext=<file>&cset=R">Title</a>` (or `get_a_chapter.php?file=<file>&cset=R`) followed by an information link. `cset` selects the rendering script only: `R` is CAL code, `M` is Standard Transliteration and `J` is Mandaic script. The `cset=M` page route still works. Detailed evidence: `docs/research/issue-169-mandaic-catalogue.md`.
+
+Sources:
+
+- https://cal.huc.edu/show_Mandaic.php?R1=74
+- https://cal.huc.edu/showsubtexts.php?subtext=74410&cset=R
+
+**Implication:** Mandaic catalogue children accept `cset=R` or `M`, and titles come from the link text; page routing is unchanged.
 
 ## R-035 — Text pages render each line as a two-cell table row
 

@@ -184,7 +184,7 @@ Consequences:
 - per-form counts, positions, dialect identity, canonical keys, requested-form presence, and any grand total are cross-checked, and disagreement fails closed as parser drift;
 - the schema change is additive (`forms`, `form_lemma_key`, and the related `target_text` and concordance `label` fields); request counts and bounds are unchanged.
 
-**Amendment (2026-09-25, issue #176, R-039):** CAL may omit the requested form's summary altogether and list only the forms it groups with it in that dialect. For example, `n)qh N` in dialect 71 lists JBA's `n)qt) N` and `nqh N`. Such a page is accepted, and the result says so with the additive `requested_form_listed: false`: `true` when CAL lists the requested form, `null` where CAL renders no per-form summaries. CAL-MCP does not invent a zero summary for the omitted form, and it never attributes the related-form hits to the requested key.
+**Amendment (2026-09-25, issue #176, R-043):** CAL may omit the requested form's summary altogether and list only the forms it groups with it in that dialect. For example, `n)qh N` in dialect 71 lists JBA's `n)qt) N` and `nqh N`. Such a page is accepted, and the result says so with the additive `requested_form_listed: false`: `true` when CAL lists the requested form, `null` where CAL renders no per-form summaries. CAL-MCP does not invent a zero summary for the omitted form, and it never attributes the related-form hits to the requested key.
 
 
 ## D-015 — Targum concordance label rows are reported, not applied as groupings
@@ -199,3 +199,78 @@ Consequences:
 - the schema change is additive (`section_labels`); row, count and total semantics and request counts are unchanged;
 - a label row must carry CAL's literal `&nbsp;` filler, so a damaged result row cannot be misread as a label.
 
+## D-016 — Subtext IDs use a dedicated researched grammar
+
+**Status:** accepted — 2026-09-26 (issue #170; research R-039)
+
+CAL's current Christian Palestinian Aramaic catalogue disproves the earlier implicit assumption
+that every subtext selector is decimal: CPA uses values such as `01001a`. For v0.1,
+`subtext_id` therefore has its own shared grammar: one or more decimal digits followed by at most
+one lowercase ASCII letter.
+
+Consequences:
+
+- preserve leading zeroes and any lowercase suffix exactly;
+- use the same grammar for text catalogue/page/information and KWIC/full-context subtext fields;
+- do not widen generic file IDs, category IDs, text IDs, or KWIC target coordinates;
+- current text/token machine coordinates may be decimal or use CAL's observed digits + one
+  lowercase ASCII letter + decimal-tail form; suffix-bearing text pages additionally require the
+  exact requested `file_id + subtext_id` prefix;
+- `cal_token_analysis` accepts that same machine-coordinate grammar at its input boundary, so a
+  coordinate returned by `cal_text_page` is not rejected locally; current linked and linkless
+  CPA token-analysis response shapes are handled under the evidence-backed token-analysis
+  contracts in R-040/R-041;
+- current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
+  current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
+  direct texts; known direct files reject a caller-supplied subtext and known subdivided files
+  require one; current paginated direct `55430` navigation may additionally carry the exact
+  private `sub=&clen=5` returned-link variant, while subdivided routes remain strict; suffix
+  presence and the generic `55` prefix are not treated as route classifiers; contradictory routes
+  fail closed rather than being normalized;
+- values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
+  whitespace, or arbitrary strings remain invalid;
+- future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
+  amendment rather than silently broadening this rule.
+
+## D-017 — Linkless token-analysis success stays opaque and separate from linked candidates
+
+**Status:** accepted — 2026-09-27 (issue #193; research R-041)
+
+Current CAL can return a successful token-analysis result marker followed by one or more rendered
+analysis-summary lines without any result table or lemma-entry link. The adapter cannot validate a
+canonical lemma identity, candidate boundary, or redirect target from that shape.
+
+Consequences:
+
+- existing `candidates` remain reserved for analyses with a validated linked `LemmaRef`;
+- linkless success is exposed additively as ordered `unlinked_summaries`;
+- `status=found` when either linked candidates or unlinked summaries exist;
+- `=`, `-->`, POS-looking text, and gloss-looking text inside unlinked summaries remain opaque
+  rendered CAL text;
+- no linked lemma key, entry URL, morphology, or redirect relation is synthesized;
+- explicit CAL no-data/no-lemma states stay `not_found` with both collections empty;
+- a current linkless-looking region that contains links, tables, or mixed linked/unlinked
+  structure fails closed rather than falling back to the older loose candidate parser.
+
+## D-018 — Plain text rows do not synthesize token identity
+
+**Status:** accepted — 2026-09-28 (issue #185; research R-042)
+
+Current CAL contains text rows whose scholarly text is rendered directly rather than as lexical
+token links. A subset of those rows still has a comment link carrying a line coordinate.
+
+Consequences:
+
+- `TextLine.coordinate` is nullable;
+- linked rows keep their validated token/machine coordinate semantics;
+- plain rows return rendered `display_coordinate` and `text`, with `tokens=[]` and
+  `empty_word_indexes=[]`;
+- a plain row with no comment link uses `coordinate=null`;
+- a plain row with one exact validated `comment.php?coord=...` link preserves that coordinate and
+  `comment_url`; this is line/comment identity, not evidence of tokenization;
+- callers use `cal_token_analysis` only from returned token objects carrying both `coordinate`
+  and `word_index`;
+- current text tables are classified as linked or plain as a whole; an observed mixed table is not
+  assumed and therefore fails closed;
+- an empty `text-display` shell is not represented as a successful empty line; the current
+  direct-CPA `55002` state is tracked by #196.

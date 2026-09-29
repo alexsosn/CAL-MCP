@@ -20,7 +20,7 @@ CAL-MCP preserves `file_id` as a string of decimal digits. It is not converted t
 
 An optional CAL navigation identifier used when one file has explicitly selectable subtexts/sections in the current text interfaces.
 
-It is preserved as an opaque decimal string. CAL-MCP does not infer a subtext identifier from a chapter label or from the file identifier.
+It is preserved as an opaque string in CAL's currently observed subtext grammar: one or more decimal digits with an optional single lowercase ASCII letter suffix. Most current values are decimal (for example `001` or `112`); Christian Palestinian Aramaic currently uses values such as `01001a`. CAL-MCP preserves leading zeroes and the suffix exactly and does not infer a subtext identifier from a chapter label or from the file identifier.
 
 ### `category_id`
 
@@ -30,9 +30,11 @@ CAL-MCP does not recursively enumerate category identifiers or assume that they 
 
 ### Machine line `coordinate`
 
-The CAL text browser links words and line comments using machine coordinates such as those present in `bablex.php?coord=...` and `comment.php?coord=...` links. CAL-MCP preserves that explicit coordinate as a string.
+The CAL text browser links words and line comments using machine coordinates such as those present in `bablex.php?coord=...`, `getlex.php?coord=...`, and `comment.php?coord=...` links. CAL-MCP preserves that explicit coordinate as a string.
 
-A machine coordinate is different from the human-readable `display_coordinate`. CAL-MCP does not decode its digits into an undocumented local coordinate scheme and does not synthesize a coordinate when CAL does not render one.
+Most observed machine coordinates are decimal. Current Christian Palestinian Aramaic pages embed the lowercase subtext suffix inside the coordinate, for example `5500001001a019001`. CAL-MCP therefore accepts the researched machine-coordinate grammar of either decimal digits, or decimal digits + one lowercase ASCII letter + a non-empty decimal tail. On a suffix-bearing text page the coordinate must also begin with that page's exact `file_id + subtext_id` prefix.
+
+A machine coordinate is different from the human-readable `display_coordinate`. CAL-MCP does not decode its components into an undocumented local coordinate scheme and does not synthesize a coordinate when CAL does not render one.
 
 ### `display_coordinate`
 
@@ -58,10 +60,12 @@ A page number is therefore an adapter navigation value, not a persistent identif
 
 ## Preservation and validation
 
-For opaque decimal identifiers (`file_id`, `subtext_id`, `category_id`, machine coordinates), CAL-MCP:
+For opaque identifiers, CAL-MCP validates only the representation observed on the relevant current CAL surface. `file_id` and `category_id` remain decimal-only; `subtext_id` accepts decimal digits plus an optional single lowercase ASCII letter suffix; text/token machine coordinates accept decimal digits or the current one-embedded-lowercase-letter form described above.
+
+CAL-MCP:
 
 - validates only the representation needed for a safe current CAL request;
-- preserves the digit string exactly;
+- preserves the identifier string exactly;
 - does not cast it to an integer for storage;
 - does not normalize leading zeroes away;
 - does not derive one identifier from another;
