@@ -30,4 +30,4 @@ Four bounded GETs through the production client on 2026-09-29. Each is the exact
 
 ## Separate finding: BT full-context rows use `bablex.php`
 
-The BT Shabbat page's token links are `bablex.php?coord=…&word=…` (no `hasvariant`), while the full-context row parser accepts only `getlex.php`. That page therefore still fails after this fix, with "context row has no recognized lexical links". Text pages already accept both endpoints. This is a separate row-parsing drift, filed as its own issue and kept out of #181.
+The BT Shabbat page's token links are `bablex.php?coord=…&word=…` (no `hasvariant`), while the full-context row parser accepts only `getlex.php`. That page therefore still fails after this fix, with "context row has no recognized lexical links". Text pages already accept both endpoints. This is a separate row-parsing drift, filed as #203 and kept out of #181.
