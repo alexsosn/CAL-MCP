@@ -63,6 +63,7 @@ _CPA_SUBDIVIDED_FILE_IDS = frozenset(
     }
 )
 _CPA_DIRECT_FILE_IDS = frozenset({"55002", "55406", "55407", "55430"})
+_CPA_PAGINATED_DIRECT_FILE_IDS = frozenset({"55430"})
 _CPA_TEXT_FILE_IDS = _CPA_SUBDIVIDED_FILE_IDS | _CPA_DIRECT_FILE_IDS
 _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
     {
@@ -1479,7 +1480,8 @@ def _page_navigation(
                     if requested_subtext_id is None:
                         core_route = set(query) == {"file", "page", "cset"}
                         paginated_direct_route = (
-                            set(query) == {"file", "page", "cset", "sub", "clen"}
+                            requested_file_id in _CPA_PAGINATED_DIRECT_FILE_IDS
+                            and set(query) == {"file", "page", "cset", "sub", "clen"}
                             and query.get("sub") == [""]
                             and query.get("clen") == ["5"]
                         )
