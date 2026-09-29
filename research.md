@@ -327,6 +327,18 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-047 — KWIC full-context pages use the text-page file-info coordinate rule
+
+**Rechecked:** 2026-09-29, with three bounded GETs; issue #181.
+
+`get_a_kwicchapter.php` renders its file-information coordinate as the file id plus the submitted `sub` (`56000112` for `56000`/`112`; `41201049` for `41201`/`049`) or as the bare file id (`71002` for BT Shabbat `01051`). The label prefix is always the file id. Detailed evidence: `docs/research/issue-181-full-context-subtext.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010
+
+**Implication:** the full-context parser accepts exactly those two coordinates, with a label naming the file, and fails closed on anything else.
+
 ## R-045 — Text concordances contain CAL's "no data found" rows with non-canonical keys
 
 **Rechecked:** 2026-09-29.
