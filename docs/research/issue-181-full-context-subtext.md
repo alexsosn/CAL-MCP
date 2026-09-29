@@ -28,6 +28,11 @@ Four bounded GETs through the production client on 2026-09-29. Each is the exact
 - Anything else fails closed: a coordinate naming another file or subtext, a label naming another file, or repeated links.
 - Production requests are unchanged.
 
+## Review follow-up (2026-09-29)
+
+- The composed coordinate only echoes the submitted `sub`, so the target row must also start with `file + sub`. All observed routes satisfy this: 56000/112, 41201/049, 71002/01051, 31000/4 and 60301/53.
+- The file-info coordinate is checked by exact membership, not parsed as a decimal id, so a suffix-bearing CPA composed coordinate is not misreported as a non-decimal file id. CPA full-context pages with suffix rows remain unverified.
+
 ## Separate finding: BT full-context rows use `bablex.php`
 
 The BT Shabbat page's token links are `bablex.php?coord=…&word=…` (no `hasvariant`), while the full-context row parser accepts only `getlex.php`. That page therefore still fails after this fix, with "context row has no recognized lexical links". Text pages already accept both endpoints. This is a separate row-parsing drift, filed as #203 and kept out of #181.

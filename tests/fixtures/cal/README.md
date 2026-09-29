@@ -2,7 +2,7 @@
 
 These fixtures are deliberately reduced semantic excerpts, not archived CAL pages. They retain only the minimum current markup/text relationships needed by offline parser tests.
 
-Capture/recheck dates: **2026-09-04–2026-09-11**.
+Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later rows state their own capture date in the source column and in the fixture's provenance comment.
 
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |

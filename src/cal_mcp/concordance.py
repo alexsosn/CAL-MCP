@@ -924,6 +924,12 @@ def parse_kwic_full_context_page(
         raise ConcordanceParseError(
             "CAL full-context page does not contain exactly one requested target row"
         )
+    # The file-info coordinate only echoes the submitted sub, so the target row itself must
+    # carry the file and submitted subtext as its coordinate prefix (R-047).
+    if not requested_target_coordinate.startswith(requested_file_id + (requested_subtext_id or "")):
+        raise ConcordanceParseError(
+            "CAL full-context target row does not belong to the requested subtext"
+        )
     return KwicFullContextPage(status=KwicFullContextStatus.FOUND, lines=lines)
 
 
@@ -989,10 +995,7 @@ def _validate_full_context_file_identity(
                 raise ConcordanceParseError(
                     "CAL full-context file-information link has unexpected selectors"
                 )
-            coord = _parse_decimal_id(
-                _single_query_value(query, "coord", "full-context file information"),
-                "file_id",
-            )
+            coord = _single_query_value(query, "coord", "full-context file information")
             label = getattr(link, "text", "")
             if coord not in accepted_coords or not label.startswith(f"{requested_file_id}:"):
                 raise ConcordanceParseError(

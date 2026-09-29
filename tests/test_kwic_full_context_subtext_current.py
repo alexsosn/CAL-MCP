@@ -61,8 +61,9 @@ def test_composed_coordinate_on_a_hebrew_script_page_is_accepted() -> None:
 
 
 def test_bare_file_info_coordinate_is_still_accepted() -> None:
-    # CAL still renders the bare file id on some subdivided pages (BT Shabbat 71002/01051
-    # on 2026-09-29; this earlier Syriac fixture).
+    # CAL still renders the bare file id on some current subdivided pages (BT Shabbat
+    # 71002/01051 on 2026-09-29, which needs #203 to parse). This 2026-09-24 Syriac fixture
+    # shows the same bare form.
     page = _parse(ROMLAW.read_bytes(), "60301", "53", "603015323", "U")
 
     assert page.status is KwicFullContextStatus.FOUND
