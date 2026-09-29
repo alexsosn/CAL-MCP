@@ -1382,7 +1382,8 @@ def _assign_dialect_forms(
     """Attach each hit to the CAL form summary that follows it; counts must agree."""
 
     if positioned_hits is None:
-        # Earlier table layout: only a single requested-form summary is representable.
+        # Earlier table layout: only a single form summary is representable (since #176 it
+        # may name a form other than the requested one; requested_form_listed reports that).
         if len(summaries) != 1 or summaries[0].total != len(table_hits):
             raise ConcordanceParseError("CAL KWIC total does not match parsed target hits")
         return tuple(replace(hit, form_lemma_key=summaries[0].lemma_key) for hit in table_hits)

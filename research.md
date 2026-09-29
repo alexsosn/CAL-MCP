@@ -327,7 +327,7 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-043 — Dialect KWIC can omit the requested form and list only the dialect's own forms
+## R-043 — Dialect KWIC can omit the requested form and list only other forms
 
 **Rechecked:** 2026-09-25.
 

@@ -7,7 +7,7 @@ Date: 2026-09-25. Research: `docs/research/issue-176-kwic-omitted-form.md`, comm
    - the dialect-71 page returns `forms` [`n)qt) N` 1, `nqh N` 0], `total` 1, one hit with `form_lemma_key` `n)qt) N`, `requested_form_listed` false;
    - the existing dialect-6 fixture gives `requested_form_listed` true;
    - text scope gives null;
-   - fail closed when a summary's count contradicts its hits, or when no summaries remain.
+   - fail closed when a summary's count contradicts its hits (a per-form page with no summaries at all stays covered by the #149 tests), and when the page heading names another lemma or dialect (added after review).
 3. A valid RED has the new tests failing, with lint, format and mypy green.
 4. GREEN: relax the "requested form exactly once" rule to "at most once"; add `requested_form_listed` to the result, the page model and `to_dict`.
 5. Docs: `docs/tools/concordance.md` (Lemma forms), server tool description, `wiki/decisions.md` D-014 amendment, `research.md` R-043, fixture README, CHANGELOG.

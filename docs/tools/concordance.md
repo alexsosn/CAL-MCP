@@ -73,6 +73,7 @@ The result preserves:
 - absolute `full_context_url`;
 - `form_lemma_key`: always `null` for text-scoped KWIC, because CAL does not report forms there;
 - `forms`: always empty for text-scoped KWIC;
+- `requested_form_listed`: always `null` for text-scoped KWIC;
 - `empty_scope_ids` for requested texts CAL explicitly reports as having no examples.
 
 CAL-MCP does **not** deduplicate, rerank, or statistically summarize hits. It also does not follow `full_context_url` automatically. To inspect one selected hit, pass that hit's typed `file_id`, `target_coordinate`, `charset`, and optional `subtext_id` to `cal_kwic_full_context`. Arbitrary caller-supplied URLs are not accepted by that follow-up.
@@ -114,7 +115,7 @@ CAL currently reports one-dialect KWIC **per lemma form**, and a result may incl
 
 On CAL's earlier table layout, a dialect page that renders only `total examples: N` and no per-form summaries returns `forms: []` and `form_lemma_key: null` on its hits, because CAL reported no forms.
 
-In some dialects CAL lists **only other forms** and no summary at all for the requested spelling. For example, `n)qh N` in dialect 71 (Babylonian Talmud) lists JBA's `n)qt) N` with 1 example and `nqh N` with 0. The result then has `requested_form_listed: false`, and none of its hits is for the requested spelling. CAL-MCP does not invent a zero count for the requested form.
+In some dialects CAL lists **only other forms** and no summary at all for the requested spelling. For example, `n)qh N` in dialect 71 (Babylonian Talmud) lists `n)qt) N` with 1 example and `nqh N` with 0. The result then has `requested_form_listed: false`, and none of its hits is for the requested spelling. CAL-MCP does not invent a zero count for the requested form.
 
 CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form appears at most once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
 

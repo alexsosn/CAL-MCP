@@ -64,7 +64,7 @@ async def test_omitted_form_page_still_cross_checks_counts() -> None:
         "<b>1</b> example found for <b>n)qt) N</b>", "<b>2</b> examples found for <b>n)qt) N</b>", 1
     )
     assert "<b>2</b> examples found" in body
-    with pytest.raises(ConcordanceParseError):
+    with pytest.raises(ConcordanceParseError, match="count|hits|total"):
         await _dialect(body.encode(), "71")
 
 
@@ -86,3 +86,36 @@ async def test_text_scope_reports_no_form_listing() -> None:
     finally:
         await client.aclose()
     assert result.to_dict()["requested_form_listed"] is None
+
+
+@pytest.mark.anyio
+async def test_requested_form_listed_after_another_form_is_still_listed() -> None:
+    # #176 review: the flag must not depend on the requested form being listed first.
+    body = OMITTED.read_text(encoding="utf-8").replace(
+        "No examples found for <b>nqh N</b> in dialect 71",
+        "No examples found for <b>n)qh N</b> in dialect 71",
+        1,
+    )
+    result = await _dialect(body.encode(), "71")
+    assert [form.lemma_key for form in result.forms] == ["n)qt) N", "n)qh N"]
+    assert result.to_dict()["requested_form_listed"] is True
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "heading",
+    [
+        "Looking for <b>nqh N</b> in  71",  # another lemma
+        "Looking for <b>n)qt) N</b> in  71",  # the related form CAL listed
+        "Looking for <b>n)qh N</b> in  6",  # another dialect
+    ],
+)
+async def test_page_for_another_lemma_or_dialect_fails_closed(heading: str) -> None:
+    # With the requested form no longer required, the page heading is what ties the
+    # page to the request (#176 review).
+    body = OMITTED.read_text(encoding="utf-8").replace(
+        "Looking for <b>n)qh N</b> in  71", heading, 1
+    )
+    assert heading in body
+    with pytest.raises(ConcordanceParseError, match="heading"):
+        await _dialect(body.encode(), "71")

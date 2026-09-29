@@ -25,7 +25,7 @@ Dialect 71's page:
 <div dir="ltr" …>No examples found for <b>nqh N</b> in dialect 71</div>
 ```
 
-In dialect 71, CAL answers the request with the forms it groups with `n)qh N` there, including JBA's own spelling `n)qt) N`. It renders no summary for the requested spelling at all. That is CAL's own grouping. Nothing on the page contradicts itself: the counts, positions and dialect all agree.
+In dialect 71, CAL answers the request with the forms it groups with `n)qh N` there, including `n)qt) N`. It renders no summary for the requested spelling at all. That is CAL's own grouping. Nothing on the page contradicts itself: the counts, positions and dialect all agree.
 
 ## Consequences (D-014 amendment)
 

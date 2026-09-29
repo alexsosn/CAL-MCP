@@ -525,4 +525,5 @@ def test_current_dialect_kwic_without_the_requested_form_is_reported_not_rejecte
         _NONE_REQUESTED, "No examples found for <b>nqh#2 N</b> in dialect 6", 1
     )
     page = _nqh(body)
-    assert [form.lemma_key for form in page.forms] == ["nqh#2 N", "nqh N"]
+    assert [form.lemma_key for form in page.forms] == ["nqh#2 N", "nqh N"]  # type: ignore[attr-defined]
+    assert "n)qh N" not in [form.lemma_key for form in page.forms]  # type: ignore[attr-defined]
