@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import urlencode
 
 import pytest
 
@@ -9,13 +10,11 @@ from cal_mcp.client import CalResponse
 from cal_mcp.concordance import (
     ConcordanceParseError,
     ConcordanceProvenance,
-    KwicScopeKind,
+    ConcordanceService,
     TextConcordanceResult,
-    parse_kwic_result,
     parse_text_concordance_page,
 )
 from cal_mcp.errors import CalInputError
-from cal_mcp.lemma_key import validate_lemma_key
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 SOURCE_URL = "https://cal.huc.edu/newconcord.php?text=41201&cset=S"
@@ -49,7 +48,7 @@ def test_no_data_rows_are_kept_in_cal_order_with_nullable_keys() -> None:
         (item.frequency, item.lemma_key, item.label, item.gloss, item.cal_reports_no_data)
         for item in page.lemmas
     ] == [
-        (1, None, "snqly+ws N", "no data found for  snqly+ws N", True),
+        (1, None, "snqly+ws N", "no data found for snqly+ws N", True),
         (20, ")b N", "ˀb, ˀbˀ n.m.", "father", False),
         (1, "z(yd N", "z(yd N", "no data found for z(yd N", True),
         (1, None, "qrb", "no data found for qrb", True),
@@ -118,32 +117,29 @@ def test_no_data_row_link_must_still_match_the_request() -> None:
         _parse(body)
 
 
+@pytest.mark.anyio
 @pytest.mark.parametrize("key", ["bwlbrK PN", "$lMn) PN"])
-def test_cal_capital_letter_keys_are_accepted_verbatim(key: str) -> None:
-    assert validate_lemma_key(key)[2] == key
+async def test_capital_letter_keys_are_rejected_as_kwic_input_with_guidance(key: str) -> None:
+    client = _NoRequestClient()
+
+    with pytest.raises(CalInputError, match="kwic_url of the cal_text_concordance row"):
+        await ConcordanceService(client).kwic_texts(key, ["41201"])  # type: ignore[arg-type]
+    assert client.requests == 0
 
 
 @pytest.mark.parametrize("key", ["bwlbr1 PN", "bwlbré PN", "bwl\u212a PN"])
-def test_lemma_keys_still_reject_digits_and_non_ascii_letters(key: str) -> None:
-    with pytest.raises(CalInputError):
-        validate_lemma_key(key)
+def test_concordance_rows_still_reject_digits_and_non_ascii_letters(key: str) -> None:
+    href = "/showKWIC.php?" + urlencode({"lemma": key, "charset": "S", "texts": "41201"})
+    body = _fixture().replace(b"/showKWIC.php?lemma=bwlbrK+PN&charset=S&texts=41201", href.encode())
+
+    with pytest.raises(ConcordanceParseError):
+        _parse(body)
 
 
-def test_kwic_for_a_capital_letter_key_round_trips() -> None:
-    response = CalResponse(
-        status_code=200,
-        url=KWIC.format("bwlbrK+PN"),
-        body=(FIXTURES / "kwic_texts_bwlbrK_41201_current.html").read_bytes(),
-        content_type="text/html; charset=UTF-8",
-        retrieved_at=datetime(2026, 9, 29, tzinfo=UTC),
-    )
+class _NoRequestClient:
+    def __init__(self) -> None:
+        self.requests = 0
 
-    page = parse_kwic_result(
-        response,
-        lemma_key="bwlbrK PN",
-        scope_kind=KwicScopeKind.TEXTS,
-        scope_ids=("41201",),
-    )
-
-    assert page.total == 1
-    assert [hit.target_coordinate for hit in page.hits] == ["412012251002"]
+    async def fetch(self, *args: object, **kwargs: object) -> object:
+        self.requests += 1
+        raise AssertionError("no CAL request expected")

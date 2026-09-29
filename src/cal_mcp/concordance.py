@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import string
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -12,11 +13,13 @@ from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _parse_lines
-from cal_mcp.normalization import InputRepresentation, normalize_query
+from cal_mcp.normalization import _CAL_CODE_LETTERS, InputRepresentation, normalize_query
 from cal_mcp.texts import TextLine, TextToken
 
 _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
+_NO_DATA_GLOSS_PREFIX = "no data found for "
+_UNDOCUMENTED_KEY_CAPITALS = frozenset(string.ascii_uppercase) - _CAL_CODE_LETTERS
 _FREQUENCY_MARKER_RE = re.compile(r"^Frequencies of lemmas in text ([0-9]+)$", re.IGNORECASE)
 _FREQUENCY_RE = re.compile(r"^([0-9]+)\s*:")
 _INLINE_FREQUENCY_PREFIX_RE = re.compile(r"^([0-9]+)\s*:\s*\.*$")
@@ -55,10 +58,11 @@ class KwicScopeKind(StrEnum):
 @dataclass(frozen=True, slots=True)
 class ConcordanceLemma:
     frequency: int
-    lemma_key: str
+    lemma_key: str | None
     label: str
     gloss: str
     kwic_url: str
+    cal_reports_no_data: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -392,17 +396,18 @@ def parse_text_concordance_page(
         if cell_index == 0 or cell_index + 1 >= len(row.cells):
             raise ConcordanceParseError("CAL concordance row is missing frequency or gloss")
 
-        lemma_key, kwic_url, label = _parse_text_concordance_link(
-            base_url=response.url,
-            href=link.href,
-            link_text=link.text,
-            requested_text_id=requested_text_id,
-            requested_charset=requested_charset,
-        )
         frequency_match = _FREQUENCY_RE.match(row.cells[cell_index - 1].text)
         gloss = row.cells[cell_index + 1].text.removeprefix(":").strip()
         if frequency_match is None or not gloss:
             raise ConcordanceParseError("CAL concordance row lacks frequency or gloss")
+        lemma_key, kwic_url, label, no_data = _parse_text_concordance_link(
+            base_url=response.url,
+            href=link.href,
+            link_text=link.text,
+            gloss=gloss,
+            requested_text_id=requested_text_id,
+            requested_charset=requested_charset,
+        )
         lemmas.append(
             ConcordanceLemma(
                 frequency=int(frequency_match.group(1)),
@@ -410,6 +415,7 @@ def parse_text_concordance_page(
                 label=label,
                 gloss=gloss,
                 kwic_url=kwic_url,
+                cal_reports_no_data=no_data,
             )
         )
 
@@ -477,10 +483,11 @@ def _parse_inline_text_concordance_rows(
         if not gloss:
             raise ConcordanceParseError("CAL inline concordance row lacks a gloss")
 
-        lemma_key, kwic_url, label = _parse_text_concordance_link(
+        lemma_key, kwic_url, label, no_data = _parse_text_concordance_link(
             base_url=base_url,
             href=getattr(link, "href", ""),
             link_text=link_text,
+            gloss=gloss,
             requested_text_id=requested_text_id,
             requested_charset=requested_charset,
         )
@@ -491,6 +498,7 @@ def _parse_inline_text_concordance_rows(
                 label=label,
                 gloss=gloss,
                 kwic_url=kwic_url,
+                cal_reports_no_data=no_data,
             )
         )
     return tuple(lemmas)
@@ -501,12 +509,13 @@ def _parse_text_concordance_link(
     base_url: str,
     href: str,
     link_text: str,
+    gloss: str,
     requested_text_id: str,
     requested_charset: str,
-) -> tuple[str, str, str]:
+) -> tuple[str | None, str, str, bool]:
     kwic_url = _cal_navigation_url(base_url, href, "showKWIC.php")
     query = parse_qs(urlsplit(kwic_url).query, keep_blank_values=True)
-    lemma_key = _parse_returned_lemma_key(_single_query_value(query, "lemma", "KWIC lemma"))
+    raw_key = _single_query_value(query, "lemma", "KWIC lemma")
     text_id = _single_query_value(query, "texts", "KWIC text")
     charset = _single_query_value(query, "charset", "KWIC charset")
     if text_id != requested_text_id or charset != requested_charset:
@@ -516,7 +525,25 @@ def _parse_text_concordance_link(
     label = _clean_text(link_text)
     if not label:
         raise ConcordanceParseError("CAL concordance lemma link has no label")
-    return lemma_key, kwic_url, label
+    # CAL marks some rows "no data found for <label>"; their link keys can be malformed
+    # (" snqlyTws N", "qrb "), so such a row keeps CAL's row with a null key (R-045).
+    no_data = _clean_text(gloss) == f"{_NO_DATA_GLOSS_PREFIX}{label}"
+    if no_data:
+        try:
+            return (
+                _parse_returned_lemma_key(raw_key, allow_cal_capitals=True),
+                kwic_url,
+                label,
+                True,
+            )
+        except ConcordanceParseError:
+            return None, kwic_url, label, True
+    return (
+        _parse_returned_lemma_key(raw_key, allow_cal_capitals=True),
+        kwic_url,
+        label,
+        False,
+    )
 
 
 def parse_kwic_dialect_options(
@@ -1446,7 +1473,7 @@ def _expected_kwic_heading(
     return f"Looking for {lemma_key} in {scope_ids[0]}"
 
 
-def _validate_lemma_key(value: str) -> tuple[str, str, str]:
+def _validate_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> tuple[str, str, str]:
     if not isinstance(value, str):
         raise CalInputError("lemma_key must be a string")
     candidate = value.strip(" ")
@@ -1469,13 +1496,26 @@ def _validate_lemma_key(value: str) -> tuple[str, str, str]:
             or homograph.startswith("0")
         ):
             raise CalInputError("lemma_key has an invalid CAL homograph suffix")
+    undocumented = {char for char in base_lemma if char in _UNDOCUMENTED_KEY_CAPITALS}
+    if undocumented and not allow_cal_capitals:
+        raise CalInputError(
+            "lemma_key contains a capital letter that CAL's KWIC search forms do not accept; "
+            "open the kwic_url of the cal_text_concordance row instead"
+        )
+    if undocumented:
+        # Returned concordance rows only: CAL links some keys with ASCII capitals outside
+        # the documented cal_code letters ("bwlbrK PN"), and its KWIC-by-text form drops
+        # them, so they are kept verbatim here but rejected as tool input (R-045).
+        base_lemma = "".join(char for char in base_lemma if char not in undocumented)
+        if not base_lemma:
+            raise CalInputError("lemma_key has no documented CAL letters")
     normalize_query(base_lemma, representation=InputRepresentation.CAL_CODE)
     return lemma, suffix, f"{lemma} {suffix}"
 
 
-def _parse_returned_lemma_key(value: str) -> str:
+def _parse_returned_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> str:
     try:
-        _, _, canonical_key = _validate_lemma_key(value)
+        _, _, canonical_key = _validate_lemma_key(value, allow_cal_capitals=allow_cal_capitals)
     except ValueError as exc:
         raise ConcordanceParseError("CAL concordance row contains an invalid lemma key") from exc
     if canonical_key != value:
@@ -1620,6 +1660,7 @@ def _concordance_lemma_to_dict(item: ConcordanceLemma) -> dict[str, object]:
         "label": item.label,
         "gloss": item.gloss,
         "kwic_url": item.kwic_url,
+        "cal_reports_no_data": item.cal_reports_no_data,
     }
 
 
