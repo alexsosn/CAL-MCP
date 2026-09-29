@@ -7,7 +7,10 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.biblical import cal_biblical_book_id
+from cal_mcp.biblical import (
+    cal_biblical_book_id,
+    cal_biblical_heading_matches,
+)
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lemma_key import validate_lemma_key
@@ -689,9 +692,10 @@ def parse_syriac_peshitta_page(
     parser.feed(response.body.decode("utf-8", errors="replace"))
     parser.close()
 
-    expected_heading = f"{_PESHITTA_HEADING_PREFIX}{book} {chapter}:{verse}"
     headings = [text for text in parser.centers if text.startswith(_PESHITTA_HEADING_PREFIX)]
-    if headings != [expected_heading]:
+    if len(headings) != 1 or not cal_biblical_heading_matches(
+        headings[0][len(_PESHITTA_HEADING_PREFIX) :], book=book, chapter=chapter, verse=verse
+    ):
         raise SyriacParseError("CAL Peshitta heading does not match the requested verse")
 
     page_text = _clean_text(" ".join(parser.all_parts))
@@ -903,10 +907,6 @@ def _validate_positive_int(value: int, name: str) -> int:
     return value
 
 
-def _format_coordinate_number(value: int) -> str:
-    return f"{value:02d}" if value < 100 else str(value)
-
-
 def _validate_category_response_url(source_url: str, config: _TextCategoryConfig) -> None:
     _require_response_path(source_url, config.path, "Syriac text category")
     if config.upstream_category is None:
@@ -1034,3 +1034,7 @@ def _provenance_to_dict(provenance: SyriacProvenance) -> dict[str, object]:
         "chapter": provenance.chapter,
         "verse": provenance.verse,
     }
+
+
+def _format_coordinate_number(value: int) -> str:
+    return f"{value:02d}" if value < 100 else str(value)

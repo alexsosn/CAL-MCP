@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from cal_mcp.errors import CalInputError
 
 _BOOK_IDS = {
@@ -42,6 +44,49 @@ _BOOK_IDS = {
 }
 
 
+# CAL's own book label in its MT/Peshitta and MT/Targum verse headings, recorded for all
+# 36 books on 2026-09-29 (R-044). It identifies the verse CAL actually returned.
+_CAL_HEADING_LABELS = {
+    "Gen": "Gen",
+    "Exod": "Exod",
+    "Levit": "Lev",
+    "Numb": "Num",
+    "Deut": "Deut",
+    "Joshua": "Joshua",
+    "Judges": "Judges",
+    "1 Sam": "Sam1",
+    "2 Sam": "Sam2",
+    "1 Kings": "Kings1",
+    "2 Kings": "Kings2",
+    "Isaiah": "Isaiah",
+    "Jeremiah": "Jer",
+    "Ezekiel": "Ezek",
+    "Hosea": "Hosea",
+    "Joel": "Joel",
+    "Amos": "Amos",
+    "Obadiah": "Obad",
+    "Jonah": "Jonah",
+    "Micah": "Micah",
+    "Nahum": "Nahum",
+    "Hab.": "Hab",
+    "Zeph.": "Zeph",
+    "Haggai": "Haggai",
+    "Zechariah": "Zech",
+    "Malachi": "Mal",
+    "Psalms": "Ps",
+    "Job": "Job",
+    "Song of Songs": "Song",
+    "Ruth": "Ruth",
+    "Qoheleth": "Qoheleth",
+    "Lamentations": "Lam",
+    "Proverbs": "Prov",
+    "1 Chronicles": "Chron1",
+    "2 Chronicles": "Chron2",
+    "Esther": "Esther",
+}
+_HEADING_VERSE_RE = re.compile(r"(?P<label>\S+) (?P<chapter>\d+):(?P<verse>\d+)")
+
+
 def cal_biblical_book_id(book: str) -> str:
     """Return CAL's current selector ID for one exact biblical book label."""
 
@@ -50,4 +95,22 @@ def cal_biblical_book_id(book: str) -> str:
     return _BOOK_IDS[book]
 
 
-__all__ = ["cal_biblical_book_id"]
+def cal_biblical_heading_matches(heading: str, *, book: str, chapter: int, verse: int) -> bool:
+    """Whether a verse heading (after its prefix) names the requested book, chapter and verse.
+
+    The book may appear as CAL's heading label for that book or as the exact selector
+    label (the earlier layout). A page for any other book, or with an empty label, does
+    not match, so a shifted CAL coordinate can never be served as the requested verse.
+    """
+
+    found = _HEADING_VERSE_RE.fullmatch(heading)
+    if found is None:
+        return False
+    return (
+        found.group("label") in {book, _CAL_HEADING_LABELS.get(book)}
+        and int(found.group("chapter")) == chapter
+        and int(found.group("verse")) == verse
+    )
+
+
+__all__ = ["cal_biblical_book_id", "cal_biblical_heading_matches"]
