@@ -220,3 +220,24 @@ Implementation consequence:
 
 The request route emitted by CAL-MCP remains unchanged; this only validates CAL's returned
 navigation links.
+
+## Final installed-stdio acceptance
+
+Run `36592899787` rebuilt and installed the candidate and exercised the public MCP server over
+stdio after the direct-CPA navigation GREEN.
+
+Exactly four explicit page calls were made:
+
+- Mandaic `74420`, page 1 → 46 plain rows; at least one row had
+  `coordinate=null`, and at least one comment-linked row preserved its real coordinate and
+  `comment_url`;
+- direct CPA `55430`, page 1 → 50 plain rows with no token objects;
+- direct CPA `55430`, page 2 → 50 plain rows, proving the current paginated direct-CPA navigation
+  variant is accepted end to end;
+- Peshitta `62057`, page 1 → 25 linked rows whose machine coordinates and token lists remain
+  populated.
+
+All four upstream requests returned HTTP 200. The acceptance script printed only row counts, not
+scholarly text, and followed no token/comment links. The temporary workflow was removed after the
+successful run.
+
