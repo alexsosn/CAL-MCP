@@ -34,7 +34,7 @@ The result preserves CAL's ordered rows with:
 - the CAL `kwic_url` exposed by that row;
 - `cal_reports_no_data`: `true` when CAL's gloss is its own `no data found for <label>` marker. CAL lists these rows (for example 6 rows in Palmyrene text 41201) but has no lexical data for them. CAL-MCP keeps them in CAL's order and does not repair their keys.
 
-Some CAL keys use capital letters that are not documented CAL code letters (for example the Palmyrene proper noun `bwlbrK PN`). Concordance rows return them verbatim. CAL's KWIC-by-text form drops such letters and finds nothing, so `cal_kwic_texts` and `cal_kwic_dialect` reject these keys as `invalid_input`. Open the row's `kwic_url`, which is CAL's own working link, instead.
+Some CAL keys use capital letters that are not documented CAL code letters (for example the Palmyrene proper noun `bwlbrK PN`). Concordance rows return them verbatim. CAL's KWIC-by-text form drops such letters and finds nothing, so the `cal_kwic_*` tools reject these keys as `invalid_input`. Open the row's `kwic_url`, which is CAL's own working link, instead.
 
 `script` accepts:
 
