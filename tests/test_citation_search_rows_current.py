@@ -88,7 +88,10 @@ def test_headerless_citation_serializes_with_null_lemma() -> None:
     assert hits[1]["reference"] == "JulSok 257(125):14"
 
 
-_BRT = b'<a href="oneentry.php?lemma=brt%40ym N&cits=all"><span class="lem"><font color="#0000A0">brt ym</font></span>\n\t<pos>n.f.</pos>\n</a><br>'
+_BRT = (
+    b'<a href="oneentry.php?lemma=brt%40ym N&cits=all"><span class="lem">'
+    b'<font color="#0000A0">brt ym</font></span>\n\t<pos>n.f.</pos>\n</a><br>'
+)
 
 
 @pytest.mark.parametrize(
@@ -108,3 +111,37 @@ def test_other_row_shapes_fail_closed(old: bytes, new: bytes) -> None:
 
     with pytest.raises(SearchParseError):
         _parse(body.replace(old, new, 1))
+
+
+_HOMOGRAPH_ROW = (
+    b'<div class="citation-row odd"><a href="oneentry.php?lemma=gml%233 N&cits=all">'
+    b'<span class="lem"><font color="#0000A0">gml, gmlk</font></span>\n'
+    b'(<span class="uni">gamm\xc4\x81l, gamm\xc4\x81l\xc4\x81</span>)\n\t<pos>n.m.</pos>\n #3</a><br>'
+    b'&nbsp;&nbsp;<span class="gloss"> camel-driver</span><br>\n'
+    b'<i>EchR[1]50(2)</i> :<span class="heb">\xd7\x95\xd7\x92\xd7\x9e\xd7\x9c\xd7\x90</span>&rlm;\n'
+    b':<span class="rom"> the camel-driver is a gentile</span><br>\n</div>'
+)
+
+
+def _with_homograph_row(row: bytes) -> bytes:
+    return FIXTURE.read_bytes().replace(b"</div>\n</body>", row + b"\n</div>\n</body>")
+
+
+def test_homograph_marker_after_pos_is_not_part_of_the_headwords() -> None:
+    hits = _parse(_with_homograph_row(_HOMOGRAPH_ROW)).hits
+    lemma = hits[-1].lemma
+
+    assert lemma is not None
+    assert (lemma.lemma_key, lemma.headwords, lemma.pronunciation, lemma.part_of_speech) == (
+        "gml#3 N",
+        ("gml", "gmlk"),
+        "gammāl, gammālā",
+        "n.m.",
+    )
+    assert hits[-1].lexical_context == "camel-driver"
+
+
+@pytest.mark.parametrize("marker", [b" #2", b" extra"])
+def test_other_text_after_pos_fails_closed(marker: bytes) -> None:
+    with pytest.raises(SearchParseError):
+        _parse(_with_homograph_row(_HOMOGRAPH_ROW.replace(b" #3</a>", marker + b"</a>")))
