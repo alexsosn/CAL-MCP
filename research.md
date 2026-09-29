@@ -327,18 +327,18 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-044 — Biblical verse headings carry CAL's own (sometimes wrong) book labels
+## R-044 — Zero-padded chapters now make CAL's verse comparison return another verse
 
-**Rechecked:** 2026-09-25.
+**Rechecked:** 2026-09-29.
 
-`showpesh.php` and `showtargum.php` headings now use CAL's abbreviations ("Ps", "Song", "Lam", "Prov", "Chron1"). The label can also be wrong ("Kings1" for Genesis) or empty (1 Samuel). The verse navigation links carry CAL's numeric book id and chapter. Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
+`showpesh.php` and `showtargum.php` misread a zero-padded 3-digit chapter for most books. `bookname=1`, `chapter=001`, `verse=001` returns 1 Kings 1:1, headed "Kings1 1:1", instead of Genesis. Unpadded decimals return the right verse for all 36 books. Headings name the verse with CAL's own book abbreviations (Gen, Lev, Sam1, Kings1, Ps, Song, Chron1, …). Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
 
 Sources:
 
-- https://cal.huc.edu/showpesh.php (POST `bookname=27`, `chapter=023`, `verse=001`)
-- https://cal.huc.edu/showtargum.php (POST `bookname=01`, `chapter=001`, `verse=001`)
+- https://cal.huc.edu/showpesh.php (POST `bookname=1`, `chapter=001`, `verse=001` compared with `chapter=1`, `verse=1`)
+- https://cal.huc.edu/showtargum.php (POST `bookname=12`, `chapter=40`, `verse=3`)
 
-**Implication:** the heading is checked by chapter and verse only; the book is verified by the navigation links' numeric book id and chapter.
+**Implication:** chapter and verse are submitted unpadded, and the heading's book label must be CAL's reviewed label for the requested book (or the exact selector label), so a shifted coordinate fails closed instead of being served as the requested verse.
 
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 

@@ -45,3 +45,41 @@ Each page carries verse navigation with CAL's numeric book id:
 - The requested book is instead verified by CAL's verse navigation. There must be at least one `showpesh.php` / `showtargum.php` / `babshowtargum.php` link with `bookname`, `chapter` and `verse`. Every such link must name the requested numeric book id and chapter, with a verse within one of the request. Anything else fails closed.
 - The result keeps reporting the requested selector label as `book`, with CAL's book id.
 - The public schema and request counts are unchanged. The verse-label leak into `mt_text` is #155.
+
+## Correction (2026-09-29): zero-padded chapters make CAL return the wrong verse
+
+The first reading above was wrong. The "Kings1" page captured for a Genesis 1:1 request is **1 Kings 1:1**: its MT is וְהַמֶּלֶךְ דָּוִד זָקֵן. So CAL's heading was correct, and the navigation link only echoes the submitted book id. Trusting that echo would have silently served 1 Kings as Genesis.
+
+Thirteen more bounded POSTs, run 2026-09-29, isolated the cause: CAL-MCP's zero-padded coordinate fields.
+
+| POST (`bookname`, `chapter`, `verse`) | Heading | MT text |
+| --- | --- | --- |
+| `01`, `001`, `001` (the adapter's current form) | `Kings1 1:1` | 1 Kings 1:1 — **wrong** |
+| `1`, `001`, `001` | `Kings1 1:1` | 1 Kings 1:1 — **wrong** |
+| `08`, `001`, `001` | ` 1:1` (empty label) | Genesis 1:1 — **wrong** |
+| `1`, `1`, `1` | `Gen 1:1` | Genesis 1:1 |
+| `2`, `1`, `1` and `02`, `1`, `1` | `Exod 1:1` | Exodus 1:1 |
+| `8`, `1`, `1` | `Sam1 1:1` | 1 Samuel 1:1 |
+| `27`, `23`, `1` and `27`, `023`, `001` | `Ps 23:1` | Psalms 23:1 |
+| `27`, `119`, `150` | `Ps 119:150` | Psalms 119:150 |
+| `12`, `40`, `3` (Targum) | `Isaiah 40:3` | Isaiah 40:3 |
+| `1`, `50`, `26` (Targum) | `Gen 50:26` | Genesis 50:26 |
+
+The book id's padding does not matter. A 3-digit **chapter** does, except in Psalms, the only book with a 3-digit chapter width in CAL's own links (`chapter=023`; other books link `chapter=01`). CAL apparently builds a fixed-width coordinate, so a wrongly padded chapter shifts it into another book. The 2026-09-24 end-to-end run read Genesis 1:1 correctly with the same padded request, so CAL's handling changed around 2026-09-25. The adapter's `_format_coordinate_number` (3 digits) now makes `cal_targum_parallel` and `cal_syriac_peshitta_parallel` **silently return the wrong verse** for affected books.
+
+A further 36 POSTs, run 2026-09-29 with unpadded values (`chapter=1`, `verse=1`, one per book), return the right verse for every book, with these heading labels:
+
+```text
+Gen Exod Lev Num Deut Joshua Judges Sam1 Sam2 Kings1 Kings2 Isaiah Jer Ezek Hosea Joel
+Amos Obad Jonah Micah Nahum Hab Zeph Haggai Zech Mal Ps Job Song Ruth Qoheleth Lam Prov
+Chron1 Chron2 Esther
+```
+
+All 36 labels are distinct. The Targum route used the same labels in all 11 sampled books.
+
+### Revised consequences
+
+- Chapter and verse are submitted as CAL's unpadded decimal numbers, which is what CAL's own form users type. That makes every tested book and verse, including Psalms 119:150, return the right text.
+- The heading is the page's identity. It must name the requested `chapter:verse`, and its book label must be CAL's heading label for the requested book (a reviewed static table) or the exact selector label (the earlier layout). Any other label, including an empty one, fails closed, so a shifted coordinate can never be served as the requested verse.
+- The verse-navigation links are only an echo of the request. They are not used as identity evidence.
+- The public schema, request counts and routes are unchanged.
