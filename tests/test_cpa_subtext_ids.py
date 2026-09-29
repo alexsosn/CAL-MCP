@@ -368,6 +368,65 @@ def test_direct_cpa_navigation_accepts_current_cset() -> None:
     ) == (None, 2)
 
 
+def test_paginated_direct_cpa_navigation_accepts_current_empty_sub_and_clen() -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(
+            _Link(
+                href="/get_a_chapter.php?file=55430&sub=&cset=C&page=1&clen=5",
+                text="NEXT PAGE",
+            ),
+        ),
+        list_depth=0,
+    )
+    assert _page_navigation(
+        [line],
+        requested_file_id="55430",
+        requested_subtext_id=None,
+    ) == (None, 2)
+
+
+def test_private_paginated_direct_cpa_variant_is_scoped_to_observed_file() -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(
+            _Link(
+                href="/get_a_chapter.php?file=55406&sub=&cset=C&page=1&clen=5",
+                text="NEXT PAGE",
+            ),
+        ),
+        list_depth=0,
+    )
+    with pytest.raises(TextParseError, match="CPA"):
+        _page_navigation(
+            [line],
+            requested_file_id="55406",
+            requested_subtext_id=None,
+        )
+
+
+@pytest.mark.parametrize(
+    "href",
+    [
+        "/get_a_chapter.php?file=55430&sub=001&cset=C&page=1&clen=5",
+        "/get_a_chapter.php?file=55430&sub=&cset=C&page=1&clen=4",
+        "/get_a_chapter.php?file=55430&sub=&cset=C&page=1&clen=5&extra=1",
+    ],
+)
+def test_paginated_direct_cpa_navigation_rejects_near_misses(href: str) -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(_Link(href=href, text="NEXT PAGE"),),
+        list_depth=0,
+    )
+    with pytest.raises(TextParseError, match="CPA"):
+        _page_navigation(
+            [line],
+            requested_file_id="55430",
+            requested_subtext_id=None,
+        )
+
+
 @pytest.mark.anyio
 async def test_cpa_page_accepts_suffix_and_uses_current_cset() -> None:
     transport = CpaTextTransport()

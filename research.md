@@ -327,6 +327,39 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-042 — Current CAL has two-cell plain/unlemmatized text rows
+
+**Rechecked:** 2026-09-28 against current CAL; issue #185.
+
+Bounded structural checks confirmed the same plain-row semantics on Mandaic `74420` and direct
+Christian Palestinian Aramaic `55430`: each actual text row has two cells, the first carrying a
+rendered display coordinate and the second rendered scholarly text, with no lexical token links.
+Mandaic `74501` and Peshitta `62057` were linked controls; no sampled actual text table mixed
+linked and plain rows.
+
+Some plain rows still expose a CAL line identity through the first cell's exact
+`comment.php?coord=...` link. Current `74420` has 3 such rows among 46; current `55430` has
+4 among 50. Other plain rows have no machine/line coordinate at all. This means the original #185
+assumption that every plain row has `coordinate: null` was too strong.
+
+The direct CPA audit also found that current `55002` is now an empty `text-display` shell rather
+than a plain-text page; its classification is tracked separately by #196.
+
+Detailed request bounds and row evidence:
+`docs/research/issue-185-unlemmatized-text.md`.
+
+Sources:
+
+- https://cal.huc.edu/get_a_chapter.php?cset=M&file=74420&page=0
+- https://cal.huc.edu/get_a_chapter.php?file=55430&cset=C&page=0
+- https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=0
+
+**Implication:** plain rows preserve rendered text and display coordinates with empty token
+collections. `TextLine.coordinate` is nullable; a strict comment link supplies a line/comment
+coordinate when CAL exposes one. Token analysis remains composable only from returned token
+objects, which carry both a token coordinate and word index. Mixed linked/plain tables and empty
+text shells fail closed.
+
 ## R-041 — Current token analysis can succeed without a linked lemma entry
 
 **Rechecked:** 2026-09-27 against current CAL; issue #193.

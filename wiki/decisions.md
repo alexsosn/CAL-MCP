@@ -221,8 +221,10 @@ Consequences:
 - current CPA text-page routing is selected by evidence-backed subdivided/direct file sets: all
   current CPA routes retain `cset=C`, including decimal and suffix-bearing subtexts and four
   direct texts; known direct files reject a caller-supplied subtext and known subdivided files
-  require one; suffix presence and the generic `55` prefix are not treated as route classifiers;
-  contradictory routes fail closed rather than being normalized;
+  require one; current paginated direct `55430` navigation may additionally carry the exact
+  private `sub=&clen=5` returned-link variant, while subdivided routes remain strict; suffix
+  presence and the generic `55` prefix are not treated as route classifiers; contradictory routes
+  fail closed rather than being normalized;
 - values with leading letters, multiple-letter suffixes, uppercase letters, punctuation,
   whitespace, or arbitrary strings remain invalid;
 - future CAL evidence requiring a wider or corpus-specific subtext grammar requires a new research
@@ -247,3 +249,26 @@ Consequences:
 - explicit CAL no-data/no-lemma states stay `not_found` with both collections empty;
 - a current linkless-looking region that contains links, tables, or mixed linked/unlinked
   structure fails closed rather than falling back to the older loose candidate parser.
+
+## D-018 — Plain text rows do not synthesize token identity
+
+**Status:** accepted — 2026-09-28 (issue #185; research R-042)
+
+Current CAL contains text rows whose scholarly text is rendered directly rather than as lexical
+token links. A subset of those rows still has a comment link carrying a line coordinate.
+
+Consequences:
+
+- `TextLine.coordinate` is nullable;
+- linked rows keep their validated token/machine coordinate semantics;
+- plain rows return rendered `display_coordinate` and `text`, with `tokens=[]` and
+  `empty_word_indexes=[]`;
+- a plain row with no comment link uses `coordinate=null`;
+- a plain row with one exact validated `comment.php?coord=...` link preserves that coordinate and
+  `comment_url`; this is line/comment identity, not evidence of tokenization;
+- callers use `cal_token_analysis` only from returned token objects carrying both `coordinate`
+  and `word_index`;
+- current text tables are classified as linked or plain as a whole; an observed mixed table is not
+  assumed and therefore fails closed;
+- an empty `text-display` shell is not represented as a successful empty line; the current
+  direct-CPA `55002` state is tracked by #196.
