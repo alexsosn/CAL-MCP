@@ -65,6 +65,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `bibliography_empty_current.html` | `https://cal.huc.edu/getbiblemma.php?myauthor=qqqqzz+N` (2026-09-24) | current no-data marker alone inside the result card |
 | `concordance_text_13250.html` | `https://cal.huc.edu/newconcord.php?text=13250&cset=S` | earlier table-row layout: one-text lemma-frequency rows whose link text was the CAL lemma key, glosses, and explicit KWIC links |
 | `concordance_text_13250_label_current.html` | `https://cal.huc.edu/newconcord.php?text=13250&cset=S` (2026-09-24) | current BR rows whose link text is CAL's display label (`ˀb, ˀbˀ n.m.`) or, for proper nouns, the key |
+| `text_concordance_41201_no_data_current.html` | `https://cal.huc.edu/newconcord.php?text=41201&cset=S` (2026-09-25) | current BR rows: CAL's "no data found for …" rows (invalid keys `+snqlyTws+N`, `qrb+`, `430+n`; valid key `z(yd N`), normal rows, and proper nouns whose keys use capital K/M |
 | `kwic_texts_mlk.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (`mlk N`, texts `12250 13250`, charset `R`) | multi-text result with one empty scope and ordered duplicate target coordinates |
 | `kwic_texts_empty.html` | `POST https://cal.huc.edu/showdialectKWIC.php` (bounded no-hit text scope) | explicit per-text no-example marker plus `total examples: 0` |
 | `kwic_dialects_aryk2_a.html` | `https://cal.huc.edu/dKWIC.php?lemma=%29ryk%232+A` | ordered CAL-owned dialect IDs/labels plus hidden lemma/POS contract |

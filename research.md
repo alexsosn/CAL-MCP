@@ -340,6 +340,21 @@ Source:
 
 **Implication:** a label prefix that is the requested id minus a trailing sub is accepted only when the page's own links name that file and sub; any other label fails closed.
 
+## R-045 — Text concordances contain CAL's "no data found" rows with non-canonical keys
+
+**Rechecked:** 2026-09-29.
+
+`newconcord.php` for text 41201 has six rows glossed "no data found for …". Their KWIC keys can be invalid, for example `+snqlyTws+N` (a leading space) or `qrb ` (no suffix). Detailed evidence: `docs/research/issue-177-concordance-no-data-rows.md`.
+
+Source:
+
+- https://cal.huc.edu/newconcord.php?text=41201&cset=S
+
+The same page has ordinary proper-noun rows whose keys use undocumented capitals (`bwlbrK PN`, `$lMn) PN`). CAL's own `showKWIC.php` link finds their hit, but the `showdialectKWIC.php` form used by `cal_kwic_texts` drops the capital and reports 0 examples (four bounded requests, 2026-09-29).
+
+**Implication:** "no data found" rows are kept with `cal_reports_no_data: true`, and `lemma_key` is null when CAL's key is invalid. Capital-letter keys are kept verbatim in concordance rows, but the KWIC tools reject them as input and point to the row's `kwic_url`. Other rows keep the strict key check.
+
+
 ## R-044 — Biblical verse headings use CAL's own book labels
 
 **Rechecked:** 2026-09-29.
@@ -364,7 +379,6 @@ Source:
 - https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71
 
 **Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
-
 
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 
