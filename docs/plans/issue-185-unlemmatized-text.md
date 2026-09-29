@@ -64,3 +64,19 @@ Before repeating live acceptance:
 12. GREEN only the exact direct-CPA variant above (plus the already supported earlier exact core
     selector set). Do not widen subdivided CPA navigation.
 13. Re-run full CI before the final installed-stdio acceptance.
+
+## Adversarial-review amendment — scope paginated private selectors per file
+
+Exact-head review of `943452ed` found that production accepts the observed private
+`sub=&clen=5` navigation variant for every direct CPA file, while the live evidence and D-016
+name only current paginated direct file `55430`.
+
+Before merge:
+
+14. RED: a known other direct CPA file (use `55406`) with
+    `file=55406&sub=&cset=C&page=1&clen=5` must fail closed.
+15. GREEN: keep the ordinary exact direct route available to the direct-file family, but allow the
+    private empty-`sub` / `clen=5` variant only for an explicit evidence-backed paginated-direct
+    file set, currently `{"55430"}`.
+16. Run both full CI matrices and perform a fresh exact-head adversarial review.
+
