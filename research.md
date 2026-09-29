@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-044 — Biblical verse headings carry CAL's own (sometimes wrong) book labels
+
+**Rechecked:** 2026-09-25.
+
+`showpesh.php` and `showtargum.php` headings now use CAL's abbreviations ("Ps", "Song", "Lam", "Prov", "Chron1"). The label can also be wrong ("Kings1" for Genesis) or empty (1 Samuel). The verse navigation links carry CAL's numeric book id and chapter. Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
+
+Sources:
+
+- https://cal.huc.edu/showpesh.php (POST `bookname=27`, `chapter=023`, `verse=001`)
+- https://cal.huc.edu/showtargum.php (POST `bookname=01`, `chapter=001`, `verse=001`)
+
+**Implication:** the heading is checked by chapter and verse only; the book is verified by the navigation links' numeric book id and chapter.
+
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 
 **Rechecked:** 2026-09-28 against current CAL; issue #185.
