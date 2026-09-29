@@ -165,8 +165,17 @@ class KwicResult:
             "hits": [_hit_to_dict(item) for item in self.hits],
             "empty_scope_ids": list(self.empty_scope_ids),
             "forms": [_form_to_dict(item) for item in self.forms],
+            "requested_form_listed": self.requested_form_listed,
             "provenance": _provenance_to_dict(self.provenance),
         }
+
+    @property
+    def requested_form_listed(self) -> bool | None:
+        """Whether CAL lists the requested form; None when CAL reports no per-form summaries."""
+
+        if not self.forms:
+            return None
+        return any(form.lemma_key == self.lemma_key for form in self.forms)
 
 
 class KwicFullContextStatus(StrEnum):
@@ -1347,8 +1356,8 @@ def _parse_dialect_form_summaries(
     keys = [summary.lemma_key for summary in summaries]
     if len(set(keys)) != len(keys):
         raise ConcordanceParseError("CAL dialect KWIC repeats a form summary")
-    if summaries and keys.count(requested_key) != 1:
-        raise ConcordanceParseError("CAL dialect KWIC lacks the requested form summary")
+    # CAL may omit the requested form and list only the forms it groups with it in this
+    # dialect (D-014 amendment, #176); the result reports that as requested_form_listed.
     if len(grand_totals) > 1:
         raise ConcordanceParseError("CAL dialect KWIC repeats its grand total")
     if grand_totals and not summaries:
@@ -1373,7 +1382,8 @@ def _assign_dialect_forms(
     """Attach each hit to the CAL form summary that follows it; counts must agree."""
 
     if positioned_hits is None:
-        # Earlier table layout: only a single requested-form summary is representable.
+        # Earlier table layout: only a single form summary is representable (since #176 it
+        # may name a form other than the requested one; requested_form_listed reports that).
         if len(summaries) != 1 or summaries[0].total != len(table_hits):
             raise ConcordanceParseError("CAL KWIC total does not match parsed target hits")
         return tuple(replace(hit, form_lemma_key=summaries[0].lemma_key) for hit in table_hits)
