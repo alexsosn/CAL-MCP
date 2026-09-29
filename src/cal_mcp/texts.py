@@ -789,7 +789,7 @@ def _parse_text_page(
     if _NO_LINES_RE.search(page_text) is not None:
         return None
 
-    text_ref = _page_text_ref(
+    text_ref, cal_file_sub = _page_text_ref(
         lines,
         requested_file_id,
         requested_subtext_id,
@@ -798,10 +798,15 @@ def _parse_text_page(
     page_number, page_count, total_lines = _page_metadata(lines)
     if mandaic_page_route and page_count is None and requested_page is not None:
         page_number = requested_page
+    # A six-digit id that CAL splits into file plus sub navigates by that split (R-046).
+    navigation_file_id, navigation_subtext_id = cal_file_sub or (
+        requested_file_id,
+        requested_subtext_id,
+    )
     previous_page, next_page = _page_navigation(
         lines,
-        requested_file_id=requested_file_id,
-        requested_subtext_id=requested_subtext_id,
+        requested_file_id=navigation_file_id,
+        requested_subtext_id=navigation_subtext_id,
         mandaic_page_route=mandaic_page_route,
     )
     if requested_page is not None and page_number != requested_page:
@@ -827,6 +832,10 @@ def _parse_text_page(
         if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
         else None
     )
+    if cal_file_sub is not None:
+        # A split six-digit id is accepted from indirect evidence, so every row must also
+        # carry the requested id as its coordinate prefix (R-046).
+        expected_coordinate_prefix = requested_file_id
     table = _parse_text_table(response)
     if table.found:
         lexical_rows = tuple(_row_has_lexical_link(row) for row in table.rows)
@@ -1382,7 +1391,7 @@ def _page_text_ref(
     requested_subtext_id: str | None,
     *,
     submitted_sub: str | None,
-) -> TextRef:
+) -> tuple[TextRef, tuple[str, str] | None]:
     # Current CAL (2026-09-25) renders the file-info coordinate of a subdivided page as the
     # file identifier followed by the submitted ``sub`` value. The bare file identifier is
     # still accepted only for the earlier (pre-2026-09-25) layout. Anything else names a
@@ -1402,14 +1411,50 @@ def _page_text_ref(
                 )
             file_id = requested_file_id
             prefix, separator, label = link.text.partition(":")
-            if not separator or prefix.strip() != file_id or not label.strip():
+            if not separator or not label.strip():
                 raise TextParseError("CAL text page file-info label is malformed")
-            return TextRef(
+            cal_file_sub: tuple[str, str] | None = None
+            if prefix.strip() != file_id:
+                if submitted_sub is not None or not _is_linked_file_sub_split(
+                    lines, file_id, prefix.strip()
+                ):
+                    raise TextParseError("CAL text page file-info label is malformed")
+                cal_file_sub = (prefix.strip(), file_id.removeprefix(prefix.strip()))
+            text_ref = TextRef(
                 file_id=file_id,
                 subtext_id=requested_subtext_id,
                 label=label.strip(),
             )
+            return text_ref, cal_file_sub
     raise TextParseError("CAL text page is missing its file-information link")
+
+
+def _is_linked_file_sub_split(lines: list[_Line], file_id: str, label_prefix: str) -> bool:
+    # CAL lists some Syriac texts under a six-digit id that is its file plus subtext
+    # (634081 = file 63408, sub 1). The file-info label then shows only the file. The split
+    # is accepted only when the page's own text links name exactly that file and sub (R-046).
+    sub = file_id.removeprefix(label_prefix)
+    if (
+        not label_prefix.isascii()
+        or not label_prefix.isdecimal()
+        or not file_id.startswith(label_prefix)
+        or not sub
+        or not sub.isdecimal()
+    ):
+        return False
+    linked: set[tuple[str, str]] = set()
+    for line in lines:
+        for link in line.links:
+            if not _is_path(link.href, "get_a_chapter.php"):
+                continue
+            query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+            files = query.get("file", [])
+            subs = query.get("sub", [])
+            if len(files) != 1 or len(subs) > 1:
+                return False
+            linked.add((files[0], subs[0] if subs else ""))
+    named = {pair for pair in linked if pair[1]}
+    return named == {(label_prefix, sub)}
 
 
 def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:

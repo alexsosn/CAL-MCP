@@ -327,6 +327,19 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-046 — Six-digit Syriac text ids are CAL file plus subtext
+
+**Rechecked:** 2026-09-29, with four bounded GETs; issue #186.
+
+`get_a_chapter.php?file=634081` (listed by the Syriac catalogue) renders file-info `coord=634081` with the label `63408: Tamar and Judah`, and its own links use `file=63408&sub=1`. The group `showsubtexts.php?keyword=63408` lists subtexts `sub=1` and `sub=2` with info coords `634081` and `634082`. Detailed evidence: `docs/research/issue-186-six-digit-syriac-id.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_chapter.php?file=634081&page=0
+- https://cal.huc.edu/showsubtexts.php?keyword=63408
+
+**Implication:** a label prefix that is the requested id minus a trailing sub is accepted only when the page's own links name that file and sub; any other label fails closed.
+
 ## R-045 — Text concordances contain CAL's "no data found" rows with non-canonical keys
 
 **Rechecked:** 2026-09-29.
@@ -340,8 +353,6 @@ Source:
 The same page has ordinary proper-noun rows whose keys use undocumented capitals (`bwlbrK PN`, `$lMn) PN`). CAL's own `showKWIC.php` link finds their hit, but the `showdialectKWIC.php` form used by `cal_kwic_texts` drops the capital and reports 0 examples (four bounded requests, 2026-09-29).
 
 **Implication:** "no data found" rows are kept with `cal_reports_no_data: true`, and `lemma_key` is null when CAL's key is invalid. Capital-letter keys are kept verbatim in concordance rows, but the KWIC tools reject them as input and point to the row's `kwic_url`. Other rows keep the strict key check.
-
-
 
 
 ## R-044 — Biblical verse headings use CAL's own book labels
