@@ -48,6 +48,8 @@ Haggai, Zechariah, Malachi, Psalms, Job, Song of Songs, Ruth,
 Qoheleth, Lamentations, Proverbs, 1 Chronicles, 2 Chronicles, Esther
 ```
 
+CAL heads the returned MT/Targum verse with its own book abbreviation (for example `Ps 23:1`, `Sam1 1:1`, `Chron1 1:1`). CAL-MCP accepts the page only when that heading names the requested chapter and verse with CAL's recorded label for the requested book (or the exact selector label), so a page for another book or verse fails closed. The result's `book` is always the selector label you passed.
+
 `chapter` and `verse` are positive integers bounded at 999. Invalid public values fail before transport.
 
 `include_peshitta` and `include_samaritan` request CAL's optional comparison sources. They do **not** promise that a reading exists for the requested verse. In particular, CAL's Samaritan coverage is conditional; absence remains absence and CAL-MCP never manufactures an empty source row to make the result look uniform.

@@ -327,18 +327,6 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-043 — Dialect KWIC can omit the requested form and list only other forms
-
-**Rechecked:** 2026-09-25.
-
-`show1dialectKWIC.php` for `n)qh N` in dialect 71 lists `n)qt) N` (1 example) and `nqh N` (0), with no summary for `n)qh N`; in dialects 6, 51, 53 and 3 the requested form is listed. Detailed evidence: `docs/research/issue-176-kwic-omitted-form.md`.
-
-Source:
-
-- https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71
-
-**Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
-
 ## R-045 — Text concordances contain CAL's "no data found" rows with non-canonical keys
 
 **Rechecked:** 2026-09-29.
@@ -352,6 +340,34 @@ Source:
 The same page has ordinary proper-noun rows whose keys use undocumented capitals (`bwlbrK PN`, `$lMn) PN`). CAL's own `showKWIC.php` link finds their hit, but the `showdialectKWIC.php` form used by `cal_kwic_texts` drops the capital and reports 0 examples (four bounded requests, 2026-09-29).
 
 **Implication:** "no data found" rows are kept with `cal_reports_no_data: true`, and `lemma_key` is null when CAL's key is invalid. Capital-letter keys are kept verbatim in concordance rows, but the KWIC tools reject them as input and point to the row's `kwic_url`. Other rows keep the strict key check.
+
+
+
+
+## R-044 — Biblical verse headings use CAL's own book labels
+
+**Rechecked:** 2026-09-29.
+
+`showpesh.php` and `showtargum.php` head the verse with CAL's own book abbreviations: Gen, Lev, Num, Sam1, Kings1, Jer, Ezek, Obad, Zech, Mal, Ps, Song, Lam, Prov, Chron1, Chron2 and so on. All 36 were recorded. The adapter's 2-digit coordinates (as in CAL's own links) return the right verse. A 3-digit chapter, which the adapter never sends, shifts CAL's coordinate into another book: `chapter=001` for Genesis returns 1 Kings 1:1. Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
+
+Sources:
+
+- https://cal.huc.edu/showpesh.php (POST `bookname=27`, `chapter=23`, `verse=01`)
+- https://cal.huc.edu/showtargum.php (POST `bookname=01`, `chapter=01`, `verse=01`)
+
+**Implication:** the heading must name the requested chapter:verse with CAL's reviewed label for the requested book (or the exact selector label); any other label fails closed. The 2-digit request format is pinned.
+
+## R-043 — Dialect KWIC can omit the requested form and list only other forms
+
+**Rechecked:** 2026-09-25.
+
+`show1dialectKWIC.php` for `n)qh N` in dialect 71 lists `n)qt) N` (1 example) and `nqh N` (0), with no summary for `n)qh N`; in dialects 6, 51, 53 and 3 the requested form is listed. Detailed evidence: `docs/research/issue-176-kwic-omitted-form.md`.
+
+Source:
+
+- https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71
+
+**Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
 
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 

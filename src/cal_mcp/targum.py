@@ -7,7 +7,10 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.biblical import cal_biblical_book_id
+from cal_mcp.biblical import (
+    cal_biblical_book_id,
+    cal_biblical_heading_matches,
+)
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.concordance import _validate_lemma_key
 from cal_mcp.errors import CalInputError, CalParseError
@@ -546,11 +549,12 @@ def parse_targum_parallel_page(
     if parser._block is not None or parser._heading_parts is not None:
         raise TargumParseError("CAL parallel Targum page contains incomplete semantic markup")
 
-    expected_heading = f"{_PARALLEL_HEADING_PREFIX}{book} {chapter}:{verse}"
     headings = [
         heading for heading in parser.headings if heading.startswith(_PARALLEL_HEADING_PREFIX)
     ]
-    if headings != [expected_heading]:
+    if len(headings) != 1 or not cal_biblical_heading_matches(
+        headings[0][len(_PARALLEL_HEADING_PREFIX) :], book=book, chapter=chapter, verse=verse
+    ):
         raise TargumParseError("CAL parallel Targum heading does not match the requested verse")
 
     page_text = _clean_text(" ".join(parser.all_parts))
