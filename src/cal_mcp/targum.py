@@ -924,6 +924,10 @@ def _validate_positive_int(value: int, name: str) -> int:
     return value
 
 
+def _format_coordinate_number(value: int) -> str:
+    return f"{value:02d}" if value < 100 else str(value)
+
+
 def _validate_initial(initial: str) -> str:
     if not isinstance(initial, str) or initial not in _INITIALS:
         raise CalInputError("initial must be one current CAL MT lemma selector slug")
@@ -1180,7 +1184,3 @@ def _provenance_to_dict(provenance: TargumProvenance) -> dict[str, object]:
         "initial": provenance.initial,
         "mt_lemma_id": provenance.mt_lemma_id,
     }
-
-
-def _format_coordinate_number(value: int) -> str:
-    return f"{value:02d}" if value < 100 else str(value)

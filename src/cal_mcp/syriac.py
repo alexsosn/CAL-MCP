@@ -907,6 +907,10 @@ def _validate_positive_int(value: int, name: str) -> int:
     return value
 
 
+def _format_coordinate_number(value: int) -> str:
+    return f"{value:02d}" if value < 100 else str(value)
+
+
 def _validate_category_response_url(source_url: str, config: _TextCategoryConfig) -> None:
     _require_response_path(source_url, config.path, "Syriac text category")
     if config.upstream_category is None:
@@ -1034,7 +1038,3 @@ def _provenance_to_dict(provenance: SyriacProvenance) -> dict[str, object]:
         "chapter": provenance.chapter,
         "verse": provenance.verse,
     }
-
-
-def _format_coordinate_number(value: int) -> str:
-    return f"{value:02d}" if value < 100 else str(value)

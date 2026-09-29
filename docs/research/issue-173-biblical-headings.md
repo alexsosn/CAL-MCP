@@ -2,15 +2,21 @@
 
 Date: 2026-09-29 (captures 2026-09-25). Base: `3c788e0`.
 
+## Final finding (read this first)
+
+- CAL's verse headings use CAL's own book labels (`Ps`, `Kings1`, `Chron2`, …), not the selector labels. That is the whole defect behind the `parser_drift` error. The fix checks the label against a reviewed table of all 36 labels.
+- The tool's own requests use CAL's 2-digit coordinate format and always returned the right verse.
+- The "Live-current evidence" and "Correction" sections below come from **3-digit research requests**, not the tool's format. Their claims that CAL's label is "sometimes wrong or empty", that "the verses themselves are right", that "CAL's handling changed around 2026-09-25", and that the adapter "silently returns the wrong verse" are **retracted**; see "Second correction". The 3-digit pages also carry CAL's own `pesh coord error` marker, which `_COORDINATE_ERROR_RE` does not match, so they would fail as incomplete pages in any case.
+
 ## Trigger
 
 The 2026-09-25 user-level MCP end-to-end run (#15) found that `cal_syriac_peshitta_parallel(book="Psalms", chapter=23, verse=1)` fails with `parser_drift` "CAL Peshitta heading does not match the requested verse". Genesis 1:1 worked in the first run, on 2026-09-24.
 
-## Live-current evidence
+## Live-current evidence (superseded: 3-digit research requests)
 
 Twenty-two bounded POSTs through the production `CalHttpClient` (project User-Agent, sequential), one verse each on `showpesh.php` and `showtargum.php`, for 11 books: Gen, 1 Sam, Hab., Psalms, Job, Song of Songs, Qoheleth, Lamentations, Proverbs, 1 Chronicles and Esther.
 
-| Book (selector label, id) | Peshitta heading | Targum heading |
+| Book (selector label, id) | Peshitta heading (3-digit research request) | Targum heading (3-digit research request) |
 | --- | --- | --- |
 | Gen (01) | `MT and Peshitta for Kings1 1:1` | `MT and targums for Kings1 1:1` |
 | 1 Sam (08) | `MT and Peshitta for  1:1` (empty label) | `MT and targums for  1:1` |
@@ -46,7 +52,7 @@ Each page carries verse navigation with CAL's numeric book id:
 - The result keeps reporting the requested selector label as `book`, with CAL's book id.
 - The public schema and request counts are unchanged. The verse-label leak into `mt_text` is #155.
 
-## Correction (2026-09-29): zero-padded chapters make CAL return the wrong verse
+## Correction (2026-09-29, superseded by the second correction): zero-padded chapters make CAL return the wrong verse
 
 The first reading above was wrong. The "Kings1" page captured for a Genesis 1:1 request is **1 Kings 1:1**: its MT is וְהַמֶּלֶךְ דָּוִד זָקֵן. So CAL's heading was correct, and the navigation link only echoes the submitted book id. Trusting that echo would have silently served 1 Kings as Genesis.
 

@@ -84,7 +84,7 @@ _CAL_HEADING_LABELS = {
     "2 Chronicles": "Chron2",
     "Esther": "Esther",
 }
-_HEADING_VERSE_RE = re.compile(r"(?P<label>\S+) (?P<chapter>\d+):(?P<verse>\d+)")
+_HEADING_VERSE_RE = re.compile(r"(?P<label>.+) (?P<chapter>[0-9]+):(?P<verse>[0-9]+)")
 
 
 def cal_biblical_book_id(book: str) -> str:
