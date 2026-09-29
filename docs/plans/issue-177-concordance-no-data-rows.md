@@ -13,3 +13,8 @@ Date: 2026-09-29. Research: `docs/research/issue-177-concordance-no-data-rows.md
 4. Docs: `docs/tools/concordance.md`, `research.md` R-045, fixture README, CHANGELOG.
 5. Verification: the full suite; offline on the full capture (985 rows); live over MCP for 41201 and 13250.
 6. Independent adversarial review of the exact candidate SHA.
+
+## Revision (2026-09-29, during GREEN)
+
+- Rows get an explicit `cal_reports_no_data` boolean from CAL's marker. The marker must equal `no data found for <row label>` after whitespace collapsing; a marker naming another label fails closed.
+- Parsing the full capture found capital-letter keys on normal rows (`bwlbrK PN`). They are accepted verbatim in concordance rows and rejected as KWIC input with guidance; see the research note's "Second finding".

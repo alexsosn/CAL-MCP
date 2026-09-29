@@ -32,3 +32,26 @@ These are CAL's rows for tokens that are lemmatized to a key with no lexicon ent
   - Otherwise it is `null`. This is an additive nullability in the row schema, used only for such rows. CAL-MCP does not repair CAL's key.
 - Every other row keeps the strict canonical-key check.
 - Request counts are unchanged.
+
+## Answers to the issue's research questions
+
+- **How `+` is encoded:** CAL writes a literal `+` in the query string (`lemma=+snqlyTws+N`). Under standard form decoding, which is also what CAL's own PHP applies, `+` is a space, so the key CAL links is `' snqlyTws N'`. The `+` inside the *label* (`snqly+ws`) is CAL's display for the key's `T` (ṭ). It is not a loanword marker in the key. CAL-MCP does not guess a "true" key; CAL itself says it has no data for this lemma.
+- **Round-trip:** a row whose key is not valid has `lemma_key: null`, so there is nothing to pass to `cal_lexicon_lookup` or `cal_kwic_texts`. The row's `kwic_url` is still CAL's own link.
+
+## Second finding (2026-09-29): capital letters in real keys
+
+Parsing the whole capture after the no-data fix found four ordinary proper-noun rows whose keys use ASCII capitals that are not documented `cal_code` letters: `bwlbrK PN`, `bryK PN`, `prnK PN` and `$lMn) PN`, each with frequency 1 and gloss `proper noun`. No other captured key in the scratch captures has characters outside `cal_code` apart from homograph digits.
+
+Bounded live checks, three requests:
+
+| Request | Result |
+| --- | --- |
+| `GET showKWIC.php?lemma=bwlbrK+PN&charset=S&texts=41201` (the row's own `kwic_url`) | `Looking for bwlbrK PN in file 41201`, 1 example (`412012251002`, `b[wlbr]`) |
+| `GET showKWIC.php?lemma=%24lMn%29+PN&charset=S&texts=41201` | 1 example (`412015351002`, `šlm|nʾ`) |
+| `POST showdialectKWIC.php` `lemma=bwlbrK`, `pos=PN`, `texts=41201` (the `cal_kwic_texts` request) | `Looking for bwlbr PN in dialect 41201`, `total examples: 0` |
+| same with `lemma=bwlbr` | same heading, 0 examples |
+
+So these are real CAL keys with real hits. CAL's KWIC-by-text form drops the capital, echoes a different key, and finds nothing. Consequences:
+
+- Concordance rows keep such keys verbatim. The capitals are exempted from the alphabet check only for keys CAL itself returns in concordance rows; the rest of the key is still validated.
+- The KWIC tools reject such keys as **input** with `invalid_input` and a message pointing to the row's `kwic_url`. Sending the request would get a mismatched heading (`parser_drift`) or, if relaxed, a false "0 examples".

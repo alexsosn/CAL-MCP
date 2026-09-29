@@ -28,10 +28,13 @@ This is CAL's **one-text lemma-frequency index**. It is not itself a KWIC hit li
 The result preserves CAL's ordered rows with:
 
 - `frequency`;
-- canonical `lemma_key`, taken from the validated CAL KWIC link;
+- canonical `lemma_key`, taken from the validated CAL KWIC link, or `null` on a row CAL marks as having no data when CAL's link key is not a valid key;
 - `label`, the lemma text CAL displays for the row (currently a headword/POS label such as `ˀb, ˀbˀ n.m.`, or the key itself for some rows such as proper nouns). It is presentation text, and CAL-MCP does not derive or check it against the key;
 - rendered `gloss`;
-- the CAL `kwic_url` exposed by that row.
+- the CAL `kwic_url` exposed by that row;
+- `cal_reports_no_data`: `true` when CAL's gloss is its own `no data found for <label>` marker. CAL lists these rows (for example 6 rows in Palmyrene text 41201) but has no lexical data for them. CAL-MCP keeps them in CAL's order and does not repair their keys.
+
+Some CAL keys use capital letters that are not documented CAL code letters (for example the Palmyrene proper noun `bwlbrK PN`). Concordance rows return them verbatim. CAL's KWIC-by-text form drops such letters and finds nothing, so `cal_kwic_texts` and `cal_kwic_dialect` reject these keys as `invalid_input`. Open the row's `kwic_url`, which is CAL's own working link, instead.
 
 `script` accepts:
 
