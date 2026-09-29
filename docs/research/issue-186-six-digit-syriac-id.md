@@ -32,3 +32,9 @@ Row coordinates on the 634081 page are `634081001`, `634081002`, … (file `6340
 - The returned `text.file_id` stays the requested `634081`; CAL-MCP does not renumber.
 - Any other label prefix still fails closed as `parser_drift`, and so does a matching prefix without corroborating links.
 - Production requests are unchanged.
+
+## Review follow-up (2026-09-29)
+
+- Every row coordinate on such a page must start with the requested id (`634081…`), because identity is accepted from indirect evidence.
+- A `get_a_chapter.php` link with repeated `file` or `sub` values disqualifies the split.
+- Known limit: the corroboration relies on CAL's previous/next/"show all" links, which carry the non-empty `sub`. A split id whose text has a single page and so has no such links would fail closed as `parser_drift`. Both known ids have several pages (9 and 4).

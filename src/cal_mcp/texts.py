@@ -832,6 +832,10 @@ def _parse_text_page(
         if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
         else None
     )
+    if cal_file_sub is not None:
+        # A split six-digit id is accepted from indirect evidence, so every row must also
+        # carry the requested id as its coordinate prefix (R-046).
+        expected_coordinate_prefix = requested_file_id
     table = _parse_text_table(response)
     if table.found:
         lexical_rows = tuple(_row_has_lexical_link(row) for row in table.rows)
@@ -1445,9 +1449,10 @@ def _is_linked_file_sub_split(lines: list[_Line], file_id: str, label_prefix: st
                 continue
             query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
             files = query.get("file", [])
-            subs = [value for value in query.get("sub", []) if value]
-            if len(files) == 1 and len(subs) <= 1:
-                linked.add((files[0], subs[0] if subs else ""))
+            subs = query.get("sub", [])
+            if len(files) != 1 or len(subs) > 1:
+                return False
+            linked.add((files[0], subs[0] if subs else ""))
     named = {pair for pair in linked if pair[1]}
     return named == {(label_prefix, sub)}
 
