@@ -327,6 +327,18 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-048 — Citation search wraps results in rows; one row can hold a headerless citation
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #178.
+
+`searchcits.php` wraps each result in `<div class="citation-row …">`, holding one `oneentry.php` header with an explicit `<pos>` element, one context and one citation. CAL repeats the header per sense. For `king`, 1067 of 1068 rows have that shape. One row (`brt ym`) carries a second (context, citation) pair with no header, and that pair belongs to another lemma. Eleven headers have POS forms such as `n.(pr.)` that the earlier heuristic header split cannot parse. Detailed evidence: `docs/research/issue-178-headerless-citation.md`.
+
+Source:
+
+- POST https://cal.huc.edu/searchcits.php (`English=king`, `English=camel`)
+
+**Implication:** results are parsed per row container, and the POS is taken from `<pos>`. A headerless pair is returned with `lemma: null`, never attributed to the row's header.
+
 ## R-046 — Six-digit Syriac text ids are CAL file plus subtext
 
 **Rechecked:** 2026-09-29, with four bounded GETs; issue #186.
