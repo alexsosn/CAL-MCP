@@ -83,3 +83,21 @@ All 36 labels are distinct. The Targum route used the same labels in all 11 samp
 - The heading is the page's identity. It must name the requested `chapter:verse`, and its book label must be CAL's heading label for the requested book (a reviewed static table) or the exact selector label (the earlier layout). Any other label, including an empty one, fails closed, so a shifted coordinate can never be served as the requested verse.
 - The verse-navigation links are only an echo of the request. They are not used as identity evidence.
 - The public schema, request counts and routes are unchanged.
+
+## Second correction (2026-09-29): the tool's own requests were never affected
+
+The "Correction" above tested 3-digit chapters (`chapter=001`), which was the format of the research requests. The adapter itself sends CAL's **2-digit** format (`f"{value:02d}"` below 100, for example `bookname=01`, `chapter=01`, `verse=01`), and that matches CAL's own navigation links (`chapter=01`, `verse=01`). Four more bounded POSTs in exactly the tool's format return the right verse:
+
+| POST (tool format) | Heading | MT |
+| --- | --- | --- |
+| `01`, `01`, `01` (Peshitta and Targum) | `Gen 1:1` | Genesis 1:1 |
+| `08`, `01`, `01` | `Sam1 1:1` | 1 Samuel 1:1 |
+| `27`, `23`, `01` | `Ps 23:1` | Psalms 23:1 |
+
+So `cal_targum_parallel` and `cal_syriac_peshitta_parallel` never returned the wrong verse. The only defect is the one reported: CAL's heading uses its own book labels. The 3-digit behaviour is recorded as a CAL property: a 3-digit chapter shifts CAL's coordinate into another book. The request format therefore must not change, and a test pins it.
+
+### Final consequences
+
+- Request coordinates are unchanged: CAL's 2-digit format, pinned by tests.
+- The heading must be the page's only verse heading. It must name the requested `chapter:verse` with CAL's heading label for the requested book (from the reviewed table of all 36 labels above), or with the exact selector label (the earlier layout). Any other label, including an empty one, fails closed, so a page for another book is never returned as the requested verse. The fixtures from the 3-digit requests (1 Kings for Genesis; an empty label) pin exactly that.
+- The navigation links are not used as identity evidence, because they echo the request.

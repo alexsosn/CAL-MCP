@@ -327,18 +327,18 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-044 — Zero-padded chapters now make CAL's verse comparison return another verse
+## R-044 — Biblical verse headings use CAL's own book labels
 
 **Rechecked:** 2026-09-29.
 
-`showpesh.php` and `showtargum.php` misread a zero-padded 3-digit chapter for most books. `bookname=1`, `chapter=001`, `verse=001` returns 1 Kings 1:1, headed "Kings1 1:1", instead of Genesis. Unpadded decimals return the right verse for all 36 books. Headings name the verse with CAL's own book abbreviations (Gen, Lev, Sam1, Kings1, Ps, Song, Chron1, …). Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
+`showpesh.php` and `showtargum.php` head the verse with CAL's own book abbreviations: Gen, Lev, Num, Sam1, Kings1, Jer, Ezek, Obad, Zech, Mal, Ps, Song, Lam, Prov, Chron1, Chron2 and so on. All 36 were recorded. The adapter's 2-digit coordinates (as in CAL's own links) return the right verse. A 3-digit chapter, which the adapter never sends, shifts CAL's coordinate into another book: `chapter=001` for Genesis returns 1 Kings 1:1. Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
 
 Sources:
 
-- https://cal.huc.edu/showpesh.php (POST `bookname=1`, `chapter=001`, `verse=001` compared with `chapter=1`, `verse=1`)
-- https://cal.huc.edu/showtargum.php (POST `bookname=12`, `chapter=40`, `verse=3`)
+- https://cal.huc.edu/showpesh.php (POST `bookname=27`, `chapter=23`, `verse=01`)
+- https://cal.huc.edu/showtargum.php (POST `bookname=01`, `chapter=01`, `verse=01`)
 
-**Implication:** chapter and verse are submitted unpadded, and the heading's book label must be CAL's reviewed label for the requested book (or the exact selector label), so a shifted coordinate fails closed instead of being served as the requested verse.
+**Implication:** the heading must name the requested chapter:verse with CAL's reviewed label for the requested book (or the exact selector label); any other label fails closed. The 2-digit request format is pinned.
 
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 

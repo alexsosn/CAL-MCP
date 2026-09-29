@@ -17,3 +17,7 @@ Date: 2026-09-29. Research: `docs/research/issue-173-biblical-headings.md`, comm
 1. RED (new commit): the request sends unpadded chapter and verse; Ps 23:1 is found on both routes. The captured "Kings1" page for a Genesis request must **fail closed**, because it is 1 Kings. An empty label fails closed. The earlier-layout fixtures (label equal to the selector label) stay valid.
 2. GREEN: `_format_coordinate_number` is replaced by unpadded decimals in both services. The heading book label is checked against a reviewed `_CAL_HEADING_LABELS` table in `biblical.py`.
 3. Verification: live over MCP for all 36 books on both tools (verse 1:1), plus Ps 119:150, Isaiah 40:3 and Gen 50:26.
+
+## Final plan (2026-09-29, after the second correction)
+
+The request format stays CAL's 2-digit format, pinned by tests. GREEN is a reviewed `_CAL_HEADING_LABELS` table in `biblical.py` and a shared `cal_biblical_heading_matches` used by both parsers. Live verification covers all 36 books on both tools.
