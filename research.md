@@ -339,6 +339,18 @@ Source:
 
 **Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
 
+## R-045 — Text concordances contain CAL's "no data found" rows with non-canonical keys
+
+**Rechecked:** 2026-09-29.
+
+`newconcord.php` for text 41201 has six rows glossed "no data found for …". Their KWIC keys can be invalid, for example `+snqlyTws+N` (a leading space) or `qrb ` (no suffix). Detailed evidence: `docs/research/issue-177-concordance-no-data-rows.md`.
+
+Source:
+
+- https://cal.huc.edu/newconcord.php?text=41201&cset=S
+
+**Implication:** such rows are kept, with `lemma_key` null when CAL's key is invalid; other rows keep the strict key check.
+
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 
 **Rechecked:** 2026-09-28 against current CAL; issue #185.
