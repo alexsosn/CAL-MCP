@@ -1,4 +1,4 @@
-"""Issue #173: CAL's own book labels in verse headings, and unpadded coordinates.
+"""Issue #173: CAL's own book labels in Peshitta and Targum verse headings.
 
 See docs/research/issue-173-biblical-headings.md (including its 2026-09-29 correction).
 """
@@ -17,6 +17,7 @@ from cal_mcp.targum import TargumParallelResult, TargumParseError, TargumService
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 PESH_PS = FIXTURES / "syriac_peshitta_ps_23_1_current.html"
 PESH_KINGS = FIXTURES / "syriac_peshitta_padded_gen_is_1kings_current.html"
+PESH_1KINGS = FIXTURES / "syriac_peshitta_1kings_1_1_current.html"
 PESH_EMPTY_LABEL = FIXTURES / "syriac_peshitta_padded_1sam_empty_label_current.html"
 TG_PS = FIXTURES / "targum_parallel_ps_23_1_current.html"
 
@@ -62,35 +63,36 @@ async def _targum(
 
 
 @pytest.mark.anyio
-async def test_peshitta_request_sends_unpadded_chapter_and_verse() -> None:
-    # A zero-padded chapter makes CAL return another verse (research correction).
+async def test_peshitta_request_keeps_cal_two_digit_coordinates() -> None:
+    # CAL's own links use two-digit chapters/verses; a three-digit chapter makes CAL
+    # return another verse (research correction), so the format must not change.
     result, recorder = await _pesh(PESH_PS.read_bytes(), "Psalms", 23, 1)
     assert result.status.value == "found"
     assert result.book == "Psalms"
     data = dict(recorder.requests[0].data)
-    assert (data["chapter"], data["verse"]) == ("23", "1")
+    assert (data["chapter"], data["verse"]) == ("23", "01")
 
 
 @pytest.mark.anyio
-async def test_targum_request_sends_unpadded_chapter_and_verse() -> None:
+async def test_targum_request_keeps_cal_two_digit_coordinates() -> None:
     result, recorder = await _targum(TG_PS.read_bytes(), "Psalms", 23, 1)
     assert result.status.value == "found"
     assert result.readings
     data = dict(recorder.requests[0].data)
-    assert (data["chapter"], data["verse"]) == ("23", "1")
+    assert (data["chapter"], data["verse"]) == ("23", "01")
 
 
 @pytest.mark.anyio
 async def test_page_for_another_book_than_requested_fails_closed() -> None:
-    # CAL answered a padded Genesis request with 1 Kings 1:1 ("Kings1 1:1"); that page
-    # must never be returned as Genesis.
+    # CAL answers a three-digit-chapter Genesis request with 1 Kings 1:1 ("Kings1 1:1");
+    # a page for another book must never be returned as the requested one.
     with pytest.raises(SyriacParseError, match="heading"):
         await _pesh(PESH_KINGS.read_bytes(), "Gen", 1, 1)
 
 
 @pytest.mark.anyio
 async def test_cal_heading_label_identifies_its_own_book() -> None:
-    result, _ = await _pesh(PESH_KINGS.read_bytes(), "1 Kings", 1, 1)
+    result, _ = await _pesh(PESH_1KINGS.read_bytes(), "1 Kings", 1, 1)
     assert result.status.value == "found"
     assert result.book == "1 Kings"
 
