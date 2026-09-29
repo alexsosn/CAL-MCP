@@ -1,0 +1,134 @@
+name: Issue 196 bounded CPA 55002 research
+
+on:
+  push:
+    branches:
+      - research/issue-196-empty-cpa-55002
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Probe current catalogue, metadata and page variants
+        run: |
+          python - <<'PY'
+          import json
+          import urllib.request
+          from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlsplit
+
+          UA = {"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
+          URLS = {
+              "catalogue": "https://cal.huc.edu/showsubtexts.php?subtext=55",
+              "page-default": "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C",
+              "page-0": "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=0",
+              "page-1": "https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=1",
+              "info": "https://cal.huc.edu/get_file_info.php?coord=55002",
+          }
+
+          def get(url):
+              req = urllib.request.Request(url, headers=UA)
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  body = response.read(524289)
+                  if len(body) > 524288:
+                      raise RuntimeError("response exceeded 512 KiB")
+                  return response.status, response.geturl(), body.decode("utf-8", "replace")
+
+          class Probe(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.in_text = False
+                  self.text_nonempty = 0
+                  self.text_chars = 0
+                  self.text_links = []
+                  self.links = []
+                  self.visible = []
+                  self.open_link = None
+              def handle_starttag(self, tag, attrs):
+                  d = dict(attrs)
+                  if tag == "table":
+                      if self.in_text:
+                          self.in_text = False
+                      elif "text-display" in (d.get("class") or "").split():
+                          self.in_text = True
+                  if tag == "a":
+                      href = d.get("href") or ""
+                      self.open_link = [href, []]
+                      if self.in_text:
+                          self.text_links.append(href)
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.open_link is not None:
+                      href, parts = self.open_link
+                      label = " ".join("".join(parts).split())
+                      self.links.append((href, label))
+                      self.open_link = None
+              def handle_data(self, data):
+                  text = " ".join(data.split())
+                  if not text:
+                      return
+                  if self.open_link is not None:
+                      self.open_link[1].append(text)
+                  if self.in_text:
+                      self.text_nonempty += 1
+                      self.text_chars += len(text)
+                  elif len(self.visible) < 80:
+                      self.visible.append(text)
+
+          output = {}
+          for name, url in URLS.items():
+              status, final, body = get(url)
+              p = Probe(); p.feed(body); p.close()
+              file_links = []
+              if name == "catalogue":
+                  for href, label in p.links:
+                      u = urlsplit(href)
+                      q = parse_qs(u.query, keep_blank_values=True)
+                      if (q.get("file") or [None])[0] == "55002":
+                          file_links.append({
+                              "path": u.path.rsplit("/", 1)[-1],
+                              "keys": sorted(q),
+                              "values": {k: q[k] for k in sorted(q)},
+                              "label": label[:120],
+                          })
+              nav = []
+              for href, label in p.links:
+                  low = label.lower()
+                  if "previous page" in low or "next page" in low or "show all" in low:
+                      u = urlsplit(href)
+                      q = parse_qs(u.query, keep_blank_values=True)
+                      nav.append({
+                          "label": label[:60],
+                          "path": u.path.rsplit("/", 1)[-1],
+                          "keys": sorted(q),
+                          "values": {k: q[k] for k in sorted(q)},
+                      })
+              markers = [
+                  text[:160]
+                  for text in p.visible
+                  if (
+                      "NO LINES" in text.upper()
+                      or "NOT AVAILABLE" in text.upper()
+                      or "NO INFORMATION" in text.upper()
+                      or "Page " in text
+                      or "Text Information" in text
+                  )
+              ]
+              output[name] = {
+                  "status": status,
+                  "final_path": urlsplit(final).path.rsplit("/", 1)[-1],
+                  "text_nonempty_nodes": p.text_nonempty,
+                  "text_chars": p.text_chars,
+                  "text_link_count": len(p.text_links),
+                  "file_links": file_links,
+                  "navigation": nav,
+                  "markers": markers[:20],
+              }
+          print(json.dumps(output, ensure_ascii=False, sort_keys=True))
+          PY
