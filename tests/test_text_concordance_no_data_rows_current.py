@@ -6,6 +6,7 @@ from urllib.parse import urlencode
 
 import pytest
 
+from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalResponse
 from cal_mcp.concordance import (
     ConcordanceParseError,
@@ -14,7 +15,6 @@ from cal_mcp.concordance import (
     TextConcordanceResult,
     parse_text_concordance_page,
 )
-from cal_mcp.bibliography import BibliographyService
 from cal_mcp.errors import CalInputError
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
@@ -168,12 +168,12 @@ async def test_non_kwic_tools_reject_capital_keys_without_kwic_guidance() -> Non
 
 def test_table_layout_no_data_row_is_kept_with_null_key() -> None:
     body = (
-        "<html><body><div>Frequencies of lemmas in text 41201</div><table>"
-        '<tr><td>1:</td><td><a href="/showKWIC.php?lemma=qrb+&charset=S&texts=41201">qrb </a>'
-        "</td><td>: no data found for qrb </td></tr>"
-        '<tr><td>20:</td><td><a href="/showKWIC.php?lemma=%29b+N&charset=S&texts=41201">)b N</a>'
-        "</td><td>: father</td></tr></table></body></html>"
-    ).encode()
+        b"<html><body><div>Frequencies of lemmas in text 41201</div><table>"
+        b'<tr><td>1:</td><td><a href="/showKWIC.php?lemma=qrb+&charset=S&texts=41201">qrb </a>'
+        b"</td><td>: no data found for qrb </td></tr>"
+        b'<tr><td>20:</td><td><a href="/showKWIC.php?lemma=%29b+N&charset=S&texts=41201">)b N</a>'
+        b"</td><td>: father</td></tr></table></body></html>"
+    )
 
     page = _parse(body)
 

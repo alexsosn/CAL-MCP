@@ -349,7 +349,7 @@ Source:
 
 - https://cal.huc.edu/newconcord.php?text=41201&cset=S
 
-The same page has ordinary proper-noun rows whose keys use undocumented capitals (`bwlbrK PN`, `$lMn) PN`). CAL's own `showKWIC.php` link finds their hit, but the `showdialectKWIC.php` form used by `cal_kwic_texts` drops the capital and reports 0 examples (three bounded requests, 2026-09-29).
+The same page has ordinary proper-noun rows whose keys use undocumented capitals (`bwlbrK PN`, `$lMn) PN`). CAL's own `showKWIC.php` link finds their hit, but the `showdialectKWIC.php` form used by `cal_kwic_texts` drops the capital and reports 0 examples (four bounded requests, 2026-09-29).
 
 **Implication:** "no data found" rows are kept with `cal_reports_no_data: true`, and `lemma_key` is null when CAL's key is invalid. Capital-letter keys are kept verbatim in concordance rows, but the KWIC tools reject them as input and point to the row's `kwic_url`. Other rows keep the strict key check.
 

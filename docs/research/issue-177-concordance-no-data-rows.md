@@ -4,11 +4,11 @@ Date: 2026-09-29 (capture 2026-09-25). Base: `2761efe`.
 
 ## Trigger
 
-The 2026-09-25 user-level MCP end-to-end run (#15) found that `cal_text_concordance("41201")` (Palmyrene) fails with `parser_drift` "CAL concordance row lemma key is not canonical". One malformed row costs the user the whole 985-lemma concordance.
+The 2026-09-25 user-level MCP end-to-end run (#15) found that `cal_text_concordance("41201")` (Palmyrene) fails with `parser_drift` "CAL concordance row lemma key is not canonical". One malformed row costs the user the whole 986-lemma concordance.
 
 ## Live-current evidence
 
-The end-to-end capture of `newconcord.php` for text 41201 (99 KB, 985 rows) contains six rows whose gloss is CAL's own "no data found for …" marker:
+The end-to-end capture of `newconcord.php` for text 41201 (99 KB, 986 rows) contains six rows whose gloss is CAL's own "no data found for …" marker:
 
 | Freq. | Decoded KWIC `lemma` | Link label | Gloss |
 | --- | --- | --- | --- |
@@ -42,7 +42,7 @@ These are CAL's rows for tokens that are lemmatized to a key with no lexicon ent
 
 Parsing the whole capture after the no-data fix found four ordinary proper-noun rows whose keys use ASCII capitals that are not documented `cal_code` letters: `bwlbrK PN`, `bryK PN`, `prnK PN` and `$lMn) PN`, each with frequency 1 and gloss `proper noun`. No other captured key in the scratch captures has characters outside `cal_code` apart from homograph digits.
 
-Bounded live checks, three requests:
+Bounded live checks, four requests:
 
 | Request | Result |
 | --- | --- |
@@ -53,5 +53,5 @@ Bounded live checks, three requests:
 
 So these are real CAL keys with real hits. CAL's KWIC-by-text form drops the capital, echoes a different key, and finds nothing. Consequences:
 
-- Concordance rows keep such keys verbatim. The capitals are exempted from the alphabet check only for keys CAL itself returns in concordance rows; the rest of the key is still validated.
+- Concordance rows keep such keys verbatim. Only the observed capitals `K` and `M` are exempted from the alphabet check, and only for keys CAL itself returns in concordance rows; the rest of the key is still validated, so all-capital or other-capital keys still fail closed.
 - The KWIC tools reject such keys as **input** with `invalid_input` and a message pointing to the row's `kwic_url`. Sending the request would get a mismatched heading (`parser_drift`) or, if relaxed, a false "0 examples".

@@ -11,10 +11,16 @@ Date: 2026-09-29. Research: `docs/research/issue-177-concordance-no-data-rows.md
    - an invalid key on a normal row (no marker) still fails closed.
 3. GREEN: in the concordance row parser, recognize the explicit marker; `lemma_key` becomes `str | None`.
 4. Docs: `docs/tools/concordance.md`, `research.md` R-045, fixture README, CHANGELOG.
-5. Verification: the full suite; offline on the full capture (985 rows); live over MCP for 41201 and 13250.
+5. Verification: the full suite; offline on the full capture (986 rows); live over MCP for 41201 and 13250.
 6. Independent adversarial review of the exact candidate SHA.
 
 ## Revision (2026-09-29, during GREEN)
 
 - Rows get an explicit `cal_reports_no_data` boolean from CAL's marker. The marker must equal `no data found for <row label>` after whitespace collapsing; a marker naming another label fails closed.
 - Parsing the full capture found capital-letter keys on normal rows (`bwlbrK PN`). They are accepted verbatim in concordance rows and rejected as KWIC input with guidance; see the research note's "Second finding".
+
+## Reversal and review follow-up (2026-09-29)
+
+- The first capital-letter RED commit (`372a1ca`) expected `cal_kwic_texts` to accept `bwlbrK PN`. The live `showdialectKWIC.php` check then showed that CAL drops the capital and finds 0 examples, so GREEN reversed that expectation: KWIC tools reject such keys as input with guidance. That reversal had no RED commit of its own; it is recorded here.
+- Review follow-up (RED commit before the fix): the exemption covers only the observed `K`/`M`; non-KWIC tools get a neutral message without the `kwic_url` hint; a table-layout no-data row is tested.
+- Follow-up candidate (not in this PR): `lemma_key.validate_lemma_key` and `concordance._validate_lemma_key` are duplicate validators that now differ in their capital-letter message.

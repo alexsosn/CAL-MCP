@@ -20,6 +20,8 @@ _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
 _NO_DATA_GLOSS_PREFIX = "no data found for "
 _UNDOCUMENTED_KEY_CAPITALS = frozenset(string.ascii_uppercase) - _CAL_CODE_LETTERS
+# Only the capitals observed in CAL's own concordance keys (R-045).
+_OBSERVED_CAL_KEY_CAPITALS = frozenset("KM")
 _FREQUENCY_MARKER_RE = re.compile(r"^Frequencies of lemmas in text ([0-9]+)$", re.IGNORECASE)
 _FREQUENCY_RE = re.compile(r"^([0-9]+)\s*:")
 _INLINE_FREQUENCY_PREFIX_RE = re.compile(r"^([0-9]+)\s*:\s*\.*$")
@@ -705,7 +707,7 @@ class ConcordanceService:
         *,
         script: str = "roman",
     ) -> KwicResult:
-        lemma, suffix, canonical_key = _validate_lemma_key(lemma_key)
+        lemma, suffix, canonical_key = _validate_kwic_lemma_key(lemma_key)
         normalized_ids = _validate_text_ids(text_ids)
         charset = _script_charset(script, _KWIC_SCRIPTS, "KWIC")
 
@@ -743,7 +745,7 @@ class ConcordanceService:
         return _kwic_result(canonical_key, KwicScopeKind.TEXTS, result.value, provenance)
 
     async def kwic_dialects(self, lemma_key: str) -> KwicDialectOptionsResult:
-        _, _, canonical_key = _validate_lemma_key(lemma_key)
+        _, _, canonical_key = _validate_kwic_lemma_key(lemma_key)
 
         def parse_requested(response: CalResponse) -> KwicDialectOptionsPage:
             return parse_kwic_dialect_options(response, lemma_key=canonical_key)
@@ -770,7 +772,7 @@ class ConcordanceService:
         )
 
     async def kwic_dialect(self, lemma_key: str, dialect_id: str) -> KwicResult:
-        lemma, suffix, canonical_key = _validate_lemma_key(lemma_key)
+        lemma, suffix, canonical_key = _validate_kwic_lemma_key(lemma_key)
         normalized_dialect = _validate_decimal_id(dialect_id, "dialect_id")
 
         def parse_requested(response: CalResponse) -> KwicPage:
@@ -1473,6 +1475,20 @@ def _expected_kwic_heading(
     return f"Looking for {lemma_key} in {scope_ids[0]}"
 
 
+class _UndocumentedCapitalKeyError(CalInputError):
+    pass
+
+
+def _validate_kwic_lemma_key(value: str) -> tuple[str, str, str]:
+    try:
+        return _validate_lemma_key(value)
+    except _UndocumentedCapitalKeyError as exc:
+        raise CalInputError(
+            f"{exc}; CAL's KWIC search forms drop such letters, so open the kwic_url of "
+            "the cal_text_concordance row instead"
+        ) from exc
+
+
 def _validate_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> tuple[str, str, str]:
     if not isinstance(value, str):
         raise CalInputError("lemma_key must be a string")
@@ -1496,17 +1512,15 @@ def _validate_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> tupl
             or homograph.startswith("0")
         ):
             raise CalInputError("lemma_key has an invalid CAL homograph suffix")
-    undocumented = {char for char in base_lemma if char in _UNDOCUMENTED_KEY_CAPITALS}
-    if undocumented and not allow_cal_capitals:
-        raise CalInputError(
-            "lemma_key contains a capital letter that CAL's KWIC search forms do not accept; "
-            "open the kwic_url of the cal_text_concordance row instead"
+    if not allow_cal_capitals and any(char in _UNDOCUMENTED_KEY_CAPITALS for char in base_lemma):
+        raise _UndocumentedCapitalKeyError(
+            "lemma_key contains a capital letter outside CAL's documented cal_code letters"
         )
-    if undocumented:
-        # Returned concordance rows only: CAL links some keys with ASCII capitals outside
-        # the documented cal_code letters ("bwlbrK PN"), and its KWIC-by-text form drops
-        # them, so they are kept verbatim here but rejected as tool input (R-045).
-        base_lemma = "".join(char for char in base_lemma if char not in undocumented)
+    if allow_cal_capitals:
+        # Returned concordance rows only: CAL links some keys with capitals outside the
+        # documented cal_code letters ("bwlbrK PN"). Only the observed K and M are exempt;
+        # the rest of the key is still validated (R-045).
+        base_lemma = "".join(char for char in base_lemma if char not in _OBSERVED_CAL_KEY_CAPITALS)
         if not base_lemma:
             raise CalInputError("lemma_key has no documented CAL letters")
     normalize_query(base_lemma, representation=InputRepresentation.CAL_CODE)
