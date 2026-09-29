@@ -14,6 +14,7 @@ from cal_mcp.concordance import (
     TextConcordanceResult,
     parse_text_concordance_page,
 )
+from cal_mcp.bibliography import BibliographyService
 from cal_mcp.errors import CalInputError
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
@@ -143,3 +144,40 @@ class _NoRequestClient:
     async def fetch(self, *args: object, **kwargs: object) -> object:
         self.requests += 1
         raise AssertionError("no CAL request expected")
+
+
+@pytest.mark.parametrize("key", ["NAME PN", "BAD N", "bwlbrQ PN", "KM PN"])
+def test_only_observed_cal_capitals_inside_lower_case_keys_are_accepted(key: str) -> None:
+    href = "/showKWIC.php?" + urlencode({"lemma": key, "charset": "S", "texts": "41201"})
+    body = _fixture().replace(b"/showKWIC.php?lemma=bwlbrK+PN&charset=S&texts=41201", href.encode())
+
+    with pytest.raises(ConcordanceParseError):
+        _parse(body)
+
+
+@pytest.mark.anyio
+async def test_non_kwic_tools_reject_capital_keys_without_kwic_guidance() -> None:
+    client = _NoRequestClient()
+
+    with pytest.raises(CalInputError) as caught:
+        await BibliographyService(client).lemma("bwlbrK PN")  # type: ignore[arg-type]
+    assert "capital letter" in str(caught.value)
+    assert "kwic_url" not in str(caught.value)
+    assert client.requests == 0
+
+
+def test_table_layout_no_data_row_is_kept_with_null_key() -> None:
+    body = (
+        "<html><body><div>Frequencies of lemmas in text 41201</div><table>"
+        '<tr><td>1:</td><td><a href="/showKWIC.php?lemma=qrb+&charset=S&texts=41201">qrb </a>'
+        "</td><td>: no data found for qrb </td></tr>"
+        '<tr><td>20:</td><td><a href="/showKWIC.php?lemma=%29b+N&charset=S&texts=41201">)b N</a>'
+        "</td><td>: father</td></tr></table></body></html>"
+    ).encode()
+
+    page = _parse(body)
+
+    assert [(item.lemma_key, item.label, item.cal_reports_no_data) for item in page.lemmas] == [
+        (None, "qrb", True),
+        (")b N", ")b N", False),
+    ]
