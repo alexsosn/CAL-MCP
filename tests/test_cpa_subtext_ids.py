@@ -386,6 +386,25 @@ def test_paginated_direct_cpa_navigation_accepts_current_empty_sub_and_clen() ->
     ) == (None, 2)
 
 
+def test_private_paginated_direct_cpa_variant_is_scoped_to_observed_file() -> None:
+    line = _Line(
+        text="NEXT PAGE",
+        links=(
+            _Link(
+                href="/get_a_chapter.php?file=55406&sub=&cset=C&page=1&clen=5",
+                text="NEXT PAGE",
+            ),
+        ),
+        list_depth=0,
+    )
+    with pytest.raises(TextParseError, match="CPA"):
+        _page_navigation(
+            [line],
+            requested_file_id="55406",
+            requested_subtext_id=None,
+        )
+
+
 @pytest.mark.parametrize(
     "href",
     [
