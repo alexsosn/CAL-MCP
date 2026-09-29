@@ -100,3 +100,27 @@ def test_repeated_file_information_links_fail_closed() -> None:
 
     with pytest.raises(ConcordanceParseError):
         _parse(body, "56000", "112", "56000112010", "R")
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        (b'coord=56000112"', b'coord=56000113"'),  # CAL echoes the (wrong) submitted sub
+        (b'coord=56000112"', b'coord=56000"'),  # the bare form
+    ],
+)
+def test_target_row_must_belong_to_the_submitted_subtext(old: bytes, new: bytes) -> None:
+    body = SAMARITAN.read_bytes().replace(old, new)
+
+    with pytest.raises(ConcordanceParseError, match="subtext"):
+        _parse(body, "56000", "113", "56000112010", "R")
+
+
+def test_suffix_bearing_composed_coordinate_is_checked_by_membership() -> None:
+    # CPA subtexts carry a letter suffix (R-039). The composed coordinate is accepted by
+    # exact membership, not rejected as a non-decimal file id.
+    body = SAMARITAN.read_bytes().replace(b'coord=56000112"', b'coord=56000112a"')
+
+    with pytest.raises(ConcordanceParseError) as caught:
+        _parse(body, "56000", "112a", "56000112010", "R")
+    assert "file_id" not in str(caught.value)
