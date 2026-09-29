@@ -327,6 +327,18 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-043 — Dialect KWIC can omit the requested form and list only other forms
+
+**Rechecked:** 2026-09-25.
+
+`show1dialectKWIC.php` for `n)qh N` in dialect 71 lists `n)qt) N` (1 example) and `nqh N` (0), with no summary for `n)qh N`; in dialects 6, 51, 53 and 3 the requested form is listed. Detailed evidence: `docs/research/issue-176-kwic-omitted-form.md`.
+
+Source:
+
+- https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71
+
+**Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
+
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 
 **Rechecked:** 2026-09-28 against current CAL; issue #185.
