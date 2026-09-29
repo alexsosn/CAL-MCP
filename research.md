@@ -329,9 +329,9 @@ When new evidence changes an assumption:
 
 ## R-047 — KWIC full-context pages use the text-page file-info coordinate rule
 
-**Rechecked:** 2026-09-29, with three bounded GETs; issue #181.
+**Rechecked:** 2026-09-29, with four bounded GETs; issue #181.
 
-`get_a_kwicchapter.php` renders its file-information coordinate as the file id plus the submitted `sub` (`56000112` for `56000`/`112`; `41201049` for `41201`/`049`) or as the bare file id (`71002` for BT Shabbat `01051`). The label prefix is always the file id. Detailed evidence: `docs/research/issue-181-full-context-subtext.md`.
+`get_a_kwicchapter.php` renders its file-information coordinate as the file id plus the submitted `sub` (`56000112` for `56000`/`112`; `310004` for `31000`/`4`) or as the bare file id (`71002` for BT Shabbat `01051`). The label prefix is always the file id. Detailed evidence: `docs/research/issue-181-full-context-subtext.md`.
 
 Source:
 

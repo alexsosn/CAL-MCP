@@ -2,7 +2,7 @@
 
 Date: 2026-09-29. Research: `docs/research/issue-181-full-context-subtext.md`, committed before behavior tests.
 
-1. Reduced current fixtures with provenance comments: `kwic_full_context_samaritan_56000_112_current.html` (composed coordinate) and `kwic_full_context_bt_71002_01051_current.html` (bare coordinate, Hebrew script).
+1. Reduced current fixtures with provenance comments: `kwic_full_context_samaritan_56000_112_current.html` (composed coordinate) and `kwic_full_context_ba_ezra_31000_4_current.html` (composed coordinate, Hebrew script). The bare-coordinate case is covered by the existing `kwic_full_context_syr_romlaw_unicode.html`. BT (`bablex.php` rows) is a separate issue.
 2. RED tests (`tests/test_kwic_full_context_subtext_current.py`):
    - both pages are found, with the target row;
    - a coordinate naming another subtext (`56000113`) or another file (`56001112`) fails closed;
@@ -10,5 +10,5 @@ Date: 2026-09-29. Research: `docs/research/issue-181-full-context-subtext.md`, c
    - a composed coordinate on a request without a sub fails closed.
 3. GREEN: `_validate_full_context_file_identity` takes the submitted sub and applies the #166 rule.
 4. Docs: `docs/tools/concordance.md` (full context), `research.md` R-047, fixture README.
-5. Verification: the full suite; offline on the three captures; live over MCP (KWIC hit → full context for 56000 and 71002).
+5. Verification: the full suite; offline on the three captures; live over MCP (KWIC hit → full context for 56000 and 31000).
 6. Independent adversarial review of the exact candidate SHA.
