@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-052 — Citation search explicitly rejects some single common words
+
+**Rechecked:** 2026-09-29, with four bounded POSTs; issue #207.
+
+`searchcits.php` answers `English=god` and `English=the` with `"<query>" is not a valid search string` and no result container. `king god` returns results, and gloss search accepts `god`. Detailed evidence: `docs/research/issue-207-invalid-search-string.md`.
+
+**Implication:** that exact marker naming the submitted query becomes an `invalid_input` error with `upstream_reached: true` and CAL's message. CAL-MCP keeps no local stop-word list.
+
 ## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
 
 **Rechecked:** 2026-09-29 (a capture from #181's research); issue #203.
