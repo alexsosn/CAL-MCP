@@ -1315,6 +1315,10 @@ def _apply_kwic_target_structure(
         # empty, or is missing altogether (R-050); then there is no target text.
         target_text = segment.highlighted[0] if segment.highlighted else ""
         checked.append((index, replace(hit, target_text=target_text or None)))
+    # CAL leaves a few lines unhighlighted, but pages with several hits have always
+    # highlighted most of them; none at all means the markup changed (R-050).
+    if len(checked) >= 2 and all(hit.target_text is None for _, hit in checked):
+        raise ConcordanceParseError("CAL KWIC page highlights no target line")
     return tuple(checked)
 
 
