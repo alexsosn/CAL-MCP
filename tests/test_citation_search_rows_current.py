@@ -116,7 +116,8 @@ def test_other_row_shapes_fail_closed(old: bytes, new: bytes) -> None:
 _HOMOGRAPH_ROW = (
     b'<div class="citation-row odd"><a href="oneentry.php?lemma=gml%233 N&cits=all">'
     b'<span class="lem"><font color="#0000A0">gml, gmlk</font></span>\n'
-    b'(<span class="uni">gamm\xc4\x81l, gamm\xc4\x81l\xc4\x81</span>)\n\t<pos>n.m.</pos>\n #3</a><br>'
+    b'(<span class="uni">gamm\xc4\x81l, gamm\xc4\x81l\xc4\x81</span>)\n'
+    b"\t<pos>n.m.</pos>\n #3</a><br>"
     b'&nbsp;&nbsp;<span class="gloss"> camel-driver</span><br>\n'
     b'<i>EchR[1]50(2)</i> :<span class="heb">\xd7\x95\xd7\x92\xd7\x9e\xd7\x9c\xd7\x90</span>&rlm;\n'
     b':<span class="rom"> the camel-driver is a gentile</span><br>\n</div>'

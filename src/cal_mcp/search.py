@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from html.parser import HTMLParser
 from types import MappingProxyType
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
@@ -14,12 +15,14 @@ from cal_mcp.lexicon import (
     _lemma_key_from_href,
     _parse_lemma_header,
     _parse_lines,
+    _split_trailing_parenthetical,
     parse_browse_page,
 )
 
 _GLOSS_EMPTY_MARKER = "there are no glosses with the word:"
 _CITATION_EMPTY_MARKER = "there are no citations with the word:"
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
+_CITATION_ROW_MARKER_RE = re.compile(r"<div\s+class=\"citation-row\b", re.IGNORECASE)
 
 
 class SearchParseError(CalParseError):
@@ -98,7 +101,7 @@ class GlossSearchPage:
 
 @dataclass(frozen=True, slots=True)
 class CitationSearchHit:
-    lemma: LemmaRef
+    lemma: LemmaRef | None
     lexical_context: str
     reference: str
     source_text: str
@@ -170,6 +173,9 @@ def parse_citation_search_page(response: CalResponse) -> CitationSearchPage:
     if _CITATION_EMPTY_MARKER in text.lower():
         return CitationSearchPage(hits=())
 
+    if _CITATION_ROW_MARKER_RE.search(text) is not None:
+        return CitationSearchPage(hits=_parse_citation_rows(text))
+
     lines = _parse_lines(response)
     hits: list[CitationSearchHit] = []
     index = 0
@@ -207,6 +213,168 @@ def parse_citation_search_page(response: CalResponse) -> CitationSearchPage:
     if not hits:
         raise SearchParseError("CAL citation search page has no recognizable results")
     return CitationSearchPage(hits=tuple(hits))
+
+
+class _CitationSegment:
+    """One ``<br>``-delimited piece of a current citation row."""
+
+    def __init__(self) -> None:
+        self.parts: list[str] = []
+        self.label_parts: list[str] = []
+        self.pos_parts: list[str] = []
+        self.after_pos_parts: list[str] = []
+        self.pos_count = 0
+        self.hrefs: list[str] = []
+        self.starts_with_citation = False
+        self._seen_content = False
+
+    @property
+    def text(self) -> str:
+        return _clean("".join(self.parts))
+
+    def start_tag(self, tag: str) -> None:
+        if not self._seen_content:
+            self.starts_with_citation = tag == "i"
+            self._seen_content = True
+
+    def data(self, value: str) -> None:
+        self.parts.append(value)
+        if value.strip() and not self._seen_content:
+            self._seen_content = True
+
+
+class _CitationRowsParser(HTMLParser):
+    """Split current ``citation-row`` containers into ``<br>``-delimited segments (R-048)."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.rows: list[list[_CitationSegment]] = []
+        self._depth = 0
+        self._segment: _CitationSegment | None = None
+        self._in_link = False
+        self._in_pos = False
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "div":
+            if self._depth:
+                self._depth += 1
+            elif "citation-row" in (dict(attrs).get("class") or "").split():
+                self._depth = 1
+                self._segment = _CitationSegment()
+                self.rows.append([self._segment])
+            return
+        if not self._depth or self._segment is None:
+            return
+        if tag == "br":
+            self._segment = _CitationSegment()
+            self.rows[-1].append(self._segment)
+            return
+        self._segment.start_tag(tag)
+        if tag == "pos":
+            self._segment.pos_count += 1
+            self._in_pos = True
+        elif tag == "a":
+            self._segment.hrefs.append(dict(attrs).get("href") or "")
+            self._in_link = True
+
+    def handle_endtag(self, tag: str) -> None:
+        if not self._depth:
+            return
+        if tag == "div":
+            self._depth -= 1
+            if not self._depth:
+                self._segment = None
+                self._in_link = self._in_pos = False
+        elif tag == "pos":
+            self._in_pos = False
+        elif tag == "a":
+            self._in_link = False
+
+    def handle_data(self, data: str) -> None:
+        if not self._depth or self._segment is None:
+            return
+        self._segment.data(data)
+        if self._in_pos:
+            self._segment.pos_parts.append(data)
+        elif self._in_link and self._segment.pos_count:
+            self._segment.after_pos_parts.append(data)
+        elif self._in_link:
+            self._segment.label_parts.append(data)
+
+
+def _parse_citation_rows(text: str) -> tuple[CitationSearchHit, ...]:
+    parser = _CitationRowsParser()
+    parser.feed(text)
+    parser.close()
+    hits: list[CitationSearchHit] = []
+    for row in parser.rows:
+        segments = [segment for segment in row if segment.text]
+        if not segments:
+            raise SearchParseError("CAL citation search row is empty")
+        header, rest = segments[0], segments[1:]
+        lemma = _citation_row_lemma(header)
+        if any(segment.hrefs or segment.pos_count for segment in rest):
+            raise SearchParseError("CAL citation search row has more than one lemma header")
+        if not rest or len(rest) % 2:
+            raise SearchParseError(
+                "CAL citation search row must pair each context with one citation"
+            )
+        for pair_index in range(0, len(rest), 2):
+            context, citation = rest[pair_index], rest[pair_index + 1]
+            if context.starts_with_citation or not citation.starts_with_citation:
+                raise SearchParseError(
+                    "CAL citation search row must pair each context with one citation"
+                )
+            reference, source_text, translation = _parse_citation_text(citation.text)
+            hits.append(
+                CitationSearchHit(
+                    # CAL renders one header per sense. A further pair in the same row has
+                    # no header of its own and is never attributed to this one (R-048).
+                    lemma=lemma if pair_index == 0 else None,
+                    lexical_context=context.text,
+                    reference=reference,
+                    source_text=source_text,
+                    translation=translation,
+                )
+            )
+    if not hits:
+        raise SearchParseError("CAL citation search page has no recognizable results")
+    return tuple(hits)
+
+
+def _citation_row_lemma(header: _CitationSegment) -> LemmaRef:
+    keys = [_lemma_key_from_href(href) for href in header.hrefs]
+    if len(keys) != 1 or keys[0] is None:
+        raise SearchParseError("CAL citation search row lacks exactly one lemma header")
+    label = _clean("".join(header.label_parts))
+    part_of_speech = _clean("".join(header.pos_parts))
+    if header.pos_count != 1 or not part_of_speech or not label:
+        raise SearchParseError("CAL citation search header lacks one part of speech")
+    # After the POS, CAL renders only the homograph number that the key already carries.
+    after_pos = _clean("".join(header.after_pos_parts))
+    if after_pos and not keys[0].split(" ", 1)[0].endswith(after_pos):
+        raise SearchParseError("CAL citation search header has unexpected text after its POS")
+    if after_pos and not (after_pos.startswith("#") and after_pos[1:].isdecimal()):
+        raise SearchParseError("CAL citation search header has unexpected text after its POS")
+    pronunciation: str | None = None
+    parts = _split_trailing_parenthetical(label)
+    headword_text = label
+    if parts is not None:
+        headword_text, pronunciation = parts
+    headwords = tuple(part.strip() for part in headword_text.split(",") if part.strip())
+    if not headwords:
+        raise SearchParseError("CAL citation search header has no headword")
+    return LemmaRef(
+        lemma_key=keys[0],
+        headwords=headwords,
+        pronunciation=pronunciation,
+        part_of_speech=part_of_speech,
+        gloss="",
+    )
+
+
+def _clean(value: str) -> str:
+    return " ".join(value.split())
 
 
 class EnglishSearchService:
@@ -368,7 +536,7 @@ def _lemma_to_dict(lemma: LemmaRef) -> dict[str, object]:
 
 def _citation_hit_to_dict(hit: CitationSearchHit) -> dict[str, object]:
     return {
-        "lemma": _lemma_to_dict(hit.lemma),
+        "lemma": None if hit.lemma is None else _lemma_to_dict(hit.lemma),
         "lexical_context": hit.lexical_context,
         "reference": hit.reference,
         "source_text": hit.source_text,
