@@ -34,6 +34,9 @@ _TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
+_FOLLOW_WITH_TEXT_PAGE = "cal_text_page"
+_FOLLOW_WITH_CATALOGUE = "cal_text_catalogue"
+_SCRIPT_CSETS = frozenset({"R", "H", "S", "U"})
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
@@ -175,8 +178,19 @@ class TextCataloguePage:
 
 
 @dataclass(frozen=True, slots=True)
+class TextSearchMatch:
+    """One text-search result and the tool that follows it (R-053)."""
+
+    file_id: str
+    subtext_id: str | None
+    label: str
+    description: str | None
+    follow_with: str
+
+
+@dataclass(frozen=True, slots=True)
 class TextSearchPage:
-    matches: tuple[TextRef, ...]
+    matches: tuple[TextSearchMatch, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,12 +261,12 @@ class TextCatalogueResult:
 
 @dataclass(frozen=True, slots=True)
 class TextSearchResult:
-    matches: tuple[TextRef, ...]
+    matches: tuple[TextSearchMatch, ...]
     provenance: TextProvenance
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "matches": [_text_ref_to_dict(item) for item in self.matches],
+            "matches": [_search_match_to_dict(item) for item in self.matches],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -720,7 +734,7 @@ def parse_text_search_page(response: CalResponse) -> TextSearchPage:
     if _TEXT_SEARCH_MARKER not in lowered:
         raise TextParseError("CAL text search page is missing its result marker")
 
-    matches: list[TextRef] = []
+    matches: list[TextSearchMatch] = []
     for line in lines:
         for link in line.links:
             if not (
@@ -1338,10 +1352,10 @@ def _search_text_ref_from_link(
     *,
     label: str,
     description: str | None,
-) -> TextRef | None:
+) -> TextSearchMatch | None:
     ordinary = _text_ref_from_link(link, label=label, description=description)
     if ordinary is not None:
-        return ordinary
+        return _search_match(ordinary, _FOLLOW_WITH_TEXT_PAGE)
     if not _is_path(link.href, "showsubtexts.php"):
         return None
 
@@ -1352,19 +1366,36 @@ def _search_text_ref_from_link(
         or len(subtext_values) != 1
         or _ID_RE.fullmatch(subtext_values[0]) is None
     ):
-        raise TextParseError("CAL Mandaic text search result has an invalid file identifier")
+        raise TextParseError("CAL text search subtext result has an invalid file identifier")
     cset_values = query.get("cset")
-    if cset_values != ["M"]:
-        raise TextParseError("CAL Mandaic text search result has an invalid cset")
+    if cset_values == ["M"]:
+        # CAL's Mandaic collection route: cal_text_page reads the file directly.
+        follow_with = _FOLLOW_WITH_TEXT_PAGE
+    elif cset_values is not None and len(cset_values) == 1 and cset_values[0] in _SCRIPT_CSETS:
+        # Other scripts link a catalogue node, e.g. Neofiti 54001 (R-053).
+        follow_with = _FOLLOW_WITH_CATALOGUE
+    else:
+        raise TextParseError("CAL text search subtext result has an invalid cset")
 
     rendered_label = label.strip()
     if not rendered_label:
-        raise TextParseError("CAL Mandaic text search result has no rendered label")
-    return TextRef(
+        raise TextParseError("CAL text search subtext result has no rendered label")
+    return TextSearchMatch(
         file_id=subtext_values[0],
         subtext_id=None,
         label=rendered_label,
         description=description,
+        follow_with=follow_with,
+    )
+
+
+def _search_match(text: TextRef, follow_with: str) -> TextSearchMatch:
+    return TextSearchMatch(
+        file_id=text.file_id,
+        subtext_id=text.subtext_id,
+        label=text.label,
+        description=text.description,
+        follow_with=follow_with,
     )
 
 
@@ -2073,6 +2104,16 @@ def _optional_clean_text(value: str) -> str | None:
     return cleaned or None
 
 
+def _search_match_to_dict(match: TextSearchMatch) -> dict[str, object]:
+    return {
+        "file_id": match.file_id,
+        "subtext_id": match.subtext_id,
+        "label": match.label,
+        "description": match.description,
+        "follow_with": match.follow_with,
+    }
+
+
 def _text_ref_to_dict(text: TextRef) -> dict[str, object]:
     return {
         "file_id": text.file_id,
@@ -2176,6 +2217,7 @@ __all__ = [
     "TextParseError",
     "TextProvenance",
     "TextRef",
+    "TextSearchMatch",
     "TextSearchPage",
     "TextSearchResult",
     "TextService",
