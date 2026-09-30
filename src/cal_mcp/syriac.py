@@ -655,6 +655,8 @@ class _GroupCardsParser(HTMLParser):
         self.cards: list[_Card] = []
         self.stray_links: list[_CardLink] = []
         self.summary_text: list[str] = []
+        self.summary_other_text: list[str] = []
+        self.summary_span_count = 0
         self.toggle_text: list[str] = []
         self.group_text: list[str] = []
         self.page_text: list[str] = []
@@ -663,6 +665,7 @@ class _GroupCardsParser(HTMLParser):
         self._toggle_depth = 0
         self._details_depth = 0
         self._in_summary = False
+        self._summary_span_depth = 0
         self._card: _Card | None = None
         self._link: _CardLink | None = None
         self._ignored_depth = 0
@@ -692,6 +695,10 @@ class _GroupCardsParser(HTMLParser):
                 self.group_count += 1
         elif tag == "summary" and self._details_depth:
             self._in_summary = True
+        elif tag == "span" and self._in_summary and self._link is None:
+            if not self._summary_span_depth:
+                self.summary_span_count += 1
+            self._summary_span_depth += 1
         elif tag == "li" and self._details_depth:
             if self._card is not None:
                 raise SyriacParseError("CAL Syriac group card is nested in another card")
@@ -716,6 +723,8 @@ class _GroupCardsParser(HTMLParser):
             self._details_depth -= 1
         elif tag == "summary":
             self._in_summary = False
+        elif tag == "span" and self._summary_span_depth:
+            self._summary_span_depth -= 1
         elif tag == "li":
             self._card = None
         elif tag == "a" and self._link is not None:
@@ -741,7 +750,9 @@ class _GroupCardsParser(HTMLParser):
         elif self._toggle_depth:
             self.toggle_text.append(data)
         elif self._in_summary:
-            self.summary_text.append(data)
+            # The summary is CAL's label span plus the information link; nothing else.
+            target = self.summary_text if self._summary_span_depth else self.summary_other_text
+            target.append(data)
         elif self._card is not None:
             self._card.loose_text.append(data)
         elif self._details_depth:
@@ -788,8 +799,12 @@ def _parse_syriac_group_cards(
         ):
             raise SyriacParseError("CAL Syriac group script toggle names another group")
 
-    if not _clean_text(" ".join(parser.summary_text)):
-        raise SyriacParseError("CAL Syriac group summary has no label")
+    if (
+        parser.summary_span_count != 1
+        or parser.summary_other_text
+        or not _clean_text(" ".join(parser.summary_text))
+    ):
+        raise SyriacParseError("CAL Syriac group summary is not one label")
     if len(parser.summary_links) != 1 or "info-link" not in parser.summary_links[0].classes:
         raise SyriacParseError("CAL Syriac group summary lacks one information link")
     if _card_info_coordinate(parser.summary_links[0], source_url) != group_id:
