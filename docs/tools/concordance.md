@@ -63,6 +63,8 @@ Caller-supplied text IDs must be decimal CAL identifiers and must not repeat. Mo
 - `hebrew` — Hebrew-script rendering;
 - `syriac` — Syriac-script rendering.
 
+For `hebrew` and `syriac`, CAL writes each target coordinate reversed inside a right-to-left `<BDO>` element so that it displays correctly. CAL-MCP accepts exactly that reversed form, checked against the markup, and always returns the link's own `target` coordinate.
+
 The result preserves:
 
 - CAL's upstream `total` hit count;

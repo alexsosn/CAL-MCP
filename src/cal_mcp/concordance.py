@@ -1193,6 +1193,8 @@ class _KwicTargetSegment:
     section: str | None
     leading_text: str
     highlighted: tuple[str, ...]
+    link_text_rtl: str = ""
+    link_text_other: str = ""
 
 
 @dataclass(slots=True)
@@ -1201,6 +1203,8 @@ class _OpenKwicTargetSegment:
     section: str | None
     leading_text: str
     highlighted: list[str] = field(default_factory=list)
+    link_text_rtl: list[str] = field(default_factory=list)
+    link_text_other: list[str] = field(default_factory=list)
 
 
 class _KwicTargetSegmentParser(HTMLParser):
@@ -1220,6 +1224,7 @@ class _KwicTargetSegmentParser(HTMLParser):
         self._in_target_link = False
         self._bold_depth = 0
         self._bold_parts: list[str] = []
+        self._bdo_dirs: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS:
@@ -1235,6 +1240,10 @@ class _KwicTargetSegmentParser(HTMLParser):
                     leading_text="".join(self._line_text),
                 )
                 self._in_target_link = True
+        elif tag == "bdo" and self._in_target_link:
+            # The innermost BDO's direction applies; one without dir inherits it.
+            inherited = self._bdo_dirs[-1] if self._bdo_dirs else "ltr"
+            self._bdo_dirs.append((dict(attrs).get("dir") or inherited).lower())
         elif tag == "b":
             self._bold_depth += 1
             if self._bold_depth == 1:
@@ -1252,8 +1261,11 @@ class _KwicTargetSegmentParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS and tag not in {"br", "hr"}:
             self._end_line()
+        elif tag == "bdo" and self._bdo_dirs:
+            self._bdo_dirs.pop()
         elif tag == "a" and self._in_target_link:
             self._in_target_link = False
+            self._bdo_dirs = []
         elif tag == "b" and self._bold_depth:
             self._bold_depth -= 1
             if self._bold_depth == 0:
@@ -1268,6 +1280,10 @@ class _KwicTargetSegmentParser(HTMLParser):
             self._bold_parts.append(data)
         if self._open is None:
             self._line_text.append(data)
+        elif self._in_target_link:
+            in_rtl = bool(self._bdo_dirs) and self._bdo_dirs[-1] == "rtl"
+            target = self._open.link_text_rtl if in_rtl else self._open.link_text_other
+            target.append(data)
 
     def close(self) -> None:
         super().close()
@@ -1281,6 +1297,8 @@ class _KwicTargetSegmentParser(HTMLParser):
                     section=self._open.section,
                     leading_text=self._open.leading_text,
                     highlighted=tuple(self._open.highlighted),
+                    link_text_rtl=_clean_text("".join(self._open.link_text_rtl)),
+                    link_text_other=_clean_text("".join(self._open.link_text_other)),
                 )
             )
             self._open = None
@@ -1307,6 +1325,17 @@ def _apply_kwic_target_structure(
             raise ConcordanceParseError("CAL KWIC target lines disagree with their links")
         if segment.leading_text.strip():
             raise ConcordanceParseError("CAL KWIC target line does not start with its coordinate")
+        # Hebrew- and Syriac-script text KWIC writes the coordinate reversed inside
+        # <BDO dir="rtl"> (R-051);
+        # otherwise the link text is the coordinate itself.
+        if segment.link_text_rtl:
+            valid_link_text = (
+                not segment.link_text_other and segment.link_text_rtl == hit.target_coordinate[::-1]
+            )
+        else:
+            valid_link_text = segment.link_text_other == hit.target_coordinate
+        if not valid_link_text:
+            raise ConcordanceParseError("CAL KWIC target link text differs from its coordinate")
         if len(segment.highlighted) > 1:
             raise ConcordanceParseError("CAL KWIC target line has more than one highlight")
         if scope_kind is KwicScopeKind.TEXTS and segment.section != hit.file_id:
@@ -1358,13 +1387,22 @@ def _parse_kwic_hit_lines(
                     href=getattr(link, "href", ""),
                     link_text=link_text,
                     context=context,
+                    # Checked against the <BDO dir="rtl"> markup in the target structure.
+                    allow_reversed=True,
                 ),
             )
         )
     return tuple(hits)
 
 
-def _kwic_hit_from_link(source_url: str, *, href: str, link_text: str, context: str) -> KwicHit:
+def _kwic_hit_from_link(
+    source_url: str,
+    *,
+    href: str,
+    link_text: str,
+    context: str,
+    allow_reversed: bool = False,
+) -> KwicHit:
     full_context_url = _cal_navigation_url(source_url, href, "get_a_kwicchapter.php")
     query = parse_qs(urlsplit(full_context_url).query, keep_blank_values=True)
     file_id = _parse_decimal_id(_single_query_value(query, "file", "KWIC file"), "file_id")
@@ -1376,7 +1414,7 @@ def _kwic_hit_from_link(source_url: str, *, href: str, link_text: str, context: 
     if charset not in _KWIC_CHARSETS:
         raise ConcordanceParseError("CAL KWIC target link has an unknown charset")
     subtext_id = _optional_subtext_query_value(query, "sub")
-    if link_text != target:
+    if link_text != target and not (allow_reversed and link_text == target[::-1]):
         raise ConcordanceParseError("CAL KWIC target link text differs from its coordinate")
     return KwicHit(
         file_id=file_id,
