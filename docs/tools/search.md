@@ -77,7 +77,7 @@ Each valid explicit operation submits at most one new logical CAL request to the
 
 Search for English words inside the citations attached to CAL lexicon entries.
 
-CAL's current form accepts one to three English words separated by spaces. CAL-MCP enforces the one-to-three-word bound before any network request. CAL documents additional upstream behavior for very common short words; CAL-MCP does not maintain or guess a local stop-word/exception list and therefore leaves those scholarly search rules to CAL.
+CAL's current form accepts one to three English words separated by spaces. CAL-MCP enforces the one-to-three-word bound before any network request. CAL documents additional upstream behavior for very common short words; CAL-MCP does not maintain or guess a local stop-word/exception list and therefore leaves those scholarly search rules to CAL. When CAL rejects a query outright, as it currently does for single very common words such as `god`, `the` or `a` (while `king god` is accepted), the tool returns an `invalid_input` error with `upstream_reached: true` and CAL's message, for example `"god" is not a valid search string`. CAL echoes the query lowercased, so `God` gives the same message.
 
 Each ordered hit preserves:
 

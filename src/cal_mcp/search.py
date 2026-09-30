@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -8,7 +9,7 @@ from html.parser import HTMLParser
 from types import MappingProxyType
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
-from cal_mcp.errors import CalInputError, CalParseError
+from cal_mcp.errors import CalInputError, CalParseError, CalRejectedInputError
 from cal_mcp.lexicon import (
     LemmaRef,
     LexiconParseError,
@@ -21,6 +22,7 @@ from cal_mcp.lexicon import (
 
 _GLOSS_EMPTY_MARKER = "there are no glosses with the word:"
 _CITATION_EMPTY_MARKER = "there are no citations with the word:"
+_CITATION_REJECTED_RE = re.compile(r'"(.*?)" is not a valid search string')
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
 _CITATION_ROW_MARKER_RE = re.compile(
     r"<div\s+class=\"[^\"]*(?<![\w-])citation-row(?![\w-])", re.IGNORECASE
@@ -170,10 +172,29 @@ def parse_gloss_search_page(response: CalResponse) -> GlossSearchPage:
     return GlossSearchPage(matches=browse.entries)
 
 
-def parse_citation_search_page(response: CalResponse) -> CitationSearchPage:
+def parse_citation_search_page(
+    response: CalResponse,
+    *,
+    submitted_query: str | None = None,
+) -> CitationSearchPage:
     text = response.body.decode("utf-8", errors="replace")
     if _CITATION_EMPTY_MARKER in text.lower():
         return CitationSearchPage(hits=())
+    rejections = [html.unescape(echo) for echo in _CITATION_REJECTED_RE.findall(text)]
+    if rejections:
+        # CAL's explicit rejection of the query itself, e.g. very common words (R-052). CAL
+        # echoes the query lowercased, so the echo is compared case-insensitively and quoted
+        # as CAL rendered it.
+        if (
+            submitted_query is None
+            or len(rejections) != 1
+            or rejections[0].casefold() != submitted_query.casefold()
+            or _CITATION_ROW_MARKER_RE.search(text) is not None
+        ):
+            raise SearchParseError("CAL citation search rejection does not match the request")
+        raise CalRejectedInputError(
+            f'CAL rejected the citation search: "{rejections[0]}" is not a valid search string'
+        )
 
     if _CITATION_ROW_MARKER_RE.search(text) is not None:
         return CitationSearchPage(hits=_parse_citation_rows(text))
@@ -506,7 +527,7 @@ class EnglishSearchService:
                 path="searchcits.php",
                 data=(("English", submitted),),
             ),
-            parser=parse_citation_search_page,
+            parser=lambda response: parse_citation_search_page(response, submitted_query=submitted),
             cache_namespace="english-citation-search-v1",
         )
         return CitationTextSearchResult(
