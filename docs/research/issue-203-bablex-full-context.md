@@ -26,4 +26,4 @@ A capture of `get_a_kwicchapter.php?file=71002&sub=01051&cset=H&target=710020105
 
 ## Review follow-up (2026-09-29)
 
-The review found that the full-context row parser (before this change, and for both families) accepts loose text between token links, and silently drops unknown tags inside a token. `cal_text_page` rejects both. It also found that `_is_path` compares only the final path segment. These are pre-existing and not specific to `bablex.php`, so they are tracked as a follow-up issue rather than widened into this change.
+The review found that the full-context row parser (before this change, and for both families) accepts loose text between token links, and silently drops unknown tags inside a token. `cal_text_page` rejects both. It also found that `_is_path` compares only the final path segment. These are pre-existing and not specific to `bablex.php`, so they are tracked as #208 rather than widened into this change.
