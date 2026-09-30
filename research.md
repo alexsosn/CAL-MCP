@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
+
+**Rechecked:** 2026-09-29 (a capture from #181's research); issue #203.
+
+The full-context page for BT Shabbat (`get_a_kwicchapter.php?file=71002&sub=01051&cset=H&target=7100201051217`) links all 204 tokens through `bablex.php?coord=…&word=…`, with no `hasvariant`, and shows the same terminal empty anchor as other Hebrew-script rows. Detailed evidence: `docs/research/issue-203-bablex-full-context.md`.
+
+**Implication:** full-context rows accept the `bablex.php` family with exactly `{coord, word}`, alongside `getlex.php` with `{coord, word, hasvariant}`; a row mixing them fails closed.
+
 ## R-047 — KWIC full-context pages use the text-page file-info coordinate rule
 
 **Rechecked:** 2026-09-29, with four bounded GETs; issue #181.
