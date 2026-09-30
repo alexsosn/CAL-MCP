@@ -268,8 +268,7 @@ class DecimalCpaRouteTransport:
             marker_identity = f"{marker_identity} {subtext_id}"
         return _response(
             (
-                f"<html><body>NO LINES FOR {marker_identity} "
-                "ARE CURRENTLY STORED</body></html>"
+                f"<html><body>NO LINES FOR {marker_identity} ARE CURRENTLY STORED</body></html>"
             ).encode(),
             f"https://cal.huc.edu/{request.path}?{query}",
         )
