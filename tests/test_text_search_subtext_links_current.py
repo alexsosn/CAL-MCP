@@ -21,6 +21,7 @@ from cal_mcp.texts import (
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 NEOFITI = FIXTURES / "text_search_neofiti_subtexts_current.html"
 ONKELOS = FIXTURES / "text_search_onkelos_subtexts_current.html"
+PESHITTA = FIXTURES / "text_search_peshitta_unicode_current.html"
 GINZA = FIXTURES / "text_search_ginza.html"
 
 
@@ -36,64 +37,84 @@ def _parse(body: bytes):
     )
 
 
-def test_neofiti_is_a_catalogue_node_followed_with_the_catalogue() -> None:
+def _shape(match):
+    return (
+        match.file_id,
+        match.subtext_id,
+        match.category_id,
+        match.follow_up_tool,
+    )
+
+
+def test_neofiti_is_a_catalogue_node() -> None:
     (match,) = _parse(NEOFITI.read_bytes()).matches
 
-    assert (match.file_id, match.subtext_id, match.label, match.follow_with) == (
-        "54001",
-        None,
-        "TN (Targum Neofiti)",
-        "cal_text_catalogue",
-    )
+    assert _shape(match) == (None, None, "54001", "cal_text_catalogue")
+    assert match.label == "TN (Targum Neofiti)"
     assert match.description is not None
     assert match.description.startswith("book 1 chapter 2 verse 2")
 
 
-def test_onkelos_search_result_is_followed_with_the_catalogue() -> None:
+def test_onkelos_result_names_a_catalogue_node_not_a_file() -> None:
     (match,) = _parse(ONKELOS.read_bytes()).matches
 
-    assert (match.file_id, match.label, match.follow_with) == (
-        "70703012",
-        "HS 3030",
-        "cal_text_catalogue",
-    )
+    assert _shape(match) == (None, None, "70703012", "cal_text_catalogue")
+    assert match.label == "HS 3030"
 
 
-def test_mandaic_results_are_still_followed_with_the_text_page() -> None:
+def test_peshitta_mixes_text_links_and_unicode_catalogue_nodes() -> None:
+    matches = _parse(PESHITTA.read_bytes()).matches
+
+    assert [_shape(match) for match in matches] == [
+        ("62018", None, None, "cal_text_page"),
+        (None, None, "62001", "cal_text_catalogue"),
+        (None, None, "62002", "cal_text_catalogue"),
+        (None, None, "6203504", "cal_text_catalogue"),
+    ]
+
+
+def test_mandaic_collection_results_are_read_with_the_text_page() -> None:
     matches = _parse(GINZA.read_bytes()).matches
 
-    assert matches
-    assert {match.follow_with for match in matches} == {"cal_text_page"}
+    assert [_shape(match) for match in matches] == [
+        ("74410", None, None, "cal_text_page"),
+        ("74411", None, None, "cal_text_page"),
+    ]
 
 
-def test_ordinary_text_links_are_followed_with_the_text_page() -> None:
-    body = NEOFITI.read_bytes().replace(
-        b'href="/showsubtexts.php?subtext=54001&cset=H"',
-        b'href="/get_a_chapter.php?file=54001&sub=101"',
-    )
-    (match,) = _parse(body).matches
+def test_mandaic_collection_link_in_roman_script_is_still_the_text_page() -> None:
+    body = GINZA.read_bytes().replace(b"subtext=74410&amp;cset=M", b"subtext=74410&amp;cset=R")
 
-    assert (match.file_id, match.subtext_id, match.follow_with) == ("54001", "101", "cal_text_page")
+    assert _shape(_parse(body).matches[0]) == ("74410", None, None, "cal_text_page")
 
 
 @pytest.mark.parametrize(
-    "href",
+    ("href", "message"),
     [
-        b"/showsubtexts.php?subtext=54001&cset=X",
-        b"/showsubtexts.php?subtext=54001",
-        b"/showsubtexts.php?subtext=5400a&cset=H",
-        b"/showsubtexts.php?subtext=54001&cset=H&cset=R",
+        (b"/showsubtexts.php?subtext=54001&cset=X", "invalid cset"),
+        (b"/showsubtexts.php?subtext=54001", "invalid cset"),
+        (b"/showsubtexts.php?subtext=54001&cset=H&cset=R", "invalid cset"),
+        (b"/showsubtexts.php?subtext=5400a&cset=H", "invalid file identifier"),
+        # Mandaic selector outside the Mandaic collection
+        (b"/showsubtexts.php?subtext=54001&cset=M", "invalid cset"),
     ],
 )
-def test_unrecognised_subtext_links_fail_closed(href: bytes) -> None:
+def test_unrecognised_subtext_links_fail_closed(href: bytes, message: str) -> None:
     body = NEOFITI.read_bytes().replace(b"/showsubtexts.php?subtext=54001&cset=H", href)
 
-    with pytest.raises(TextParseError):
+    with pytest.raises(TextParseError, match=message):
         _parse(body)
 
 
-def test_follow_with_is_serialized() -> None:
-    page = _parse(NEOFITI.read_bytes())
+def test_mandaic_collection_link_in_another_script_fails_closed() -> None:
+    body = GINZA.read_bytes().replace(b"subtext=74410&amp;cset=M", b"subtext=74410&amp;cset=H")
+
+    with pytest.raises(TextParseError, match="invalid cset"):
+        _parse(body)
+
+
+def test_search_match_fields_are_serialized() -> None:
+    page = _parse(PESHITTA.read_bytes())
     result = TextSearchResult(
         matches=page.matches,
         provenance=TextProvenance(
@@ -106,4 +127,9 @@ def test_follow_with_is_serialized() -> None:
 
     matches = result.to_dict()["matches"]
     assert isinstance(matches, list)
-    assert matches[0]["follow_with"] == "cal_text_catalogue"
+    assert matches[0]["file_id"] == "62018"
+    assert matches[0]["category_id"] is None
+    assert matches[0]["follow_up_tool"] == "cal_text_page"
+    assert matches[1]["file_id"] is None
+    assert matches[1]["category_id"] == "62001"
+    assert matches[1]["follow_up_tool"] == "cal_text_catalogue"
