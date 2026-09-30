@@ -33,7 +33,7 @@ _PAGE_MARKER_ANYWHERE_RE = re.compile(r"\bPage\s+\d+\s+of\s+\d+", re.IGNORECASE)
 _TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(
-    r"^NO LINES FOR (?P<file>\\d+)(?: (?P<selector>\\d+))? ARE CURRENTLY STORED$",
+    r"^NO LINES FOR (?P<file>\d+)(?: (?P<selector>\d+))? ARE CURRENTLY STORED$",
     re.IGNORECASE,
 )
 _NO_LINES_ANYWHERE_RE = re.compile(
