@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-051 — Hebrew-script KWIC writes coordinates reversed inside `<BDO dir="rtl">`
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #206.
+
+With `charset=H`, `showdialectKWIC.php` renders each target link's coordinate in reverse digit order inside `<BDO dir="rtl">`: `5227701020017` for target `7100201077225` (BT Shabbat), and `3005231` for `1325003` (Tel Dan). Detailed evidence: `docs/research/issue-206-bdo-reversed-coordinate.md`.
+
+**Implication:** a reversed link text is accepted only when it is exactly the reversed `target` and sits entirely inside `<BDO dir="rtl">`. The coordinate returned is always the link's `target`.
+
 ## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
 
 **Rechecked:** 2026-09-29 (a capture from #181's research); issue #203.
