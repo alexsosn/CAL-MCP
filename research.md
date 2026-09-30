@@ -333,7 +333,7 @@ When new evidence changes an assumption:
 
 `newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
 
-**Implication:** search matches state which tool follows them (`follow_with`). Only CAL's known script codes are accepted on such links; Mandaic `cset=M` keeps its text-page routing.
+A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
 
 ## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
 

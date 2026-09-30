@@ -342,10 +342,10 @@ async def cal_text_search(
     """Search CAL's current text/topic index without expanding or reranking the query.
 
     One explicit call submits at most one new logical CAL request and returns CAL file/subtext
-    identifiers suitable for explicit follow-up retrieval. Each match's ``follow_with`` names
-    the tool that reads it: ``cal_text_page`` or, for a subdivided source such as Targum
-    Neofiti ``54001``, ``cal_text_catalogue`` with ``file_id`` as ``category_id``. A
-    completed cache hit performs no new upstream I/O.
+    identifiers suitable for explicit follow-up retrieval. Each match's ``follow_up_tool``
+    names the tool that reads it: ``cal_text_page`` with its ``file_id`` (and any
+    ``subtext_id``), or ``cal_text_catalogue`` with its ``category_id`` for a catalogue node
+    such as Targum Neofiti ``54001``. A completed cache hit performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client

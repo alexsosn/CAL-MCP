@@ -27,3 +27,9 @@ Bounded requests on 2026-09-30:
 - Each text-search match gains `follow_with`: `cal_text_page` for `get_a_chapter.php` links and Mandaic `cset=M` links, and `cal_text_catalogue` for `showsubtexts.php` links with one of CAL's script codes `R`, `H`, `S` or `U`. For a catalogue node, `file_id` is the linked `subtext` value, which is exactly what `cal_text_catalogue(category_id=…)` takes, and `subtext_id` is `null`.
 - A `showsubtexts.php` link with any other or missing `cset`, or a non-decimal `subtext`, still fails closed.
 - Production requests are unchanged.
+
+## Review follow-up (2026-09-30)
+
+- **Peshitta.** The review made one bounded search for `Peshitta`. It returned 60 results: one `get_a_chapter.php?file=62018&cset=U` and 59 `showsubtexts.php?…&cset=U` catalogue nodes, including a 7-digit `6203504`. That page also failed before this change. `cset=U` is therefore observed; `R` and `S` are CAL's other script codes and are accepted by analogy.
+- **Routing follows the collection, not the script.** CAL uses `cset` to choose a script; CAL's Mandaic catalogue itself links `subtext=74410&cset=R`. So a Mandaic collection (`74…`) link with `cset` `M` or `R` is read by `cal_text_page`. Any other identifier with `cset` `H`, `U`, `R` or `S` is a catalogue node. Every other combination fails closed, including `cset=M` outside the Mandaic collection.
+- **Result shape.** The field is `follow_up_tool`, the vocabulary already used by `specialized_collections`. A catalogue node's identifier is reported as `category_id`, with `file_id: null`, because `70703012` is not a file id: it lists file `70703`, subtext `012`. Every catalogue-routed row failed before this change, so no existing caller depends on the earlier draft shape.

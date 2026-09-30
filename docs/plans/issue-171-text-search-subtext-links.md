@@ -13,3 +13,7 @@ Date: 2026-09-30. Research: `docs/research/issue-171-text-search-subtext-links.m
 4. Docs: `docs/tools/texts.md` (which tool follows each match), the tool docstring, `research.md` R-053, the fixture README, CHANGELOG.
 5. Verification: the full suite; live over MCP (`Neofiti` → catalogue → page, `Ginza`, `Onkelos`).
 6. Independent adversarial review of the exact candidate SHA.
+
+## Revision after review (2026-09-30)
+
+`follow_with` became `follow_up_tool`. Catalogue nodes report `category_id` with `file_id: null`. Routing is decided by the Mandaic collection prefix and the `cset`, and a Peshitta (`cset=U`) fixture was added.
