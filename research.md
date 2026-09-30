@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-054 — Syriac group pages use CAL's card layout
+
+**Rechecked:** 2026-09-30, with two bounded GETs; issue #172.
+
+`showsubtexts.php?keyword=<group>` (for example `60420`, `61000`) renders a script toggle, one `details.dialect-group` whose summary carries the group label and info link, and one `li` card per child: a `book-link` to `get_a_chapter.php?file=<file>&sub=<sub>&cset=S` and an `info-link` whose coordinate is the file or file + sub. Detailed evidence: `docs/research/issue-172-syriac-group-cards.md`.
+
+**Implication:** group children are parsed from the card structure, with explicit link classes, and carry `subtext_id`.
+
 ## R-051 — Text-scoped KWIC writes Hebrew- and Syriac-script coordinates reversed inside `<BDO dir="rtl">`
 
 **Rechecked:** 2026-09-29, with two bounded POSTs; issue #206.
