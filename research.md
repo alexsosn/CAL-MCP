@@ -335,6 +335,15 @@ When new evidence changes an assumption:
 
 A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
 
+## R-052 — Citation search explicitly rejects some single common words
+
+**Rechecked:** 2026-09-29, with four bounded POSTs; issue #207.
+
+`searchcits.php` answers `English=god`, `English=the` and `English=a` with `"<query>" is not a valid search string` and no result container, echoing the query lowercased (`God` → `"god"`). `king god` returns results, and gloss search accepts `god`. Detailed evidence: `docs/research/issue-207-invalid-search-string.md`.
+
+**Implication:** that exact marker naming the submitted query becomes an `invalid_input` error with `upstream_reached: true` and CAL's message. CAL-MCP keeps no local stop-word list.
+
+
 ## R-051 — Text-scoped KWIC writes Hebrew- and Syriac-script coordinates reversed inside `<BDO dir="rtl">`
 
 **Rechecked:** 2026-09-29, with two bounded POSTs; issue #206.

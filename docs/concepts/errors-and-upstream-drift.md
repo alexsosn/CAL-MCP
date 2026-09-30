@@ -38,7 +38,10 @@ Unexpected programming failures remain on the MCP SDK's generic sanitized error 
 
 ## Caller validation
 
-Invalid public arguments are rejected before a CAL request where the adapter can decide locally. Public caller-validation failures use the shared `CalInputError` family; request-boundary validation uses `CalRequestValidationError`. Both serialize as `invalid_input` with `upstream_reached=false` and `retryable=false`. One case is only detectable after CAL answers: a requested text page beyond the last page, which CAL silently clamps to its last page (the final `Page N of N`, or the only page of an unpaginated text). That raises `CalOutOfRangeError` (a `CalInputError`), serialized as `invalid_input` with `upstream_reached=true`, and its message names the last page.
+Invalid public arguments are rejected before a CAL request where the adapter can decide locally. Public caller-validation failures use the shared `CalInputError` family; request-boundary validation uses `CalRequestValidationError`. Both serialize as `invalid_input` with `upstream_reached=false` and `retryable=false`. Some cases are only detectable after CAL answers. They raise `CalRejectedInputError` (a `CalInputError`), serialized as `invalid_input` with `upstream_reached=true`:
+
+- A requested text page beyond the last page, which CAL silently clamps to its last page (the final `Page N of N`, or the only page of an unpaginated text). This raises `CalOutOfRangeError`, a `CalRejectedInputError` whose message names the last page.
+- A citation-text search that CAL explicitly rejects with `"<query>" is not a valid search string` (for example `god` or `the`). The message quotes CAL's rejection. CAL-MCP keeps no local stop-word list, and a rejection quoting any other string is `parser_drift`.
 
 Examples include malformed page references, unsupported public source selectors, invalid token indexes, unsafe/control-containing identifiers, and CAL request paths that would leave the allowed origin boundary.
 
