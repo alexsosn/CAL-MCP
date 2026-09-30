@@ -48,3 +48,10 @@ Every result is wrapped in `<div class="citation-row even|odd">` inside `<div cl
 - CAL renders a homograph number after `</pos>` inside the header link (`<pos>n.m.</pos> #3`). It is not part of the headwords. It is accepted only as `#N` matching the key's own homograph suffix; any other text after the POS fails closed.
 - Compared on the full `camel` capture, the row parser's output is identical to the earlier parser's for all 154 hits except 18 verb headers. There CAL's `<pos>` includes the vowel class (`vb. a/u`), which the earlier heuristic had split off into `gloss`. The row parser keeps CAL's marked POS and an empty `gloss`.
 - On the full `king` capture it returns 1069 hits (1067 rows plus the `brt ym` row's two pairs), one of them with `lemma: null`.
+
+## Review follow-up (2026-09-29)
+
+- Inside CAL's `citation-results` container, any text outside a recognised row (other than the results summary) now fails closed, and so does a row outside that container. A stray close tag or an unrecognised row class can no longer drop a citation silently.
+- The header segment's text must be exactly its lemma link's text; text outside the link fails closed.
+- Rows are recognised by the `citation-row` class token in any position.
+- Other tools keep `part_of_speech` as derived from CAL's rendered header text (`vb.` for verbs); this difference is documented rather than changed here.

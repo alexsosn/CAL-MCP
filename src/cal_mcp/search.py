@@ -22,7 +22,9 @@ from cal_mcp.lexicon import (
 _GLOSS_EMPTY_MARKER = "there are no glosses with the word:"
 _CITATION_EMPTY_MARKER = "there are no citations with the word:"
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
-_CITATION_ROW_MARKER_RE = re.compile(r"<div\s+class=\"citation-row\b", re.IGNORECASE)
+_CITATION_ROW_MARKER_RE = re.compile(
+    r"<div\s+class=\"[^\"]*(?<![\w-])citation-row(?![\w-])", re.IGNORECASE
+)
 
 
 class SearchParseError(CalParseError):
@@ -223,6 +225,7 @@ class _CitationSegment:
         self.label_parts: list[str] = []
         self.pos_parts: list[str] = []
         self.after_pos_parts: list[str] = []
+        self.link_parts: list[str] = []
         self.pos_count = 0
         self.hrefs: list[str] = []
         self.starts_with_citation = False
@@ -244,25 +247,42 @@ class _CitationSegment:
 
 
 class _CitationRowsParser(HTMLParser):
-    """Split current ``citation-row`` containers into ``<br>``-delimited segments (R-048)."""
+    """Split current ``citation-row`` containers into ``<br>``-delimited segments (R-048).
+
+    Inside CAL's ``citation-results`` container, any text outside a row other than the
+    results summary is recorded, so a row that is not recognised is never dropped silently.
+    """
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.rows: list[list[_CitationSegment]] = []
+        self.rows_outside_results = 0
+        self.stray_text: list[str] = []
+        self._results_depth = 0
         self._depth = 0
         self._segment: _CitationSegment | None = None
         self._in_link = False
         self._in_pos = False
+        self._in_summary = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        classes = (dict(attrs).get("class") or "").split()
         if tag == "div":
+            if self._results_depth:
+                self._results_depth += 1
+            elif "citation-results" in classes:
+                self._results_depth = 1
             if self._depth:
                 self._depth += 1
-            elif "citation-row" in (dict(attrs).get("class") or "").split():
+            elif "citation-row" in classes:
+                if not self._results_depth:
+                    self.rows_outside_results += 1
                 self._depth = 1
                 self._segment = _CitationSegment()
                 self.rows.append([self._segment])
             return
+        if tag == "p" and "results-summary" in classes:
+            self._in_summary = True
         if not self._depth or self._segment is None:
             return
         if tag == "br":
@@ -278,6 +298,10 @@ class _CitationRowsParser(HTMLParser):
             self._in_link = True
 
     def handle_endtag(self, tag: str) -> None:
+        if tag == "p":
+            self._in_summary = False
+        if tag == "div" and self._results_depth:
+            self._results_depth -= 1
         if not self._depth:
             return
         if tag == "div":
@@ -292,8 +316,12 @@ class _CitationRowsParser(HTMLParser):
 
     def handle_data(self, data: str) -> None:
         if not self._depth or self._segment is None:
+            if self._results_depth and not self._in_summary and data.strip():
+                self.stray_text.append(data)
             return
         self._segment.data(data)
+        if self._in_link:
+            self._segment.link_parts.append(data)
         if self._in_pos:
             self._segment.pos_parts.append(data)
         elif self._in_link and self._segment.pos_count:
@@ -306,6 +334,8 @@ def _parse_citation_rows(text: str) -> tuple[CitationSearchHit, ...]:
     parser = _CitationRowsParser()
     parser.feed(text)
     parser.close()
+    if parser.rows_outside_results or parser.stray_text:
+        raise SearchParseError("CAL citation search results contain content outside their rows")
     hits: list[CitationSearchHit] = []
     for row in parser.rows:
         segments = [segment for segment in row if segment.text]
@@ -346,6 +376,8 @@ def _citation_row_lemma(header: _CitationSegment) -> LemmaRef:
     keys = [_lemma_key_from_href(href) for href in header.hrefs]
     if len(keys) != 1 or keys[0] is None:
         raise SearchParseError("CAL citation search row lacks exactly one lemma header")
+    if header.text != _clean("".join(header.link_parts)):
+        raise SearchParseError("CAL citation search header has text outside its lemma link")
     label = _clean("".join(header.label_parts))
     part_of_speech = _clean("".join(header.pos_parts))
     if header.pos_count != 1 or not part_of_speech or not label:
