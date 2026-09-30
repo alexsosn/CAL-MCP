@@ -6,7 +6,6 @@ See docs/research/issue-204-empty-kwic-highlight.md.
 from __future__ import annotations
 
 import re
-
 from datetime import UTC, datetime
 from pathlib import Path
 
