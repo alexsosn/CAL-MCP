@@ -343,6 +343,19 @@ The full-context page for BT Shabbat (`get_a_kwicchapter.php?file=71002&sub=0105
 
 **Implication:** full-context rows accept the `bablex.php` family with exactly `{coord, word}`, alongside `getlex.php` with `{coord, word, hasvariant}`; a row mixing them fails closed.
 
+
+## R-048 — Citation search wraps results in rows; one row can hold a headerless citation
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #178.
+
+`searchcits.php` wraps each result in `<div class="citation-row …">`, holding one `oneentry.php` header with an explicit `<pos>` element, one context and one citation. CAL repeats the header per sense. For `king`, 1067 of 1068 rows have that shape. One row (`brt ym`) carries a second (context, citation) pair with no header, and that pair belongs to another lemma. Eleven headers have POS forms such as `n.(pr.)` that the earlier heuristic header split cannot parse. Detailed evidence: `docs/research/issue-178-headerless-citation.md`.
+
+Source:
+
+- POST https://cal.huc.edu/searchcits.php (`English=king`, `English=camel`)
+
+**Implication:** results are parsed per row container, and the POS is taken from `<pos>`. A headerless pair is returned with `lemma: null`, never attributed to the row's header.
+
 ## R-047 — KWIC full-context pages use the text-page file-info coordinate rule
 
 **Rechecked:** 2026-09-29, with four bounded GETs; issue #181.
@@ -354,6 +367,7 @@ Source:
 - https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010
 
 **Implication:** the full-context parser accepts exactly those two coordinates, with a label naming the file, and fails closed on anything else.
+
 
 ## R-046 — Six-digit Syriac text ids are CAL file plus subtext
 
