@@ -34,9 +34,13 @@ _TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
-_FOLLOW_WITH_TEXT_PAGE = "cal_text_page"
-_FOLLOW_WITH_CATALOGUE = "cal_text_catalogue"
+_FOLLOW_UP_TEXT_PAGE = "cal_text_page"
+_FOLLOW_UP_CATALOGUE = "cal_text_catalogue"
+# Script selectors on catalogue-node search links: H (Neofiti) and U (Peshitta) are observed;
+# R and S are CAL's other script codes (R-053).
 _SCRIPT_CSETS = frozenset({"R", "H", "S", "U"})
+# Mandaic collection links: M observed in search, R in CAL's Mandaic catalogue (R-053).
+_MANDAIC_SEARCH_CSETS = frozenset({"M", "R"})
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
@@ -179,13 +183,18 @@ class TextCataloguePage:
 
 @dataclass(frozen=True, slots=True)
 class TextSearchMatch:
-    """One text-search result and the tool that follows it (R-053)."""
+    """One text-search result and the tool that follows it (R-053).
 
-    file_id: str
+    A readable text has ``file_id`` (and any ``subtext_id``); a catalogue node has only
+    ``category_id``.
+    """
+
+    file_id: str | None
     subtext_id: str | None
+    category_id: str | None
     label: str
     description: str | None
-    follow_with: str
+    follow_up_tool: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -1355,7 +1364,7 @@ def _search_text_ref_from_link(
 ) -> TextSearchMatch | None:
     ordinary = _text_ref_from_link(link, label=label, description=description)
     if ordinary is not None:
-        return _search_match(ordinary, _FOLLOW_WITH_TEXT_PAGE)
+        return _search_match(ordinary)
     if not _is_path(link.href, "showsubtexts.php"):
         return None
 
@@ -1367,13 +1376,16 @@ def _search_text_ref_from_link(
         or _ID_RE.fullmatch(subtext_values[0]) is None
     ):
         raise TextParseError("CAL text search subtext result has an invalid file identifier")
-    cset_values = query.get("cset")
-    if cset_values == ["M"]:
-        # CAL's Mandaic collection route: cal_text_page reads the file directly.
-        follow_with = _FOLLOW_WITH_TEXT_PAGE
-    elif cset_values is not None and len(cset_values) == 1 and cset_values[0] in _SCRIPT_CSETS:
-        # Other scripts link a catalogue node, e.g. Neofiti 54001 (R-053).
-        follow_with = _FOLLOW_WITH_CATALOGUE
+    # The route follows CAL's collection, not its script selector (R-053): Mandaic
+    # collection files are read by cal_text_page, other subtext links are catalogue nodes.
+    identifier = subtext_values[0]
+    cset_values = query.get("cset") or []
+    cset = cset_values[0] if len(cset_values) == 1 else None
+    mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
+    if mandaic and cset in _MANDAIC_SEARCH_CSETS:
+        file_id, category_id, tool = identifier, None, _FOLLOW_UP_TEXT_PAGE
+    elif not mandaic and cset in _SCRIPT_CSETS:
+        file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
     else:
         raise TextParseError("CAL text search subtext result has an invalid cset")
 
@@ -1381,21 +1393,23 @@ def _search_text_ref_from_link(
     if not rendered_label:
         raise TextParseError("CAL text search subtext result has no rendered label")
     return TextSearchMatch(
-        file_id=subtext_values[0],
+        file_id=file_id,
         subtext_id=None,
+        category_id=category_id,
         label=rendered_label,
         description=description,
-        follow_with=follow_with,
+        follow_up_tool=tool,
     )
 
 
-def _search_match(text: TextRef, follow_with: str) -> TextSearchMatch:
+def _search_match(text: TextRef) -> TextSearchMatch:
     return TextSearchMatch(
         file_id=text.file_id,
         subtext_id=text.subtext_id,
+        category_id=None,
         label=text.label,
         description=text.description,
-        follow_with=follow_with,
+        follow_up_tool=_FOLLOW_UP_TEXT_PAGE,
     )
 
 
@@ -2108,9 +2122,10 @@ def _search_match_to_dict(match: TextSearchMatch) -> dict[str, object]:
     return {
         "file_id": match.file_id,
         "subtext_id": match.subtext_id,
+        "category_id": match.category_id,
         "label": match.label,
         "description": match.description,
-        "follow_with": match.follow_with,
+        "follow_up_tool": match.follow_up_tool,
     }
 
 
