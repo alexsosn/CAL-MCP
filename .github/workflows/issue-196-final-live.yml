@@ -1,0 +1,46 @@
+name: Issue 196 final live stdio acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-196-empty-cpa-55002
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify current CPA 55002 no-lines state over stdio
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          async def main() -> None:
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  result = await client.call_tool(
+                      "cal_text_page",
+                      {"file_id": "55002", "page": 1},
+                  )
+                  if result.is_error:
+                      raise RuntimeError(f"cal_text_page failed: {result.content!r}")
+                  data = result.structured_content
+                  if not isinstance(data, dict):
+                      raise RuntimeError("missing structured content")
+                  if data.get("status") != "not_found":
+                      raise RuntimeError(f"wrong status: {data.get('status')!r}")
+                  if data.get("page") is not None:
+                      raise RuntimeError("no-lines result unexpectedly contains a page")
+                  print("live #196 OK: 55002 -> not_found/page=null")
+
+          asyncio.run(main())
+          PY
