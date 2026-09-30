@@ -102,3 +102,14 @@ def test_mixed_direction_link_texts_fail_closed(replacement: bytes) -> None:
 
     with pytest.raises(ConcordanceParseError):
         _parse(body.replace(_REVERSED, replacement, 1), "gml N", "71002")
+
+
+def test_biblical_aramaic_hebrew_hits_with_drifted_and_missing_highlights() -> None:
+    body = (FIXTURES / "kwic_texts_mlk_31000_hebrew_current.html").read_bytes()
+
+    page = _parse(body, "mlk N", "31000")
+
+    assert page.total == 2
+    assert [hit.target_coordinate for hit in page.hits] == ["31000414", "31000414"]
+    assert page.hits[0].target_text is not None
+    assert page.hits[1].target_text is None

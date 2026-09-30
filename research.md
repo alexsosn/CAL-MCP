@@ -335,6 +335,15 @@ With `charset=H`, `showdialectKWIC.php` renders each target link's coordinate in
 
 **Implication:** a reversed link text is accepted only when it is exactly the reversed `target` and sits entirely inside `<BDO dir="rtl">`. The coordinate returned is always the link's `target`.
 
+## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
+
+**Rechecked:** 2026-09-29, with two bounded requests; issue #204.
+
+In `mlk N` KWIC over Samaritan Targum `56000`, 30 of 106 hits have a highlight that is not a form of `mlk` (25 other words, including a two-word highlight, on 16+ lines across chapters 114–529), and 5 of those are empty. In Hebrew-script `mlk N` KWIC over Biblical Aramaic `31000`, 7 of 45 target lines have no highlight at all (2026-09-30). A page with at least two hits and no highlight on any of them still fails closed, because every captured multi-hit page highlights most lines (101/106 and 38/45); the threshold of two is a judgement that keeps a genuine single unhighlighted hit. On line `56000114010`, whose full-context tokens show the lemma at words 3, 6, 9 and 12 and a two-word token at word 8, the four hits are highlighted `mlK`, `w)rywK`, `)l)sr` and nothing. Detailed evidence: `docs/research/issue-204-empty-kwic-highlight.md`.
+
+**Implication:** `target_text` is CAL's highlight as rendered, and is `null` when CAL's highlight is empty or missing. It is documented as unverified; CAL-MCP does not correct it.
+
+
 ## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
 
 **Rechecked:** 2026-09-29 (a capture from #181's research); issue #203.
@@ -342,6 +351,19 @@ With `charset=H`, `showdialectKWIC.php` renders each target link's coordinate in
 The full-context page for BT Shabbat (`get_a_kwicchapter.php?file=71002&sub=01051&cset=H&target=7100201051217`) links all 204 tokens through `bablex.php?coord=…&word=…`, with no `hasvariant`, and shows the same terminal empty anchor as other Hebrew-script rows. Detailed evidence: `docs/research/issue-203-bablex-full-context.md`.
 
 **Implication:** full-context rows accept the `bablex.php` family with exactly `{coord, word}`, alongside `getlex.php` with `{coord, word, hasvariant}`; a row mixing them fails closed.
+
+
+## R-048 — Citation search wraps results in rows; one row can hold a headerless citation
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #178.
+
+`searchcits.php` wraps each result in `<div class="citation-row …">`, holding one `oneentry.php` header with an explicit `<pos>` element, one context and one citation. CAL repeats the header per sense. For `king`, 1067 of 1068 rows have that shape. One row (`brt ym`) carries a second (context, citation) pair with no header, and that pair belongs to another lemma. Eleven headers have POS forms such as `n.(pr.)` that the earlier heuristic header split cannot parse. Detailed evidence: `docs/research/issue-178-headerless-citation.md`.
+
+Source:
+
+- POST https://cal.huc.edu/searchcits.php (`English=king`, `English=camel`)
+
+**Implication:** results are parsed per row container, and the POS is taken from `<pos>`. A headerless pair is returned with `lemma: null`, never attributed to the row's header.
 
 ## R-047 — KWIC full-context pages use the text-page file-info coordinate rule
 
@@ -354,6 +376,7 @@ Source:
 - https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010
 
 **Implication:** the full-context parser accepts exactly those two coordinates, with a label naming the file, and fails closed on anything else.
+
 
 ## R-046 — Six-digit Syriac text ids are CAL file plus subtext
 
