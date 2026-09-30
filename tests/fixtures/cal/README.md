@@ -21,6 +21,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | `search_gloss_empty.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=qzxvjk#`, `secondary=true`) | exact current empty-gloss marker |
 | `search_citations_camel.html` | `POST https://cal.huc.edu/searchcits.php` (`English=camel`) | repeated lemma/context/citation rows with Hebrew and Syriac source text |
 | `search_citations_empty.html` | `POST https://cal.huc.edu/searchcits.php` (`English=qzxvjk`) | exact current empty-citation marker |
+| `search_citations_invalid_god_current.html` | `POST https://cal.huc.edu/searchcits.php` (`English=god`; 2026-09-29) | CAL's explicit rejection page `"god" is not a valid search string` (style block removed) |
 | `search_citations_king_rows_current.html` | `POST https://cal.huc.edu/searchcits.php` (`English=king`; 2026-09-25, rechecked 2026-09-29) | current `citation-row` containers: `brt ym` with a headerless second pair, headers with `<pos>` forms `n.(pr.)` and `n.m.(f.)`, and an ordinary verb row |
 | `text_catalogue_root.html` | `https://cal.huc.edu/newtextmenu.html` | root category links plus a directly linked text |
 | `text_catalogue_biblical.html` | `https://cal.huc.edu/showsubtexts.php?subtext=3` | explicit subtext/file navigation identifiers |
