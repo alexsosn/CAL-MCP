@@ -262,8 +262,14 @@ class DecimalCpaRouteTransport:
         del config
         self.requests.append(request)
         query = urlencode(request.params)
+        params = dict(request.params)
+        marker_identity = params["file"]
+        if subtext_id := params.get("sub"):
+            marker_identity = f"{marker_identity} {subtext_id}"
         return _response(
-            b"<html><body>NO LINES FOR FIXTURE ARE CURRENTLY STORED</body></html>",
+            (
+                f"<html><body>NO LINES FOR {marker_identity} ARE CURRENTLY STORED</body></html>"
+            ).encode(),
             f"https://cal.huc.edu/{request.path}?{query}",
         )
 
