@@ -1014,9 +1014,7 @@ def _parse_full_context_row(
     source_url: str,
     requested_charset: str,
 ) -> TextLine | None:
-    lexical = [
-        link for cell in row.cells for link in cell.links if _is_path(link.href, "getlex.php")
-    ]
+    lexical = [link for cell in row.cells for link in cell.links if _is_full_context_lexical(link)]
     comment_links = [
         link for cell in row.cells for link in cell.links if _is_path(link.href, "comment.php")
     ]
@@ -1028,10 +1026,12 @@ def _parse_full_context_row(
         return None
     if len(row.cells) != 2:
         raise ConcordanceParseError("CAL full-context text row must contain two cells")
-    if any(_is_path(link.href, "getlex.php") for link in row.cells[0].links):
+    if any(_is_full_context_lexical(link) for link in row.cells[0].links):
         raise ConcordanceParseError("CAL full-context lexical link is in coordinate cell")
-    if any(not _is_path(link.href, "getlex.php") for link in row.cells[1].links):
+    if any(not _is_full_context_lexical(link) for link in row.cells[1].links):
         raise ConcordanceParseError("CAL full-context text cell has an unexpected link")
+    if len({_full_context_lexical_endpoint(link) for link in row.cells[1].links}) != 1:
+        raise ConcordanceParseError("CAL full-context row mixes lexical endpoint families")
 
     parsed_tokens = [
         _parse_full_context_lexical_link(source_url, link) for link in row.cells[1].links
@@ -1098,13 +1098,35 @@ def _parse_full_context_row(
     )
 
 
+# CAL links tokens through getlex.php, or through bablex.php for the Babylonian Talmud
+# (R-049); each family has its own exact selector set.
+_FULL_CONTEXT_LEXICAL_SELECTORS = {
+    "getlex.php": frozenset({"coord", "word", "hasvariant"}),
+    "bablex.php": frozenset({"coord", "word"}),
+}
+
+
+def _full_context_lexical_endpoint(link: _TableLink) -> str | None:
+    return next(
+        (name for name in _FULL_CONTEXT_LEXICAL_SELECTORS if _is_path(link.href, name)),
+        None,
+    )
+
+
+def _is_full_context_lexical(link: _TableLink) -> bool:
+    return _full_context_lexical_endpoint(link) is not None
+
+
 def _parse_full_context_lexical_link(
     source_url: str,
     link: _TableLink,
 ) -> tuple[str, int, str, str]:
-    lexical_url = _cal_navigation_url(source_url, link.href, "getlex.php")
+    endpoint = _full_context_lexical_endpoint(link)
+    if endpoint is None:
+        raise ConcordanceParseError("CAL full-context text cell has an unexpected link")
+    lexical_url = _cal_navigation_url(source_url, link.href, endpoint)
     query = parse_qs(urlsplit(lexical_url).query, keep_blank_values=True)
-    if set(query) != {"coord", "word", "hasvariant"}:
+    if set(query) != _FULL_CONTEXT_LEXICAL_SELECTORS[endpoint]:
         raise ConcordanceParseError(
             "CAL full-context lexical link has unexpected or missing selectors"
         )
@@ -1113,11 +1135,14 @@ def _parse_full_context_lexical_link(
         "coordinate",
     )
     word = _single_query_value(query, "word", "full-context lexical word")
-    hasvariant = _single_query_value(query, "hasvariant", "full-context lexical hasvariant")
     if not word.isascii() or not word.isdecimal():
         raise ConcordanceParseError("CAL full-context lexical word index is not decimal")
-    if not hasvariant.isascii() or not hasvariant.isdecimal():
-        raise ConcordanceParseError("CAL full-context lexical hasvariant selector is not decimal")
+    if "hasvariant" in query:
+        hasvariant = _single_query_value(query, "hasvariant", "full-context lexical hasvariant")
+        if not hasvariant.isascii() or not hasvariant.isdecimal():
+            raise ConcordanceParseError(
+                "CAL full-context lexical hasvariant selector is not decimal"
+            )
     return coordinate, int(word), link.text, lexical_url
 
 
