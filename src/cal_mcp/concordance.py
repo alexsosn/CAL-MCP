@@ -1224,7 +1224,7 @@ class _KwicTargetSegmentParser(HTMLParser):
         self._in_target_link = False
         self._bold_depth = 0
         self._bold_parts: list[str] = []
-        self._rtl_depth = 0
+        self._bdo_dirs: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS:
@@ -1241,8 +1241,9 @@ class _KwicTargetSegmentParser(HTMLParser):
                 )
                 self._in_target_link = True
         elif tag == "bdo" and self._in_target_link:
-            if self._rtl_depth or (dict(attrs).get("dir") or "").lower() == "rtl":
-                self._rtl_depth += 1
+            # The innermost BDO's direction applies; one without dir inherits it.
+            inherited = self._bdo_dirs[-1] if self._bdo_dirs else "ltr"
+            self._bdo_dirs.append((dict(attrs).get("dir") or inherited).lower())
         elif tag == "b":
             self._bold_depth += 1
             if self._bold_depth == 1:
@@ -1260,11 +1261,11 @@ class _KwicTargetSegmentParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS and tag not in {"br", "hr"}:
             self._end_line()
-        elif tag == "bdo" and self._rtl_depth:
-            self._rtl_depth -= 1
+        elif tag == "bdo" and self._bdo_dirs:
+            self._bdo_dirs.pop()
         elif tag == "a" and self._in_target_link:
             self._in_target_link = False
-            self._rtl_depth = 0
+            self._bdo_dirs = []
         elif tag == "b" and self._bold_depth:
             self._bold_depth -= 1
             if self._bold_depth == 0:
@@ -1280,7 +1281,8 @@ class _KwicTargetSegmentParser(HTMLParser):
         if self._open is None:
             self._line_text.append(data)
         elif self._in_target_link:
-            target = self._open.link_text_rtl if self._rtl_depth else self._open.link_text_other
+            in_rtl = bool(self._bdo_dirs) and self._bdo_dirs[-1] == "rtl"
+            target = self._open.link_text_rtl if in_rtl else self._open.link_text_other
             target.append(data)
 
     def close(self) -> None:
