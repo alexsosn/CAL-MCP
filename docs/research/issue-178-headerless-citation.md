@@ -64,3 +64,8 @@ One further bounded POST (`English=house`, 421 KB, 813 rows) showed two more rea
 - **Linked references.** A citation reference can be an external link (`<i><a href="http://dukhrana.com/…">BBah 1013:25</a></i>`). Only a lemma-entry (`oneentry.php`) link or a `<pos>` element marks a header; other links in a citation are kept as rendered text.
 
 The row rule is therefore: a header, then a context, then one or more citations, optionally followed by further (context, citation) groups. Only the first citation is attributed to the header; two consecutive contexts, or a context without a following citation, fail closed. On the full captures: `king` gives 1069 hits (1 null lemma), `camel` 154, and `house` 816 (3 null lemmas, all 3 with a null context).
+
+## Re-review follow-up (2026-09-29)
+
+- A segment counts as a citation only if it starts with its `<i>` reference **and** carries CAL's translation span (`<span class="rom">`). All 2053 citation segments across the `king`, `house` and `camel` captures have that span, and no context has it. A segment that starts with `<i>` but lacks the span fails closed, so a context that happens to start with italics can never become an invented citation.
+- CAL separates context-less extra citations with an empty `<br>`. The parser ignores empty segments, so it does not rely on that separator; the output is the same either way, because such citations always have `lemma: null`.

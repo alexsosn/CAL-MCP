@@ -226,6 +226,7 @@ class _CitationSegment:
         self.pos_parts: list[str] = []
         self.after_pos_parts: list[str] = []
         self.link_parts: list[str] = []
+        self.span_classes: set[str] = set()
         self.pos_count = 0
         self.hrefs: list[str] = []
         self.starts_with_citation = False
@@ -234,6 +235,12 @@ class _CitationSegment:
     @property
     def text(self) -> str:
         return _clean("".join(self.parts))
+
+    @property
+    def is_citation(self) -> bool:
+        # Every observed citation starts with its <i> reference and carries CAL's
+        # translation span; a context never has that span (R-048).
+        return self.starts_with_citation and "rom" in self.span_classes
 
     def start_tag(self, tag: str) -> None:
         if not self._seen_content:
@@ -290,6 +297,8 @@ class _CitationRowsParser(HTMLParser):
             self.rows[-1].append(self._segment)
             return
         self._segment.start_tag(tag)
+        if tag == "span":
+            self._segment.span_classes.update(classes)
         if tag == "pos":
             self._segment.pos_count += 1
             self._in_pos = True
@@ -348,7 +357,9 @@ def _parse_citation_rows(text: str) -> tuple[CitationSearchHit, ...]:
             for segment in rest
         ):
             raise SearchParseError("CAL citation search row has more than one lemma header")
-        if not rest or rest[0].starts_with_citation or not rest[-1].starts_with_citation:
+        if any(segment.starts_with_citation != segment.is_citation for segment in rest):
+            raise SearchParseError("CAL citation search row has a malformed citation")
+        if not rest or rest[0].is_citation or not rest[-1].is_citation:
             raise SearchParseError(
                 "CAL citation search row must pair each context with one citation"
             )
@@ -357,7 +368,7 @@ def _parse_citation_rows(text: str) -> tuple[CitationSearchHit, ...]:
         # has no header in CAL and is returned with a null lemma, never attributed (R-048).
         pending_context: _CitationSegment | None = None
         for segment in rest:
-            if not segment.starts_with_citation:
+            if not segment.is_citation:
                 if pending_context is not None:
                     raise SearchParseError(
                         "CAL citation search row must pair each context with one citation"
