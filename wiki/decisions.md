@@ -272,5 +272,7 @@ Consequences:
   and `word_index`;
 - current text tables are classified as linked or plain as a whole; an observed mixed table is not
   assumed and therefore fails closed;
-- an empty `text-display` shell is not represented as a successful empty line; the current
-  direct-CPA `55002` state is tracked by #196.
+- an empty `text-display` shell is not represented as a successful empty line; when CAL also
+  supplies its explicit `NO LINES FOR ... ARE CURRENTLY STORED` marker (current direct CPA
+  `55002`), text retrieval uses the existing `not_found` / `page=null` semantics rather than
+  inventing a line.

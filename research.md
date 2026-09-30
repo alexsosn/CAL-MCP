@@ -327,13 +327,46 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-054 — Syriac group pages use CAL's card layout
+## R-055 — Syriac group pages use CAL's card layout
 
 **Rechecked:** 2026-09-30, with two bounded GETs; issue #172.
 
-`showsubtexts.php?keyword=<group>` (for example `60420`, `61000`) renders a script toggle, one `details.dialect-group` whose summary carries the group label and info link, and one `li` card per child: a `book-link` to `get_a_chapter.php?file=<file>&sub=<sub>&cset=S` and an `info-link` whose coordinate is the file or file + sub. Detailed evidence: `docs/research/issue-172-syriac-group-cards.md`.
+`showsubtexts.php?keyword=<group>` (for example `60420`, `61000`) renders a script toggle, one
+`details.dialect-group` whose summary carries the group label and info link, and one `li` card
+per child: a `book-link` to `get_a_chapter.php?file=<file>&sub=<sub>&cset=S` and an
+`info-link` whose coordinate is the file or file + sub. Detailed evidence:
+`docs/research/issue-172-syriac-group-cards.md`.
 
-**Implication:** group children are parsed from the card structure, with explicit link classes, and carry `subtext_id`.
+**Implication:** group children are parsed from the card structure, with explicit link classes, and
+carry `subtext_id`.
+
+## R-054 — Current direct CPA 55002 explicitly reports no stored lines
+
+**Rechecked:** 2026-09-29 against current CAL; issue #196.
+
+The category-55 catalogue still exposes direct CPA file `55002` (“CCR NT Stuff”) via
+`get_a_chapter.php?file=55002&cset=C`. Default, `page=0`, and `page=1` forms all return HTTP
+200 but explicitly render `NO LINES FOR 55002 ARE CURRENTLY STORED` and no scholarly text.
+
+The shared semantic-line parser currently places CAL's inline “Hide manuscript variants” link
+label immediately before that marker. The exact current toggle route is
+`get_a_chapter.php?file=55002&sub=&cset=C&variants=0`, so the old whole-page word-boundary regex
+misses the marker and incorrectly reports parser drift.
+
+Detailed evidence and request bounds:
+`docs/research/issue-196-empty-cpa-55002.md`.
+
+Sources:
+
+- https://cal.huc.edu/showsubtexts.php?subtext=55
+- https://cal.huc.edu/get_a_chapter.php?file=55002&cset=C&page=0
+- https://cal.huc.edu/get_file_info.php?coord=55002
+
+**Implication:** the existing text-page `not_found` state also covers a catalogued text for which
+CAL explicitly stores no lines. Marker recognition is structural: validated rendered link labels
+may be removed from the semantic line, after which the remaining marker must full-match the
+requested file identity. Arbitrary prefixes, malformed/repeated markers, and another file id fail
+closed.
 
 ## R-053 — Text search links subdivided non-Mandaic sources through `showsubtexts.php`
 
@@ -342,7 +375,6 @@ When new evidence changes an assumption:
 `newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
 
 A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
-
 
 ## R-052 — Citation search explicitly rejects some single common words
 
