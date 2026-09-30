@@ -38,6 +38,7 @@ class SyriacTextItem:
     navigation_kind: SyriacTextNavigationKind
     navigation_url: str
     info_url: str | None = None
+    subtext_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -602,10 +603,191 @@ def parse_syriac_text_group_page(
     if returned_group != submitted_group:
         raise SyriacParseError("CAL Syriac grouped-text response contradicts the selected group")
 
+    body = response.body.decode("utf-8", errors="replace")
+    if _GROUP_CARD_MARKER_RE.search(body) is not None:
+        return _parse_syriac_group_cards(body, response.url, submitted_group)
     parser = _SemanticLinesParser()
-    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.feed(body)
     parser.close()
     return _parse_syriac_navigation_items(parser.lines, response.url)
+
+
+_GROUP_CARD_MARKER_RE = re.compile(r"<details\s+class=\"dialect-group\"")
+_GROUP_TOGGLE_SCRIPTS = frozenset({"S", "R"})
+
+
+@dataclass(slots=True)
+class _CardLink:
+    classes: tuple[str, ...]
+    href: str
+    parts: list[str] = field(default_factory=list)
+
+    @property
+    def text(self) -> str:
+        return _clean_text("".join(self.parts))
+
+
+class _GroupCardsParser(HTMLParser):
+    """Collect the links of CAL's card-layout group page by their structural place (R-054)."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.toggle_links: list[_CardLink] = []
+        self.summary_links: list[_CardLink] = []
+        self.cards: list[list[_CardLink]] = []
+        self.stray_links: list[_CardLink] = []
+        self._toggle_depth = 0
+        self._details_depth = 0
+        self._in_summary = False
+        self._in_card = False
+        self._link: _CardLink | None = None
+        self._ignored_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _IGNORED_CONTENT_TAGS:
+            self._ignored_depth += 1
+            return
+        if self._ignored_depth:
+            return
+        values = dict(attrs)
+        classes = tuple((values.get("class") or "").split())
+        if tag == "div":
+            if self._toggle_depth:
+                self._toggle_depth += 1
+            elif "script-toggle" in classes:
+                self._toggle_depth = 1
+        elif tag == "details":
+            if self._details_depth:
+                self._details_depth += 1
+            elif "dialect-group" in classes:
+                self._details_depth = 1
+        elif tag == "summary" and self._details_depth:
+            self._in_summary = True
+        elif tag == "li" and self._details_depth:
+            if self._in_card:
+                raise SyriacParseError("CAL Syriac group card is nested in another card")
+            self._in_card = True
+            self.cards.append([])
+        elif tag == "a":
+            if self._link is not None:
+                raise SyriacParseError("CAL Syriac group page contains nested links")
+            self._link = _CardLink(classes=classes, href=values.get("href") or "")
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._ignored_depth:
+            if tag in _IGNORED_CONTENT_TAGS:
+                self._ignored_depth -= 1
+            return
+        if tag == "div" and self._toggle_depth:
+            self._toggle_depth -= 1
+        elif tag == "details" and self._details_depth:
+            self._details_depth -= 1
+        elif tag == "summary":
+            self._in_summary = False
+        elif tag == "li":
+            self._in_card = False
+        elif tag == "a" and self._link is not None:
+            link, self._link = self._link, None
+            if self._toggle_depth:
+                self.toggle_links.append(link)
+            elif self._in_summary:
+                self.summary_links.append(link)
+            elif self._in_card:
+                self.cards[-1].append(link)
+            else:
+                self.stray_links.append(link)
+
+    def handle_data(self, data: str) -> None:
+        if self._link is not None and not self._ignored_depth:
+            self._link.parts.append(data)
+
+    def close(self) -> None:
+        super().close()
+        if self._link is not None or self._ignored_depth:
+            raise SyriacParseError("CAL Syriac group page has incomplete markup")
+
+
+def _parse_syriac_group_cards(
+    body: str, source_url: str, group_id: str
+) -> tuple[SyriacTextItem, ...]:
+    parser = _GroupCardsParser()
+    parser.feed(body)
+    parser.close()
+
+    # Page chrome (back/forward navigation and the logo) is the only link outside the
+    # script toggle and the group; anything else is an unrecognised child (R-054).
+    for link in parser.stray_links:
+        if "cal-nav-link" not in link.classes and link.href != "/":
+            raise SyriacParseError("CAL Syriac group page has a link outside its group")
+
+    for link in parser.toggle_links:
+        if "script-toggle-opt" not in link.classes:
+            raise SyriacParseError("CAL Syriac group script toggle has an unexpected link")
+        resolved = _validated_same_origin_url(source_url, link.href, "showsubtexts.php")
+        query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
+        if (
+            set(query) != {"subtext", "script"}
+            or query["subtext"] != [group_id]
+            or len(query["script"]) != 1
+            or query["script"][0] not in _GROUP_TOGGLE_SCRIPTS
+        ):
+            raise SyriacParseError("CAL Syriac group script toggle names another group")
+
+    if len(parser.summary_links) != 1 or "info-link" not in parser.summary_links[0].classes:
+        raise SyriacParseError("CAL Syriac group summary lacks one information link")
+    if _card_info_coordinate(parser.summary_links[0], source_url) != group_id:
+        raise SyriacParseError("CAL Syriac group summary information link names another group")
+
+    items: list[SyriacTextItem] = []
+    seen: set[tuple[str, str]] = set()
+    for card in parser.cards:
+        books = [link for link in card if link.classes == ("book-link",)]
+        infos = [link for link in card if link.classes == ("info-link",)]
+        if len(books) != 1 or len(infos) > 1 or len(books) + len(infos) != len(card):
+            raise SyriacParseError("CAL Syriac group card has unexpected links")
+        book = books[0]
+        navigation_url = _validated_same_origin_url(source_url, book.href, "get_a_chapter.php")
+        query = parse_qs(urlsplit(navigation_url).query, keep_blank_values=True)
+        if set(query) != {"file", "sub", "cset"} or any(len(v) != 1 for v in query.values()):
+            raise SyriacParseError("CAL Syriac group card link has unexpected selectors")
+        file_id, subtext_id = query["file"][0], query["sub"][0]
+        _require_decimal_identifier(file_id, "Syriac group card file")
+        if not subtext_id.isascii() or not subtext_id.isdecimal():
+            raise SyriacParseError("CAL Syriac group card subtext is not decimal")
+        if (file_id, subtext_id) in seen:
+            raise SyriacParseError("CAL Syriac group repeats a card")
+        seen.add((file_id, subtext_id))
+        if not book.text:
+            raise SyriacParseError("CAL Syriac group card has no rendered label")
+        info_url = None
+        if infos:
+            info_url = _validated_same_origin_url(source_url, infos[0].href, "get_file_info.php")
+            if _card_info_coordinate(infos[0], source_url) not in {file_id, file_id + subtext_id}:
+                raise SyriacParseError("CAL Syriac group card information link names another text")
+        items.append(
+            SyriacTextItem(
+                upstream_id=file_id,
+                label=book.text,
+                navigation_kind=SyriacTextNavigationKind.TEXT,
+                navigation_url=navigation_url,
+                info_url=info_url,
+                subtext_id=subtext_id,
+            )
+        )
+    if not items:
+        raise SyriacParseError("CAL Syriac group page has no cards")
+    return tuple(items)
+
+
+def _card_info_coordinate(link: _CardLink, source_url: str) -> str:
+    resolved = _validated_same_origin_url(source_url, link.href, "get_file_info.php")
+    query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
+    # CAL's return target is not URL-encoded, so its own script parameter leaks through.
+    if not set(query) <= {"coord", "return", "script"}:
+        raise SyriacParseError("CAL Syriac group information link has unexpected selectors")
+    coord = _single_query_value(query, "coord", "Syriac group information")
+    _require_decimal_identifier(coord, "Syriac group information coordinate")
+    return coord
 
 
 def parse_syriac_missing_words_page(
@@ -1013,6 +1195,7 @@ def _text_item_to_dict(item: SyriacTextItem) -> dict[str, object]:
         "navigation_kind": item.navigation_kind.value,
         "navigation_url": item.navigation_url,
         "info_url": item.info_url,
+        "subtext_id": item.subtext_id,
     }
 
 
