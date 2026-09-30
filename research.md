@@ -331,7 +331,7 @@ When new evidence changes an assumption:
 
 **Rechecked:** 2026-09-29, with four bounded POSTs; issue #207.
 
-`searchcits.php` answers `English=god` and `English=the` with `"<query>" is not a valid search string` and no result container. `king god` returns results, and gloss search accepts `god`. Detailed evidence: `docs/research/issue-207-invalid-search-string.md`.
+`searchcits.php` answers `English=god`, `English=the` and `English=a` with `"<query>" is not a valid search string` and no result container, echoing the query lowercased (`God` → `"god"`). `king god` returns results, and gloss search accepts `god`. Detailed evidence: `docs/research/issue-207-invalid-search-string.md`.
 
 **Implication:** that exact marker naming the submitted query becomes an `invalid_input` error with `upstream_reached: true` and CAL's message. CAL-MCP keeps no local stop-word list.
 

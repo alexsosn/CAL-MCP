@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import re
 from dataclasses import dataclass
 from datetime import datetime
@@ -21,7 +22,7 @@ from cal_mcp.lexicon import (
 
 _GLOSS_EMPTY_MARKER = "there are no glosses with the word:"
 _CITATION_EMPTY_MARKER = "there are no citations with the word:"
-_CITATION_REJECTED_RE = re.compile(r'"([^"]*)" is not a valid search string')
+_CITATION_REJECTED_RE = re.compile(r'"(.*?)" is not a valid search string')
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
 _CITATION_ROW_MARKER_RE = re.compile(
     r"<div\s+class=\"[^\"]*(?<![\w-])citation-row(?![\w-])", re.IGNORECASE
@@ -179,13 +180,20 @@ def parse_citation_search_page(
     text = response.body.decode("utf-8", errors="replace")
     if _CITATION_EMPTY_MARKER in text.lower():
         return CitationSearchPage(hits=())
-    rejections = _CITATION_REJECTED_RE.findall(text)
+    rejections = [html.unescape(echo) for echo in _CITATION_REJECTED_RE.findall(text)]
     if rejections:
-        # CAL's explicit rejection of the query itself, e.g. very common words (R-052).
-        if rejections != [submitted_query] or _CITATION_ROW_MARKER_RE.search(text) is not None:
+        # CAL's explicit rejection of the query itself, e.g. very common words (R-052). CAL
+        # echoes the query lowercased, so the echo is compared case-insensitively and quoted
+        # as CAL rendered it.
+        if (
+            submitted_query is None
+            or len(rejections) != 1
+            or rejections[0].casefold() != submitted_query.casefold()
+            or _CITATION_ROW_MARKER_RE.search(text) is not None
+        ):
             raise SearchParseError("CAL citation search rejection does not match the request")
         raise CalRejectedInputError(
-            f'CAL rejected the citation search: "{submitted_query}" is not a valid search string'
+            f'CAL rejected the citation search: "{rejections[0]}" is not a valid search string'
         )
 
     if _CITATION_ROW_MARKER_RE.search(text) is not None:

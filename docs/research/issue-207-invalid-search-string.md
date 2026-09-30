@@ -30,3 +30,7 @@ The page's CSS mentions `.citation-row` and `.citation-results`, but the page ha
 - A rejection message quoting another string fails closed as `parser_drift`.
 - CAL-MCP keeps no local stop-word list; CAL stays the authority.
 - Production requests are unchanged.
+
+## Review follow-up (2026-09-30)
+
+The review made two more bounded POSTs. `English=God` is answered with `"god" is not a valid search string`, so CAL echoes the query **lowercased**. `English=a` is also rejected. The echo is therefore compared with the submitted query case-insensitively, after HTML unescaping and up to the literal `" is not a valid search string`, so a quote inside the query cannot cut it short. The error quotes CAL's echo as rendered. A result page that contains citation rows is never treated as a rejection.
