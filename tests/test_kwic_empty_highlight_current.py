@@ -5,6 +5,8 @@ See docs/research/issue-204-empty-kwic-highlight.md.
 
 from __future__ import annotations
 
+import re
+
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -96,9 +98,9 @@ def test_empty_highlight_on_the_dialect_scope_path() -> None:
 
 
 def test_page_with_several_hits_and_no_highlight_at_all_fails_closed() -> None:
-    body = FIXTURE.read_bytes()
-    for tag in (b"<b>", b"</b>"):
-        body = body.replace(tag, b"")
+    # Remove only the target highlights, keeping CAL's <b>56000:</b> section header.
+    body = re.sub(rb"&nbsp;&nbsp;<b>(.*?)</b>", rb"\1", FIXTURE.read_bytes())
+    assert b"<b>56000:</b>" in body and body.count(b"<b>") == 1
 
     with pytest.raises(ConcordanceParseError, match="highlights no target"):
         _parse(body)
