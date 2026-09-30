@@ -58,7 +58,7 @@ _EMPTY = b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b>(ylM"
 
 def test_target_line_without_any_highlight_has_null_target_text() -> None:
     # CAL renders some target lines with no <b> at all: 7 of 45 lines of Hebrew-script
-    # mlk N KWIC in Biblical Aramaic 31000 (2026-09-29).
+    # mlk N KWIC in Biblical Aramaic 31000 (2026-09-30).
     body = FIXTURE.read_bytes()
     assert body.count(_EMPTY) == 1
 
@@ -93,3 +93,12 @@ def test_empty_highlight_on_the_dialect_scope_path() -> None:
     )
 
     assert page.hits[0].target_text is None
+
+
+def test_page_with_several_hits_and_no_highlight_at_all_fails_closed() -> None:
+    body = FIXTURE.read_bytes()
+    for tag in (b"<b>", b"</b>"):
+        body = body.replace(tag, b"")
+
+    with pytest.raises(ConcordanceParseError, match="highlights no target"):
+        _parse(body)
