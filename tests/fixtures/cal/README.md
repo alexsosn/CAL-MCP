@@ -2,7 +2,7 @@
 
 These fixtures are deliberately reduced semantic excerpts, not archived CAL pages. They retain only the minimum current markup/text relationships needed by offline parser tests.
 
-Capture/recheck dates: **2026-09-04–2026-09-11**.
+Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later rows state their own capture date in the source column and in the fixture's provenance comment.
 
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
@@ -77,6 +77,8 @@ Capture/recheck dates: **2026-09-04–2026-09-11**.
 | `kwic_dialect_nqh_71_current.html` | `https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71` (2026-09-25) | per-form page that omits the requested `n)qh N` and lists `n)qt) N` (1) and `nqh N` (0) |
 | `kwic_dialect_nqh_n_zero_current.html` | `https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=51` (2026-09-24) | two per-form "No examples found" summaries and no total |
 | `kwic_full_context_syr_romlaw_unicode.html` | `https://cal.huc.edu/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323` (2026-09-24) | three Unicode Syriac full-context rows around a `U` KWIC target |
+| `kwic_full_context_samaritan_56000_112_current.html` | `https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010` (2026-09-29) | current full context: file-info `coord` is file plus sub (`56000112`), label names the file; target row and one neighbour |
+| `kwic_full_context_ba_ezra_31000_4_current.html` | `https://cal.huc.edu/get_a_kwicchapter.php?file=31000&sub=4&cset=H&target=31000414` (2026-09-29) | Hebrew-script full context with file-info `coord=310004`; target row and its neighbours |
 | `targum_parallel_gen_1_1.html` | `POST https://cal.huc.edu/showtargum.php` (`bookname=01`, `chapter=01`, `verse=01`, optional Peshitta/Samaritan requested) | MT plus ordered current CAL Targum/source readings, Hebrew/Aramaic/Syriac Unicode, source chapter links, optional Peshitta, and absent Samaritan output |
 | `targum_parallel_not_found.html` | `POST https://cal.huc.edu/showtargum.php` (`bookname=01`, `chapter=01`, `verse=99`) | current explicit `error in coordinate` not-found semantics |
 | `targum_concordance_klb.html` | `POST https://cal.huc.edu/showtargumKWIC.php` (`lemma=klb`, `pos=N`) | ordered Targum section/source counts, same-origin example links, and reported total 59 |
