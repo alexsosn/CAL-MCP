@@ -46,11 +46,12 @@ def test_babylonian_talmud_full_context_is_found() -> None:
 
     assert page.status is KwicFullContextStatus.FOUND
     assert [line.coordinate for line in page.lines] == [
+        "7100201050244",
         "7100201051127",
         TARGET,
         "7100201051218",
     ]
-    target = page.lines[1]
+    target = page.lines[2]
     assert [(token.word_index, token.text) for token in target.tokens] == [
         (0, '"מאי'),
         (1, "נאקה"),
@@ -78,6 +79,15 @@ def test_babylonian_talmud_full_context_is_found() -> None:
         ),
         # a token naming another coordinate
         (b"coord=7100201051217&word=1", b"coord=7100201051218&word=1"),
+        # repeated selectors
+        (b"coord=7100201051217&word=1", b"coord=7100201051217&word=1&word=1"),
+        # another origin
+        (
+            b'href="bablex.php?coord=7100201051217&word=1"',
+            b'href="https://example.org/bablex.php?coord=7100201051217&word=1"',
+        ),
+        # an empty anchor that is not the row's last token
+        (b'word=1" target="info">\xd7\xa0\xd7\x90\xd7\xa7\xd7\x94<', b'word=1" target="info"><'),
     ],
 )
 def test_malformed_bablex_rows_fail_closed(old: bytes, new: bytes) -> None:
@@ -86,3 +96,36 @@ def test_malformed_bablex_rows_fail_closed(old: bytes, new: bytes) -> None:
 
     with pytest.raises(ConcordanceParseError):
         _parse(body.replace(old, new, 1))
+
+
+def test_manuscript_variant_readings_stay_inline_as_on_text_pages() -> None:
+    line = _parse(FIXTURE.read_bytes()).lines[0]
+
+    # CAL's <cal-variant> readings are kept in the token text, as cal_text_page does; the
+    # variant-wrapped empty anchor after the last token is CAL's Hebrew rendering artifact.
+    assert [(token.word_index, token.text) for token in line.tokens] == [
+        (0, "האי"),
+        (1, "ברגזתא/גזרתא"),
+        (2, "דקני"),
+        (3, "שפיר"),
+        (4, "דאמי"),
+    ]
+
+
+def test_terminal_empty_anchor_is_accepted_only_for_hebrew_script() -> None:
+    body = FIXTURE.read_bytes().replace(b"cset=H", b"cset=R")
+
+    with pytest.raises(ConcordanceParseError):
+        parse_kwic_full_context_page(
+            CalResponse(
+                status_code=200,
+                url=URL.replace("cset=H", "cset=R"),
+                body=body,
+                content_type="text/html; charset=UTF-8",
+                retrieved_at=datetime(2026, 9, 29, tzinfo=UTC),
+            ),
+            requested_file_id="71002",
+            requested_subtext_id="01051",
+            requested_target_coordinate=TARGET,
+            requested_charset="R",
+        )
