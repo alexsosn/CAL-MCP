@@ -876,7 +876,12 @@ def parse_kwic_full_context_page(
         requested_charset=requested_charset,
     )
     semantic_lines = _parse_lines(response)
-    _validate_full_context_file_identity(semantic_lines, response.url, requested_file_id)
+    _validate_full_context_file_identity(
+        semantic_lines,
+        response.url,
+        requested_file_id,
+        requested_subtext_id,
+    )
     markers = [
         match
         for line in semantic_lines
@@ -918,6 +923,12 @@ def parse_kwic_full_context_page(
     if sum(line.coordinate == requested_target_coordinate for line in lines) != 1:
         raise ConcordanceParseError(
             "CAL full-context page does not contain exactly one requested target row"
+        )
+    # The file-info coordinate only echoes the submitted sub, so the target row itself must
+    # carry the file and submitted subtext as its coordinate prefix (R-047).
+    if not requested_target_coordinate.startswith(requested_file_id + (requested_subtext_id or "")):
+        raise ConcordanceParseError(
+            "CAL full-context target row does not belong to the requested subtext"
         )
     return KwicFullContextPage(status=KwicFullContextStatus.FOUND, lines=lines)
 
@@ -965,7 +976,13 @@ def _validate_full_context_file_identity(
     lines: Sequence[object],
     source_url: str,
     requested_file_id: str,
+    requested_subtext_id: str | None,
 ) -> None:
+    # As on text pages (R-039), current CAL renders the coordinate as the file id followed by
+    # the submitted sub, or as the bare file id; the label always names the file (R-047).
+    accepted_coords = {requested_file_id}
+    if requested_subtext_id is not None:
+        accepted_coords.add(requested_file_id + requested_subtext_id)
     identities: list[str] = []
     for line in lines:
         for link in getattr(line, "links", ()):
@@ -978,17 +995,14 @@ def _validate_full_context_file_identity(
                 raise ConcordanceParseError(
                     "CAL full-context file-information link has unexpected selectors"
                 )
-            coord = _parse_decimal_id(
-                _single_query_value(query, "coord", "full-context file information"),
-                "file_id",
-            )
+            coord = _single_query_value(query, "coord", "full-context file information")
             label = getattr(link, "text", "")
-            if not label.startswith(f"{coord}:"):
+            if coord not in accepted_coords or not label.startswith(f"{requested_file_id}:"):
                 raise ConcordanceParseError(
-                    "CAL full-context file-information label differs from its identifier"
+                    "CAL full-context file-information link differs from the requested text"
                 )
             identities.append(coord)
-    if identities != [requested_file_id]:
+    if len(identities) != 1:
         raise ConcordanceParseError(
             "CAL full-context file identity does not uniquely match request"
         )
