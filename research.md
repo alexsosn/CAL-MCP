@@ -335,6 +335,15 @@ When new evidence changes an assumption:
 
 **Implication:** group children are parsed from the card structure, with explicit link classes, and carry `subtext_id`.
 
+## R-053 — Text search links subdivided non-Mandaic sources through `showsubtexts.php`
+
+**Rechecked:** 2026-09-30, with two bounded searches and two catalogue follow-ups; issue #171.
+
+`newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
+
+A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
+
+
 ## R-052 — Citation search explicitly rejects some single common words
 
 **Rechecked:** 2026-09-29, with four bounded POSTs; issue #207.
