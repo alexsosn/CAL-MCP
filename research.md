@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-053 — Text search links subdivided non-Mandaic sources through `showsubtexts.php`
+
+**Rechecked:** 2026-09-30, with two bounded searches and two catalogue follow-ups; issue #171.
+
+`newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
+
+**Implication:** search matches state which tool follows them (`follow_with`). Only CAL's known script codes are accepted on such links; Mandaic `cset=M` keeps its text-page routing.
+
 ## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
 
 **Rechecked:** 2026-09-29, with two bounded requests; issue #204.
