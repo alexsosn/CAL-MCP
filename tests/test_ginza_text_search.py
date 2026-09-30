@@ -106,7 +106,7 @@ def test_malformed_mandaic_search_result_fails_closed(href: str) -> None:
         1,
     )
 
-    with pytest.raises(TextParseError, match="Mandaic text search result"):
+    with pytest.raises(TextParseError, match="text search subtext result"):
         parse_text_search_page(_response(body.encode()))
 
 

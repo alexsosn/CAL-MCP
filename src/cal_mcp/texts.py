@@ -34,6 +34,13 @@ _TEXT_CELL_TAGS = frozenset({"a", "span", "cal-variant", "td", "tr", "table"})
 _RAW_TEXT_LT_RE = re.compile(r"<(?![A-Za-z][A-Za-z0-9-]*[\s/>]|/[A-Za-z][A-Za-z0-9-]*\s*>|!|\?)")
 _NO_LINES_RE = re.compile(r"\bNO LINES FOR\b.*\bARE CURRENTLY STORED\b", re.IGNORECASE)
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
+_FOLLOW_UP_TEXT_PAGE = "cal_text_page"
+_FOLLOW_UP_CATALOGUE = "cal_text_catalogue"
+# Script selectors on catalogue-node search links: H (Neofiti) and U (Peshitta) are observed;
+# R and S are CAL's other script codes (R-053).
+_SCRIPT_CSETS = frozenset({"R", "H", "S", "U"})
+# Mandaic collection links: M observed in search, R in CAL's Mandaic catalogue (R-053).
+_MANDAIC_SEARCH_CSETS = frozenset({"M", "R"})
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
@@ -175,8 +182,24 @@ class TextCataloguePage:
 
 
 @dataclass(frozen=True, slots=True)
+class TextSearchMatch:
+    """One text-search result and the tool that follows it (R-053).
+
+    A readable text has ``file_id`` (and any ``subtext_id``); a catalogue node has only
+    ``category_id``.
+    """
+
+    file_id: str | None
+    subtext_id: str | None
+    category_id: str | None
+    label: str
+    description: str | None
+    follow_up_tool: str
+
+
+@dataclass(frozen=True, slots=True)
 class TextSearchPage:
-    matches: tuple[TextRef, ...]
+    matches: tuple[TextSearchMatch, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,12 +270,12 @@ class TextCatalogueResult:
 
 @dataclass(frozen=True, slots=True)
 class TextSearchResult:
-    matches: tuple[TextRef, ...]
+    matches: tuple[TextSearchMatch, ...]
     provenance: TextProvenance
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "matches": [_text_ref_to_dict(item) for item in self.matches],
+            "matches": [_search_match_to_dict(item) for item in self.matches],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -720,7 +743,7 @@ def parse_text_search_page(response: CalResponse) -> TextSearchPage:
     if _TEXT_SEARCH_MARKER not in lowered:
         raise TextParseError("CAL text search page is missing its result marker")
 
-    matches: list[TextRef] = []
+    matches: list[TextSearchMatch] = []
     for line in lines:
         for link in line.links:
             if not (
@@ -1338,10 +1361,10 @@ def _search_text_ref_from_link(
     *,
     label: str,
     description: str | None,
-) -> TextRef | None:
+) -> TextSearchMatch | None:
     ordinary = _text_ref_from_link(link, label=label, description=description)
     if ordinary is not None:
-        return ordinary
+        return _search_match(ordinary)
     if not _is_path(link.href, "showsubtexts.php"):
         return None
 
@@ -1352,19 +1375,41 @@ def _search_text_ref_from_link(
         or len(subtext_values) != 1
         or _ID_RE.fullmatch(subtext_values[0]) is None
     ):
-        raise TextParseError("CAL Mandaic text search result has an invalid file identifier")
-    cset_values = query.get("cset")
-    if cset_values != ["M"]:
-        raise TextParseError("CAL Mandaic text search result has an invalid cset")
+        raise TextParseError("CAL text search subtext result has an invalid file identifier")
+    # The route follows CAL's collection, not its script selector (R-053): Mandaic
+    # collection files are read by cal_text_page, other subtext links are catalogue nodes.
+    identifier = subtext_values[0]
+    cset_values = query.get("cset") or []
+    cset = cset_values[0] if len(cset_values) == 1 else None
+    mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
+    if mandaic and cset in _MANDAIC_SEARCH_CSETS:
+        file_id, category_id, tool = identifier, None, _FOLLOW_UP_TEXT_PAGE
+    elif not mandaic and cset in _SCRIPT_CSETS:
+        file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
+    else:
+        raise TextParseError("CAL text search subtext result has an invalid cset")
 
     rendered_label = label.strip()
     if not rendered_label:
-        raise TextParseError("CAL Mandaic text search result has no rendered label")
-    return TextRef(
-        file_id=subtext_values[0],
+        raise TextParseError("CAL text search subtext result has no rendered label")
+    return TextSearchMatch(
+        file_id=file_id,
         subtext_id=None,
+        category_id=category_id,
         label=rendered_label,
         description=description,
+        follow_up_tool=tool,
+    )
+
+
+def _search_match(text: TextRef) -> TextSearchMatch:
+    return TextSearchMatch(
+        file_id=text.file_id,
+        subtext_id=text.subtext_id,
+        category_id=None,
+        label=text.label,
+        description=text.description,
+        follow_up_tool=_FOLLOW_UP_TEXT_PAGE,
     )
 
 
@@ -2073,6 +2118,17 @@ def _optional_clean_text(value: str) -> str | None:
     return cleaned or None
 
 
+def _search_match_to_dict(match: TextSearchMatch) -> dict[str, object]:
+    return {
+        "file_id": match.file_id,
+        "subtext_id": match.subtext_id,
+        "category_id": match.category_id,
+        "label": match.label,
+        "description": match.description,
+        "follow_up_tool": match.follow_up_tool,
+    }
+
+
 def _text_ref_to_dict(text: TextRef) -> dict[str, object]:
     return {
         "file_id": text.file_id,
@@ -2176,6 +2232,7 @@ __all__ = [
     "TextParseError",
     "TextProvenance",
     "TextRef",
+    "TextSearchMatch",
     "TextSearchPage",
     "TextSearchResult",
     "TextService",

@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-053 — Text search links subdivided non-Mandaic sources through `showsubtexts.php`
+
+**Rechecked:** 2026-09-30, with two bounded searches and two catalogue follow-ups; issue #171.
+
+`newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
+
+A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
+
 ## R-052 — Citation search explicitly rejects some single common words
 
 **Rechecked:** 2026-09-29, with four bounded POSTs; issue #207.
@@ -334,6 +342,7 @@ When new evidence changes an assumption:
 `searchcits.php` answers `English=god`, `English=the` and `English=a` with `"<query>" is not a valid search string` and no result container, echoing the query lowercased (`God` → `"god"`). `king god` returns results, and gloss search accepts `god`. Detailed evidence: `docs/research/issue-207-invalid-search-string.md`.
 
 **Implication:** that exact marker naming the submitted query becomes an `invalid_input` error with `upstream_reached: true` and CAL's message. CAL-MCP keeps no local stop-word list.
+
 
 ## R-051 — Text-scoped KWIC writes Hebrew- and Syriac-script coordinates reversed inside `<BDO dir="rtl">`
 
