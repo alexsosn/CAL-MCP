@@ -43,6 +43,10 @@ def test_rows_keep_cal_order_and_never_attribute_a_headerless_citation() -> None
         ("kl N", "Sf.2.c15"),
         ("krk N", "TN Num34:15"),
         ("mlk V", "TgIIChron 25:16"),
+        ("mlxmw N", "BBah 1013:25"),
+        ("byt@$() N", "Act14congr2 149:6"),
+        (None, "P Jn2:16"),
+        (None, "BT Ber 6b(27)"),
     ]
     headerless = hits[1]
     assert headerless.lexical_context == ": small wall or glacis"
@@ -51,6 +55,12 @@ def test_rows_keep_cal_order_and_never_attribute_a_headerless_citation() -> None
         "its Lord’s blessings will be a rampart for Edessa and your kingship’s blessing a wall"
     )
     assert hits[0].lexical_context == "dolphin : (zool.) dolphin"
+    # Further citations with neither a context nor a header of their own (house, 2026-09-29).
+    assert [(hit.lexical_context, hit.translation) for hit in hits[-2:]] == [
+        (None, "do not make my father's house into a marketplace"),
+        (None, "the reward of (coming to) the wedding house is (for) words (of congratulations)"),
+    ]
+    assert hits[-3].lexical_context == 'sundial : (astron.) zodiacal "house"'
 
 
 def test_headers_take_the_part_of_speech_from_cal_pos_markup() -> None:
@@ -65,6 +75,8 @@ def test_headers_take_the_part_of_speech_from_cal_pos_markup() -> None:
         (("kl", "klˀ"), "ku/ol, kullā (kollā)", "n.(pr.)", ""),
         (("krk", "krkˀ"), "kreḵ, karkā", "n.m.(f.)", ""),
         (("MLK",), None, "vb. e(a)/u", ""),
+        (("mlḥmw", "mlḥmwtˀ"), "mlaḥmū, mlaḥmūṯā", "n.f.", ""),
+        (("byt šˁˀ",), "bēṯ šāˁē", "n.m.", ""),
     ]
 
 
@@ -179,4 +191,31 @@ def test_row_class_in_any_position_is_recognised() -> None:
         b'<div class="citation-row even">', b'<div class="even citation-row">'
     )
 
-    assert len(_parse(body).hits) == 5
+    assert len(_parse(body).hits) == 9
+
+
+def test_linked_citation_reference_is_kept_as_rendered() -> None:
+    hit = _parse(FIXTURE.read_bytes()).hits[5]
+
+    assert hit.reference == "BBah 1013:25"
+    assert hit.translation is not None
+    assert hit.translation.startswith("those things that are composed of dissimilar things")
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        # a context after the last citation, with no citation of its own
+        (b"(of congratulations)</span><br>\n", b"(of congratulations)</span><br>\n : orphan<br>\n"),
+        # two contexts in a row
+        (b"<br>\n<br>\n<i>P Jn2:16</i>", b"<br>\n : a<br>\n : b<br>\n<i>P Jn2:16</i>"),
+        # a citation segment that carries a lemma-entry link
+        (b"<i>P Jn2:16</i>", b'<i><a href="oneentry.php?lemma=byt N">P Jn2:16</a></i>'),
+    ],
+)
+def test_unpaired_or_lemma_linked_segments_fail_closed(old: bytes, new: bytes) -> None:
+    body = FIXTURE.read_bytes()
+    assert old in body
+
+    with pytest.raises(SearchParseError):
+        _parse(body.replace(old, new, 1))
