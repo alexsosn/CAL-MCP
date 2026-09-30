@@ -18,7 +18,7 @@ v0.1.0 freezes **34 public tools** across these research families:
 - dictionary spelling collation;
 - citations from sources that CAL cites but does not expose as full online texts;
 - Targum parallel verse, Targum concordance (current-layout label rows reported as `section_labels` rather than applied to rows), and MT-Hebrew reflex workflows;
-- Syriac text-category discovery, explicit grouped-text follow-up (`cal_syriac_group`), CAL's missing-from-*A Syriac Lexicon* lists, and MT/Peshitta verse comparison.
+- Syriac text-category discovery, explicit grouped-text follow-up (`cal_syriac_group`, including CAL's current card layout, whose children carry `subtext_id`), CAL's missing-from-*A Syriac Lexicon* lists, and MT/Peshitta verse comparison.
 
 The executable MCP schemas remain the technical source of truth. CAL endpoint names and private form fields are not part of the public contract.
 
