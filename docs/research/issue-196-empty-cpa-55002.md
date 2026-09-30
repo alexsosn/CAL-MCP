@@ -158,3 +158,18 @@ RED should cover:
 
 No production request changes. One explicit `cal_text_page` call remains one logical CAL request.
 No links are followed automatically.
+
+## Final installed-stdio acceptance
+
+Run `36715432418` rebuilt and installed the integrated candidate and made exactly one public MCP
+call:
+
+```text
+cal_text_page(file_id="55002", page=1)
+```
+
+The installed server made one HTTP 200 request to
+`get_a_chapter.php?file=55002&cset=C&page=0` and returned structured
+`status=not_found`, `page=null`. No text, token, comment, metadata, or navigation link was
+followed. The temporary workflow was removed immediately after the successful run.
+
