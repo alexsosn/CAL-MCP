@@ -44,3 +44,7 @@ Each page has one `details.dialect-group`, no `single-entry-row` (a class CAL's 
   - Any other link or class inside the group, a repeated (file, sub), or a page with no cards fails closed.
 - Items gain `subtext_id`, which is `null` for items without one (the catalogue path is unchanged). A card child is `navigation_kind: "text"` with `upstream_id` = the file and `subtext_id` = CAL's `sub`, followed with `cal_text_page(file_id, subtext_id=…)`.
 - Production requests are unchanged.
+
+## Review follow-up (2026-09-30)
+
+The review made two more bounded GETs of groups taken from `cal_syriac_texts` results: `63400` (JS, 15 cards) and `61200` (Syriac coins, 4 cards). Both have the same card structure. On all four observed pages every card's file is the group id, and no card carries text outside its links. The parser now accounts for every link and every piece of text by its place: banner navigation (`javascript:history.back()`, `/newtextmenu.html`, `/`), the page title, the toggle label, the summary label, and the cards. Everything else fails closed, so content is never dropped silently: text in a card outside its links, a link or text elsewhere, a second group, an empty summary label, a card for another file, or a card script other than `S`/`R`. The document head is ignored. The group marker is recognised whatever the `details` element's other attributes or classes.
