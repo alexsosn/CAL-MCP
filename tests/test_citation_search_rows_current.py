@@ -214,6 +214,8 @@ def test_linked_citation_reference_is_kept_as_rendered() -> None:
         (b"(of congratulations)</span><br>\n", b"(of congratulations)</span><br>\n : orphan<br>\n"),
         # two contexts in a row
         (b"<br>\n<br>\n<i>P Jn2:16</i>", b"<br>\n : a<br>\n : b<br>\n<i>P Jn2:16</i>"),
+        # a further context that starts with <i> is not a citation (no translation span)
+        (b"<br>\n : small wall or glacis", b"<br>\n<i>G</i> : small wall or glacis"),
         # a citation segment that carries a lemma-entry link
         (b"<i>P Jn2:16</i>", b'<i><a href="oneentry.php?lemma=byt N">P Jn2:16</a></i>'),
     ],
