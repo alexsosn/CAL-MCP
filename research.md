@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-051 — Text-scoped KWIC writes Hebrew- and Syriac-script coordinates reversed inside `<BDO dir="rtl">`
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #206.
+
+With `charset=H`, `showdialectKWIC.php` renders each target link's coordinate in reverse digit order inside `<BDO dir="rtl">`: `5227701020017` for target `7100201077225` (BT Shabbat), and `3005231` for `1325003` (Tel Dan, both `charset=H` and `charset=S`). The one-dialect endpoint renders its coordinates plainly. Detailed evidence: `docs/research/issue-206-bdo-reversed-coordinate.md`.
+
+**Implication:** a reversed link text is accepted only when it is exactly the reversed `target` and sits entirely inside `<BDO dir="rtl">`. The coordinate returned is always the link's `target`.
+
 ## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
 
 **Rechecked:** 2026-09-29, with two bounded requests; issue #204.
@@ -334,6 +342,7 @@ When new evidence changes an assumption:
 In `mlk N` KWIC over Samaritan Targum `56000`, 30 of 106 hits have a highlight that is not a form of `mlk` (25 other words, including a two-word highlight, on 16+ lines across chapters 114–529), and 5 of those are empty. In Hebrew-script `mlk N` KWIC over Biblical Aramaic `31000`, 7 of 45 target lines have no highlight at all (2026-09-30). A page with at least two hits and no highlight on any of them still fails closed, because every captured multi-hit page highlights most lines (101/106 and 38/45); the threshold of two is a judgement that keeps a genuine single unhighlighted hit. On line `56000114010`, whose full-context tokens show the lemma at words 3, 6, 9 and 12 and a two-word token at word 8, the four hits are highlighted `mlK`, `w)rywK`, `)l)sr` and nothing. Detailed evidence: `docs/research/issue-204-empty-kwic-highlight.md`.
 
 **Implication:** `target_text` is CAL's highlight as rendered, and is `null` when CAL's highlight is empty or missing. It is documented as unverified; CAL-MCP does not correct it.
+
 
 ## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
 
