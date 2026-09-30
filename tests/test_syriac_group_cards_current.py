@@ -121,6 +121,11 @@ _CARD = (
         (b"</details>", b"</details><p>More inscriptions to come</p>"),
         # the group summary without its label
         (b"<span>Old Syriac Inscriptions (1st-3rd c.)</span>", b"<span></span>"),
+        # extra text in the group summary besides its label
+        (
+            b"<span>Old Syriac Inscriptions (1st-3rd c.)</span>",
+            b"<span>Old Syriac Inscriptions (1st-3rd c.)</span><em>more to come</em>",
+        ),
         # a card for another file than the group
         (_CARD, _CARD.replace(b"file=61000", b"file=61001")),
         # an unknown script selector on a card
