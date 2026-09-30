@@ -335,6 +335,15 @@ When new evidence changes an assumption:
 
 **Implication:** that exact marker naming the submitted query becomes an `invalid_input` error with `upstream_reached: true` and CAL's message. CAL-MCP keeps no local stop-word list.
 
+## R-051 — Text-scoped KWIC writes Hebrew- and Syriac-script coordinates reversed inside `<BDO dir="rtl">`
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #206.
+
+With `charset=H`, `showdialectKWIC.php` renders each target link's coordinate in reverse digit order inside `<BDO dir="rtl">`: `5227701020017` for target `7100201077225` (BT Shabbat), and `3005231` for `1325003` (Tel Dan, both `charset=H` and `charset=S`). The one-dialect endpoint renders its coordinates plainly. Detailed evidence: `docs/research/issue-206-bdo-reversed-coordinate.md`.
+
+**Implication:** a reversed link text is accepted only when it is exactly the reversed `target` and sits entirely inside `<BDO dir="rtl">`. The coordinate returned is always the link's `target`.
+
+
 ## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
 
 **Rechecked:** 2026-09-29, with two bounded requests; issue #204.
