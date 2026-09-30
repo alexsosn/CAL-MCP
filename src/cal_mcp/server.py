@@ -296,7 +296,9 @@ async def cal_citation_text_search(
     """Search one to three English words in CAL lexicon citations.
 
     Results preserve CAL lemma references, lexical context, citation reference, source text,
-    and English translation.
+    and English translation. A citation CAL renders without its own lemma header has
+    ``lemma: null`` (and ``lexical_context: null`` when CAL renders no context for it); it
+    is never attributed to another lemma.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
