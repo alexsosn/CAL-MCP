@@ -22,7 +22,7 @@ Bounded requests on 2026-09-30:
 - A `showsubtexts.php` result with a non-Mandaic script names a CAL catalogue node (a subdivided source, or a node listing one subtext), not a readable page. `cal_text_page("54001")` without a subtext is not the right follow-up. `cal_text_catalogue(category_id=<the linked id>)` works for both observed results.
 - The Mandaic route (`cset=M`, #169/#185) remains a text that `cal_text_page` reads directly.
 
-## Consequences
+## Consequences (first design, superseded by the review follow-up below)
 
 - Each text-search match gains `follow_with`: `cal_text_page` for `get_a_chapter.php` links and Mandaic `cset=M` links, and `cal_text_catalogue` for `showsubtexts.php` links with one of CAL's script codes `R`, `H`, `S` or `U`. For a catalogue node, `file_id` is the linked `subtext` value, which is exactly what `cal_text_catalogue(category_id=…)` takes, and `subtext_id` is `null`.
 - A `showsubtexts.php` link with any other or missing `cset`, or a non-decimal `subtext`, still fails closed.
