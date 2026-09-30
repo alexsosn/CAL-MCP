@@ -42,3 +42,9 @@ Every result is wrapped in `<div class="citation-row even|odd">` inside `<div cl
 - Any other row shape fails closed: no header, several headers, no `<pos>`, a context without a citation, or a citation without a context.
 - Pages without `citation-row` containers keep the earlier line-based parser.
 - Production requests are unchanged.
+
+## Findings during GREEN (2026-09-29)
+
+- CAL renders a homograph number after `</pos>` inside the header link (`<pos>n.m.</pos> #3`). It is not part of the headwords. It is accepted only as `#N` matching the key's own homograph suffix; any other text after the POS fails closed.
+- Compared on the full `camel` capture, the row parser's output is identical to the earlier parser's for all 154 hits except 18 verb headers. There CAL's `<pos>` includes the vowel class (`vb. a/u`), which the earlier heuristic had split off into `gloss`. The row parser keeps CAL's marked POS and an empty `gloss`.
+- On the full `king` capture it returns 1069 hits (1067 rows plus the `brt ym` row's two pairs), one of them with `lemma: null`.
