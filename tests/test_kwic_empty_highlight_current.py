@@ -1,0 +1,105 @@
+"""Issue #204: KWIC target lines where CAL's highlight marks nothing.
+
+See docs/research/issue-204-empty-kwic-highlight.md.
+"""
+
+from __future__ import annotations
+
+import re
+from datetime import UTC, datetime
+from pathlib import Path
+
+import pytest
+
+from cal_mcp.client import CalResponse
+from cal_mcp.concordance import ConcordanceParseError, KwicPage, KwicScopeKind, parse_kwic_result
+
+FIXTURE = (
+    Path(__file__).parent / "fixtures" / "cal" / "kwic_texts_mlk_56000_empty_highlight_current.html"
+)
+
+
+def _parse(body: bytes) -> KwicPage:
+    return parse_kwic_result(
+        CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/showdialectKWIC.php",
+            body=body,
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 29, tzinfo=UTC),
+        ),
+        lemma_key="mlk N",
+        scope_kind=KwicScopeKind.TEXTS,
+        scope_ids=("56000",),
+    )
+
+
+@pytest.mark.parametrize("empty", [b"<b>&nbsp;&nbsp; </b>", b"<b> </b>", b"<b></b>"])
+def test_empty_highlight_is_returned_as_null_target_text(empty: bytes) -> None:
+    body = FIXTURE.read_bytes()
+    assert body.count(b"<b>&nbsp;&nbsp; </b>") == 1
+    page = _parse(body.replace(b"<b>&nbsp;&nbsp; </b>", empty))
+
+    assert page.total == 4
+    assert [hit.target_text for hit in page.hits] == ["mlK", "w)rywK", ")l)sr", None]
+    empty = page.hits[3]
+    assert (empty.file_id, empty.subtext_id, empty.target_coordinate) == (
+        "56000",
+        "114",
+        "56000114010",
+    )
+    assert empty.full_context_url == (
+        "https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=114&cset=R&target=56000114010"
+    )
+    assert empty.context.startswith("whwh bywmy )mrpl")
+
+
+_EMPTY = b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b>(ylM"
+
+
+def test_target_line_without_any_highlight_has_null_target_text() -> None:
+    # CAL renders some target lines with no <b> at all: 7 of 45 lines of Hebrew-script
+    # mlk N KWIC in Biblical Aramaic 31000 (2026-09-30).
+    body = FIXTURE.read_bytes()
+    assert body.count(_EMPTY) == 1
+
+    page = _parse(body.replace(_EMPTY, b"mlK (ylM"))
+
+    assert [hit.target_text for hit in page.hits] == ["mlK", "w)rywK", ")l)sr", None]
+
+
+def test_two_highlights_on_one_target_line_fail_closed() -> None:
+    body = FIXTURE.read_bytes()
+    assert body.count(_EMPTY) == 1
+
+    with pytest.raises(ConcordanceParseError):
+        _parse(body.replace(_EMPTY, b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b><b>(ylM</b>"))
+
+
+def test_empty_highlight_on_the_dialect_scope_path() -> None:
+    body = (FIXTURE.parent / "kwic_dialect_nqh_71_current.html").read_bytes()
+    highlight = '<b><span class="red">נאקתא</span></b>'.encode()
+    assert body.count(highlight) == 1
+    page = parse_kwic_result(
+        CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71",
+            body=body.replace(highlight, b'<b><span class="red"></span></b>'),
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 29, tzinfo=UTC),
+        ),
+        lemma_key="n)qh N",
+        scope_kind=KwicScopeKind.DIALECT,
+        scope_ids=("71",),
+    )
+
+    assert page.hits[0].target_text is None
+
+
+def test_page_with_several_hits_and_no_highlight_at_all_fails_closed() -> None:
+    # Remove only the target highlights, keeping CAL's <b>56000:</b> section header.
+    body = re.sub(rb"&nbsp;&nbsp;<b>(.*?)</b>", rb"\1", FIXTURE.read_bytes())
+    assert b"<b>56000:</b>" in body and body.count(b"<b>") == 1
+
+    with pytest.raises(ConcordanceParseError, match="highlights no target"):
+        _parse(body)

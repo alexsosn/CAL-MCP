@@ -183,12 +183,6 @@ _NONE_REQUESTED = "No examples found for <b>n)qh N</b> in dialect 6"
             "<b>1</b> example found for <b>nqh N</b> in dialect 7",
             "contradicts the request",
         ),
-        # Requested form missing.
-        (
-            _NONE_REQUESTED,
-            "No examples found for <b>nqh#2 N</b> in dialect 6",
-            "lacks the requested form",
-        ),
         # Requested form duplicated.
         (
             _FOUND_NQH,
@@ -374,13 +368,12 @@ def test_current_kwic_hits_carry_cal_highlighted_target_token() -> None:
 @pytest.mark.parametrize(
     ("old", "new", "message"),
     [
-        # No highlighted token on the target line.
-        ("&nbsp;&nbsp;<b>mlk&nbsp;&nbsp; </b>y[$", "mlk y[$", "highlighted target token"),
-        # Two highlighted tokens on one target line.
+        # Two highlighted tokens on one target line. (A line with no highlight is CAL's own
+        # rendering on some lines and gives target_text null; see issue #204.)
         (
             "&nbsp;&nbsp;<b>mlk&nbsp;&nbsp; </b>y[$",
             "<b>mlk</b> <b>y[$</b>",
-            "highlighted target token",
+            "more than one highlight",
         ),
         # Text before the link that happens to repeat the coordinate.
         (
@@ -523,3 +516,13 @@ def test_target_structure_must_agree_with_parsed_hit_lines() -> None:
             ((index, moved),),
             scope_kind=KwicScopeKind.DIALECT,
         )
+
+
+def test_current_dialect_kwic_without_the_requested_form_is_reported_not_rejected() -> None:
+    # D-014 amendment (#176): CAL may list only other forms; that is no longer drift.
+    body = _fixture(_FORMS).replace(
+        _NONE_REQUESTED, "No examples found for <b>nqh#2 N</b> in dialect 6", 1
+    )
+    page = _nqh(body)
+    assert [form.lemma_key for form in page.forms] == ["nqh#2 N", "nqh N"]  # type: ignore[attr-defined]
+    assert "n)qh N" not in [form.lemma_key for form in page.forms]  # type: ignore[attr-defined]

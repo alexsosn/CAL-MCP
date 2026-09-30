@@ -41,6 +41,13 @@ _NO_LINES_ANYWHERE_RE = re.compile(
     re.IGNORECASE,
 )
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
+_FOLLOW_UP_TEXT_PAGE = "cal_text_page"
+_FOLLOW_UP_CATALOGUE = "cal_text_catalogue"
+# Script selectors on catalogue-node search links: H (Neofiti) and U (Peshitta) are observed;
+# R and S are CAL's other script codes (R-053).
+_SCRIPT_CSETS = frozenset({"R", "H", "S", "U"})
+# Mandaic collection links: M observed in search, R in CAL's Mandaic catalogue (R-053).
+_MANDAIC_SEARCH_CSETS = frozenset({"M", "R"})
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
@@ -182,8 +189,24 @@ class TextCataloguePage:
 
 
 @dataclass(frozen=True, slots=True)
+class TextSearchMatch:
+    """One text-search result and the tool that follows it (R-053).
+
+    A readable text has ``file_id`` (and any ``subtext_id``); a catalogue node has only
+    ``category_id``.
+    """
+
+    file_id: str | None
+    subtext_id: str | None
+    category_id: str | None
+    label: str
+    description: str | None
+    follow_up_tool: str
+
+
+@dataclass(frozen=True, slots=True)
 class TextSearchPage:
-    matches: tuple[TextRef, ...]
+    matches: tuple[TextSearchMatch, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -254,12 +277,12 @@ class TextCatalogueResult:
 
 @dataclass(frozen=True, slots=True)
 class TextSearchResult:
-    matches: tuple[TextRef, ...]
+    matches: tuple[TextSearchMatch, ...]
     provenance: TextProvenance
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "matches": [_text_ref_to_dict(item) for item in self.matches],
+            "matches": [_search_match_to_dict(item) for item in self.matches],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -727,7 +750,7 @@ def parse_text_search_page(response: CalResponse) -> TextSearchPage:
     if _TEXT_SEARCH_MARKER not in lowered:
         raise TextParseError("CAL text search page is missing its result marker")
 
-    matches: list[TextRef] = []
+    matches: list[TextSearchMatch] = []
     for line in lines:
         for link in line.links:
             if not (
@@ -859,7 +882,7 @@ def _parse_text_page(
     ):
         return None
 
-    text_ref = _page_text_ref(
+    text_ref, cal_file_sub = _page_text_ref(
         lines,
         requested_file_id,
         requested_subtext_id,
@@ -868,10 +891,15 @@ def _parse_text_page(
     page_number, page_count, total_lines = _page_metadata(lines)
     if mandaic_page_route and page_count is None and requested_page is not None:
         page_number = requested_page
+    # A six-digit id that CAL splits into file plus sub navigates by that split (R-046).
+    navigation_file_id, navigation_subtext_id = cal_file_sub or (
+        requested_file_id,
+        requested_subtext_id,
+    )
     previous_page, next_page = _page_navigation(
         lines,
-        requested_file_id=requested_file_id,
-        requested_subtext_id=requested_subtext_id,
+        requested_file_id=navigation_file_id,
+        requested_subtext_id=navigation_subtext_id,
         mandaic_page_route=mandaic_page_route,
     )
     if requested_page is not None and page_number != requested_page:
@@ -897,6 +925,10 @@ def _parse_text_page(
         if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
         else None
     )
+    if cal_file_sub is not None:
+        # A split six-digit id is accepted from indirect evidence, so every row must also
+        # carry the requested id as its coordinate prefix (R-046).
+        expected_coordinate_prefix = requested_file_id
     table = _parse_text_table(response)
     if table.found:
         lexical_rows = tuple(_row_has_lexical_link(row) for row in table.rows)
@@ -1399,10 +1431,10 @@ def _search_text_ref_from_link(
     *,
     label: str,
     description: str | None,
-) -> TextRef | None:
+) -> TextSearchMatch | None:
     ordinary = _text_ref_from_link(link, label=label, description=description)
     if ordinary is not None:
-        return ordinary
+        return _search_match(ordinary)
     if not _is_path(link.href, "showsubtexts.php"):
         return None
 
@@ -1413,19 +1445,41 @@ def _search_text_ref_from_link(
         or len(subtext_values) != 1
         or _ID_RE.fullmatch(subtext_values[0]) is None
     ):
-        raise TextParseError("CAL Mandaic text search result has an invalid file identifier")
-    cset_values = query.get("cset")
-    if cset_values != ["M"]:
-        raise TextParseError("CAL Mandaic text search result has an invalid cset")
+        raise TextParseError("CAL text search subtext result has an invalid file identifier")
+    # The route follows CAL's collection, not its script selector (R-053): Mandaic
+    # collection files are read by cal_text_page, other subtext links are catalogue nodes.
+    identifier = subtext_values[0]
+    cset_values = query.get("cset") or []
+    cset = cset_values[0] if len(cset_values) == 1 else None
+    mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
+    if mandaic and cset in _MANDAIC_SEARCH_CSETS:
+        file_id, category_id, tool = identifier, None, _FOLLOW_UP_TEXT_PAGE
+    elif not mandaic and cset in _SCRIPT_CSETS:
+        file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
+    else:
+        raise TextParseError("CAL text search subtext result has an invalid cset")
 
     rendered_label = label.strip()
     if not rendered_label:
-        raise TextParseError("CAL Mandaic text search result has no rendered label")
-    return TextRef(
-        file_id=subtext_values[0],
+        raise TextParseError("CAL text search subtext result has no rendered label")
+    return TextSearchMatch(
+        file_id=file_id,
         subtext_id=None,
+        category_id=category_id,
         label=rendered_label,
         description=description,
+        follow_up_tool=tool,
+    )
+
+
+def _search_match(text: TextRef) -> TextSearchMatch:
+    return TextSearchMatch(
+        file_id=text.file_id,
+        subtext_id=text.subtext_id,
+        category_id=None,
+        label=text.label,
+        description=text.description,
+        follow_up_tool=_FOLLOW_UP_TEXT_PAGE,
     )
 
 
@@ -1452,7 +1506,7 @@ def _page_text_ref(
     requested_subtext_id: str | None,
     *,
     submitted_sub: str | None,
-) -> TextRef:
+) -> tuple[TextRef, tuple[str, str] | None]:
     # Current CAL (2026-09-25) renders the file-info coordinate of a subdivided page as the
     # file identifier followed by the submitted ``sub`` value. The bare file identifier is
     # still accepted only for the earlier (pre-2026-09-25) layout. Anything else names a
@@ -1472,14 +1526,50 @@ def _page_text_ref(
                 )
             file_id = requested_file_id
             prefix, separator, label = link.text.partition(":")
-            if not separator or prefix.strip() != file_id or not label.strip():
+            if not separator or not label.strip():
                 raise TextParseError("CAL text page file-info label is malformed")
-            return TextRef(
+            cal_file_sub: tuple[str, str] | None = None
+            if prefix.strip() != file_id:
+                if submitted_sub is not None or not _is_linked_file_sub_split(
+                    lines, file_id, prefix.strip()
+                ):
+                    raise TextParseError("CAL text page file-info label is malformed")
+                cal_file_sub = (prefix.strip(), file_id.removeprefix(prefix.strip()))
+            text_ref = TextRef(
                 file_id=file_id,
                 subtext_id=requested_subtext_id,
                 label=label.strip(),
             )
+            return text_ref, cal_file_sub
     raise TextParseError("CAL text page is missing its file-information link")
+
+
+def _is_linked_file_sub_split(lines: list[_Line], file_id: str, label_prefix: str) -> bool:
+    # CAL lists some Syriac texts under a six-digit id that is its file plus subtext
+    # (634081 = file 63408, sub 1). The file-info label then shows only the file. The split
+    # is accepted only when the page's own text links name exactly that file and sub (R-046).
+    sub = file_id.removeprefix(label_prefix)
+    if (
+        not label_prefix.isascii()
+        or not label_prefix.isdecimal()
+        or not file_id.startswith(label_prefix)
+        or not sub
+        or not sub.isdecimal()
+    ):
+        return False
+    linked: set[tuple[str, str]] = set()
+    for line in lines:
+        for link in line.links:
+            if not _is_path(link.href, "get_a_chapter.php"):
+                continue
+            query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+            files = query.get("file", [])
+            subs = query.get("sub", [])
+            if len(files) != 1 or len(subs) > 1:
+                return False
+            linked.add((files[0], subs[0] if subs else ""))
+    named = {pair for pair in linked if pair[1]}
+    return named == {(label_prefix, sub)}
 
 
 def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:
@@ -2098,6 +2188,17 @@ def _optional_clean_text(value: str) -> str | None:
     return cleaned or None
 
 
+def _search_match_to_dict(match: TextSearchMatch) -> dict[str, object]:
+    return {
+        "file_id": match.file_id,
+        "subtext_id": match.subtext_id,
+        "category_id": match.category_id,
+        "label": match.label,
+        "description": match.description,
+        "follow_up_tool": match.follow_up_tool,
+    }
+
+
 def _text_ref_to_dict(text: TextRef) -> dict[str, object]:
     return {
         "file_id": text.file_id,
@@ -2201,6 +2302,7 @@ __all__ = [
     "TextParseError",
     "TextProvenance",
     "TextRef",
+    "TextSearchMatch",
     "TextSearchPage",
     "TextSearchResult",
     "TextService",

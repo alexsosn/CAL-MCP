@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import string
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -12,11 +13,15 @@ from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _parse_lines
-from cal_mcp.normalization import InputRepresentation, normalize_query
+from cal_mcp.normalization import _CAL_CODE_LETTERS, InputRepresentation, normalize_query
 from cal_mcp.texts import TextLine, TextToken
 
 _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
+_NO_DATA_GLOSS_PREFIX = "no data found for "
+_UNDOCUMENTED_KEY_CAPITALS = frozenset(string.ascii_uppercase) - _CAL_CODE_LETTERS
+# Only the capitals observed in CAL's own concordance keys (R-045).
+_OBSERVED_CAL_KEY_CAPITALS = frozenset("KM")
 _FREQUENCY_MARKER_RE = re.compile(r"^Frequencies of lemmas in text ([0-9]+)$", re.IGNORECASE)
 _FREQUENCY_RE = re.compile(r"^([0-9]+)\s*:")
 _INLINE_FREQUENCY_PREFIX_RE = re.compile(r"^([0-9]+)\s*:\s*\.*$")
@@ -55,10 +60,11 @@ class KwicScopeKind(StrEnum):
 @dataclass(frozen=True, slots=True)
 class ConcordanceLemma:
     frequency: int
-    lemma_key: str
+    lemma_key: str | None
     label: str
     gloss: str
     kwic_url: str
+    cal_reports_no_data: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -165,8 +171,17 @@ class KwicResult:
             "hits": [_hit_to_dict(item) for item in self.hits],
             "empty_scope_ids": list(self.empty_scope_ids),
             "forms": [_form_to_dict(item) for item in self.forms],
+            "requested_form_listed": self.requested_form_listed,
             "provenance": _provenance_to_dict(self.provenance),
         }
+
+    @property
+    def requested_form_listed(self) -> bool | None:
+        """Whether CAL lists the requested form; None when CAL reports no per-form summaries."""
+
+        if not self.forms:
+            return None
+        return any(form.lemma_key == self.lemma_key for form in self.forms)
 
 
 class KwicFullContextStatus(StrEnum):
@@ -383,17 +398,18 @@ def parse_text_concordance_page(
         if cell_index == 0 or cell_index + 1 >= len(row.cells):
             raise ConcordanceParseError("CAL concordance row is missing frequency or gloss")
 
-        lemma_key, kwic_url, label = _parse_text_concordance_link(
-            base_url=response.url,
-            href=link.href,
-            link_text=link.text,
-            requested_text_id=requested_text_id,
-            requested_charset=requested_charset,
-        )
         frequency_match = _FREQUENCY_RE.match(row.cells[cell_index - 1].text)
         gloss = row.cells[cell_index + 1].text.removeprefix(":").strip()
         if frequency_match is None or not gloss:
             raise ConcordanceParseError("CAL concordance row lacks frequency or gloss")
+        lemma_key, kwic_url, label, no_data = _parse_text_concordance_link(
+            base_url=response.url,
+            href=link.href,
+            link_text=link.text,
+            gloss=gloss,
+            requested_text_id=requested_text_id,
+            requested_charset=requested_charset,
+        )
         lemmas.append(
             ConcordanceLemma(
                 frequency=int(frequency_match.group(1)),
@@ -401,6 +417,7 @@ def parse_text_concordance_page(
                 label=label,
                 gloss=gloss,
                 kwic_url=kwic_url,
+                cal_reports_no_data=no_data,
             )
         )
 
@@ -468,10 +485,11 @@ def _parse_inline_text_concordance_rows(
         if not gloss:
             raise ConcordanceParseError("CAL inline concordance row lacks a gloss")
 
-        lemma_key, kwic_url, label = _parse_text_concordance_link(
+        lemma_key, kwic_url, label, no_data = _parse_text_concordance_link(
             base_url=base_url,
             href=getattr(link, "href", ""),
             link_text=link_text,
+            gloss=gloss,
             requested_text_id=requested_text_id,
             requested_charset=requested_charset,
         )
@@ -482,6 +500,7 @@ def _parse_inline_text_concordance_rows(
                 label=label,
                 gloss=gloss,
                 kwic_url=kwic_url,
+                cal_reports_no_data=no_data,
             )
         )
     return tuple(lemmas)
@@ -492,12 +511,13 @@ def _parse_text_concordance_link(
     base_url: str,
     href: str,
     link_text: str,
+    gloss: str,
     requested_text_id: str,
     requested_charset: str,
-) -> tuple[str, str, str]:
+) -> tuple[str | None, str, str, bool]:
     kwic_url = _cal_navigation_url(base_url, href, "showKWIC.php")
     query = parse_qs(urlsplit(kwic_url).query, keep_blank_values=True)
-    lemma_key = _parse_returned_lemma_key(_single_query_value(query, "lemma", "KWIC lemma"))
+    raw_key = _single_query_value(query, "lemma", "KWIC lemma")
     text_id = _single_query_value(query, "texts", "KWIC text")
     charset = _single_query_value(query, "charset", "KWIC charset")
     if text_id != requested_text_id or charset != requested_charset:
@@ -507,7 +527,25 @@ def _parse_text_concordance_link(
     label = _clean_text(link_text)
     if not label:
         raise ConcordanceParseError("CAL concordance lemma link has no label")
-    return lemma_key, kwic_url, label
+    # CAL marks some rows "no data found for <label>"; their link keys can be malformed
+    # (" snqlyTws N", "qrb "), so such a row keeps CAL's row with a null key (R-045).
+    no_data = _clean_text(gloss) == f"{_NO_DATA_GLOSS_PREFIX}{label}"
+    if no_data:
+        try:
+            return (
+                _parse_returned_lemma_key(raw_key, allow_cal_capitals=True),
+                kwic_url,
+                label,
+                True,
+            )
+        except ConcordanceParseError:
+            return None, kwic_url, label, True
+    return (
+        _parse_returned_lemma_key(raw_key, allow_cal_capitals=True),
+        kwic_url,
+        label,
+        False,
+    )
 
 
 def parse_kwic_dialect_options(
@@ -669,7 +707,7 @@ class ConcordanceService:
         *,
         script: str = "roman",
     ) -> KwicResult:
-        lemma, suffix, canonical_key = _validate_lemma_key(lemma_key)
+        lemma, suffix, canonical_key = _validate_kwic_lemma_key(lemma_key)
         normalized_ids = _validate_text_ids(text_ids)
         charset = _script_charset(script, _KWIC_SCRIPTS, "KWIC")
 
@@ -707,7 +745,7 @@ class ConcordanceService:
         return _kwic_result(canonical_key, KwicScopeKind.TEXTS, result.value, provenance)
 
     async def kwic_dialects(self, lemma_key: str) -> KwicDialectOptionsResult:
-        _, _, canonical_key = _validate_lemma_key(lemma_key)
+        _, _, canonical_key = _validate_kwic_lemma_key(lemma_key)
 
         def parse_requested(response: CalResponse) -> KwicDialectOptionsPage:
             return parse_kwic_dialect_options(response, lemma_key=canonical_key)
@@ -734,7 +772,7 @@ class ConcordanceService:
         )
 
     async def kwic_dialect(self, lemma_key: str, dialect_id: str) -> KwicResult:
-        lemma, suffix, canonical_key = _validate_lemma_key(lemma_key)
+        lemma, suffix, canonical_key = _validate_kwic_lemma_key(lemma_key)
         normalized_dialect = _validate_decimal_id(dialect_id, "dialect_id")
 
         def parse_requested(response: CalResponse) -> KwicPage:
@@ -838,7 +876,12 @@ def parse_kwic_full_context_page(
         requested_charset=requested_charset,
     )
     semantic_lines = _parse_lines(response)
-    _validate_full_context_file_identity(semantic_lines, response.url, requested_file_id)
+    _validate_full_context_file_identity(
+        semantic_lines,
+        response.url,
+        requested_file_id,
+        requested_subtext_id,
+    )
     markers = [
         match
         for line in semantic_lines
@@ -880,6 +923,12 @@ def parse_kwic_full_context_page(
     if sum(line.coordinate == requested_target_coordinate for line in lines) != 1:
         raise ConcordanceParseError(
             "CAL full-context page does not contain exactly one requested target row"
+        )
+    # The file-info coordinate only echoes the submitted sub, so the target row itself must
+    # carry the file and submitted subtext as its coordinate prefix (R-047).
+    if not requested_target_coordinate.startswith(requested_file_id + (requested_subtext_id or "")):
+        raise ConcordanceParseError(
+            "CAL full-context target row does not belong to the requested subtext"
         )
     return KwicFullContextPage(status=KwicFullContextStatus.FOUND, lines=lines)
 
@@ -927,7 +976,13 @@ def _validate_full_context_file_identity(
     lines: Sequence[object],
     source_url: str,
     requested_file_id: str,
+    requested_subtext_id: str | None,
 ) -> None:
+    # As on text pages (R-039), current CAL renders the coordinate as the file id followed by
+    # the submitted sub, or as the bare file id; the label always names the file (R-047).
+    accepted_coords = {requested_file_id}
+    if requested_subtext_id is not None:
+        accepted_coords.add(requested_file_id + requested_subtext_id)
     identities: list[str] = []
     for line in lines:
         for link in getattr(line, "links", ()):
@@ -940,17 +995,14 @@ def _validate_full_context_file_identity(
                 raise ConcordanceParseError(
                     "CAL full-context file-information link has unexpected selectors"
                 )
-            coord = _parse_decimal_id(
-                _single_query_value(query, "coord", "full-context file information"),
-                "file_id",
-            )
+            coord = _single_query_value(query, "coord", "full-context file information")
             label = getattr(link, "text", "")
-            if not label.startswith(f"{coord}:"):
+            if coord not in accepted_coords or not label.startswith(f"{requested_file_id}:"):
                 raise ConcordanceParseError(
-                    "CAL full-context file-information label differs from its identifier"
+                    "CAL full-context file-information link differs from the requested text"
                 )
             identities.append(coord)
-    if identities != [requested_file_id]:
+    if len(identities) != 1:
         raise ConcordanceParseError(
             "CAL full-context file identity does not uniquely match request"
         )
@@ -962,9 +1014,7 @@ def _parse_full_context_row(
     source_url: str,
     requested_charset: str,
 ) -> TextLine | None:
-    lexical = [
-        link for cell in row.cells for link in cell.links if _is_path(link.href, "getlex.php")
-    ]
+    lexical = [link for cell in row.cells for link in cell.links if _is_full_context_lexical(link)]
     comment_links = [
         link for cell in row.cells for link in cell.links if _is_path(link.href, "comment.php")
     ]
@@ -976,10 +1026,12 @@ def _parse_full_context_row(
         return None
     if len(row.cells) != 2:
         raise ConcordanceParseError("CAL full-context text row must contain two cells")
-    if any(_is_path(link.href, "getlex.php") for link in row.cells[0].links):
+    if any(_is_full_context_lexical(link) for link in row.cells[0].links):
         raise ConcordanceParseError("CAL full-context lexical link is in coordinate cell")
-    if any(not _is_path(link.href, "getlex.php") for link in row.cells[1].links):
+    if any(not _is_full_context_lexical(link) for link in row.cells[1].links):
         raise ConcordanceParseError("CAL full-context text cell has an unexpected link")
+    if len({_full_context_lexical_endpoint(link) for link in row.cells[1].links}) != 1:
+        raise ConcordanceParseError("CAL full-context row mixes lexical endpoint families")
 
     parsed_tokens = [
         _parse_full_context_lexical_link(source_url, link) for link in row.cells[1].links
@@ -1046,13 +1098,35 @@ def _parse_full_context_row(
     )
 
 
+# CAL links tokens through getlex.php, or through bablex.php for the Babylonian Talmud
+# (R-049); each family has its own exact selector set.
+_FULL_CONTEXT_LEXICAL_SELECTORS = {
+    "getlex.php": frozenset({"coord", "word", "hasvariant"}),
+    "bablex.php": frozenset({"coord", "word"}),
+}
+
+
+def _full_context_lexical_endpoint(link: _TableLink) -> str | None:
+    return next(
+        (name for name in _FULL_CONTEXT_LEXICAL_SELECTORS if _is_path(link.href, name)),
+        None,
+    )
+
+
+def _is_full_context_lexical(link: _TableLink) -> bool:
+    return _full_context_lexical_endpoint(link) is not None
+
+
 def _parse_full_context_lexical_link(
     source_url: str,
     link: _TableLink,
 ) -> tuple[str, int, str, str]:
-    lexical_url = _cal_navigation_url(source_url, link.href, "getlex.php")
+    endpoint = _full_context_lexical_endpoint(link)
+    if endpoint is None:
+        raise ConcordanceParseError("CAL full-context text cell has an unexpected link")
+    lexical_url = _cal_navigation_url(source_url, link.href, endpoint)
     query = parse_qs(urlsplit(lexical_url).query, keep_blank_values=True)
-    if set(query) != {"coord", "word", "hasvariant"}:
+    if set(query) != _FULL_CONTEXT_LEXICAL_SELECTORS[endpoint]:
         raise ConcordanceParseError(
             "CAL full-context lexical link has unexpected or missing selectors"
         )
@@ -1061,11 +1135,14 @@ def _parse_full_context_lexical_link(
         "coordinate",
     )
     word = _single_query_value(query, "word", "full-context lexical word")
-    hasvariant = _single_query_value(query, "hasvariant", "full-context lexical hasvariant")
     if not word.isascii() or not word.isdecimal():
         raise ConcordanceParseError("CAL full-context lexical word index is not decimal")
-    if not hasvariant.isascii() or not hasvariant.isdecimal():
-        raise ConcordanceParseError("CAL full-context lexical hasvariant selector is not decimal")
+    if "hasvariant" in query:
+        hasvariant = _single_query_value(query, "hasvariant", "full-context lexical hasvariant")
+        if not hasvariant.isascii() or not hasvariant.isdecimal():
+            raise ConcordanceParseError(
+                "CAL full-context lexical hasvariant selector is not decimal"
+            )
     return coordinate, int(word), link.text, lexical_url
 
 
@@ -1116,6 +1193,8 @@ class _KwicTargetSegment:
     section: str | None
     leading_text: str
     highlighted: tuple[str, ...]
+    link_text_rtl: str = ""
+    link_text_other: str = ""
 
 
 @dataclass(slots=True)
@@ -1124,6 +1203,8 @@ class _OpenKwicTargetSegment:
     section: str | None
     leading_text: str
     highlighted: list[str] = field(default_factory=list)
+    link_text_rtl: list[str] = field(default_factory=list)
+    link_text_other: list[str] = field(default_factory=list)
 
 
 class _KwicTargetSegmentParser(HTMLParser):
@@ -1143,6 +1224,7 @@ class _KwicTargetSegmentParser(HTMLParser):
         self._in_target_link = False
         self._bold_depth = 0
         self._bold_parts: list[str] = []
+        self._bdo_dirs: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS:
@@ -1158,6 +1240,10 @@ class _KwicTargetSegmentParser(HTMLParser):
                     leading_text="".join(self._line_text),
                 )
                 self._in_target_link = True
+        elif tag == "bdo" and self._in_target_link:
+            # The innermost BDO's direction applies; one without dir inherits it.
+            inherited = self._bdo_dirs[-1] if self._bdo_dirs else "ltr"
+            self._bdo_dirs.append((dict(attrs).get("dir") or inherited).lower())
         elif tag == "b":
             self._bold_depth += 1
             if self._bold_depth == 1:
@@ -1175,8 +1261,11 @@ class _KwicTargetSegmentParser(HTMLParser):
     def handle_endtag(self, tag: str) -> None:
         if tag in _KWIC_LINE_BREAK_TAGS and tag not in {"br", "hr"}:
             self._end_line()
+        elif tag == "bdo" and self._bdo_dirs:
+            self._bdo_dirs.pop()
         elif tag == "a" and self._in_target_link:
             self._in_target_link = False
+            self._bdo_dirs = []
         elif tag == "b" and self._bold_depth:
             self._bold_depth -= 1
             if self._bold_depth == 0:
@@ -1191,6 +1280,10 @@ class _KwicTargetSegmentParser(HTMLParser):
             self._bold_parts.append(data)
         if self._open is None:
             self._line_text.append(data)
+        elif self._in_target_link:
+            in_rtl = bool(self._bdo_dirs) and self._bdo_dirs[-1] == "rtl"
+            target = self._open.link_text_rtl if in_rtl else self._open.link_text_other
+            target.append(data)
 
     def close(self) -> None:
         super().close()
@@ -1204,6 +1297,8 @@ class _KwicTargetSegmentParser(HTMLParser):
                     section=self._open.section,
                     leading_text=self._open.leading_text,
                     highlighted=tuple(self._open.highlighted),
+                    link_text_rtl=_clean_text("".join(self._open.link_text_rtl)),
+                    link_text_other=_clean_text("".join(self._open.link_text_other)),
                 )
             )
             self._open = None
@@ -1230,11 +1325,29 @@ def _apply_kwic_target_structure(
             raise ConcordanceParseError("CAL KWIC target lines disagree with their links")
         if segment.leading_text.strip():
             raise ConcordanceParseError("CAL KWIC target line does not start with its coordinate")
-        if len(segment.highlighted) != 1 or not segment.highlighted[0]:
-            raise ConcordanceParseError("CAL KWIC target line lacks one highlighted target token")
+        # Hebrew- and Syriac-script text KWIC writes the coordinate reversed inside
+        # <BDO dir="rtl"> (R-051);
+        # otherwise the link text is the coordinate itself.
+        if segment.link_text_rtl:
+            valid_link_text = (
+                not segment.link_text_other and segment.link_text_rtl == hit.target_coordinate[::-1]
+            )
+        else:
+            valid_link_text = segment.link_text_other == hit.target_coordinate
+        if not valid_link_text:
+            raise ConcordanceParseError("CAL KWIC target link text differs from its coordinate")
+        if len(segment.highlighted) > 1:
+            raise ConcordanceParseError("CAL KWIC target line has more than one highlight")
         if scope_kind is KwicScopeKind.TEXTS and segment.section != hit.file_id:
             raise ConcordanceParseError("CAL KWIC hit appears under another text's section")
-        checked.append((index, replace(hit, target_text=segment.highlighted[0])))
+        # CAL's highlight is kept as rendered. On some lines it marks a neighbouring word, is
+        # empty, or is missing altogether (R-050); then there is no target text.
+        target_text = segment.highlighted[0] if segment.highlighted else ""
+        checked.append((index, replace(hit, target_text=target_text or None)))
+    # CAL leaves a few lines unhighlighted, but pages with several hits have always
+    # highlighted most of them; none at all means the markup changed (R-050).
+    if len(checked) >= 2 and all(hit.target_text is None for _, hit in checked):
+        raise ConcordanceParseError("CAL KWIC page highlights no target line")
     return tuple(checked)
 
 
@@ -1274,13 +1387,22 @@ def _parse_kwic_hit_lines(
                     href=getattr(link, "href", ""),
                     link_text=link_text,
                     context=context,
+                    # Checked against the <BDO dir="rtl"> markup in the target structure.
+                    allow_reversed=True,
                 ),
             )
         )
     return tuple(hits)
 
 
-def _kwic_hit_from_link(source_url: str, *, href: str, link_text: str, context: str) -> KwicHit:
+def _kwic_hit_from_link(
+    source_url: str,
+    *,
+    href: str,
+    link_text: str,
+    context: str,
+    allow_reversed: bool = False,
+) -> KwicHit:
     full_context_url = _cal_navigation_url(source_url, href, "get_a_kwicchapter.php")
     query = parse_qs(urlsplit(full_context_url).query, keep_blank_values=True)
     file_id = _parse_decimal_id(_single_query_value(query, "file", "KWIC file"), "file_id")
@@ -1292,7 +1414,7 @@ def _kwic_hit_from_link(source_url: str, *, href: str, link_text: str, context: 
     if charset not in _KWIC_CHARSETS:
         raise ConcordanceParseError("CAL KWIC target link has an unknown charset")
     subtext_id = _optional_subtext_query_value(query, "sub")
-    if link_text != target:
+    if link_text != target and not (allow_reversed and link_text == target[::-1]):
         raise ConcordanceParseError("CAL KWIC target link text differs from its coordinate")
     return KwicHit(
         file_id=file_id,
@@ -1347,8 +1469,8 @@ def _parse_dialect_form_summaries(
     keys = [summary.lemma_key for summary in summaries]
     if len(set(keys)) != len(keys):
         raise ConcordanceParseError("CAL dialect KWIC repeats a form summary")
-    if summaries and keys.count(requested_key) != 1:
-        raise ConcordanceParseError("CAL dialect KWIC lacks the requested form summary")
+    # CAL may omit the requested form and list only the forms it groups with it in this
+    # dialect (D-014 amendment, #176); the result reports that as requested_form_listed.
     if len(grand_totals) > 1:
         raise ConcordanceParseError("CAL dialect KWIC repeats its grand total")
     if grand_totals and not summaries:
@@ -1373,7 +1495,8 @@ def _assign_dialect_forms(
     """Attach each hit to the CAL form summary that follows it; counts must agree."""
 
     if positioned_hits is None:
-        # Earlier table layout: only a single requested-form summary is representable.
+        # Earlier table layout: only a single form summary is representable (since #176 it
+        # may name a form other than the requested one; requested_form_listed reports that).
         if len(summaries) != 1 or summaries[0].total != len(table_hits):
             raise ConcordanceParseError("CAL KWIC total does not match parsed target hits")
         return tuple(replace(hit, form_lemma_key=summaries[0].lemma_key) for hit in table_hits)
@@ -1436,7 +1559,21 @@ def _expected_kwic_heading(
     return f"Looking for {lemma_key} in {scope_ids[0]}"
 
 
-def _validate_lemma_key(value: str) -> tuple[str, str, str]:
+class _UndocumentedCapitalKeyError(CalInputError):
+    pass
+
+
+def _validate_kwic_lemma_key(value: str) -> tuple[str, str, str]:
+    try:
+        return _validate_lemma_key(value)
+    except _UndocumentedCapitalKeyError as exc:
+        raise CalInputError(
+            f"{exc}; CAL's KWIC search forms drop such letters, so open the kwic_url of "
+            "the cal_text_concordance row instead"
+        ) from exc
+
+
+def _validate_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> tuple[str, str, str]:
     if not isinstance(value, str):
         raise CalInputError("lemma_key must be a string")
     candidate = value.strip(" ")
@@ -1459,13 +1596,24 @@ def _validate_lemma_key(value: str) -> tuple[str, str, str]:
             or homograph.startswith("0")
         ):
             raise CalInputError("lemma_key has an invalid CAL homograph suffix")
+    if not allow_cal_capitals and any(char in _UNDOCUMENTED_KEY_CAPITALS for char in base_lemma):
+        raise _UndocumentedCapitalKeyError(
+            "lemma_key contains a capital letter outside CAL's documented cal_code letters"
+        )
+    if allow_cal_capitals:
+        # Returned concordance rows only: CAL links some keys with capitals outside the
+        # documented cal_code letters ("bwlbrK PN"). Only the observed K and M are exempt;
+        # the rest of the key is still validated (R-045).
+        base_lemma = "".join(char for char in base_lemma if char not in _OBSERVED_CAL_KEY_CAPITALS)
+        if not base_lemma:
+            raise CalInputError("lemma_key has no documented CAL letters")
     normalize_query(base_lemma, representation=InputRepresentation.CAL_CODE)
     return lemma, suffix, f"{lemma} {suffix}"
 
 
-def _parse_returned_lemma_key(value: str) -> str:
+def _parse_returned_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> str:
     try:
-        _, _, canonical_key = _validate_lemma_key(value)
+        _, _, canonical_key = _validate_lemma_key(value, allow_cal_capitals=allow_cal_capitals)
     except ValueError as exc:
         raise ConcordanceParseError("CAL concordance row contains an invalid lemma key") from exc
     if canonical_key != value:
@@ -1610,6 +1758,7 @@ def _concordance_lemma_to_dict(item: ConcordanceLemma) -> dict[str, object]:
         "label": item.label,
         "gloss": item.gloss,
         "kwic_url": item.kwic_url,
+        "cal_reports_no_data": item.cal_reports_no_data,
     }
 
 

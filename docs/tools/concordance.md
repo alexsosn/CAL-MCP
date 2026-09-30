@@ -28,10 +28,13 @@ This is CAL's **one-text lemma-frequency index**. It is not itself a KWIC hit li
 The result preserves CAL's ordered rows with:
 
 - `frequency`;
-- canonical `lemma_key`, taken from the validated CAL KWIC link;
+- canonical `lemma_key`, taken from the validated CAL KWIC link, or `null` on a row CAL marks as having no data when CAL's link key is not a valid key;
 - `label`, the lemma text CAL displays for the row (currently a headword/POS label such as `ˀb, ˀbˀ n.m.`, or the key itself for some rows such as proper nouns). It is presentation text, and CAL-MCP does not derive or check it against the key;
 - rendered `gloss`;
-- the CAL `kwic_url` exposed by that row.
+- the CAL `kwic_url` exposed by that row;
+- `cal_reports_no_data`: `true` when CAL's gloss is its own `no data found for <label>` marker. CAL lists these rows (for example 6 rows in Palmyrene text 41201) but has no lexical data for them. CAL-MCP keeps them in CAL's order and does not repair their keys.
+
+Some CAL keys use capital letters that are not documented CAL code letters (for example the Palmyrene proper noun `bwlbrK PN`). Concordance rows return them verbatim. CAL's KWIC-by-text form drops such letters and finds nothing, so the `cal_kwic_*` tools reject these keys as `invalid_input` without a CAL request. Open the row's `kwic_url`, which is CAL's own working link, instead. Only the observed capitals `K` and `M` are accepted inside keys CAL returns; any other undocumented capital in a returned key fails closed as `parser_drift`. Other tools that take a `lemma_key` (for example `cal_bibliography_lemma` and `cal_targum_concordance`) also reject such keys as `invalid_input`.
 
 `script` accepts:
 
@@ -60,6 +63,8 @@ Caller-supplied text IDs must be decimal CAL identifiers and must not repeat. Mo
 - `hebrew` — Hebrew-script rendering;
 - `syriac` — Syriac-script rendering.
 
+For `hebrew` and `syriac`, CAL writes each target coordinate reversed inside a right-to-left `<BDO>` element so that it displays correctly. CAL-MCP accepts exactly that reversed form, checked against the markup, and always returns the link's own `target` coordinate.
+
 The result preserves:
 
 - CAL's upstream `total` hit count;
@@ -68,11 +73,12 @@ The result preserves:
 - `file_id` and optional `subtext_id`;
 - `target_coordinate`;
 - rendered `context`: CAL's rendered target line for the hit, without its leading target coordinate. CAL also renders a line before and after each target line, but the current layout does not delimit them unambiguously from neighbouring hits or text headers, so they are not attached to hits. Use `cal_kwic_full_context` for surrounding lines. (For CAL's earlier table layout, which remains supported as a compatibility fallback, `context` is that row's rendered non-link cells, including the preceding-line cell);
-- `target_text`: the token CAL highlights as the hit on the target line. When one line holds two occurrences, CAL returns two hits with the same coordinate and line text, and `target_text` is what tells them apart. It is `null` only for the earlier table layout, which did not highlight tokens;
+- `target_text`: the token CAL highlights as the hit on the target line. When one line holds two occurrences, CAL returns two hits with the same coordinate and line text, and `target_text` is what tells them apart. It is CAL's highlight as rendered, not verified against the lemma. In some texts CAL's highlight often drifts onto a neighbouring word or marks nothing: for `mlk N` in the Samaritan Targum (`56000`), 30 of 106 hits (2026-09-29) highlight a word that is not a form of `mlk` (for example `w)rywK`, `(wg`), and 5 highlight nothing. CAL-MCP does not correct it. The hit's order and `target_coordinate` identify it; use `cal_kwic_full_context` to see the line's own tokens. It is `null` when CAL's highlight is empty or missing, and for the earlier table layout, which did not highlight tokens;
 - returned CAL `charset`;
 - absolute `full_context_url`;
 - `form_lemma_key`: always `null` for text-scoped KWIC, because CAL does not report forms there;
 - `forms`: always empty for text-scoped KWIC;
+- `requested_form_listed`: always `null` for text-scoped KWIC;
 - `empty_scope_ids` for requested texts CAL explicitly reports as having no examples.
 
 CAL-MCP does **not** deduplicate, rerank, or statistically summarize hits. It also does not follow `full_context_url` automatically. To inspect one selected hit, pass that hit's typed `file_id`, `target_coordinate`, `charset`, and optional `subtext_id` to `cal_kwic_full_context`. Arbitrary caller-supplied URLs are not accepted by that follow-up.
@@ -109,11 +115,14 @@ CAL currently reports one-dialect KWIC **per lemma form**, and a result may incl
 - `forms`: CAL's ordered per-form summaries as `{lemma_key, total}`, including forms with zero examples;
 - each hit's `form_lemma_key`: the CAL form whose summary covers that hit;
 - `total`: the sum over forms, which is CAL's grand total when CAL renders one;
-- `empty_scope_ids`: `[dialect_id]` when every form reports no examples.
+- `empty_scope_ids`: `[dialect_id]` when every form reports no examples;
+- `requested_form_listed`: `true` when CAL lists the requested form among its forms, `false` when CAL lists only other forms, and `null` when CAL reports no per-form summaries (always `null` for text-scoped KWIC).
 
 On CAL's earlier table layout, a dialect page that renders only `total examples: N` and no per-form summaries returns `forms: []` and `form_lemma_key: null` on its hits, because CAL reported no forms.
 
-CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form must appear exactly once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
+In some dialects CAL lists **only other forms** and no summary at all for the requested spelling. For example, `n)qh N` in dialect 71 (Babylonian Talmud) lists `n)qt) N` with 1 example and `nqh N` with 0. The result then has `requested_form_listed: false`, and none of its hits is for the requested spelling. CAL-MCP does not invent a zero count for the requested form.
+
+CAL-MCP does not decide which forms are related. It only reports CAL's grouping. Each summary must name the requested dialect and a canonical CAL key, forms may not repeat, the requested form appears at most once, each form's count must equal the hits rendered before its summary, no hit may follow the last summary, and an optional grand total must equal the sum. Any disagreement raises `ConcordanceParseError`.
 
 Large lemma/dialect combinations can exceed the 2 MiB response ceiling (for example `br N` in dialect `6` on 2026-09-24). They fail with the shared response-size error rather than returning a partial result. Use `cal_kwic_texts` with explicit texts to narrow the scope.
 
@@ -142,6 +151,8 @@ A cache miss submits exactly one logical request to CAL's target-centered contex
 For `found`, the requested target coordinate must appear in exactly one parsed line. The parser also verifies that the response route and selectors match the request, that the page identifies the requested CAL file, and that lexical/comment links remain on the expected CAL routes with consistent coordinates. A mismatched or contradictory page fails closed as `ConcordanceParseError`.
 
 Current Hebrew (`charset="H"`) full-context pages append one empty lexical anchor after the last visible token of each text row. Bounded research on 2026-09-10 confirmed this as a stable presentation artifact for the tested route. CAL-MCP accepts it only in this full-context parser, only for `H`, only as the single terminal empty lexical anchor, and only when its word index is the successor of the preceding visible token. The artifact is omitted from returned tokens. Ordinary `cal_text_page` parsing is unchanged and remains strict about empty lexical anchors.
+
+The page must name exactly one text in its file-information link. As on text pages, current CAL renders that link's coordinate either as the file id followed by the submitted `subtext_id` (for example `56000112` for `56000`/`112`, or `310004` for `31000`/`4`) or as the bare file id (for example `71002` on BT Shabbat pages). Its label always starts with the file id (`56000: SamTgJ Gen chapter 12`). CAL-MCP accepts exactly those two coordinates with a label naming the requested file, and fails closed on a coordinate or label naming another file or subtext. Because the composed coordinate only echoes the submitted `subtext_id`, the target row itself must also carry the file id and submitted `subtext_id` as its coordinate prefix. Pass the `subtext_id` exactly as the KWIC hit returned it: as on text pages, CAL matches `sub` as a prefix, so an unpadded value whose digits begin the hit's real subtext cannot be told apart. Full-context pages with rows in suffix-bearing CPA subtexts have not been verified yet. Babylonian Talmud rows link their tokens through CAL's `bablex.php` family (selectors `coord` and `word` only) instead of `getlex.php`. CAL-MCP accepts either family with its exact selector set and returns the row's own lexical URL; a row mixing the two fails closed. CAL's manuscript-variant readings (`<cal-variant>`) stay inline in the token text, as on `cal_text_page`.
 
 `not_found` is not parser drift: it is accepted only when CAL returns the explicit `Target coordinate <id> not found.` marker for the requested target and no text rows contradict it. An unrelated marker, repeated marker, or marker mixed with parsed text rows fails closed.
 

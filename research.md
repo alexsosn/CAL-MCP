@@ -327,7 +327,7 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-043 — Current direct CPA 55002 explicitly reports no stored lines
+## R-054 — Current direct CPA 55002 explicitly reports no stored lines
 
 **Rechecked:** 2026-09-29 against current CAL; issue #196.
 
@@ -354,6 +354,129 @@ CAL explicitly stores no lines. Marker recognition is structural: validated rend
 may be removed from the semantic line, after which the remaining marker must full-match the
 requested file identity. Arbitrary prefixes, malformed/repeated markers, and another file id fail
 closed.
+
+## R-053 — Text search links subdivided non-Mandaic sources through `showsubtexts.php`
+
+**Rechecked:** 2026-09-30, with two bounded searches and two catalogue follow-ups; issue #171.
+
+`newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
+
+A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
+
+## R-052 — Citation search explicitly rejects some single common words
+
+**Rechecked:** 2026-09-29, with four bounded POSTs; issue #207.
+
+`searchcits.php` answers `English=god`, `English=the` and `English=a` with `"<query>" is not a valid search string` and no result container, echoing the query lowercased (`God` → `"god"`). `king god` returns results, and gloss search accepts `god`. Detailed evidence: `docs/research/issue-207-invalid-search-string.md`.
+
+**Implication:** that exact marker naming the submitted query becomes an `invalid_input` error with `upstream_reached: true` and CAL's message. CAL-MCP keeps no local stop-word list.
+
+
+## R-051 — Text-scoped KWIC writes Hebrew- and Syriac-script coordinates reversed inside `<BDO dir="rtl">`
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #206.
+
+With `charset=H`, `showdialectKWIC.php` renders each target link's coordinate in reverse digit order inside `<BDO dir="rtl">`: `5227701020017` for target `7100201077225` (BT Shabbat), and `3005231` for `1325003` (Tel Dan, both `charset=H` and `charset=S`). The one-dialect endpoint renders its coordinates plainly. Detailed evidence: `docs/research/issue-206-bdo-reversed-coordinate.md`.
+
+**Implication:** a reversed link text is accepted only when it is exactly the reversed `target` and sits entirely inside `<BDO dir="rtl">`. The coordinate returned is always the link's `target`.
+
+
+## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
+
+**Rechecked:** 2026-09-29, with two bounded requests; issue #204.
+
+In `mlk N` KWIC over Samaritan Targum `56000`, 30 of 106 hits have a highlight that is not a form of `mlk` (25 other words, including a two-word highlight, on 16+ lines across chapters 114–529), and 5 of those are empty. In Hebrew-script `mlk N` KWIC over Biblical Aramaic `31000`, 7 of 45 target lines have no highlight at all (2026-09-30). A page with at least two hits and no highlight on any of them still fails closed, because every captured multi-hit page highlights most lines (101/106 and 38/45); the threshold of two is a judgement that keeps a genuine single unhighlighted hit. On line `56000114010`, whose full-context tokens show the lemma at words 3, 6, 9 and 12 and a two-word token at word 8, the four hits are highlighted `mlK`, `w)rywK`, `)l)sr` and nothing. Detailed evidence: `docs/research/issue-204-empty-kwic-highlight.md`.
+
+**Implication:** `target_text` is CAL's highlight as rendered, and is `null` when CAL's highlight is empty or missing. It is documented as unverified; CAL-MCP does not correct it.
+
+
+## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
+
+**Rechecked:** 2026-09-29 (a capture from #181's research); issue #203.
+
+The full-context page for BT Shabbat (`get_a_kwicchapter.php?file=71002&sub=01051&cset=H&target=7100201051217`) links all 204 tokens through `bablex.php?coord=…&word=…`, with no `hasvariant`, and shows the same terminal empty anchor as other Hebrew-script rows. Detailed evidence: `docs/research/issue-203-bablex-full-context.md`.
+
+**Implication:** full-context rows accept the `bablex.php` family with exactly `{coord, word}`, alongside `getlex.php` with `{coord, word, hasvariant}`; a row mixing them fails closed.
+
+
+## R-048 — Citation search wraps results in rows; one row can hold a headerless citation
+
+**Rechecked:** 2026-09-29, with two bounded POSTs; issue #178.
+
+`searchcits.php` wraps each result in `<div class="citation-row …">`, holding one `oneentry.php` header with an explicit `<pos>` element, one context and one citation. CAL repeats the header per sense. For `king`, 1067 of 1068 rows have that shape. One row (`brt ym`) carries a second (context, citation) pair with no header, and that pair belongs to another lemma. Eleven headers have POS forms such as `n.(pr.)` that the earlier heuristic header split cannot parse. Detailed evidence: `docs/research/issue-178-headerless-citation.md`.
+
+Source:
+
+- POST https://cal.huc.edu/searchcits.php (`English=king`, `English=camel`)
+
+**Implication:** results are parsed per row container, and the POS is taken from `<pos>`. A headerless pair is returned with `lemma: null`, never attributed to the row's header.
+
+## R-047 — KWIC full-context pages use the text-page file-info coordinate rule
+
+**Rechecked:** 2026-09-29, with four bounded GETs; issue #181.
+
+`get_a_kwicchapter.php` renders its file-information coordinate as the file id plus the submitted `sub` (`56000112` for `56000`/`112`; `310004` for `31000`/`4`) or as the bare file id (`71002` for BT Shabbat `01051`). The label prefix is always the file id. Detailed evidence: `docs/research/issue-181-full-context-subtext.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010
+
+**Implication:** the full-context parser accepts exactly those two coordinates, with a label naming the file, and fails closed on anything else.
+
+
+## R-046 — Six-digit Syriac text ids are CAL file plus subtext
+
+**Rechecked:** 2026-09-29, with four bounded GETs; issue #186.
+
+`get_a_chapter.php?file=634081` (listed by the Syriac catalogue) renders file-info `coord=634081` with the label `63408: Tamar and Judah`, and its own links use `file=63408&sub=1`. The group `showsubtexts.php?keyword=63408` lists subtexts `sub=1` and `sub=2` with info coords `634081` and `634082`. Detailed evidence: `docs/research/issue-186-six-digit-syriac-id.md`.
+
+Source:
+
+- https://cal.huc.edu/get_a_chapter.php?file=634081&page=0
+- https://cal.huc.edu/showsubtexts.php?keyword=63408
+
+**Implication:** a label prefix that is the requested id minus a trailing sub is accepted only when the page's own links name that file and sub; any other label fails closed.
+
+
+## R-045 — Text concordances contain CAL's "no data found" rows with non-canonical keys
+
+**Rechecked:** 2026-09-29.
+
+`newconcord.php` for text 41201 has six rows glossed "no data found for …". Their KWIC keys can be invalid, for example `+snqlyTws+N` (a leading space) or `qrb ` (no suffix). Detailed evidence: `docs/research/issue-177-concordance-no-data-rows.md`.
+
+Source:
+
+- https://cal.huc.edu/newconcord.php?text=41201&cset=S
+
+The same page has ordinary proper-noun rows whose keys use undocumented capitals (`bwlbrK PN`, `$lMn) PN`). CAL's own `showKWIC.php` link finds their hit, but the `showdialectKWIC.php` form used by `cal_kwic_texts` drops the capital and reports 0 examples (four bounded requests, 2026-09-29).
+
+**Implication:** "no data found" rows are kept with `cal_reports_no_data: true`, and `lemma_key` is null when CAL's key is invalid. Capital-letter keys are kept verbatim in concordance rows, but the KWIC tools reject them as input and point to the row's `kwic_url`. Other rows keep the strict key check.
+
+
+## R-044 — Biblical verse headings use CAL's own book labels
+
+**Rechecked:** 2026-09-29.
+
+`showpesh.php` and `showtargum.php` head the verse with CAL's own book abbreviations: Gen, Lev, Num, Sam1, Kings1, Jer, Ezek, Obad, Zech, Mal, Ps, Song, Lam, Prov, Chron1, Chron2 and so on. All 36 were recorded. The adapter's 2-digit coordinates (as in CAL's own links) return the right verse. A 3-digit chapter, which the adapter never sends, shifts CAL's coordinate into another book: `chapter=001` for Genesis returns 1 Kings 1:1. Detailed evidence: `docs/research/issue-173-biblical-headings.md`.
+
+Sources:
+
+- https://cal.huc.edu/showpesh.php (POST `bookname=27`, `chapter=23`, `verse=01`)
+- https://cal.huc.edu/showtargum.php (POST `bookname=01`, `chapter=01`, `verse=01`)
+
+**Implication:** the heading must name the requested chapter:verse with CAL's reviewed label for the requested book (or the exact selector label); any other label fails closed. The 2-digit request format is pinned.
+
+## R-043 — Dialect KWIC can omit the requested form and list only other forms
+
+**Rechecked:** 2026-09-25.
+
+`show1dialectKWIC.php` for `n)qh N` in dialect 71 lists `n)qt) N` (1 example) and `nqh N` (0), with no summary for `n)qh N`; in dialects 6, 51, 53 and 3 the requested form is listed. Detailed evidence: `docs/research/issue-176-kwic-omitted-form.md`.
+
+Source:
+
+- https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71
+
+**Implication:** D-014 is amended: an omitted requested form is reported as `requested_form_listed: false` instead of failing.
 
 ## R-042 — Current CAL has two-cell plain/unlemmatized text rows
 
