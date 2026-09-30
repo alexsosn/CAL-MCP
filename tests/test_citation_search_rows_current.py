@@ -113,6 +113,7 @@ def test_other_row_shapes_fail_closed(old: bytes, new: bytes) -> None:
         _parse(body.replace(old, new, 1))
 
 
+# Adapted from the gml#3 row of the 2026-09-29 camel capture (headword text shortened).
 _HOMOGRAPH_ROW = (
     b'<div class="citation-row odd"><a href="oneentry.php?lemma=gml%233 N&cits=all">'
     b'<span class="lem"><font color="#0000A0">gml, gmlk</font></span>\n'
@@ -142,7 +143,40 @@ def test_homograph_marker_after_pos_is_not_part_of_the_headwords() -> None:
     assert hits[-1].lexical_context == "camel-driver"
 
 
-@pytest.mark.parametrize("marker", [b" #2", b" extra"])
-def test_other_text_after_pos_fails_closed(marker: bytes) -> None:
+@pytest.mark.parametrize("replacement", [b" #2</a>", b" extra</a>", b" #3</a> junk"])
+def test_other_header_text_fails_closed(replacement: bytes) -> None:
     with pytest.raises(SearchParseError):
-        _parse(_with_homograph_row(_HOMOGRAPH_ROW.replace(b" #3</a>", marker + b"</a>")))
+        _parse(_with_homograph_row(_HOMOGRAPH_ROW.replace(b" #3</a>", replacement)))
+
+
+def test_multi_digit_homograph_marker_is_accepted() -> None:
+    row = _HOMOGRAPH_ROW.replace(b"gml%233", b"gml%2313").replace(b" #3</a>", b" #13</a>")
+    lemma = _parse(_with_homograph_row(row)).hits[-1].lemma
+
+    assert lemma is not None
+    assert lemma.lemma_key == "gml#13 N"
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        # a stray close tag ends the row early, leaving its second pair outside any row
+        (b"<br>\n : small wall or glacis", b"<br>\n</div> : small wall or glacis"),
+        # a row whose container CAL-MCP does not recognise
+        (b'<div class="citation-row even">', b'<div class="citation-rox even">'),
+    ],
+)
+def test_content_outside_recognised_rows_fails_closed(old: bytes, new: bytes) -> None:
+    body = FIXTURE.read_bytes()
+    assert old in body
+
+    with pytest.raises(SearchParseError):
+        _parse(body.replace(old, new, 1))
+
+
+def test_row_class_in_any_position_is_recognised() -> None:
+    body = FIXTURE.read_bytes().replace(
+        b'<div class="citation-row even">', b'<div class="even citation-row">'
+    )
+
+    assert len(_parse(body).hits) == 5
