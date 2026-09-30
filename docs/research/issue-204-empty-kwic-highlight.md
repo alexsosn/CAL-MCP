@@ -26,7 +26,7 @@ The four `mlk N` hits on line `56000114010` (the lemma occurs at words 3, 6, 9 a
 
 ## Consequences
 
-- A target line whose single `<b>` highlight is empty (whitespace or no-break spaces only) is returned with `target_text: null`. A missing `<b>`, or two of them, still fails closed.
+- A target line whose single `<b>` highlight is empty (whitespace or no-break spaces only) is returned with `target_text: null`. So is a line with no `<b>` at all (see the later finding below). Two highlights on one line still fail closed.
 - `docs/tools/concordance.md` states that `target_text` is CAL's highlight as rendered, which on some lines marks a neighbouring word or nothing. Use `cal_kwic_full_context` to see the line's own tokens.
 - Production requests are unchanged.
 
@@ -38,3 +38,7 @@ The four `mlk N` hits on line `56000114010` (the lemma occurs at words 3, 6, 9 a
   - Checking against full-context tokens: one extra request per hit.
   - Nulling every highlight: this loses the only thing that tells duplicate hits on one line apart.
 - The caveat is therefore stated where MCP clients read it (the `cal_kwic_texts` and `cal_kwic_dialect` tool descriptions) as well as in `docs/tools/concordance.md`: `target_text` is CAL's unverified highlight, and a hit is identified by its order and coordinate.
+
+## Later finding (2026-09-29): target lines with no highlight
+
+A bounded `POST showdialectKWIC.php` for `mlk N` in Biblical Aramaic `31000` with `charset=H` (made while smoke-testing #206) returned 45 target lines. Seven of them have **no** `<b>` element at all. The same line `31000414` appears once with a drifted highlight (`לא`) and once with none. CAL therefore also renders hits without any highlight. Such a hit gets `target_text: null`, exactly like an empty highlight. Only two highlights on one target line still fail closed.
