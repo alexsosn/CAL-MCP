@@ -71,7 +71,7 @@ The result preserves:
 - `file_id` and optional `subtext_id`;
 - `target_coordinate`;
 - rendered `context`: CAL's rendered target line for the hit, without its leading target coordinate. CAL also renders a line before and after each target line, but the current layout does not delimit them unambiguously from neighbouring hits or text headers, so they are not attached to hits. Use `cal_kwic_full_context` for surrounding lines. (For CAL's earlier table layout, which remains supported as a compatibility fallback, `context` is that row's rendered non-link cells, including the preceding-line cell);
-- `target_text`: the token CAL highlights as the hit on the target line. When one line holds two occurrences, CAL returns two hits with the same coordinate and line text, and `target_text` is what tells them apart. It is `null` only for the earlier table layout, which did not highlight tokens;
+- `target_text`: the token CAL highlights as the hit on the target line. When one line holds two occurrences, CAL returns two hits with the same coordinate and line text, and `target_text` is what tells them apart. It is CAL's highlight as rendered, not verified against the lemma: on some lines, for example in the Samaritan Targum (`56000114010`), CAL's highlight drifts onto a neighbouring word or marks nothing. CAL-MCP does not correct it; use `cal_kwic_full_context` to see the line's own tokens. It is `null` when CAL highlights nothing, and for the earlier table layout, which did not highlight tokens;
 - returned CAL `charset`;
 - absolute `full_context_url`;
 - `form_lemma_key`: always `null` for text-scoped KWIC, because CAL does not report forms there;
