@@ -55,3 +55,12 @@ Every result is wrapped in `<div class="citation-row even|odd">` inside `<div cl
 - The header segment's text must be exactly its lemma link's text; text outside the link fails closed.
 - Rows are recognised by the `citation-row` class token in any position.
 - Other tools keep `part_of_speech` as derived from CAL's rendered header text (`vb.` for verbs); this difference is documented rather than changed here.
+
+## Live smoke finding (2026-09-29): `house`
+
+One further bounded POST (`English=house`, 421 KB, 813 rows) showed two more real shapes:
+
+- **Context-less extra citations.** Two rows add further citations after their (context, citation) pair, separated by an empty `<br>`, with neither a context nor a header. Examples: `ˀlp` "tribal unit" followed by P Lk 5:27 "a tax collector … sitting in the custom house", and `byt šˁˀ` "sundial / zodiacal house" followed by John 2:16 and BT Ber 6b. They plainly belong to other lemmas, so they are returned with `lemma: null` and `lexical_context: null`.
+- **Linked references.** A citation reference can be an external link (`<i><a href="http://dukhrana.com/…">BBah 1013:25</a></i>`). Only a lemma-entry (`oneentry.php`) link or a `<pos>` element marks a header; other links in a citation are kept as rendered text.
+
+The row rule is therefore: a header, then a context, then one or more citations, optionally followed by further (context, citation) groups. Only the first citation is attributed to the header; two consecutive contexts, or a context without a following citation, fail closed. On the full captures: `king` gives 1069 hits (1 null lemma), `camel` 154, and `house` 816 (3 null lemmas, all 3 with a null context).

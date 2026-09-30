@@ -82,14 +82,14 @@ CAL's current form accepts one to three English words separated by spaces. CAL-M
 Each ordered hit preserves:
 
 - `lemma`: the CAL lemma reference whose header CAL renders for the citation, or `null` when CAL renders the citation without a header of its own (see below);
-- `lexical_context` — the rendered lexical/sense context shown by CAL for that hit;
+- `lexical_context` — the rendered lexical/sense context shown by CAL for that hit, or `null` when CAL renders the citation with no context of its own;
 - `reference` — CAL's rendered citation reference;
 - `source_text` — the Aramaic/source-language citation text;
 - `translation` — CAL's English rendering when present.
 
 Repeated hits for the same lemma remain separate and in CAL order. CAL-MCP does not deduplicate or rerank them.
 
-CAL renders one lemma header per cited sense. The header's `part_of_speech` is CAL's own marked part of speech, including a verb's vowel class (for example `vb. a/u`); the lemma's `gloss` is empty here, because the sense text is in `lexical_context`. Other tools derive `part_of_speech` from CAL's rendered header text and may give a shorter value for the same verb (`vb.`). `source_text` keeps CAL's trailing right-to-left mark (U+200F) as CAL renders it. Rarely, one CAL result row carries a further context and citation after the first pair, with no header of its own. For example, a `king` search (2026-09-29) has one such row out of 1068: the `brt ym` ("dolphin") row also carries a Syriac citation about a "wall". CAL-MCP returns that citation as its own hit with `lemma: null` and keeps CAL's context, reference, source text and translation. It never attributes it to the preceding header, and it does not guess the missing lemma. Any other row shape fails closed as `parser_drift`.
+CAL renders one lemma header per cited sense. The header's `part_of_speech` is CAL's own marked part of speech, including a verb's vowel class (for example `vb. a/u`); the lemma's `gloss` is empty here, because the sense text is in `lexical_context`. Other tools derive `part_of_speech` from CAL's rendered header text and may give a shorter value for the same verb (`vb.`). `source_text` keeps CAL's trailing right-to-left mark (U+200F) as CAL renders it. Rarely, one CAL result row carries a further context and citation after the first pair, with no header of its own. For example, a `king` search (2026-09-29) has one such row out of 1068: the `brt ym` ("dolphin") row also carries a Syriac citation about a "wall". CAL-MCP returns that citation as its own hit with `lemma: null` and keeps CAL's context, reference, source text and translation. A `house` search (2026-09-29) also has two rows where CAL adds further citations after a row's pair with no context or header at all (for example, after `ˀlp` "tribal unit", Luke 5:27 about a "custom house"). Those hits have both `lemma` and `lexical_context` set to `null`. A citation reference can itself be an external link (for example Bar Bahlul references); CAL-MCP keeps the rendered reference text. It never attributes it to the preceding header, and it does not guess the missing lemma. Any other row shape fails closed as `parser_drift`.
 
 ## Request behavior
 

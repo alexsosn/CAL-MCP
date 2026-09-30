@@ -75,7 +75,13 @@ def test_headers_take_the_part_of_speech_from_cal_pos_markup() -> None:
         (("kl", "klˀ"), "ku/ol, kullā (kollā)", "n.(pr.)", ""),
         (("krk", "krkˀ"), "kreḵ, karkā", "n.m.(f.)", ""),
         (("MLK",), None, "vb. e(a)/u", ""),
-        (("mlḥmw", "mlḥmwtˀ"), "mlaḥmū, mlaḥmūṯā", "n.f.", ""),
+        # CAL's pronunciation uses combining marks (h + U+0323, t + U+0331); kept as rendered.
+        (
+            ("ml\u1e25mw", "ml\u1e25mwt\u02c0"),
+            "mlah\u0323m\u016b, mlah\u0323m\u016bt\u0331\u0101",
+            "n.f.",
+            "",
+        ),
         (("byt šˁˀ",), "bēṯ šāˁē", "n.m.", ""),
     ]
 
@@ -113,7 +119,6 @@ _BRT = (
         (_BRT, _BRT + _BRT),  # a row with two headers
         (b"<pos>n.f.</pos>", b""),  # a header without CAL's POS markup
         (b"<pos>n.f.</pos>", b"<pos>n.f.</pos><pos>adj.</pos>"),  # two POS elements
-        (b"<br>\n : small wall or glacis<br>", b"<br>"),  # a citation without its context
         (b"<i>JulSok 257(125):14</i>", b"JulSok 257(125):14"),  # a context without a citation
     ],
 )

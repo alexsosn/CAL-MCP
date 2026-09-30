@@ -104,7 +104,7 @@ class GlossSearchPage:
 @dataclass(frozen=True, slots=True)
 class CitationSearchHit:
     lemma: LemmaRef | None
-    lexical_context: str
+    lexical_context: str | None
     reference: str
     source_text: str
     translation: str | None
@@ -343,30 +343,38 @@ def _parse_citation_rows(text: str) -> tuple[CitationSearchHit, ...]:
             raise SearchParseError("CAL citation search row is empty")
         header, rest = segments[0], segments[1:]
         lemma = _citation_row_lemma(header)
-        if any(segment.hrefs or segment.pos_count for segment in rest):
+        if any(
+            segment.pos_count or any(_lemma_key_from_href(href) for href in segment.hrefs)
+            for segment in rest
+        ):
             raise SearchParseError("CAL citation search row has more than one lemma header")
-        if not rest or len(rest) % 2:
+        if not rest or rest[0].starts_with_citation or not rest[-1].starts_with_citation:
             raise SearchParseError(
                 "CAL citation search row must pair each context with one citation"
             )
-        for pair_index in range(0, len(rest), 2):
-            context, citation = rest[pair_index], rest[pair_index + 1]
-            if context.starts_with_citation or not citation.starts_with_citation:
-                raise SearchParseError(
-                    "CAL citation search row must pair each context with one citation"
-                )
-            reference, source_text, translation = _parse_citation_text(citation.text)
+        # CAL renders one header per cited sense. The row's first (context, citation) pair
+        # belongs to that header. Any further citation, with or without a context of its own,
+        # has no header in CAL and is returned with a null lemma, never attributed (R-048).
+        pending_context: _CitationSegment | None = None
+        for segment in rest:
+            if not segment.starts_with_citation:
+                if pending_context is not None:
+                    raise SearchParseError(
+                        "CAL citation search row must pair each context with one citation"
+                    )
+                pending_context = segment
+                continue
+            reference, source_text, translation = _parse_citation_text(segment.text)
             hits.append(
                 CitationSearchHit(
-                    # CAL renders one header per sense. A further pair in the same row has
-                    # no header of its own and is never attributed to this one (R-048).
-                    lemma=lemma if pair_index == 0 else None,
-                    lexical_context=context.text,
+                    lemma=lemma if segment is rest[1] else None,
+                    lexical_context=None if pending_context is None else pending_context.text,
                     reference=reference,
                     source_text=source_text,
                     translation=translation,
                 )
             )
+            pending_context = None
     if not hits:
         raise SearchParseError("CAL citation search page has no recognizable results")
     return tuple(hits)
