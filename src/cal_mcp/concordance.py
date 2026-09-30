@@ -1307,11 +1307,18 @@ def _apply_kwic_target_structure(
             raise ConcordanceParseError("CAL KWIC target lines disagree with their links")
         if segment.leading_text.strip():
             raise ConcordanceParseError("CAL KWIC target line does not start with its coordinate")
-        if len(segment.highlighted) != 1 or not segment.highlighted[0]:
-            raise ConcordanceParseError("CAL KWIC target line lacks one highlighted target token")
+        if len(segment.highlighted) > 1:
+            raise ConcordanceParseError("CAL KWIC target line has more than one highlight")
         if scope_kind is KwicScopeKind.TEXTS and segment.section != hit.file_id:
             raise ConcordanceParseError("CAL KWIC hit appears under another text's section")
-        checked.append((index, replace(hit, target_text=segment.highlighted[0])))
+        # CAL's highlight is kept as rendered. On some lines it marks a neighbouring word, is
+        # empty, or is missing altogether (R-050); then there is no target text.
+        target_text = segment.highlighted[0] if segment.highlighted else ""
+        checked.append((index, replace(hit, target_text=target_text or None)))
+    # CAL leaves a few lines unhighlighted, but pages with several hits have always
+    # highlighted most of them; none at all means the markup changed (R-050).
+    if len(checked) >= 2 and all(hit.target_text is None for _, hit in checked):
+        raise ConcordanceParseError("CAL KWIC page highlights no target line")
     return tuple(checked)
 
 
