@@ -56,19 +56,23 @@ def test_empty_highlight_is_returned_as_null_target_text(empty: bytes) -> None:
 _EMPTY = b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b>(ylM"
 
 
-@pytest.mark.parametrize(
-    "replacement",
-    [
-        b"mlK (ylM",  # no highlight at all
-        b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b><b>(ylM</b>",  # two highlights
-    ],
-)
-def test_missing_or_repeated_highlight_still_fails_closed(replacement: bytes) -> None:
+def test_target_line_without_any_highlight_has_null_target_text() -> None:
+    # CAL renders some target lines with no <b> at all: 7 of 45 lines of Hebrew-script
+    # mlk N KWIC in Biblical Aramaic 31000 (2026-09-29).
+    body = FIXTURE.read_bytes()
+    assert body.count(_EMPTY) == 1
+
+    page = _parse(body.replace(_EMPTY, b"mlK (ylM"))
+
+    assert [hit.target_text for hit in page.hits] == ["mlK", "w)rywK", ")l)sr", None]
+
+
+def test_two_highlights_on_one_target_line_fail_closed() -> None:
     body = FIXTURE.read_bytes()
     assert body.count(_EMPTY) == 1
 
     with pytest.raises(ConcordanceParseError):
-        _parse(body.replace(_EMPTY, replacement))
+        _parse(body.replace(_EMPTY, b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b><b>(ylM</b>"))
 
 
 def test_empty_highlight_on_the_dialect_scope_path() -> None:
