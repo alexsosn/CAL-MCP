@@ -492,7 +492,10 @@ async def cal_kwic_texts(
     """Return ordered CAL KWIC hits for one lemma key in 1-8 explicit texts.
 
     Duplicate CAL hits remain duplicated and ordered; each hit's ``target_text`` is the
-    token CAL highlights, which distinguishes two occurrences on one line. ``script`` is
+    token CAL highlights, which distinguishes two occurrences on one line. It is CAL's
+    highlight as rendered, not verified: in some texts CAL highlights a neighbouring word
+    or nothing (``null``); the hit's order and coordinate identify it, and
+    ``cal_kwic_full_context`` shows the line's own tokens. ``script`` is
     ``roman``, ``hebrew``, or ``syriac``. Full context is never fetched automatically.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
@@ -546,7 +549,8 @@ async def cal_kwic_dialect(
     is their sum. In some dialects CAL lists only other forms (for example ``n)qt) N``
     for ``n)qh N`` in dialect 71); ``requested_form_listed`` is then false, and none of
     the hits is for the requested spelling. Each hit's ``target_text`` is the token CAL
-    highlights.
+    highlights, as rendered and not verified: CAL sometimes highlights a neighbouring word
+    or nothing (``null``).
 
     It never expands to other dialects or fetches full-context pages automatically.
 

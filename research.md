@@ -331,7 +331,7 @@ When new evidence changes an assumption:
 
 **Rechecked:** 2026-09-29, with two bounded requests; issue #204.
 
-In `mlk N` KWIC over Samaritan Targum `56000`, 5 of 106 target lines have an empty `<b>` highlight. On line `56000114010`, whose full-context tokens show the lemma at words 3, 6, 9 and 12 and a two-word token at word 8, the four hits are highlighted `mlK`, `w)rywK`, `)l)sr` and nothing. Detailed evidence: `docs/research/issue-204-empty-kwic-highlight.md`.
+In `mlk N` KWIC over Samaritan Targum `56000`, 30 of 106 hits have a highlight that is not a form of `mlk` (25 other words, including a two-word highlight, on 16+ lines across chapters 114–529), and 5 of those are empty. On line `56000114010`, whose full-context tokens show the lemma at words 3, 6, 9 and 12 and a two-word token at word 8, the four hits are highlighted `mlK`, `w)rywK`, `)l)sr` and nothing. Detailed evidence: `docs/research/issue-204-empty-kwic-highlight.md`.
 
 **Implication:** `target_text` is CAL's highlight as rendered, and is `null` when CAL highlights nothing. It is documented as unverified; CAL-MCP does not correct it.
 

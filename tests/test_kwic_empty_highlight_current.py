@@ -33,8 +33,11 @@ def _parse(body: bytes) -> KwicPage:
     )
 
 
-def test_empty_highlight_is_returned_as_null_target_text() -> None:
-    page = _parse(FIXTURE.read_bytes())
+@pytest.mark.parametrize("empty", [b"<b>&nbsp;&nbsp; </b>", b"<b> </b>", b"<b></b>"])
+def test_empty_highlight_is_returned_as_null_target_text(empty: bytes) -> None:
+    body = FIXTURE.read_bytes()
+    assert body.count(b"<b>&nbsp;&nbsp; </b>") == 1
+    page = _parse(body.replace(b"<b>&nbsp;&nbsp; </b>", empty))
 
     assert page.total == 4
     assert [hit.target_text for hit in page.hits] == ["mlK", "w)rywK", ")l)sr", None]
@@ -62,7 +65,27 @@ _EMPTY = b"mlK &nbsp;&nbsp;<b>&nbsp;&nbsp; </b>(ylM"
 )
 def test_missing_or_repeated_highlight_still_fails_closed(replacement: bytes) -> None:
     body = FIXTURE.read_bytes()
-    assert _EMPTY in body
+    assert body.count(_EMPTY) == 1
 
     with pytest.raises(ConcordanceParseError):
         _parse(body.replace(_EMPTY, replacement))
+
+
+def test_empty_highlight_on_the_dialect_scope_path() -> None:
+    body = (FIXTURE.parent / "kwic_dialect_nqh_71_current.html").read_bytes()
+    highlight = '<b><span class="red">נאקתא</span></b>'.encode()
+    assert body.count(highlight) == 1
+    page = parse_kwic_result(
+        CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=71",
+            body=body.replace(highlight, b'<b><span class="red"></span></b>'),
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 29, tzinfo=UTC),
+        ),
+        lemma_key="n)qh N",
+        scope_kind=KwicScopeKind.DIALECT,
+        scope_ids=("71",),
+    )
+
+    assert page.hits[0].target_text is None

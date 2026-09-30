@@ -29,3 +29,12 @@ The four `mlk N` hits on line `56000114010` (the lemma occurs at words 3, 6, 9 a
 - A target line whose single `<b>` highlight is empty (whitespace or no-break spaces only) is returned with `target_text: null`. A missing `<b>`, or two of them, still fails closed.
 - `docs/tools/concordance.md` states that `target_text` is CAL's highlight as rendered, which on some lines marks a neighbouring word or nothing. Use `cal_kwic_full_context` to see the line's own tokens.
 - Production requests are unchanged.
+
+## Review follow-up (2026-09-29)
+
+- Drift is much more common than the empty cases alone. On the full capture, 30 of the 106 hits (28%) have a `target_text` that is not a form of `mlk`. Five are empty. The other 25 are other words (`(wg`, `syxwN`, `cpwr`, `blq`, `lrbwN`, `br$(`, …), including one two-word highlight (`w$M )bd`). They are spread over 16+ lines in chapters 114, 140, 421–423 and 501–529.
+- Alternatives were considered and rejected:
+  - Detecting drift by comparing with the lemma's forms: text-scoped KWIC has no form list, and deciding which spelling "is" the lemma would be linguistic inference.
+  - Checking against full-context tokens: one extra request per hit.
+  - Nulling every highlight: this loses the only thing that tells duplicate hits on one line apart.
+- The caveat is therefore stated where MCP clients read it (the `cal_kwic_texts` and `cal_kwic_dialect` tool descriptions) as well as in `docs/tools/concordance.md`: `target_text` is CAL's unverified highlight, and a hit is identified by its order and coordinate.
