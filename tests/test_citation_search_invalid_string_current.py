@@ -85,3 +85,16 @@ async def test_rejection_reaches_mcp_callers_as_invalid_input(
             "status_code": None,
         }
     }
+
+
+def test_cal_lowercases_the_echoed_query() -> None:
+    # Live 2026-09-30: English=God is answered with '"god" is not a valid search string'.
+    with pytest.raises(CalRejectedInputError, match='"god" is not a valid search string'):
+        parse_citation_search_page(_response(FIXTURE.read_bytes()), submitted_query="God")
+
+
+def test_echo_is_compared_after_html_unescaping_and_up_to_the_marker() -> None:
+    body = FIXTURE.read_bytes().replace(b'"god" is not', b'"don&quot;t &amp; god" is not')
+
+    with pytest.raises(CalRejectedInputError, match='"don"t & god" is not a valid'):
+        parse_citation_search_page(_response(body), submitted_query='don"t & god')
