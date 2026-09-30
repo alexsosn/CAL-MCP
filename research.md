@@ -327,6 +327,14 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-050 — CAL's KWIC highlight can mark a neighbouring word or nothing
+
+**Rechecked:** 2026-09-29, with two bounded requests; issue #204.
+
+In `mlk N` KWIC over Samaritan Targum `56000`, 5 of 106 target lines have an empty `<b>` highlight. On line `56000114010`, whose full-context tokens show the lemma at words 3, 6, 9 and 12 and a two-word token at word 8, the four hits are highlighted `mlK`, `w)rywK`, `)l)sr` and nothing. Detailed evidence: `docs/research/issue-204-empty-kwic-highlight.md`.
+
+**Implication:** `target_text` is CAL's highlight as rendered, and is `null` when CAL highlights nothing. It is documented as unverified; CAL-MCP does not correct it.
+
 ## R-049 — Babylonian Talmud full-context rows use `bablex.php` token links
 
 **Rechecked:** 2026-09-29 (a capture from #181's research); issue #203.
