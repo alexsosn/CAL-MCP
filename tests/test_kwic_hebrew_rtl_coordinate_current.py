@@ -74,3 +74,31 @@ def test_other_link_texts_fail_closed(replacement: bytes) -> None:
 
     with pytest.raises(ConcordanceParseError):
         _parse(body.replace(_REVERSED, replacement, 1), "gml N", "71002")
+
+
+def test_syriac_script_hits_parse_with_reversed_coordinates() -> None:
+    body = (FIXTURES / "kwic_texts_mlk_13250_syriac_current.html").read_bytes()
+    assert b'<BDO dir="rtl">3005231</BDO>' in body
+
+    page = _parse(body, "mlk N", "13250")
+
+    assert page.total == 6
+    assert page.hits[0].target_coordinate == "1325003"
+    assert all(hit.charset == "S" for hit in page.hits)
+
+
+@pytest.mark.parametrize(
+    "replacement",
+    [
+        # a nested left-to-right BDO would display the digits reversed
+        b'<span class="mono"><BDO dir="rtl"><bdo dir="ltr">5227701020017</bdo></BDO></span></a>',
+        # reversed digits split between rtl and plain text
+        b'<span class="mono"><BDO dir="rtl">52277010</BDO>20017</span></a>',
+    ],
+)
+def test_mixed_direction_link_texts_fail_closed(replacement: bytes) -> None:
+    body = BT.read_bytes()
+    assert _REVERSED in body
+
+    with pytest.raises(ConcordanceParseError):
+        _parse(body.replace(_REVERSED, replacement, 1), "gml N", "71002")
