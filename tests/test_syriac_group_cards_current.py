@@ -108,6 +108,23 @@ _CARD = (
         (_CARD, _CARD.replace(b"sub=002", b"sub=001")),
         # a sub that is not decimal
         (_CARD, _CARD.replace(b"sub=002", b"sub=0x2")),
+        # text inside a card outside its links
+        (b"Drijvers.2=OS.Bs2</a>", b"Drijvers.2=OS.Bs2</a> (fragmentary)"),
+        # a chrome-looking link that points to a text, after the group
+        (
+            b"</details>",
+            b'</details><a class="cal-nav-link" href="/get_a_chapter.php?file=61001">x</a>',
+        ),
+        # any link inside the group outside its summary and cards
+        (b"<ul>", b'<ul><a class="cal-nav-link" href="/newtextmenu.html">x</a>'),
+        # text outside the group
+        (b"</details>", b"</details><p>More inscriptions to come</p>"),
+        # the group summary without its label
+        (b"<span>Old Syriac Inscriptions (1st-3rd c.)</span>", b"<span></span>"),
+        # a card for another file than the group
+        (_CARD, _CARD.replace(b"file=61000", b"file=61001")),
+        # an unknown script selector on a card
+        (_CARD, _CARD.replace(b"cset=S", b"cset=ZZ")),
     ],
 )
 def test_unexpected_card_structure_fails_closed(old: bytes, new: bytes) -> None:
@@ -116,3 +133,13 @@ def test_unexpected_card_structure_fails_closed(old: bytes, new: bytes) -> None:
 
     with pytest.raises(SyriacParseError):
         _parse(body.replace(old, new, 1), "61000")
+
+
+@pytest.mark.parametrize(
+    "opening",
+    [b'<details open class="dialect-group">', b'<details class="dialect-group open">'],
+)
+def test_group_marker_is_recognised_with_other_attributes(opening: bytes) -> None:
+    body = _body("61000").replace(b'<details class="dialect-group">', opening)
+
+    assert len(_parse(body, "61000")) == 3
