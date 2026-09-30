@@ -368,13 +368,12 @@ def test_current_kwic_hits_carry_cal_highlighted_target_token() -> None:
 @pytest.mark.parametrize(
     ("old", "new", "message"),
     [
-        # No highlighted token on the target line.
-        ("&nbsp;&nbsp;<b>mlk&nbsp;&nbsp; </b>y[$", "mlk y[$", "highlighted target token"),
-        # Two highlighted tokens on one target line.
+        # Two highlighted tokens on one target line. (A line with no highlight is CAL's own
+        # rendering on some lines and gives target_text null; see issue #204.)
         (
             "&nbsp;&nbsp;<b>mlk&nbsp;&nbsp; </b>y[$",
             "<b>mlk</b> <b>y[$</b>",
-            "highlighted target token",
+            "more than one highlight",
         ),
         # Text before the link that happens to repeat the coordinate.
         (
