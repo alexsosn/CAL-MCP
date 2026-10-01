@@ -1,4 +1,4 @@
-name: Issue 188 final live stdio acceptance
+name: Issue 188 74425 coordinate probe
 
 on:
   push:
@@ -9,130 +9,88 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install candidate
-        run: python -m pip install .
-      - name: Verify current Mandaic catalogue and page composition over stdio
+      - name: Classify 74425 coordinate shapes without retaining text
         run: |
           python - <<'PY'
-          import asyncio
-          from mcp import Client, StdioServerParameters
+          import json
+          import urllib.request
+          from html.parser import HTMLParser
+          from urllib.parse import parse_qs, urlsplit
 
-          DIRECT = {
-              "74420", "74424", "74425", "74426",
-              "74427", "74429", "74431", "74501",
-          }
-          CATEGORIES = {
-              "74401", "74402", "74410", "74411", "74421", "74422",
-              "74423", "74428", "74430", "74432", "74701", "74923",
-          }
-          ROUNDTRIPS = {
-              "74401": "12",
-              "74422": "106",
-              "74430": "1",
-              "74421": "col",
-          }
-          calls = 0
+          url = "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74425"
+          req = urllib.request.Request(
+              url,
+              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
+          )
+          with urllib.request.urlopen(req, timeout=20) as response:
+              body = response.read(262145)
+              if len(body) > 262144:
+                  raise RuntimeError("response exceeded 256 KiB")
+              html = body.decode("utf-8", "replace")
 
-          async def call(client, tool, args):
-              global calls
-              calls += 1
-              if calls > 19:
-                  raise RuntimeError(f"live request budget exceeded: {calls}")
-              result = await client.call_tool(tool, args)
-              if result.is_error:
-                  raise RuntimeError(f"{tool} {args} failed: {result.content!r}")
-              data = result.structured_content
-              if not isinstance(data, dict):
-                  raise RuntimeError(f"{tool} {args}: missing structured content")
-              return data
+          class Probe(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.links = []
+                  self.text_table = False
+                  self.table_rows = 0
+                  self.table_cells = 0
+                  self.token_coords = []
+                  self.comment_coords = []
+                  self.file_info_coords = []
+                  self.nav = []
+              def handle_starttag(self, tag, attrs):
+                  d = dict(attrs)
+                  if tag == "table" and "text-display" in (d.get("class") or "").split():
+                      self.text_table = True
+                  if self.text_table and tag == "tr":
+                      self.table_rows += 1
+                  if self.text_table and tag == "td":
+                      self.table_cells += 1
+                  if tag != "a":
+                      return
+                  href = d.get("href") or ""
+                  p = urlsplit(href)
+                  endpoint = p.path.rsplit("/", 1)[-1]
+                  q = parse_qs(p.query, keep_blank_values=True)
+                  if endpoint in {"getlex.php", "bablex.php"} and "coord" in q:
+                      self.token_coords.extend(q["coord"])
+                  elif endpoint == "comment.php" and "coord" in q:
+                      self.comment_coords.extend(q["coord"])
+                  elif endpoint == "get_file_info.php" and "coord" in q:
+                      self.file_info_coords.extend(q["coord"])
+                  elif endpoint == "get_a_chapter.php" and q.get("file") == ["74425"]:
+                      self.nav.append({
+                          "keys": sorted(q),
+                          "page": q.get("page"),
+                          "sub": q.get("sub"),
+                          "cset": q.get("cset"),
+                          "clen": q.get("clen"),
+                      })
+              def handle_endtag(self, tag):
+                  if tag == "table" and self.text_table:
+                      self.text_table = False
 
-          async def page(client, file_id, *, subtext_id=None, page_number=1):
-              args = {"file_id": file_id, "page": page_number}
-              if subtext_id is not None:
-                  args["subtext_id"] = subtext_id
-              data = await call(client, "cal_text_page", args)
-              if data.get("status") != "found":
-                  raise RuntimeError(f"{file_id}/{subtext_id}/p{page_number}: not found")
-              payload = data.get("page")
-              if not isinstance(payload, dict) or not payload.get("lines"):
-                  raise RuntimeError(f"{file_id}/{subtext_id}/p{page_number}: no lines")
-              if payload.get("page") != page_number:
-                  raise RuntimeError(
-                      f"{file_id}/{subtext_id}: page mismatch {payload.get('page')}"
-                  )
-              return payload
-
-          async def main():
-              async with Client(StdioServerParameters(command="cal-mcp")) as client:
-                  root = await call(
-                      client,
-                      "cal_text_catalogue",
-                      {"category_id": "74"},
-                  )
-                  categories = root.get("categories")
-                  texts = root.get("texts")
-                  if not isinstance(categories, list) or not isinstance(texts, list):
-                      raise RuntimeError("Mandaic root catalogue shape missing")
-                  category_ids = {x.get("category_id") for x in categories if isinstance(x, dict)}
-                  direct_ids = {x.get("file_id") for x in texts if isinstance(x, dict)}
-                  if category_ids != CATEGORIES:
-                      raise RuntimeError(
-                          f"Mandaic categories changed: {sorted(category_ids)!r}"
-                      )
-                  if direct_ids != DIRECT:
-                      raise RuntimeError(f"Mandaic direct texts changed: {sorted(direct_ids)!r}")
-
-                  for file_id in sorted(DIRECT):
-                      await page(client, file_id)
-
-                  await page(client, "74501", page_number=2)
-
-                  for file_id, expected_sub in ROUNDTRIPS.items():
-                      child = await call(
-                          client,
-                          "cal_text_catalogue",
-                          {"category_id": file_id},
-                      )
-                      child_texts = child.get("texts")
-                      if not isinstance(child_texts, list):
-                          raise RuntimeError(f"{file_id}: child texts missing")
-                      matches = [
-                          x for x in child_texts
-                          if isinstance(x, dict)
-                          and x.get("file_id") == file_id
-                          and x.get("subtext_id") == expected_sub
-                      ]
-                      if len(matches) != 1:
-                          raise RuntimeError(
-                              f"{file_id}: expected subtext {expected_sub!r} not unique"
-                          )
-                      await page(client, file_id, subtext_id=expected_sub)
-
-                  info = await call(
-                      client,
-                      "cal_text_information",
-                      {"file_id": "74421", "subtext_id": "col"},
-                  )
-                  if info.get("file_id") != "74421" or info.get("subtext_id") != "col":
-                      raise RuntimeError("74421/col information identity changed")
-                  if info.get("status") not in {"found", "not_found"}:
-                      raise RuntimeError("74421/col information status missing")
-
-                  if calls != 19:
-                      raise RuntimeError(f"expected exactly 19 logical calls, got {calls}")
-                  print(
-                      "live #188 OK: "
-                      f"categories={len(categories)} direct={len(texts)} "
-                      f"roundtrips={len(ROUNDTRIPS)} calls={calls}"
-                  )
-
-          asyncio.run(main())
+          p = Probe()
+          p.feed(html)
+          p.close()
+          token_unique = list(dict.fromkeys(p.token_coords))
+          comment_unique = list(dict.fromkeys(p.comment_coords))
+          print(json.dumps({
+              "file_info_coords": list(dict.fromkeys(p.file_info_coords)),
+              "token_coord_count": len(p.token_coords),
+              "token_coord_unique_sample": token_unique[:8],
+              "token_coord_charset": sorted(set("".join(token_unique))) if token_unique else [],
+              "comment_coord_unique_sample": comment_unique[:8],
+              "table_rows": p.table_rows,
+              "table_cells": p.table_cells,
+              "navigation": p.nav[:8],
+          }, sort_keys=True))
           PY
