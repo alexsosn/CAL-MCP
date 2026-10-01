@@ -151,6 +151,38 @@ class RecordingStopTransport:
 
 
 @pytest.mark.anyio
+async def test_mandaic_col_subtext_information_is_followable() -> None:
+    transport = RecordingStopTransport()
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(StopAfterRequest):
+            await TextService(client).information("74421", subtext_id="col")
+    finally:
+        await client.aclose()
+
+    assert transport.requests == [
+        CalRequest(
+            method="GET",
+            path="get_file_info.php",
+            params=(("coord", "74421col"),),
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_non_mandaic_information_still_rejects_col_subtext() -> None:
+    transport = RecordingStopTransport()
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(CalInputError, match="subtext"):
+            await TextService(client).information("56000", subtext_id="col")
+    finally:
+        await client.aclose()
+
+    assert transport.requests == []
+
+
+@pytest.mark.anyio
 async def test_known_subdivided_mandaic_requires_explicit_subtext() -> None:
     transport = RecordingStopTransport()
     client = CalHttpClient(transport=transport)
