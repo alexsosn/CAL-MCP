@@ -1763,9 +1763,9 @@ def _page_navigation(
                 raise TextParseError("CAL text page navigation file differs from requested file")
 
             if mandaic_page_route:
-                core_keys = {"file", "sub", "cset", "page"}
+                core_keys = frozenset({"file", "sub", "cset", "page"})
                 with_clen_keys = core_keys | {"clen"}
-                if set(query) not in {frozenset(core_keys), frozenset(with_clen_keys)}:
+                if frozenset(query) not in {core_keys, with_clen_keys}:
                     raise TextParseError(
                         "CAL Mandaic text navigation has unexpected selectors"
                     )
