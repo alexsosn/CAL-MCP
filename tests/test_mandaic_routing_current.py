@@ -114,6 +114,19 @@ async def test_mandaic_child_catalogue_rejects_wrong_info_coordinate() -> None:
         await _child_catalogue("74430", body)
 
 
+@pytest.mark.anyio
+async def test_mandaic_child_catalogue_rejects_titleless_route_link() -> None:
+    body = (FIXTURES / "text_catalogue_mandaic_74430_children_current.html").read_bytes()
+    body = body.replace(
+        b"</ul>",
+        b'<li><a href="/get_a_chapter.php?file=74430&sub=4&cset=J"></a></li></ul>',
+        1,
+    )
+
+    with pytest.raises(TextParseError, match="rendered title|dropped|route"):
+        await _child_catalogue("74430", body)
+
+
 def test_non_mandaic_subtext_grammar_still_rejects_col() -> None:
     response = _response(
         b'<a href="/get_a_chapter.php?file=55000&sub=col&cset=C">bad</a>',
