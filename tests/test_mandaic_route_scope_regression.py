@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError
 from cal_mcp.texts import TextService
 
 
@@ -41,12 +42,31 @@ async def test_direct_mandaic_page_one_does_not_invent_sub_selector(file_id: str
 
 
 @pytest.mark.anyio
-async def test_direct_mandaic_additional_page_fails_before_transport() -> None:
+async def test_current_direct_mandaic_additional_page_uses_page_axis() -> None:
     transport = RecordingStopTransport()
     client = CalHttpClient(transport=transport)
     try:
-        with pytest.raises(ValueError, match="direct Mandaic.*page 1"):
+        with pytest.raises(StopAfterRequest):
             await TextService(client).page("74501", page=2)
+    finally:
+        await client.aclose()
+
+    assert transport.requests == [
+        CalRequest(
+            method="GET",
+            path="get_a_chapter.php",
+            params=(("cset", "M"), ("file", "74501"), ("page", "1")),
+        )
+    ]
+
+
+@pytest.mark.anyio
+async def test_legacy_direct_mandaic_additional_page_still_fails_before_transport() -> None:
+    transport = RecordingStopTransport()
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(CalInputError, match="direct Mandaic.*page 1"):
+            await TextService(client).page("74717", page=2)
     finally:
         await client.aclose()
 
@@ -58,19 +78,13 @@ async def test_direct_mandaic_additional_page_fails_before_transport() -> None:
     "file_id",
     ["74401", "74411", "74700", "74701", "74702", "74711", "74714"],
 )
-async def test_researched_subdivided_mandaic_files_keep_sub_page_route(file_id: str) -> None:
+async def test_researched_subdivided_mandaic_files_require_explicit_subtext(file_id: str) -> None:
     transport = RecordingStopTransport()
     client = CalHttpClient(transport=transport)
     try:
-        with pytest.raises(StopAfterRequest):
+        with pytest.raises(CalInputError, match="subtext"):
             await TextService(client).page(file_id, page=1)
     finally:
         await client.aclose()
 
-    assert transport.requests == [
-        CalRequest(
-            method="GET",
-            path="get_a_chapter.php",
-            params=(("cset", "M"), ("file", file_id), ("sub", "001")),
-        )
-    ]
+    assert transport.requests == []
