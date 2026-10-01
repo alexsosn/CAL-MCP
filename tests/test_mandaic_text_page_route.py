@@ -180,7 +180,7 @@ class MutatedCurrentNavigationTransport:
         )
         body = CURRENT_PAGE_2.read_bytes()
         assert self.old in body
-        body = body.replace(self.old, self.new, 1)
+        body = body.replace(self.old, self.new)
         return CalResponse(
             status_code=200,
             url="https://cal.huc.edu/get_a_chapter.php?cset=M&file=74401&sub=12&page=1",
