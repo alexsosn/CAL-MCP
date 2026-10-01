@@ -65,12 +65,16 @@ async def test_current_ordinary_subtext_page_is_read() -> None:
 
 @pytest.mark.anyio
 async def test_current_mandaic_subdivided_page_is_read() -> None:
-    result = await _page(GINZA.read_bytes(), "74410")
+    body = GINZA.read_bytes()
+    start = body.index(b'<a href="get_a_chapter.php?file=74410&sub=002')
+    end = body.index(b"</a>", start) + len(b"</a>")
+    body = body[:start] + body[end:]
+    result = await _page(body, "74410", "001")
 
     assert result.status is TextPageStatus.FOUND
     assert result.page is not None
     assert result.page.text.file_id == "74410"
-    assert result.page.text.subtext_id is None
+    assert result.page.text.subtext_id == "001"
     assert result.page.text.label == "Ginza Rabba (Great Treasury) Right Side"
     assert [line.coordinate for line in result.page.lines] == ["7441000101", "7441000102"]
 
@@ -102,18 +106,20 @@ async def test_file_plus_subtext_coord_is_rejected_without_a_submitted_sub() -> 
 
 
 @pytest.mark.anyio
-async def test_mandaic_file_info_coord_with_another_page_selector_fails_closed() -> None:
-    body = GINZA.read_bytes().replace(b'coord=74410001"', b'coord=74410002"')
-    with pytest.raises(TextParseError, match="file identifier differs"):
-        await _page(body, "74410")
+async def test_mandaic_file_info_coord_with_another_subtext_fails_closed() -> None:
+    body = GINZA.read_bytes()
+    start = body.index(b'<a href="get_a_chapter.php?file=74410&sub=002')
+    end = body.index(b"</a>", start) + len(b"</a>")
+    body = body[:start] + body[end:]
+    body = body.replace(b'coord=74410001"', b'coord=74410002"')
+    with pytest.raises(TextParseError, match="differs"):
+        await _page(body, "74410", "001")
 
 
 @pytest.mark.anyio
-async def test_current_mandaic_page_keeps_its_next_page_navigation() -> None:
-    result = await _page(GINZA.read_bytes(), "74410")
-
-    assert result.page is not None
-    assert (result.page.previous_page, result.page.next_page) == (None, 2)
+async def test_legacy_cross_sub_link_is_not_treated_as_page_navigation() -> None:
+    with pytest.raises(TextParseError, match="navigation subtext"):
+        await _page(GINZA.read_bytes(), "74410", "001")
 
 
 def test_public_parser_treats_the_requested_subtext_as_the_submitted_sub() -> None:
