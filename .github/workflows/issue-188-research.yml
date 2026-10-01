@@ -1,4 +1,4 @@
-name: Issue 188 Mandaic navigation edge audit
+name: Issue 188 Mandaic follow-up contract audit
 
 on:
   push:
@@ -16,32 +16,35 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Audit sparse offset and colophon navigation
+      - name: Audit catalogue child and true page axes
         run: |
           python - <<'PY'
           import json
+          import re
           import urllib.request
           from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlsplit
 
           CASES = [
-              ("74401", "12"),
-              ("74401", "23"),
-              ("74422", "106"),
-              ("74421", "103"),
-              ("74421", "col"),
+              ("catalogue", "https://cal.huc.edu/showsubtexts.php?subtext=74401"),
+              ("subtext_page2", "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74401&sub=12&page=1"),
+              ("direct_page2", "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74501&page=1"),
           ]
           UA = {"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
 
-          class Links(HTMLParser):
+          class Probe(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
                   self.current = None
                   self.links = []
+                  self.data = []
               def handle_starttag(self, tag, attrs):
                   if tag == "a":
                       self.current = {"href": dict(attrs).get("href") or "", "parts": []}
               def handle_data(self, data):
+                  text = " ".join(data.split())
+                  if text:
+                      self.data.append(text)
                   if self.current is not None:
                       self.current["parts"].append(data)
               def handle_endtag(self, tag):
@@ -53,37 +56,46 @@ jobs:
                       self.current = None
 
           out = []
-          for file_id, sub in CASES:
-              url = (
-                  "https://cal.huc.edu/get_a_chapter.php?"
-                  f"cset=M&file={file_id}&sub={sub}"
-              )
+          for kind, url in CASES:
               req = urllib.request.Request(url, headers=UA)
               with urllib.request.urlopen(req, timeout=20) as response:
                   body = response.read(262145)
                   if len(body) > 262144:
-                      raise RuntimeError(f"{file_id}/{sub}: response exceeded 256 KiB")
+                      raise RuntimeError(f"{kind}: response exceeded 256 KiB")
                   html = body.decode("utf-8", "replace")
-              p = Links(); p.feed(html); p.close()
-              nav = []
+                  final = response.geturl()
+                  status = response.status
+              p = Probe(); p.feed(html); p.close()
+              chapter = []
+              info = []
               for label, href in p.links:
-                  low = label.casefold()
-                  if "previous page" not in low and "next page" not in low:
-                      continue
                   u = urlsplit(href)
+                  endpoint = u.path.rsplit("/", 1)[-1]
                   q = parse_qs(u.query, keep_blank_values=True)
-                  nav.append({
-                      "label": label,
-                      "path": u.path.rsplit("/", 1)[-1],
-                      "selectors": sorted(q),
-                      "file": q.get("file"),
-                      "sub": q.get("sub"),
-                      "cset": q.get("cset"),
-                  })
+                  if endpoint == "get_a_chapter.php":
+                      chapter.append({
+                          "label": label,
+                          "selectors": sorted(q),
+                          "file": q.get("file"),
+                          "sub": q.get("sub"),
+                          "page": q.get("page"),
+                          "cset": q.get("cset"),
+                          "clen": q.get("clen"),
+                      })
+                  elif endpoint == "get_file_info.php":
+                      info.append({"label": label, "coord": q.get("coord")})
+              markers = [
+                  text for text in p.data
+                  if re.search(r"\bPage\s+\d+\s+of\s+\d+", text, re.I)
+              ]
               out.append({
-                  "file_id": file_id,
-                  "submitted_sub": sub,
-                  "navigation": nav,
+                  "kind": kind,
+                  "status": status,
+                  "final_path": urlsplit(final).path.rsplit("/", 1)[-1],
+                  "chapter_links": chapter[:20],
+                  "chapter_link_count": len(chapter),
+                  "file_info": info[:4],
+                  "pagination_markers": markers[:4],
               })
           print(json.dumps(out, ensure_ascii=False, sort_keys=True))
           PY
