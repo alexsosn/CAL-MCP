@@ -641,7 +641,7 @@ class _Card:
 
 
 class _GroupCardsParser(HTMLParser):
-    """Place every link and every piece of text of CAL's card-layout group page (R-054).
+    """Place every link and every piece of text of CAL's card-layout group page (R-055).
 
     Nothing is dropped: text or links outside the recognised places are recorded so that
     the caller can fail closed on them.
@@ -776,7 +776,7 @@ def _parse_syriac_group_cards(
     if parser.group_count != 1:
         raise SyriacParseError("CAL Syriac group page does not hold exactly one group")
     # Only CAL's banner navigation, the page title and the toggle label surround the group;
-    # any other link or text is content CAL-MCP would otherwise drop (R-054).
+    # any other link or text is content CAL-MCP would otherwise drop (R-055).
     if parser.stray_links or parser.group_text:
         raise SyriacParseError("CAL Syriac group page has content outside its cards")
     if any(link.href not in _GROUP_CHROME_HREFS for link in parser.chrome_links):
