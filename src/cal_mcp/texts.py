@@ -691,6 +691,7 @@ class _RouteLinkCounter(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.count = 0
+        self.chapter_count = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag != "a":
@@ -698,13 +699,23 @@ class _RouteLinkCounter(HTMLParser):
         path = urlsplit(dict(attrs).get("href") or "").path
         if path.endswith(("showsubtexts.php", "get_a_chapter.php")):
             self.count += 1
+        if path.endswith("get_a_chapter.php"):
+            self.chapter_count += 1
 
 
-def _count_mandaic_route_links(response: CalResponse) -> int:
+def _mandaic_route_counts(response: CalResponse) -> tuple[int, int]:
     counter = _RouteLinkCounter()
     counter.feed(response.body.decode("utf-8", errors="replace"))
     counter.close()
-    return counter.count
+    return counter.count, counter.chapter_count
+
+
+def _count_mandaic_route_links(response: CalResponse) -> int:
+    return _mandaic_route_counts(response)[0]
+
+
+def _count_mandaic_chapter_route_links(response: CalResponse) -> int:
+    return _mandaic_route_counts(response)[1]
 
 
 def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
@@ -1488,14 +1499,12 @@ def _parse_mandaic_subtext_catalogue_page(
 
     texts: list[TextRef] = []
     seen_subtexts: set[str] = set()
-    route_links = 0
     for line in _parse_lines(response):
         chapter_links = [link for link in line.links if _is_path(link.href, "get_a_chapter.php")]
         if len(chapter_links) > 1:
             raise TextParseError("CAL Mandaic subtext row exposes multiple text routes")
         if not chapter_links:
             continue
-        route_links += 1
         link = chapter_links[0]
         parsed = urlsplit(link.href)
         if (
@@ -1561,8 +1570,9 @@ def _parse_mandaic_subtext_catalogue_page(
             )
         )
 
-    if route_links != len(texts):
-        raise TextParseError("CAL Mandaic subtext catalogue dropped a text route")
+    raw_route_links = _count_mandaic_chapter_route_links(response)
+    if raw_route_links != len(texts):
+        raise TextParseError("CAL Mandaic subtext catalogue has a route without a rendered title")
     if not texts:
         raise TextParseError("CAL Mandaic subtext catalogue contains no recognizable text rows")
     return TextCataloguePage(categories=(), texts=tuple(texts))
