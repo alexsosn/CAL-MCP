@@ -1,0 +1,107 @@
+name: Issue 208 final live stdio acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-208-full-context-row-strictness
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify R H U full-context hits over stdio
+        run: |
+          python - <<'PY'
+          import asyncio
+          from urllib.parse import urlsplit
+          from mcp import Client, StdioServerParameters
+
+          CASES = [
+              {
+                  "label": "R",
+                  "args": {
+                      "file_id": "56000",
+                      "subtext_id": "112",
+                      "target_coordinate": "56000112010",
+                      "charset": "R",
+                  },
+              },
+              {
+                  "label": "H",
+                  "args": {
+                      "file_id": "71002",
+                      "subtext_id": "01051",
+                      "target_coordinate": "7100201051217",
+                      "charset": "H",
+                  },
+              },
+              {
+                  "label": "U",
+                  "args": {
+                      "file_id": "60301",
+                      "subtext_id": "53",
+                      "target_coordinate": "603015323",
+                      "charset": "U",
+                  },
+              },
+          ]
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  counts = {}
+                  for case in CASES:
+                      result = await client.call_tool("cal_kwic_full_context", case["args"])
+                      if result.is_error:
+                          raise RuntimeError(
+                              f"{case['label']}: tool failed: {result.content!r}"
+                          )
+                      data = result.structured_content
+                      if not isinstance(data, dict) or data.get("status") != "found":
+                          raise RuntimeError(f"{case['label']}: no found result")
+                      lines = data.get("lines")
+                      if not isinstance(lines, list) or not lines:
+                          raise RuntimeError(f"{case['label']}: no lines")
+                      target = case["args"]["target_coordinate"]
+                      if sum(line.get("coordinate") == target for line in lines) != 1:
+                          raise RuntimeError(f"{case['label']}: target identity lost")
+                      for line in lines:
+                          for token in line.get("tokens") or []:
+                              url = urlsplit(token.get("lexical_url") or "")
+                              if (
+                                  url.scheme != "https"
+                                  or url.netloc != "cal.huc.edu"
+                                  or url.path not in {"/getlex.php", "/bablex.php"}
+                                  or url.fragment
+                              ):
+                                  raise RuntimeError(
+                                      f"{case['label']}: unsafe lexical route"
+                                  )
+                          comment_url = line.get("comment_url")
+                          if comment_url:
+                              url = urlsplit(comment_url)
+                              if (
+                                  url.scheme != "https"
+                                  or url.netloc != "cal.huc.edu"
+                                  or url.path != "/comment.php"
+                                  or url.fragment
+                              ):
+                                  raise RuntimeError(
+                                      f"{case['label']}: unsafe comment route"
+                                  )
+                      counts[case["label"]] = len(lines)
+                  print("live #208 OK: " + " ".join(
+                      f"{label}={counts[label]}" for label in ("R", "H", "U")
+                  ))
+
+          asyncio.run(main())
+          PY
