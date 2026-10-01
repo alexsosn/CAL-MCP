@@ -1163,10 +1163,7 @@ class TextService:
             raise CalInputError("subdivided CPA texts require subtext_id")
         if normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS and normalized_subtext is None:
             raise CalInputError("subdivided Mandaic texts require subtext_id")
-        if (
-            normalized_file in _MANDAIC_PAGINATED_DIRECT_FILE_IDS
-            and normalized_subtext is not None
-        ):
+        if normalized_file in _MANDAIC_PAGINATED_DIRECT_FILE_IDS and normalized_subtext is not None:
             raise CalInputError("direct Mandaic texts do not accept subtext_id")
 
         mandaic_page_route = False
@@ -1501,10 +1498,16 @@ def _parse_mandaic_subtext_catalogue_page(
         route_links += 1
         link = chapter_links[0]
         parsed = urlsplit(link.href)
-        if parsed.scheme or parsed.netloc or parsed.fragment or parsed.path not in {
-            "get_a_chapter.php",
-            "/get_a_chapter.php",
-        }:
+        if (
+            parsed.scheme
+            or parsed.netloc
+            or parsed.fragment
+            or parsed.path
+            not in {
+                "get_a_chapter.php",
+                "/get_a_chapter.php",
+            }
+        ):
             raise TextParseError("CAL Mandaic subtext route changed unexpectedly")
         query = parse_qs(parsed.query, keep_blank_values=True)
         if set(query) != {"file", "sub", "cset"}:
@@ -1513,9 +1516,7 @@ def _parse_mandaic_subtext_catalogue_page(
             raise TextParseError("CAL Mandaic subtext route names another file")
         if query.get("cset") != ["J"]:
             raise TextParseError("CAL Mandaic subtext route has an unexpected cset")
-        subtext_id = _parse_mandaic_subtext_id(
-            _single_query_value(query, "sub", "Mandaic subtext")
-        )
+        subtext_id = _parse_mandaic_subtext_id(_single_query_value(query, "sub", "Mandaic subtext"))
         if subtext_id in seen_subtexts:
             raise TextParseError("CAL Mandaic subtext catalogue repeats a subtext")
         seen_subtexts.add(subtext_id)
@@ -1528,19 +1529,26 @@ def _parse_mandaic_subtext_catalogue_page(
             raise TextParseError("CAL Mandaic subtext row exposes multiple information links")
         if info_links:
             info = urlsplit(info_links[0].href)
-            if info.scheme or info.netloc or info.fragment or info.path not in {
-                "get_file_info.php",
-                "/get_file_info.php",
-            }:
+            if (
+                info.scheme
+                or info.netloc
+                or info.fragment
+                or info.path
+                not in {
+                    "get_file_info.php",
+                    "/get_file_info.php",
+                }
+            ):
                 raise TextParseError("CAL Mandaic subtext information route changed unexpectedly")
             info_query = parse_qs(info.query, keep_blank_values=True)
             if set(info_query) - {"coord", "return", "script"}:
                 raise TextParseError(
                     "CAL Mandaic subtext information link has unexpected selectors"
                 )
-            if _single_query_value(
-                info_query, "coord", "Mandaic subtext information"
-            ) != requested_file_id + subtext_id:
+            if (
+                _single_query_value(info_query, "coord", "Mandaic subtext information")
+                != requested_file_id + subtext_id
+            ):
                 raise TextParseError(
                     "CAL Mandaic subtext information coordinate names another text"
                 )
@@ -1586,9 +1594,7 @@ def _search_text_ref_from_link(
     cset_values = query.get("cset") or []
     cset = cset_values[0] if len(cset_values) == 1 else None
     mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
-    if (mandaic and cset in _MANDAIC_SEARCH_CSETS) or (
-        not mandaic and cset in _SCRIPT_CSETS
-    ):
+    if (mandaic and cset in _MANDAIC_SEARCH_CSETS) or (not mandaic and cset in _SCRIPT_CSETS):
         file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
     else:
         raise TextParseError("CAL text search subtext result has an invalid cset")
@@ -1766,9 +1772,7 @@ def _page_navigation(
                 core_keys = frozenset({"file", "sub", "cset", "page"})
                 with_clen_keys = core_keys | {"clen"}
                 if frozenset(query) not in {core_keys, with_clen_keys}:
-                    raise TextParseError(
-                        "CAL Mandaic text navigation has unexpected selectors"
-                    )
+                    raise TextParseError("CAL Mandaic text navigation has unexpected selectors")
                 if query.get("cset") != ["M"]:
                     raise TextParseError("CAL text page navigation cset differs from Mandaic route")
                 expected_sub = requested_subtext_id or ""
