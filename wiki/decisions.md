@@ -276,3 +276,27 @@ Consequences:
   supplies its explicit `NO LINES FOR ... ARE CURRENTLY STORED` marker (current direct CPA
   `55002`), text retrieval uses the existing `not_found` / `page=null` semantics rather than
   inventing a line.
+
+## D-019 — Mandaic subtext identity is distinct from pagination
+
+**Status:** accepted — 2026-10-01 (issue #188; research R-056)
+
+For current Mandaic collection 74, a `showsubtexts.php` file is a catalogue node. Its child
+`sub` selector identifies a scholarly subtext and is preserved exactly. The public one-based
+`page` argument selects a rendered page *within* that explicit subtext; it never synthesizes,
+pads, increments, or otherwise derives `sub`.
+
+Consequences:
+
+- category 74 returns current subdivided files as `categories` and direct files as `texts`;
+- following a subdivided category with `cal_text_catalogue(category_id=...)` returns child
+  `TextRef` values carrying CAL's exact `subtext_id`;
+- a known subdivided Mandaic `cal_text_page` call requires that returned `subtext_id`;
+- current direct Mandaic files with observed pagination use the public page axis without a public
+  subtext; legacy direct files without pagination evidence remain page-1-only;
+- Mandaic child selectors preserve leading zeroes, sparse numbering, and the observed literal
+  `col`; `col` does not widen the ordinary or CPA subtext grammar;
+- `cal_text_information` accepts the same evidence-backed Mandaic selector so a returned child is
+  followable without inventing a different identifier;
+- each explicit catalogue/page/information operation remains bounded and does not perform hidden
+  route discovery or prefetch.
