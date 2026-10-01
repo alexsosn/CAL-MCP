@@ -327,6 +327,26 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-056 — Current Mandaic subtext identity and pagination are separate axes
+
+**Rechecked:** 2026-10-01; issue #188.
+
+The current category-74 catalogue exposes 20 routed texts: eight direct `get_a_chapter.php`
+files and twelve subdivided `showsubtexts.php` files. The subdivided files do not share one
+page-number grammar: examples include sparse selectors (`74401`: `11`, `12`, `23`–`27`),
+one-digit selectors (`74430`: `1`–`5`), ranges beginning above one (`74422`: `106`–`170`),
+and the literal Mandaic selector `74421/col`.
+
+A selected Mandaic subtext may itself be paginated. Current `74401/12` page 2 keeps `sub=12`
+and changes CAL's private zero-based `page`; current direct `74501` page 2 changes the same
+private page axis while keeping an empty private sub selector in returned navigation. Detailed
+request/selector evidence is recorded in `docs/research/issue-188-mandaic-routing.md`.
+
+**Implication:** CAL-MCP exposes subdivided Mandaic files as catalogue nodes, preserves their exact
+returned `subtext_id`, and treats public one-based `page` as pagination within that selected
+subtext. It never derives a Mandaic subtext from the page number. The literal `col` extension is
+accepted only for known Mandaic subdivided files; ordinary/CPA subtext grammar is unchanged.
+
 ## R-055 — Syriac group pages use CAL's card layout
 
 **Rechecked:** 2026-09-30, with two bounded GETs; issue #172.
