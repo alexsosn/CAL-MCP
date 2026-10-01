@@ -1094,7 +1094,9 @@ def _parse_full_context_row(
             raise ConcordanceParseError("CAL full-context comment coordinate contradicts its row")
 
     if text_cell.loose_text:
-        raise ConcordanceParseError("CAL full-context text row has loose text between lexical links")
+        raise ConcordanceParseError(
+            "CAL full-context text row has loose text between lexical links"
+        )
     rendered_text = text_cell.text
     if not rendered_text:
         raise ConcordanceParseError("CAL full-context text row has no rendered text")
