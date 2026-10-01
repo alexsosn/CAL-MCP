@@ -1,0 +1,138 @@
+name: Issue 188 final live stdio acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-188-mandaic-routing
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify current Mandaic catalogue and page composition over stdio
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          DIRECT = {
+              "74420", "74424", "74425", "74426",
+              "74427", "74429", "74431", "74501",
+          }
+          CATEGORIES = {
+              "74401", "74402", "74410", "74411", "74421", "74422",
+              "74423", "74428", "74430", "74432", "74701", "74923",
+          }
+          ROUNDTRIPS = {
+              "74401": "12",
+              "74422": "106",
+              "74430": "1",
+              "74421": "col",
+          }
+          calls = 0
+
+          async def call(client, tool, args):
+              global calls
+              calls += 1
+              if calls > 19:
+                  raise RuntimeError(f"live request budget exceeded: {calls}")
+              result = await client.call_tool(tool, args)
+              if result.is_error:
+                  raise RuntimeError(f"{tool} {args} failed: {result.content!r}")
+              data = result.structured_content
+              if not isinstance(data, dict):
+                  raise RuntimeError(f"{tool} {args}: missing structured content")
+              return data
+
+          async def page(client, file_id, *, subtext_id=None, page_number=1):
+              args = {"file_id": file_id, "page": page_number}
+              if subtext_id is not None:
+                  args["subtext_id"] = subtext_id
+              data = await call(client, "cal_text_page", args)
+              if data.get("status") != "found":
+                  raise RuntimeError(f"{file_id}/{subtext_id}/p{page_number}: not found")
+              payload = data.get("page")
+              if not isinstance(payload, dict) or not payload.get("lines"):
+                  raise RuntimeError(f"{file_id}/{subtext_id}/p{page_number}: no lines")
+              if payload.get("page") != page_number:
+                  raise RuntimeError(
+                      f"{file_id}/{subtext_id}: page mismatch {payload.get('page')}"
+                  )
+              return payload
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  root = await call(
+                      client,
+                      "cal_text_catalogue",
+                      {"category_id": "74"},
+                  )
+                  categories = root.get("categories")
+                  texts = root.get("texts")
+                  if not isinstance(categories, list) or not isinstance(texts, list):
+                      raise RuntimeError("Mandaic root catalogue shape missing")
+                  category_ids = {x.get("category_id") for x in categories if isinstance(x, dict)}
+                  direct_ids = {x.get("file_id") for x in texts if isinstance(x, dict)}
+                  if category_ids != CATEGORIES:
+                      raise RuntimeError(
+                          f"Mandaic categories changed: {sorted(category_ids)!r}"
+                      )
+                  if direct_ids != DIRECT:
+                      raise RuntimeError(f"Mandaic direct texts changed: {sorted(direct_ids)!r}")
+
+                  for file_id in sorted(DIRECT):
+                      await page(client, file_id)
+
+                  await page(client, "74501", page_number=2)
+
+                  for file_id, expected_sub in ROUNDTRIPS.items():
+                      child = await call(
+                          client,
+                          "cal_text_catalogue",
+                          {"category_id": file_id},
+                      )
+                      child_texts = child.get("texts")
+                      if not isinstance(child_texts, list):
+                          raise RuntimeError(f"{file_id}: child texts missing")
+                      matches = [
+                          x for x in child_texts
+                          if isinstance(x, dict)
+                          and x.get("file_id") == file_id
+                          and x.get("subtext_id") == expected_sub
+                      ]
+                      if len(matches) != 1:
+                          raise RuntimeError(
+                              f"{file_id}: expected subtext {expected_sub!r} not unique"
+                          )
+                      await page(client, file_id, subtext_id=expected_sub)
+
+                  info = await call(
+                      client,
+                      "cal_text_information",
+                      {"file_id": "74421", "subtext_id": "col"},
+                  )
+                  if info.get("file_id") != "74421" or info.get("subtext_id") != "col":
+                      raise RuntimeError("74421/col information identity changed")
+                  if info.get("status") not in {"found", "not_found"}:
+                      raise RuntimeError("74421/col information status missing")
+
+                  if calls != 19:
+                      raise RuntimeError(f"expected exactly 19 logical calls, got {calls}")
+                  print(
+                      "live #188 OK: "
+                      f"categories={len(categories)} direct={len(texts)} "
+                      f"roundtrips={len(ROUNDTRIPS)} calls={calls}"
+                  )
+
+          asyncio.run(main())
+          PY
