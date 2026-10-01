@@ -48,3 +48,16 @@ Each page has one `details.dialect-group`, no `single-entry-row` (a class CAL's 
 ## Review follow-up (2026-09-30)
 
 The review made two more bounded GETs of groups taken from `cal_syriac_texts` results: `63400` (JS, 15 cards) and `61200` (Syriac coins, 4 cards). Both have the same card structure. On all four observed pages every card's file is the group id, and no card carries text outside its links. The parser now accounts for every link and every piece of text by its place: banner navigation (`javascript:history.back()`, `/newtextmenu.html`, `/`), the page title, the toggle label, the summary label, and the cards. Everything else fails closed, so content is never dropped silently: text in a card outside its links, a link or text elsewhere, a second group, an empty summary label, a card for another file, or a card script other than `S`/`R`. The document head is ignored. The group marker is recognised whatever the `details` element's other attributes or classes.
+
+## Final installed-stdio acceptance
+
+Run `36832851364` rebuilt and installed the candidate and exercised the public MCP server over
+stdio with four bounded live CAL requests:
+
+- `cal_syriac_group("60420")` → 15 ordered children; first child `subtext_id="01"`;
+- `cal_syriac_group("61000")` → 80 ordered children; first child `subtext_id="001"`;
+- `cal_text_page("60420", subtext_id="01", page=1)` → `status=found` with lines;
+- `cal_text_page("61000", subtext_id="001", page=1)` → `status=found` with lines.
+
+The run followed no other group children and performed no recursive enumeration.
+
