@@ -102,6 +102,8 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | `targum_reflex_onqelos_1751_current.html` | `POST https://cal.huc.edu/getOmtlemma.php` (`R1=1751`; 2026-09-24) | current `<h3>` source/result heading and `<td>` header row |
 | `targum_reflex_invalid_id.html` | bounded invalid Onqelos selector probe (`R1=999999`) | current broad invalid-ID fallback with missing selected Hebrew lemma, which must fail closed |
 | `syriac_category_metrical.html` | `https://cal.huc.edu/show_Syriac_categories.php?category=6` | dynamic Syriac category with ordered direct/group navigation and file-information links |
+| `syriac_group_60420_cards_current.html` | `https://cal.huc.edu/showsubtexts.php?keyword=60420` (2026-09-30) | card-layout Syriac group (EphPar): script toggle, group summary, first 3 of 15 hymn cards whose info links name the group |
+| `syriac_group_61000_cards_current.html` | `https://cal.huc.edu/showsubtexts.php?keyword=61000` (2026-09-30) | card-layout Syriac group (Old Syriac inscriptions): first 3 of 80 cards whose info links name file + sub |
 | `syriac_category_ot_peshitta.html` | `https://cal.huc.edu/ot_peshitta.html` | static OT Peshitta category using the same typed text-item contract |
 | `syriac_missing_verbs.html` | `https://cal.huc.edu/display_missing_verbs.php` | CAL-curated verbs absent from *A Syriac Lexicon*, with canonical lemma links and notes |
 | `syriac_peshitta_gen_1_1.html` | `POST https://cal.huc.edu/showpesh.php` (`bookname=01`, `chapter=01`, `verse=01`) | Gen 1:1 MT/Peshitta Unicode text and Peshitta chapter navigation |
