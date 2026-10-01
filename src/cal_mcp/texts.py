@@ -1091,7 +1091,12 @@ class TextService:
         subtext_id: str | None = None,
     ) -> TextInformationResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
+        if subtext_id is None:
+            normalized_subtext = None
+        elif normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS:
+            normalized_subtext = _validate_mandaic_subtext_id(subtext_id)
+        else:
+            normalized_subtext = _validate_subtext_id(subtext_id)
         coord = (
             normalized_file
             if normalized_subtext is None
