@@ -63,3 +63,18 @@ Date: 2026-10-01. Research: `docs/research/issue-188-mandaic-routing.md`.
 14. Remove temporary workflows, run workflow-free CI on the exact final SHA, and perform a
     logically independent adversarial review. Every finding gets a plan amendment and
     RED → GREEN cycle before merge.
+
+## Documentation-review follow-up — `74421/col` information identity
+
+While updating the user workflow, discovery exposed one additional compositional invariant:
+a child returned by `cal_text_catalogue("74421")` with `subtext_id="col"` must remain
+followable by `cal_text_information`, not only by `cal_text_page`.
+
+- RED `4178af08`: `cal_text_information("74421", subtext_id="col")` was rejected before
+  transport, while a non-Mandaic `col` control remained invalid.
+- GREEN `0f68d9dc`: known subdivided Mandaic files use the same evidence-backed selector
+  validator for text information; ordinary and CPA grammar is unchanged.
+- Final installed-stdio acceptance includes one `74421/col` information call. With the
+  original catalogue/page matrix this raises the explicit acceptance budget from 18 to
+  **19 sequential logical CAL requests**, with no recursion or page enumeration.
+
