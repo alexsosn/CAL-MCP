@@ -1,4 +1,4 @@
-name: Issue 188 Mandaic routing audit
+name: Issue 188 Mandaic selector sequence audit
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Audit current subdivided selectors and direct pagination
+      - name: Classify current Mandaic child selector sequences
         run: |
           python - <<'PY'
           import json
@@ -24,25 +24,17 @@ jobs:
           from html.parser import HTMLParser
           from urllib.parse import parse_qs, urlsplit
 
-          SUBDIVIDED = [
+          FILES = [
               "74401", "74402", "74410", "74411", "74421", "74422",
               "74423", "74428", "74430", "74432", "74701", "74923",
           ]
-          DIRECT = ["74424", "74501"]
           UA = {"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"}
-
-          def fetch(url, cap=262144):
-              req = urllib.request.Request(url, headers=UA)
-              with urllib.request.urlopen(req, timeout=20) as response:
-                  body = response.read(cap + 1)
-                  if len(body) > cap:
-                      raise RuntimeError(f"response exceeded {cap} bytes: {url}")
-                  return response.status, response.geturl(), body.decode("utf-8", "replace")
 
           class Routes(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.chapter = []
+                  self.links = []
+                  self.current = None
               def handle_starttag(self, tag, attrs):
                   if tag != "a":
                       return
@@ -51,71 +43,56 @@ jobs:
                   if p.path.rsplit("/", 1)[-1] != "get_a_chapter.php":
                       return
                   q = parse_qs(p.query, keep_blank_values=True)
-                  self.chapter.append(q)
+                  if "file" in q and "sub" in q:
+                      self.current = {"q": q, "parts": []}
+              def handle_data(self, data):
+                  if self.current is not None:
+                      self.current["parts"].append(data)
+              def handle_endtag(self, tag):
+                  if tag == "a" and self.current is not None:
+                      self.links.append((
+                          self.current["q"],
+                          " ".join("".join(self.current["parts"]).split()),
+                      ))
+                      self.current = None
 
-          subdivided = []
-          for file_id in SUBDIVIDED:
-              status, final_url, html = fetch(
-                  f"https://cal.huc.edu/showsubtexts.php?subtext={file_id}&cset=M"
-              )
+          out = []
+          for file_id in FILES:
+              url = f"https://cal.huc.edu/showsubtexts.php?subtext={file_id}&cset=M"
+              req = urllib.request.Request(url, headers=UA)
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  body = response.read(262145)
+                  if len(body) > 262144:
+                      raise RuntimeError(f"{file_id}: response exceeded 256 KiB")
               p = Routes()
-              p.feed(html)
+              p.feed(body.decode("utf-8", "replace"))
               p.close()
-              subs = []
-              selector_sets = set()
-              files = set()
-              csets = set()
-              for q in p.chapter:
-                  if "file" not in q or "sub" not in q:
-                      continue
-                  files.update(q["file"])
-                  subs.extend(q["sub"])
-                  csets.update(q.get("cset", []))
-                  selector_sets.add(tuple(sorted(q)))
-              if not subs:
-                  raise RuntimeError(f"{file_id}: no child routes")
-              subdivided.append({
+              pairs = [
+                  (q["sub"][0], label)
+                  for q, label in p.links
+                  if q.get("file") == [file_id]
+              ]
+              selectors = [sub for sub, _ in pairs]
+              numeric = [int(x) for x in selectors if x.isascii() and x.isdecimal()]
+              gaps = [
+                  [a, b]
+                  for a, b in zip(numeric, numeric[1:])
+                  if b != a + 1
+              ]
+              nonnumeric = [x for x in selectors if not (x.isascii() and x.isdecimal())]
+              out.append({
                   "file_id": file_id,
-                  "status": status,
-                  "route_count": len(subs),
-                  "files": sorted(files),
-                  "csets": sorted(csets),
-                  "selector_sets": sorted(selector_sets),
-                  "widths": sorted(set(map(len, subs))),
-                  "first": subs[:3],
-                  "last": subs[-3:],
-                  "all_ascii_decimal": all(x.isascii() and x.isdecimal() for x in subs),
+                  "count": len(selectors),
+                  "first_selector": selectors[0],
+                  "last_selector": selectors[-1],
+                  "numeric_min": min(numeric) if numeric else None,
+                  "numeric_max": max(numeric) if numeric else None,
+                  "numeric_count": len(numeric),
+                  "gaps": gaps,
+                  "nonnumeric": nonnumeric,
+                  "small_selectors": selectors if len(selectors) <= 12 else None,
+                  "first_labels": [label for _, label in pairs[:3]],
+                  "last_labels": [label for _, label in pairs[-3:]],
               })
-
-          direct = []
-          for file_id in DIRECT:
-              status, final_url, html = fetch(
-                  f"https://cal.huc.edu/get_a_chapter.php?cset=M&file={file_id}&page=0"
-              )
-              p = Routes()
-              p.feed(html)
-              p.close()
-              nav = []
-              for q in p.chapter:
-                  if q.get("file") != [file_id] or "page" not in q:
-                      continue
-                  nav.append({
-                      "selectors": sorted(q),
-                      "page": q.get("page"),
-                      "cset": q.get("cset"),
-                      "clen": q.get("clen"),
-                      "sub": q.get("sub"),
-                  })
-              direct.append({
-                  "file_id": file_id,
-                  "status": status,
-                  "navigation": nav[:8],
-                  "navigation_count": len(nav),
-              })
-
-          print(json.dumps({
-              "subdivided": subdivided,
-              "direct": direct,
-              "request_count": len(SUBDIVIDED) + len(DIRECT),
-          }, sort_keys=True))
+          print(json.dumps(out, ensure_ascii=False, sort_keys=True))
           PY
