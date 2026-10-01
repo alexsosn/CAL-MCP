@@ -44,15 +44,16 @@ async def _catalogue(body: bytes) -> TextCatalogueResult:
 async def test_current_mandaic_catalogue_lists_texts_in_cal_order() -> None:
     result = await _catalogue(FIXTURE.read_bytes())
 
-    assert [(text.file_id, text.subtext_id, text.label) for text in result.texts] == [
-        ("74410", None, "Ginza Rabba (Great Treasury) Right Side"),
-        ("74411", None, "Ginza Rabba (Great Treasury) Left Side"),
-        ("74423", None, "Diwan Malkuta ˁlaita"),
-        ("74923", None, "Diwan Malkuta ˁlaita"),
-        ("74501", None, "Haran Gauaita"),
-        ("74701", None, "Mandaic Magic Bowls"),
+    assert [(category.category_id, category.label) for category in result.categories] == [
+        ("74410", "Ginza Rabba (Great Treasury) Right Side"),
+        ("74411", "Ginza Rabba (Great Treasury) Left Side"),
+        ("74423", "Diwan Malkuta ˁlaita"),
+        ("74923", "Diwan Malkuta ˁlaita"),
+        ("74701", "Mandaic Magic Bowls"),
     ]
-    assert result.categories == ()
+    assert [(text.file_id, text.subtext_id, text.label) for text in result.texts] == [
+        ("74501", None, "Haran Gauaita"),
+    ]
 
 
 @pytest.mark.anyio
@@ -117,7 +118,7 @@ async def test_information_link_with_a_return_query_is_not_a_route_link() -> Non
     )
     assert "return=/showsubtexts.php" in body
     result = await _catalogue(body.encode())
-    assert [text.file_id for text in result.texts][:2] == ["74410", "74411"]
+    assert [category.category_id for category in result.categories][:2] == ["74410", "74411"]
 
 
 @pytest.mark.anyio
@@ -128,4 +129,5 @@ async def test_route_links_inside_scripts_are_not_counted() -> None:
         1,
     )
     result = await _catalogue(body.encode())
-    assert len(result.texts) == 6
+    assert len(result.categories) == 5
+    assert len(result.texts) == 1
