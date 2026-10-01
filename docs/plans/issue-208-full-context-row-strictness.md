@@ -26,7 +26,8 @@ Date: 2026-10-01. Research: `docs/research/issue-208-full-context-row-strictness
    only as needed; record the durable fail-closed alignment in `wiki/decisions.md` only if the
    project decision changes rather than merely applying the existing parser policy.
 7. Run focused tests, formatter/lint/type checks and both full CI matrices.
-8. No live request is required for this parser-only repair because the positive inputs are current
-   retained captures and the issue introduces no new accepted upstream shape.
+8. After offline CI, run a bounded installed-wheel/stdio live smoke for one already-known full-
+   context hit in each supported returned script family: Roman (`R`), Hebrew (`H`) and
+   Unicode Syriac (`U`). Do not discover or crawl additional hits.
 9. Perform a logically independent adversarial review of the exact final SHA. Any finding gets a
    new plan amendment and RED → GREEN cycle before merge.
