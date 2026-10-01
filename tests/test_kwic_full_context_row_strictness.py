@@ -105,3 +105,25 @@ def test_getlex_full_context_link_requires_cal_root_path() -> None:
 
     with pytest.raises(ConcordanceParseError, match="path|link"):
         _parse_samaritan(body.replace(old, new, 1))
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        (
+            b'href="comment.php?coord=56000112010"',
+            b'href="/evil/comment.php?coord=56000112010"',
+        ),
+        (
+            b'href="comment.php?coord=56000112010"',
+            b'href="comment.php?coord=56000112010#unexpected"',
+        ),
+    ],
+)
+def test_full_context_comment_link_path_and_fragment_are_exact(old: bytes, new: bytes) -> None:
+    body = SAMARITAN.read_bytes()
+    assert old in body
+
+    with pytest.raises(ConcordanceParseError, match="path|fragment|link"):
+        _parse_samaritan(body.replace(old, new, 1))
+
