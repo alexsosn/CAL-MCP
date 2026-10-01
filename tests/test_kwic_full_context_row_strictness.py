@@ -126,4 +126,3 @@ def test_full_context_comment_link_path_and_fragment_are_exact(old: bytes, new: 
 
     with pytest.raises(ConcordanceParseError, match="path|fragment|link"):
         _parse_samaritan(body.replace(old, new, 1))
-
