@@ -1586,9 +1586,9 @@ def _search_text_ref_from_link(
     cset_values = query.get("cset") or []
     cset = cset_values[0] if len(cset_values) == 1 else None
     mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
-    if mandaic and cset in _MANDAIC_SEARCH_CSETS:
-        file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
-    elif not mandaic and cset in _SCRIPT_CSETS:
+    if (mandaic and cset in _MANDAIC_SEARCH_CSETS) or (
+        not mandaic and cset in _SCRIPT_CSETS
+    ):
         file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
     else:
         raise TextParseError("CAL text search subtext result has an invalid cset")
