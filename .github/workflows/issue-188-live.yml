@@ -30,9 +30,9 @@ jobs:
               headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
           )
           with urllib.request.urlopen(req, timeout=20) as response:
-              body = response.read(262145)
-              if len(body) > 262144:
-                  raise RuntimeError("response exceeded 256 KiB")
+              body = response.read(1048577)
+              if len(body) > 1048576:
+                  raise RuntimeError("response exceeded 1 MiB")
               html = body.decode("utf-8", "replace")
 
           class Probe(HTMLParser):
