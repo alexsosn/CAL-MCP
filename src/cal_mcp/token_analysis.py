@@ -9,7 +9,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
-from cal_mcp.identifiers import is_cal_machine_coordinate
+from cal_mcp.identifiers import is_cal_machine_coordinate, is_cal_mandaic_machine_coordinate
 from cal_mcp.lexicon import (
     LemmaRef,
     _lemma_key_from_href,
@@ -561,10 +561,11 @@ class TokenAnalysisService:
 
 
 def _validate_coordinate(value: str) -> str:
-    if not is_cal_machine_coordinate(value):
+    if not (
+        is_cal_machine_coordinate(value) or is_cal_mandaic_machine_coordinate(value)
+    ):
         raise CalInputError(
-            "coordinate must be a CAL decimal coordinate or contain one lowercase letter "
-            "between decimal segments"
+            "coordinate must match a researched CAL machine-coordinate form"
         )
     return value
 
