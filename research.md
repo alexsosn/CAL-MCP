@@ -327,6 +327,27 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-057 — Current direct Mandaic token coordinates include file-scoped letter forms
+
+**Rechecked:** 2026-10-02; issue #218.
+
+Bounded live probes of the current direct Mandaic catalogue texts found that token machine
+coordinates are not uniformly decimal. File `74425` uses decimal coordinates plus forms ending
+in one or two lowercase ASCII letters (for example `7442500a` and `74425231aa`). File `74429`
+uses decimal coordinates, forms ending in one lowercase letter, and an uppercase `A` series
+`74429A01`–`74429A32`. Other sampled direct Mandaic files and subdivided control `74401/12`
+used decimal token-coordinate tails.
+
+Direct `getlex.php` probes confirmed that CAL accepts `74425231aa` as a normal linked-analysis
+coordinate and accepts `74429A01` as a token-analysis selector yielding CAL's normal current
+no-lemma state. Detailed evidence and request accounting are in
+`docs/research/issue-218-mandaic-machine-coordinates.md`.
+
+**Implication:** these letters are preserved as opaque CAL coordinate content. The generic
+machine-coordinate grammar is not widened. CAL-MCP recognizes only the evidence-backed exact
+`74425` and `74429` coordinate families at the text-page and token-analysis boundaries;
+unrelated files retain their existing validation contracts.
+
 ## R-056 — Current Mandaic subtext identity and pagination are separate axes
 
 **Rechecked:** 2026-10-01; issue #188.

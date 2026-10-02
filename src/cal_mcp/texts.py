@@ -17,6 +17,7 @@ from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
 from cal_mcp.identifiers import (
     has_subtext_letter_suffix,
     is_cal_machine_coordinate,
+    is_cal_mandaic_machine_coordinate,
     is_cal_subtext_id,
 )
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
@@ -102,6 +103,7 @@ _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
 _MANDAIC_PAGINATED_DIRECT_FILE_IDS = frozenset(
     {"74420", "74424", "74425", "74426", "74427", "74429", "74431", "74501"}
 )
+_MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS = frozenset({"74425", "74429"})
 _ONKELOS_JONATHAN_CATEGORY_ID = "51"
 _ONKELOS_JONATHAN_PATH = "targum_onkelos_jonathan.html"
 _ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"
@@ -946,6 +948,11 @@ def _parse_text_page(
         if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
         else None
     )
+    if (
+        requested_subtext_id is None
+        and requested_file_id in _MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS
+    ):
+        expected_coordinate_prefix = requested_file_id
     if cal_file_sub is not None:
         # A split six-digit id is accepted from indirect evidence, so every row must also
         # carry the requested id as its coordinate prefix (R-046).
@@ -2075,6 +2082,12 @@ def _parse_text_machine_coordinate(
         if require_positive_decimal:
             return _parse_positive_id(value, "coordinate")
         return _parse_id(value, "coordinate")
+    if expected_coordinate_prefix in _MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS:
+        if not is_cal_mandaic_machine_coordinate(value):
+            raise TextParseError("CAL returned an invalid direct-Mandaic machine coordinate")
+        if not value.startswith(expected_coordinate_prefix):
+            raise TextParseError("CAL text coordinate differs from the requested Mandaic file")
+        return value
     if not is_cal_machine_coordinate(value):
         raise TextParseError("CAL returned an invalid machine coordinate")
     if not value.startswith(expected_coordinate_prefix):

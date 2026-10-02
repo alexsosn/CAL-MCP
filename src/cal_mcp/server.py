@@ -441,7 +441,9 @@ async def cal_token_analysis(
 
     ``coordinate`` is CAL's opaque machine coordinate and ``word_index`` is zero-based,
     matching the token metadata returned by ``cal_text_page``. Most current coordinates are
-    decimal; CPA can embed one lowercase subtext suffix between decimal segments. When CAL
+    decimal; CPA can embed one lowercase subtext suffix between decimal segments, while current
+    direct Mandaic files 74425 and 74429 expose their own evidence-backed letter forms. CAL-MCP
+    preserves those returned handles verbatim rather than decoding or normalizing them. When CAL
     explicitly redirects an analysed lemma to another linked entry, the candidate preserves the
     source as ``analyzed_lemma_key`` and the linked target as ``lemma.lemma_key``. When current
     CAL returns successful analysis text without a linked lemma identity, the ordered rendered

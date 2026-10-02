@@ -300,3 +300,27 @@ Consequences:
   followable without inventing a different identifier;
 - each explicit catalogue/page/information operation remains bounded and does not perform hidden
   route discovery or prefetch.
+
+## D-020 — Mandaic special machine coordinates are file-scoped
+
+**Status:** accepted — 2026-10-02 (issue #218; research R-057)
+
+CAL machine coordinates remain opaque upstream identifiers. Current direct Mandaic files
+`74425` and `74429` expose coordinate forms outside the shared decimal / embedded-lowercase
+grammar, and CAL's token-analysis endpoint accepts those exact observed forms.
+
+Consequences:
+
+- the shared generic machine-coordinate grammar is unchanged;
+- `74425` additionally accepts its researched file-prefixed decimal tail with at most two
+  trailing lowercase ASCII letters;
+- `74429` additionally accepts its researched file-prefixed decimal tail with at most one
+  trailing lowercase letter, or its uppercase `A` + decimal series;
+- text-page parsing enables those rules only for the exact direct file identities `74425`
+  and `74429`; foreign prefixes and nearby Mandaic files do not inherit them;
+- `cal_token_analysis` accepts the same exact coordinate families so any token returned by
+  those text pages remains followable without normalization;
+- the adapter does not decode the letter components or infer line/subtext semantics from them;
+- any broader coordinate family requires new upstream evidence rather than a generic
+  alphanumeric fallback.
+
