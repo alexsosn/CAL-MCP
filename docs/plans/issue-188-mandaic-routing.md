@@ -100,3 +100,33 @@ The acceptance must also assert that `74429` page 1 contains its researched uppe
 coordinate family and that the selected `74425` alphanumeric coordinate is preserved unchanged
 through `cal_token_analysis`.
 
+## Adversarial-review amendment — direct pagination must be file-evidenced
+
+Exact-head review found that the first GREEN allowed `page>1` for all eight current direct
+Mandaic files even though research had demonstrated current pagination only for `74501`.
+
+Installed-stdio audit run `37066672702` made exactly eight page-2 calls and showed:
+
+- `74501`: genuine Page 2 of 11, total 246 lines, previous 1, next 3;
+- `74420`, `74425`, `74426`, `74429`, `74431`: adapter returned `page=2` while CAL
+  supplied no page count, line total, previous, or next navigation;
+- `74424`, `74427`: page-2 requests reached CAL but failed parser validation.
+
+The successful no-metadata cases are unsafe: `_parse_text_page` was assigning the requested page
+number whenever a Mandaic response lacked page-count markup, so an upstream page that ignored the
+private `page` selector could be mislabeled as a real page 2.
+
+Review RED → GREEN:
+
+15. RED: for current direct files `74420`, `74424`, `74425`, `74426`, `74427`,
+    `74429`, and `74431`, public `page=2` must fail locally before transport.
+16. Preserve the positive control: `74501` page 2 still sends private zero-based `page=1`.
+17. GREEN: scope the evidence-backed paginated-direct set to exactly `{"74501"}`.
+    All other current direct Mandaic files remain readable on page 1.
+18. Update R-056/D-019 and user documentation so they do not imply that catalogue membership
+    proves pagination.
+19. Rerun both CI matrices and repeat the same bounded 20-call final acceptance; no extra live
+    pagination requests are needed because the negative page-2 behavior is a local validation
+    invariant covered by RED.
+20. Remove all temporary workflows and perform a fresh exact-head adversarial review before merge.
+
