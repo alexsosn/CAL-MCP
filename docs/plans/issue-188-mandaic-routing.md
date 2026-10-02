@@ -78,3 +78,25 @@ followable by `cal_text_information`, not only by `cal_text_page`.
   original catalogue/page matrix this raises the explicit acceptance budget from 18 to
   **19 sequential logical CAL requests**, with no recursion or page enumeration.
 
+## Post-#218 integrated acceptance — returned Mandaic token coordinates
+
+Issue #218 was discovered by the first #188 live acceptance when current direct file `74425`
+returned evidence-backed alphanumeric token coordinates. PR #219 researched, tested, reviewed,
+and merged the exact file-scoped `74425` / `74429` coordinate handling into this branch.
+
+The final #188 installed-stdio acceptance therefore keeps the existing 19-call catalogue/page/
+information matrix and adds **one** explicit `cal_token_analysis` follow-up using an alphanumeric
+coordinate already returned by the `74425` page-1 call. It does not add another page request.
+
+Final hard cap: **20 sequential logical CAL requests**:
+- 1 category-74 catalogue;
+- 8 current direct page-1 reads;
+- 1 direct `74501` page-2 read;
+- 4 child-catalogue + selected-page round-trips = 8 requests;
+- 1 `74421/col` text-information follow-up;
+- 1 token-analysis follow-up from the already-returned `74425` token.
+
+The acceptance must also assert that `74429` page 1 contains its researched uppercase-`A`
+coordinate family and that the selected `74425` alphanumeric coordinate is preserved unchanged
+through `cal_token_analysis`.
+
