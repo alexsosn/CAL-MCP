@@ -324,3 +324,27 @@ Consequences:
 - any broader coordinate family requires new upstream evidence rather than a generic
   alphanumeric fallback.
 
+## D-021 — Mandaic special machine coordinates may be exact file/subtext families
+
+**Status:** accepted — 2026-10-02 (issue #220; research R-058)
+
+D-020's file-scoped exceptions remain unchanged for direct files `74425` and `74429`.
+Current subdivided text `74421/col` adds one separately evidenced family whose opaque machine
+coordinate begins with the exact selected file plus literal subtext:
+
+`74421col[0-9]+`.
+
+Consequences:
+
+- the shared generic machine-coordinate grammar remains unchanged;
+- the Mandaic-special predicate recognizes only explicitly researched exact families;
+- text-page parsing enables `74421col...` only when the requested identity is exactly
+  `file_id=74421, subtext_id=col`;
+- numeric `74421` subtexts keep the existing decimal coordinate rules;
+- `cal_token_analysis` accepts the same exact returned handle so page → token-analysis
+  composition is lossless;
+- arbitrary multi-letter selectors, other file ids, case variants, punctuation, missing decimal
+  tails, and guessed coordinate families remain invalid;
+- CAL-MCP preserves these handles verbatim and does not decode `col` or the decimal tail into an
+  undocumented local coordinate model.
+
