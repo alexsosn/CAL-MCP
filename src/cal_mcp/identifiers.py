@@ -22,7 +22,7 @@ def is_cal_machine_coordinate(value: object) -> bool:
 
 
 def is_cal_mandaic_machine_coordinate(value: object) -> bool:
-    """Return whether value matches a researched special direct-Mandaic coordinate."""
+    """Return whether value matches a researched special Mandaic machine coordinate."""
 
     if not isinstance(value, str):
         return False
