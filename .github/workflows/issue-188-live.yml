@@ -1,4 +1,4 @@
-name: Issue 218 Mandaic coordinate edge research
+name: Issue 218 Mandaic coordinate followup research
 
 on:
   push:
@@ -11,89 +11,44 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 5
     steps:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Classify non-decimal coordinate edge shapes
+      - name: Verify edge coordinates resolve in CAL token analysis
         run: |
           python - <<'PY'
           import json
-          import re
           import urllib.request
-          from collections import Counter
-          from html.parser import HTMLParser
-          from urllib.parse import parse_qs, urlencode, urlsplit
+          from urllib.parse import urlencode
 
-          BASE = "https://cal.huc.edu/"
-          FILES = ["74425", "74429"]
+          BASE = "https://cal.huc.edu/getlex.php?"
+          CASES = [("74425231aa", 0), ("74429A01", 0)]
           requests = 0
-
-          def fetch(file_id):
-              global requests
+          out = []
+          for coord, word in CASES:
               requests += 1
               if requests > 2:
                   raise RuntimeError("request budget exceeded")
-              url = BASE + "get_a_chapter.php?" + urlencode([("cset","M"),("file",file_id)])
+              url = BASE + urlencode([("coord",coord),("word",str(word))])
               req = urllib.request.Request(
                   url,
-                  headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
+                  headers={"User-Agent":"CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
               )
               with urllib.request.urlopen(req, timeout=20) as response:
-                  body = response.read(2 * 1024 * 1024 + 1)
-                  if len(body) > 2 * 1024 * 1024:
-                      raise RuntimeError("response exceeded 2 MiB")
-                  return body.decode("utf-8", "replace")
-
-          class Links(HTMLParser):
-              def __init__(self):
-                  super().__init__(convert_charrefs=True)
-                  self.coords = []
-              def handle_starttag(self, tag, attrs):
-                  if tag != "a":
-                      return
-                  p = urlsplit(dict(attrs).get("href") or "")
-                  q = parse_qs(p.query, keep_blank_values=True)
-                  if p.path.rsplit("/",1)[-1] == "getlex.php" and q.get("coord"):
-                      self.coords.append(q["coord"][0])
-
-          def shape(tail):
-              if re.fullmatch(r"[0-9]+", tail):
-                  return "digits"
-              if re.fullmatch(r"[0-9]+[a-z]", tail):
-                  return "digits+letter"
-              if re.fullmatch(r"[0-9]+[a-z][0-9]+", tail):
-                  return "digits+letter+digits"
-              if re.fullmatch(r"[0-9]+[a-z]+", tail):
-                  return "digits+letters"
-              if re.fullmatch(r"[0-9]*[a-z]+[0-9]*", tail):
-                  return "single-letter-run"
-              return "other"
-
-          out = {}
-          for file_id in FILES:
-              p = Links(); p.feed(fetch(file_id)); p.close()
-              unique = list(dict.fromkeys(p.coords))
-              shapes = Counter()
-              others = []
-              lengths = Counter()
-              for coord in unique:
-                  if not coord.startswith(file_id):
-                      key = "foreign-prefix"
-                      tail = coord
-                  else:
-                      tail = coord[len(file_id):]
-                      key = shape(tail)
-                  shapes[key] += 1
-                  lengths[len(tail)] += 1
-                  if key not in {"digits","digits+letter","digits+letter+digits"} and len(others) < 40:
-                      others.append({"coord":coord,"tail":tail,"shape":key})
-              out[file_id] = {
-                  "unique_coordinates": len(unique),
-                  "shape_counts": dict(sorted(shapes.items())),
-                  "tail_lengths": dict(sorted(lengths.items())),
-                  "edge_examples": others,
-              }
-          print(json.dumps({"requests":requests,"files":out}, sort_keys=True))
+                  body = response.read(512 * 1024 + 1)
+                  if len(body) > 512 * 1024:
+                      raise RuntimeError("token-analysis response exceeded 512 KiB")
+              lower = body.decode("utf-8","replace").lower()
+              out.append({
+                  "coordinate": coord,
+                  "word": word,
+                  "status": response.status,
+                  "has_analysis_marker": "click on a headword to see a complete lexicon entry" in lower,
+                  "has_no_data": "there is no data for this word" in lower,
+                  "has_no_lemma": "unrecognizable query or no such lemma found" in lower,
+                  "has_lemma_route": ("oneentry.php?lemma=" in lower or "cal_entry_web.php?lemma=" in lower),
+              })
+          print(json.dumps({"requests":requests,"cases":out},sort_keys=True))
           PY
