@@ -561,12 +561,8 @@ class TokenAnalysisService:
 
 
 def _validate_coordinate(value: str) -> str:
-    if not (
-        is_cal_machine_coordinate(value) or is_cal_mandaic_machine_coordinate(value)
-    ):
-        raise CalInputError(
-            "coordinate must match a researched CAL machine-coordinate form"
-        )
+    if not (is_cal_machine_coordinate(value) or is_cal_mandaic_machine_coordinate(value)):
+        raise CalInputError("coordinate must match a researched CAL machine-coordinate form")
     return value
 
 
