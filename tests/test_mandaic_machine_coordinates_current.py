@@ -126,9 +126,7 @@ async def test_direct_mandaic_page_preserves_researched_alphanumeric_coordinates
     assert result.page is not None
     assert [line.coordinate for line in result.page.lines] == expected_coordinates
     assert [
-        token.coordinate
-        for line in result.page.lines
-        for token in line.tokens
+        token.coordinate for line in result.page.lines for token in line.tokens
     ] == expected_coordinates
     assert transport.requests == [
         CalRequest(
@@ -203,10 +201,7 @@ class TokenAnalysisTransport:
         self.requests.append(request)
         return CalResponse(
             status_code=200,
-            url=(
-                "https://cal.huc.edu/getlex.php?"
-                f"coord={self.coordinate}&word=0"
-            ),
+            url=(f"https://cal.huc.edu/getlex.php?coord={self.coordinate}&word=0"),
             body=(FIXTURES / "token_analysis_not_found.html").read_bytes(),
             content_type="text/html; charset=UTF-8",
             retrieved_at=datetime(2026, 10, 2, tzinfo=UTC),
