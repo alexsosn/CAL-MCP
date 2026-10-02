@@ -383,8 +383,11 @@ request/selector evidence is recorded in `docs/research/issue-188-mandaic-routin
 
 **Implication:** CAL-MCP exposes subdivided Mandaic files as catalogue nodes, preserves their exact
 returned `subtext_id`, and treats public one-based `page` as pagination within that selected
-subtext. It never derives a Mandaic subtext from the page number. The literal `col` extension is
-accepted only for known Mandaic subdivided files; ordinary/CPA subtext grammar is unchanged.
+subtext. It never derives a Mandaic subtext from the page number. Direct pagination is also
+file-evidenced rather than inferred from catalogue membership: current evidence supports
+`page>1` only for direct `74501`; the other current direct files remain page-1-only. The literal
+`col` extension is accepted only for known Mandaic subdivided files; ordinary/CPA subtext grammar
+is unchanged.
 
 ## R-055 — Syriac group pages use CAL's card layout
 
