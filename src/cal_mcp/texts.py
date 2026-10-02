@@ -104,6 +104,7 @@ _MANDAIC_PAGINATED_DIRECT_FILE_IDS = frozenset(
     {"74420", "74424", "74425", "74426", "74427", "74429", "74431", "74501"}
 )
 _MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS = frozenset({"74425", "74429"})
+_MANDAIC_SPECIAL_COORDINATE_PREFIXES = frozenset({"74421col", "74425", "74429"})
 _ONKELOS_JONATHAN_CATEGORY_ID = "51"
 _ONKELOS_JONATHAN_PATH = "targum_onkelos_jonathan.html"
 _ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"
@@ -943,11 +944,15 @@ def _parse_text_page(
         next_page=next_page,
         allow_navigation_without_page_count=mandaic_page_route,
     )
-    expected_coordinate_prefix = (
-        f"{requested_file_id}{requested_subtext_id}"
-        if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
-        else None
-    )
+    expected_coordinate_prefix: str | None
+    if requested_file_id == "74421" and requested_subtext_id == "col":
+        expected_coordinate_prefix = "74421col"
+    else:
+        expected_coordinate_prefix = (
+            f"{requested_file_id}{requested_subtext_id}"
+            if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
+            else None
+        )
     if (
         requested_subtext_id is None
         and requested_file_id in _MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS
@@ -2082,11 +2087,11 @@ def _parse_text_machine_coordinate(
         if require_positive_decimal:
             return _parse_positive_id(value, "coordinate")
         return _parse_id(value, "coordinate")
-    if expected_coordinate_prefix in _MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS:
+    if expected_coordinate_prefix in _MANDAIC_SPECIAL_COORDINATE_PREFIXES:
         if not is_cal_mandaic_machine_coordinate(value):
-            raise TextParseError("CAL returned an invalid direct-Mandaic machine coordinate")
+            raise TextParseError("CAL returned an invalid special-Mandaic machine coordinate")
         if not value.startswith(expected_coordinate_prefix):
-            raise TextParseError("CAL text coordinate differs from the requested Mandaic file")
+            raise TextParseError("CAL text coordinate differs from the requested Mandaic text")
         return value
     if not is_cal_machine_coordinate(value):
         raise TextParseError("CAL returned an invalid machine coordinate")

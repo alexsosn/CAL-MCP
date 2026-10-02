@@ -327,6 +327,24 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-058 — Mandaic 74421/col embeds the literal subtext selector in machine coordinates
+
+**Rechecked:** 2026-10-02; issue #220.
+
+A bounded three-request probe of the current `74421/col` page found 147 unique lexical-token
+machine coordinates, all of the exact form `74421col` followed by a non-empty decimal tail.
+Representative current coordinates include `74421col13614`; current comment coordinates use
+the same prefix. Numeric control `74421/103` remains on the ordinary decimal coordinate path.
+
+CAL's token-analysis endpoint accepted `getlex.php?coord=74421col13614&word=0` and returned its
+normal linked-analysis shape. Detailed evidence and request accounting are in
+`docs/research/issue-220-mandaic-col-machine-coordinates.md`.
+
+**Implication:** the literal `col` segment is preserved as opaque CAL machine-coordinate content.
+The shared generic coordinate grammar is not widened. CAL-MCP recognizes exactly
+`74421col[0-9]+` through the dedicated Mandaic special-coordinate predicate and enables it only
+for the exact selected text `file_id=74421, subtext_id=col`.
+
 ## R-057 — Current direct Mandaic token coordinates include file-scoped letter forms
 
 **Rechecked:** 2026-10-02; issue #218.
