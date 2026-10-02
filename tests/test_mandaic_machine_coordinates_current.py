@@ -6,9 +6,10 @@ See docs/research/issue-218-mandaic-machine-coordinates.md.
 from __future__ import annotations
 
 import importlib
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 import pytest
 
