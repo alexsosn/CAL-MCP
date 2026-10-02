@@ -228,14 +228,14 @@ Returned CAL identifiers and coordinates should be stored together with that pro
 Offline tests use deliberately reduced semantic excerpts captured/rechecked on 2026-09-04 and 2026-09-08, plus the 2026-09-09 text-information contract and the 2026-09-10 line-comments contract. Representative cases include:
 
 - root discovery of the dedicated Onkelos/Jonathan collection as category `51`, followed by one explicit catalogue call that keeps subdivided `51001` and direct `51400` child shapes distinct;
-- root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns representative subdivided `74401` and direct `74501` entries as text references without fetching either child;
+- root discovery of Mandaic as category `74`, followed by one explicit dedicated-catalogue call that returns subdivided `74401` as a category and direct `74501` as a text without fetching either child;
 - root discovery of Syriac as an operation-aware `specialized_collections` item whose supported selectors compose explicitly with `cal_syriac_texts`, without fetching `AvailSyr.html`;
 - a topic search for `Tel Dan` returning CAL file `13250`;
-- a topic search for `Ginza` returning the current specialized Mandaic file references `74410` and `74411` without following those links;
+- a topic search for `Ginza` returning current Mandaic catalogue nodes `74410` and `74411` without following either child catalogue;
 - a text-information lookup preserving Ephrem source/edition/editorial/quality notes in CAL order, plus CAL's explicit `No information on record for this text.` missing state;
 - a paginated `BT AZ` page exposing page and machine-coordinate metadata;
 - the short Tel Dan text, which has valid `getlex.php` token links but no page-count marker;
-- a Ginza Rabba Right Side page using the current Mandaic `cset=M` / `sub=NNN` route and adjacent navigation without a rendered total page count;
+- a current subdivided Mandaic `74401/12` page using `cset=M`, preserving exact `sub=12`, and paginating independently through CAL's private zero-based `page` selector;
 - a direct Mandaic page such as `74717`, which uses page 1 without an invented `sub=NNN` selector;
 - CAL's explicit no-lines page for a nonexistent subtext.
 
