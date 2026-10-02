@@ -83,10 +83,7 @@ class PageTransport:
         assert request == expected
         return _response(
             self.fixture,
-            (
-                "https://cal.huc.edu/get_a_chapter.php?"
-                f"cset=M&file=74421&sub={self.subtext_id}"
-            ),
+            (f"https://cal.huc.edu/get_a_chapter.php?cset=M&file=74421&sub={self.subtext_id}"),
         )
 
 
