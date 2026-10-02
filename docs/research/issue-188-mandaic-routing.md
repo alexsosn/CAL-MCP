@@ -235,3 +235,31 @@ This acceptance validates the full current catalogue → selected child/page com
 adversarial-review check still audits which individual direct files have evidence for `page>1`;
 page-1 readability alone is not treated as proof of pagination.
 
+## Adversarial direct-page audit — only 74501 has current pagination evidence
+
+Run `37066672702` (2026-10-02) installed the candidate and made exactly one
+`cal_text_page(file_id=<id>, page=2)` call for each of the eight current direct Mandaic files.
+
+Observed adapter results from current CAL:
+
+| file | page-2 result |
+| --- | --- |
+| `74420` | found, 46 lines; no page count, total, previous, or next |
+| `74424` | parser drift |
+| `74425` | found, 654 lines; no pagination metadata/navigation |
+| `74426` | found, 596 lines; no pagination metadata/navigation |
+| `74427` | parser drift |
+| `74429` | found, 412 lines; no pagination metadata/navigation |
+| `74431` | found, 1008 lines; no pagination metadata/navigation |
+| `74501` | genuine Page 2 of 11; total 246 lines; previous 1; next 3 |
+
+The five metadata-free `found` results do **not** establish pagination. Production had set
+`page_number=requested_page` for a Mandaic route whenever CAL rendered no page-count marker,
+which can relabel an ignored/repeated unpaginated response as the caller's requested page.
+
+**Revised implication:** current catalogue membership proves only that a direct text is readable
+on page 1. Public `page>1` is enabled only for direct files with independently observed CAL
+pagination semantics. Current evidence supports exactly `74501`; the other seven current direct
+files are page-1-only until new evidence is researched. Subdivided texts retain their independently
+validated page axis inside an explicit subtext.
+
