@@ -944,6 +944,7 @@ def _parse_text_page(
         next_page=next_page,
         allow_navigation_without_page_count=mandaic_page_route,
     )
+    expected_coordinate_prefix: str | None
     if requested_file_id == "74421" and requested_subtext_id == "col":
         expected_coordinate_prefix = "74421col"
     else:
