@@ -20,6 +20,15 @@ from cal_mcp.token_analysis import TokenAnalysisService, TokenAnalysisStatus
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 
 
+def test_token_analysis_executable_docs_name_current_mandaic_coordinate_exceptions() -> None:
+    source = Path("src/cal_mcp/server.py").read_text(encoding="utf-8")
+    tool = source.split("async def cal_token_analysis(", 1)[1].split("@mcp.tool(", 1)[0]
+
+    assert "74425" in tool
+    assert "74429" in tool
+    assert "opaque" in tool.lower()
+
+
 def _mandaic_coordinate_predicate() -> Callable[[object], bool]:
     module = importlib.import_module("cal_mcp.identifiers")
     predicate = getattr(module, "is_cal_mandaic_machine_coordinate", None)
