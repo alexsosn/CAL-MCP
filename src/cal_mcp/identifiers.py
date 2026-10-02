@@ -4,6 +4,7 @@ import re
 
 _SUBTEXT_ID_RE = re.compile(r"^[0-9]+[a-z]?$")
 _MACHINE_COORDINATE_RE = re.compile(r"^(?:[0-9]+|[0-9]+[a-z][0-9]+)$")
+_MANDAIC_74421_COL_MACHINE_COORDINATE_RE = re.compile(r"^74421col[0-9]+$")
 _MANDAIC_74425_MACHINE_COORDINATE_RE = re.compile(r"^74425[0-9]+[a-z]{0,2}$")
 _MANDAIC_74429_MACHINE_COORDINATE_RE = re.compile(r"^74429(?:[0-9]+[a-z]?|A[0-9]+)$")
 
@@ -26,7 +27,8 @@ def is_cal_mandaic_machine_coordinate(value: object) -> bool:
     if not isinstance(value, str):
         return False
     return (
-        _MANDAIC_74425_MACHINE_COORDINATE_RE.fullmatch(value) is not None
+        _MANDAIC_74421_COL_MACHINE_COORDINATE_RE.fullmatch(value) is not None
+        or _MANDAIC_74425_MACHINE_COORDINATE_RE.fullmatch(value) is not None
         or _MANDAIC_74429_MACHINE_COORDINATE_RE.fullmatch(value) is not None
     )
 
