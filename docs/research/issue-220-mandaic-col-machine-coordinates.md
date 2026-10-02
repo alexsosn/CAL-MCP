@@ -113,3 +113,19 @@ unchanged. For `cal_token_analysis`, the same special Mandaic predicate can reco
 Research used exactly 3 bounded GETs. The preceding #188 acceptance stopped on this page after
 18 sequential logical calls; it did not continue to text-information or token-analysis once the
 parser failed.
+
+## Final installed-stdio acceptance
+
+Run `37066174460` rebuilt and installed the candidate, then exercised exactly three sequential
+public MCP calls:
+
+1. `cal_text_page(file_id="74421", subtext_id="col", page=1)` returned current CAL page data and
+   preserved token coordinate `74421col13614`;
+2. `cal_token_analysis(coordinate="74421col13614", word_index=0)` followed that exact returned
+   handle and CAL returned a recognized analysis result;
+3. `cal_text_page(file_id="74421", subtext_id="103", page=1)` remained on the ordinary decimal
+   machine-coordinate path.
+
+All three upstream requests returned HTTP 200. No pagination, recursive catalogue traversal,
+neighbor-token analysis, or additional result expansion occurred.
+
