@@ -42,6 +42,25 @@ async def test_direct_mandaic_page_one_does_not_invent_sub_selector(file_id: str
 
 
 @pytest.mark.anyio
+@pytest.mark.parametrize(
+    "file_id",
+    ["74420", "74424", "74425", "74426", "74427", "74429", "74431"],
+)
+async def test_current_direct_mandaic_without_pagination_evidence_rejects_page_two(
+    file_id: str,
+) -> None:
+    transport = RecordingStopTransport()
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(CalInputError, match="direct Mandaic.*page 1"):
+            await TextService(client).page(file_id, page=2)
+    finally:
+        await client.aclose()
+
+    assert transport.requests == []
+
+
+@pytest.mark.anyio
 async def test_current_direct_mandaic_additional_page_uses_page_axis() -> None:
     transport = RecordingStopTransport()
     client = CalHttpClient(transport=transport)
