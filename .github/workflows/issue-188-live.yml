@@ -1,9 +1,9 @@
-name: Issue 188 74425 coordinate probe
+name: Issue 218 Mandaic coordinate research
 
 on:
   push:
     branches:
-      - dev/issue-188-mandaic-routing
+      - dev/issue-218-mandaic-alphanumeric-coordinates
 
 permissions:
   contents: read
@@ -11,86 +11,137 @@ permissions:
 jobs:
   probe:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Classify 74425 coordinate shapes without retaining text
+      - name: Probe bounded Mandaic coordinate grammar
         run: |
           python - <<'PY'
           import json
+          import re
           import urllib.request
+          from collections import Counter
           from html.parser import HTMLParser
-          from urllib.parse import parse_qs, urlsplit
+          from urllib.parse import parse_qs, urlencode, urlsplit
 
-          url = "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74425"
-          req = urllib.request.Request(
-              url,
-              headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
-          )
-          with urllib.request.urlopen(req, timeout=20) as response:
-              body = response.read(1048577)
-              if len(body) > 1048576:
-                  raise RuntimeError("response exceeded 1 MiB")
-              html = body.decode("utf-8", "replace")
+          BASE = "https://cal.huc.edu/"
+          DIRECT = ["74420","74424","74425","74426","74427","74429","74431","74501"]
+          requests = 0
+          max_requests = 10
 
-          class Probe(HTMLParser):
+          def fetch(path, params, cap=2 * 1024 * 1024):
+              global requests
+              requests += 1
+              if requests > max_requests:
+                  raise RuntimeError(f"request budget exceeded: {requests}")
+              url = BASE + path + "?" + urlencode(params)
+              req = urllib.request.Request(
+                  url,
+                  headers={"User-Agent": "CAL-MCP research/0.1 (+https://github.com/alexsosn/CAL-MCP)"},
+              )
+              with urllib.request.urlopen(req, timeout=20) as response:
+                  body = response.read(cap + 1)
+                  if len(body) > cap:
+                      raise RuntimeError(f"{path} response exceeded {cap} bytes")
+                  return url, body.decode("utf-8", "replace")
+
+          class Links(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.links = []
-                  self.text_table = False
-                  self.table_rows = 0
-                  self.table_cells = 0
-                  self.token_coords = []
-                  self.comment_coords = []
-                  self.file_info_coords = []
-                  self.nav = []
+                  self.token = []
+                  self.comment = []
+                  self.file_info = []
               def handle_starttag(self, tag, attrs):
-                  d = dict(attrs)
-                  if tag == "table" and "text-display" in (d.get("class") or "").split():
-                      self.text_table = True
-                  if self.text_table and tag == "tr":
-                      self.table_rows += 1
-                  if self.text_table and tag == "td":
-                      self.table_cells += 1
                   if tag != "a":
                       return
-                  href = d.get("href") or ""
+                  href = dict(attrs).get("href") or ""
                   p = urlsplit(href)
-                  endpoint = p.path.rsplit("/", 1)[-1]
                   q = parse_qs(p.query, keep_blank_values=True)
-                  if endpoint in {"getlex.php", "bablex.php"} and "coord" in q:
-                      self.token_coords.extend(q["coord"])
-                  elif endpoint == "comment.php" and "coord" in q:
-                      self.comment_coords.extend(q["coord"])
-                  elif endpoint == "get_file_info.php" and "coord" in q:
-                      self.file_info_coords.extend(q["coord"])
-                  elif endpoint == "get_a_chapter.php" and q.get("file") == ["74425"]:
-                      self.nav.append({
-                          "keys": sorted(q),
-                          "page": q.get("page"),
-                          "sub": q.get("sub"),
-                          "cset": q.get("cset"),
-                          "clen": q.get("clen"),
-                      })
-              def handle_endtag(self, tag):
-                  if tag == "table" and self.text_table:
-                      self.text_table = False
+                  endpoint = p.path.rsplit("/", 1)[-1]
+                  if endpoint in {"getlex.php", "bablex.php"} and q.get("coord") and q.get("word"):
+                      self.token.append((q["coord"][0], q["word"][0], endpoint))
+                  elif endpoint == "comment.php" and q.get("coord"):
+                      self.comment.append(q["coord"][0])
+                  elif endpoint == "get_file_info.php" and q.get("coord"):
+                      self.file_info.append(q["coord"][0])
 
-          p = Probe()
-          p.feed(html)
-          p.close()
-          token_unique = list(dict.fromkeys(p.token_coords))
-          comment_unique = list(dict.fromkeys(p.comment_coords))
-          print(json.dumps({
-              "file_info_coords": list(dict.fromkeys(p.file_info_coords)),
-              "token_coord_count": len(p.token_coords),
-              "token_coord_unique_sample": token_unique[:8],
-              "token_coord_charset": sorted(set("".join(token_unique))) if token_unique else [],
-              "comment_coord_unique_sample": comment_unique[:8],
-              "table_rows": p.table_rows,
-              "table_cells": p.table_cells,
-              "navigation": p.nav[:8],
-          }, sort_keys=True))
+          def classify(coord, prefix):
+              if not coord.startswith(prefix):
+                  return "foreign-prefix"
+              tail = coord[len(prefix):]
+              if re.fullmatch(r"[0-9]+", tail):
+                  return "decimal-tail"
+              if re.fullmatch(r"[0-9]+[a-z]", tail):
+                  return "trailing-letter-tail"
+              if re.fullmatch(r"[0-9]+[a-z][0-9]+", tail):
+                  return "internal-letter-tail"
+              return "other"
+
+          summaries = {}
+          first_trailing = None
+          for file_id in DIRECT:
+              _, html = fetch("get_a_chapter.php", [("cset","M"),("file",file_id)])
+              p = Links(); p.feed(html); p.close()
+              kinds = Counter(classify(c, file_id) for c, _, _ in p.token)
+              letters = sorted({
+                  ch for c, _, _ in p.token for ch in c[len(file_id):] if "a" <= ch <= "z"
+              })
+              examples = []
+              seen = set()
+              for coord, word, endpoint in p.token:
+                  kind = classify(coord, file_id)
+                  key = (kind, coord, word, endpoint)
+                  if key in seen:
+                      continue
+                  seen.add(key)
+                  if len(examples) < 6:
+                      examples.append({"kind":kind,"coord":coord,"word":word,"endpoint":endpoint})
+                  if first_trailing is None and kind == "trailing-letter-tail":
+                      first_trailing = (coord, word)
+              summaries[file_id] = {
+                  "file_info": list(dict.fromkeys(p.file_info))[:4],
+                  "token_links": len(p.token),
+                  "coordinate_kinds": dict(sorted(kinds.items())),
+                  "letters": letters,
+                  "examples": examples,
+                  "comment_examples": list(dict.fromkeys(p.comment))[:4],
+              }
+
+          _, html = fetch(
+              "get_a_chapter.php",
+              [("cset","M"),("file","74401"),("sub","12")],
+          )
+          p = Links(); p.feed(html); p.close()
+          summaries["74401/12"] = {
+              "file_info": list(dict.fromkeys(p.file_info))[:4],
+              "token_links": len(p.token),
+              "coordinate_kinds": dict(sorted(Counter(classify(c, "7440112") for c,_,_ in p.token).items())),
+              "examples": [
+                  {"coord":c,"word":w,"endpoint":e}
+                  for c,w,e in p.token[:4]
+              ],
+          }
+
+          if first_trailing is None:
+              raise RuntimeError("no trailing-letter coordinate found in bounded direct sample")
+          coord, word = first_trailing
+          url, analysis_html = fetch("getlex.php", [("coord",coord),("word",word)], cap=512*1024)
+          lower = analysis_html.lower()
+          result = {
+              "requests": requests,
+              "summaries": summaries,
+              "token_followup": {
+                  "coordinate": coord,
+                  "word": word,
+                  "url": url,
+                  "bytes": len(analysis_html.encode("utf-8")),
+                  "has_analysis_marker": "click on a headword to see a complete lexicon entry" in lower,
+                  "has_no_data": "there is no data for this word" in lower,
+                  "has_no_lemma": "unrecognizable query or no such lemma found" in lower,
+                  "has_lemma_route": ("oneentry.php?lemma=" in lower or "cal_entry_web.php?lemma=" in lower),
+              },
+          }
+          print(json.dumps(result, sort_keys=True))
           PY
