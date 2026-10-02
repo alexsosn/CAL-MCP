@@ -436,7 +436,7 @@ closed.
 
 `newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
 
-A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
+A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication at the time:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The original #171 conclusion treated Mandaic `74…` `showsubtexts.php` links as text-page follow-ups. **Superseded for Mandaic by R-056 / #188:** those links are now known to be real catalogue nodes and compose through `cal_text_catalogue`; direct `get_a_chapter.php` search hits remain page follow-ups.
 
 ## R-052 — Citation search explicitly rejects some single common words
 
@@ -747,7 +747,7 @@ Sources:
 - https://cal.huc.edu/show_Mandaic.php?R1=74
 - https://cal.huc.edu/showsubtexts.php?subtext=74410&cset=R
 
-**Implication:** Mandaic catalogue children accept `cset=R` or `M`, and titles come from the link text; page routing is unchanged.
+**Implication at the time:** Mandaic catalogue children accept `cset=R` or `M`, and titles come from the link text. **Superseded routing detail:** R-056 / #188 later established that current `showsubtexts.php` entries are catalogue nodes whose exact child `subtext_id` must be discovered explicitly before page retrieval.
 
 ## R-035 — Text pages render each line as a two-cell table row
 
