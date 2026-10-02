@@ -213,3 +213,25 @@ RED should cover at minimum:
 A single explicit `cal_text_page` remains exactly one logical CAL request. The correction moves
 subtext discovery into an explicit catalogue call chosen by the caller; page retrieval does not
 probe the catalogue first and no recursion/prefetch is introduced.
+
+## Final installed-stdio acceptance after #218 and #220 integration
+
+Run `37066477577` rebuilt and installed the combined candidate and completed exactly **20**
+sequential public MCP calls:
+
+- category `74` returned the current 12 subdivided categories and 8 direct texts;
+- page 1 opened for all eight current direct texts;
+- direct `74501` page 2 opened successfully;
+- child-catalogue → page round-trips succeeded for `74401/12`, `74422/106`,
+  `74430/1`, and `74421/col`;
+- the merged `74421/col` page preserved an exact `74421col<decimal-tail>` token coordinate;
+- `cal_text_information("74421", subtext_id="col")` preserved that text identity;
+- `cal_token_analysis` followed the returned direct-Mandaic coordinate `7442500a/0`.
+
+Every upstream request returned HTTP 200. No recursive catalogue expansion, hidden pagination,
+neighbor-token analysis, or result expansion was performed.
+
+This acceptance validates the full current catalogue → selected child/page composition. A separate
+adversarial-review check still audits which individual direct files have evidence for `page>1`;
+page-1 readability alone is not treated as proof of pagination.
+
