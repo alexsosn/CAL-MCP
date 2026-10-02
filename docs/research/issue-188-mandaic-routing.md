@@ -263,3 +263,21 @@ pagination semantics. Current evidence supports exactly `74501`; the other seven
 files are page-1-only until new evidence is researched. Subdivided texts retain their independently
 validated page axis inside an explicit subtext.
 
+## Post-review acceptance after evidence-scoped direct pagination
+
+After the adversarial direct-page finding was repaired, installed-stdio run `37068256656`
+repeated the same bounded **20-call** acceptance matrix on the corrected branch.
+
+The run again returned:
+
+- 12 current subdivided categories and 8 current direct texts from category 74;
+- successful page 1 for every current direct text;
+- genuine `74501` page 2;
+- successful selected child pages `74401/12`, `74422/106`, `74430/1`, and `74421/col`;
+- `74421/col` text information and the merged special-coordinate semantics;
+- token-analysis follow-up of returned `7442500a/0`.
+
+All 20 upstream requests returned HTTP 200. The seven non-`74501` direct page-2 cases are no
+longer part of the live matrix because their corrected behavior is a local pre-transport rejection,
+covered by the review RED regression test.
+
