@@ -47,7 +47,7 @@ CAL-MCP returns both. It does not rank, merge, or silently choose between them.
 
 ## Coordinates and token indexes
 
-`coordinate` is an opaque CAL identifier. Most observed values are decimal; current Christian Palestinian Aramaic text pages return coordinates such as `5500001001a019001`, embedding one lowercase subtext suffix between decimal segments. Current direct Mandaic files `74425` and `74429` additionally expose file-scoped letter forms such as `7442500a`, `74425231aa`, and `74429A01`. CAL-MCP preserves these values verbatim and accepts only the exact researched coordinate families: the generic decimal / one-embedded-lowercase-letter grammar remains unchanged, while the Mandaic extensions are selected by exact `74425` or `74429` prefix. It does not decode semantic fields from the coordinate or claim that CAL identifiers are permanently stable.
+`coordinate` is an opaque CAL identifier. Most observed values are decimal; current Christian Palestinian Aramaic text pages return coordinates such as `5500001001a019001`, embedding one lowercase subtext suffix between decimal segments. Current Mandaic additionally exposes narrowly researched coordinate families: direct `74425` forms such as `7442500a` and `74425231aa`, direct `74429` forms such as `74429A01`, and the exact subdivided text `74421/col`, whose returned token coordinates use `74421col` plus a non-empty decimal tail such as `74421col13614`. CAL-MCP preserves these values verbatim. The generic decimal / one-embedded-lowercase-letter grammar remains unchanged; each Mandaic extension is accepted only for its exact researched identity. It does not decode semantic fields from the coordinate or claim that CAL identifiers are permanently stable.
 
 `word_index` is zero-based because that is the index CAL exposes in text-browser token links. It must be an integer greater than or equal to zero. Boolean, negative, and non-integer values are rejected locally.
 
@@ -57,7 +57,7 @@ These conventions match the token metadata returned by `cal_text_page`; see [`..
 
 The states are intentionally distinct:
 
-- **invalid caller input** — a coordinate outside the researched generic or exact file-scoped Mandaic machine-coordinate families, or an invalid `word_index`, raises local validation failure before any CAL request;
+- **invalid caller input** — a coordinate outside the researched generic or exact Mandaic machine-coordinate families, or an invalid `word_index`, raises local validation failure before any CAL request;
 - **not found** — CAL returned one of the adapter's explicitly recognized no-candidate states. These currently include the legacy `there is no data for this word ...` page and a normal token-analysis result marker followed by CAL's exact `unrecognizable query or no such lemma found` message with no lemma-entry link. Both map to `status: "not_found"` and an empty candidate list;
 - **upstream/transport failure** — HTTP/content/request failures remain shared CAL client errors;
 - **parser drift** — a successful CAL page that has neither a complete recognized analysis nor one of the explicitly recognized no-candidate states fails closed as `TokenAnalysisParseError`.
