@@ -292,8 +292,9 @@ Consequences:
 - following a subdivided category with `cal_text_catalogue(category_id=...)` returns child
   `TextRef` values carrying CAL's exact `subtext_id`;
 - a known subdivided Mandaic `cal_text_page` call requires that returned `subtext_id`;
-- current direct Mandaic files with observed pagination use the public page axis without a public
-  subtext; legacy direct files without pagination evidence remain page-1-only;
+- direct Mandaic pagination is enabled per exact file evidence: current `74501` uses the public
+  page axis without a public subtext, while every other current/legacy direct file remains
+  page-1-only until its pagination semantics are independently observed;
 - Mandaic child selectors preserve leading zeroes, sparse numbering, and the observed literal
   `col`; `col` does not widen the ordinary or CPA subtext grammar;
 - `cal_text_information` accepts the same evidence-backed Mandaic selector so a returned child is
