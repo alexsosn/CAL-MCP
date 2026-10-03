@@ -327,6 +327,25 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-060 — Lexicon browse cross-references are rows, not target-entry aliases
+
+**Rechecked:** 2026-10-03; issue #175.
+
+Current CAL browse pages interleave ordinary lemma rows with arrow cross-references. Bounded live
+probes confirmed independent redirect families under `$l` and `by`. The browse page already
+contains the rendered left-hand source text and an exact linked target lemma key; no entry fetch is
+needed. The existing parser instead converts the left-hand text into `LemmaRef.aliases` and
+returns the target as an ordinary browse entry, erasing the row type.
+
+The same research also isolated a separate current parser drift: `$lh N` is rendered as
+`šlh n.f.?`, and the shared lemma-header parser rejects the uncertainty marker even on a
+non-arrow row. That blocker is tracked separately in #222.
+
+**Implication:** #175 should expose a browse-specific ordered cross-reference row that preserves the
+displayed source plus validated target lemma key without fetching or merging the target. Final
+`$l` live acceptance depends on #222. Detailed evidence:
+`docs/research/issue-175-lexicon-browse-crossrefs.md`.
+
 ## R-059 — KWIC full-context rows use the same fail-closed scholarly-text boundary
 
 **Rechecked:** 2026-10-03 from retained fixtures plus bounded live acceptance; issue #208.
