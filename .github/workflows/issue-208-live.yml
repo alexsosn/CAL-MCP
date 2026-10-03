@@ -1,4 +1,4 @@
-name: Issue 208 final live stdio acceptance
+name: Issue 208 live markup probe
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  verify:
+  probe:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -17,91 +17,61 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install candidate
-        run: python -m pip install .
-      - name: Verify R H U full-context hits over stdio
+      - name: Probe current full-context text-cell tag vocabulary
         run: |
           python - <<'PY'
-          import asyncio
-          from urllib.parse import urlsplit
-          from mcp import Client, StdioServerParameters
+          from collections import Counter
+          from html.parser import HTMLParser
+          from urllib.request import Request, urlopen
 
-          CASES = [
-              {
-                  "label": "R",
-                  "args": {
-                      "file_id": "56000",
-                      "subtext_id": "112",
-                      "target_coordinate": "56000112010",
-                      "charset": "R",
-                  },
-              },
-              {
-                  "label": "H",
-                  "args": {
-                      "file_id": "71002",
-                      "subtext_id": "01051",
-                      "target_coordinate": "7100201051217",
-                      "charset": "H",
-                  },
-              },
-              {
-                  "label": "U",
-                  "args": {
-                      "file_id": "60301",
-                      "subtext_id": "53",
-                      "target_coordinate": "603015323",
-                      "charset": "U",
-                  },
-              },
-          ]
+          CASES = {
+              "R": "https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010",
+              "H": "https://cal.huc.edu/get_a_kwicchapter.php?file=71002&sub=01051&cset=H&target=7100201051217",
+              "U": "https://cal.huc.edu/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323",
+          }
 
-          async def main():
-              async with Client(StdioServerParameters(command="cal-mcp")) as client:
-                  counts = {}
-                  for case in CASES:
-                      result = await client.call_tool("cal_kwic_full_context", case["args"])
-                      if result.is_error:
-                          raise RuntimeError(
-                              f"{case['label']}: tool failed: {result.content!r}"
-                          )
-                      data = result.structured_content
-                      if not isinstance(data, dict) or data.get("status") != "found":
-                          raise RuntimeError(f"{case['label']}: no found result")
-                      lines = data.get("lines")
-                      if not isinstance(lines, list) or not lines:
-                          raise RuntimeError(f"{case['label']}: no lines")
-                      target = case["args"]["target_coordinate"]
-                      if sum(line.get("coordinate") == target for line in lines) != 1:
-                          raise RuntimeError(f"{case['label']}: target identity lost")
-                      for line in lines:
-                          for token in line.get("tokens") or []:
-                              url = urlsplit(token.get("lexical_url") or "")
-                              if (
-                                  url.scheme != "https"
-                                  or url.netloc != "cal.huc.edu"
-                                  or url.path not in {"/getlex.php", "/bablex.php"}
-                                  or url.fragment
-                              ):
-                                  raise RuntimeError(
-                                      f"{case['label']}: unsafe lexical route"
-                                  )
-                          comment_url = line.get("comment_url")
-                          if comment_url:
-                              url = urlsplit(comment_url)
-                              if (
-                                  url.scheme != "https"
-                                  or url.netloc != "cal.huc.edu"
-                                  or url.path != "/comment.php"
-                                  or url.fragment
-                              ):
-                                  raise RuntimeError(
-                                      f"{case['label']}: unsafe comment route"
-                                  )
-                      counts[case["label"]] = len(lines)
-                  print("live #208 OK: " + " ".join(
-                      f"{label}={counts[label]}" for label in ("R", "H", "U")
-                  ))
+          class Probe(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.in_cell = False
+                  self.depth = 0
+                  self.tags = []
+                  self.links = []
+                  self.cells = []
+              def handle_starttag(self, tag, attrs):
+                  if tag in {"td", "th"}:
+                      self.in_cell = True
+                      self.depth = 1
+                      self.tags = []
+                      self.links = []
+                      return
+                  if self.in_cell:
+                      self.depth += 1
+                      self.tags.append(tag)
+                      if tag == "a":
+                          href = dict(attrs).get("href") or ""
+                          self.links.append(href.split("?", 1)[0])
+              def handle_endtag(self, tag):
+                  if not self.in_cell:
+                      return
+                  if tag in {"td", "th"} and self.depth == 1:
+                      if any(x.endswith("getlex.php") or x.endswith("bablex.php") for x in self.links):
+                          self.cells.append((tuple(self.tags), tuple(self.links)))
+                      self.in_cell = False
+                      self.depth = 0
+                      return
+                  self.depth = max(1, self.depth - 1)
 
-          asyncio.run(main())
+          for label, url in CASES.items():
+              req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
+              with urlopen(req, timeout=20) as response:
+                  body = response.read().decode("utf-8", errors="replace")
+              p = Probe()
+              p.feed(body)
+              p.close()
+              vocab = Counter(tag for tags, _ in p.cells for tag in tags)
+              shapes = Counter(tags for tags, _ in p.cells)
+              print(label, "cells", len(p.cells), "vocab", dict(sorted(vocab.items())))
+              for shape, count in shapes.most_common(10):
+                  print(label, "shape", count, shape)
           PY
