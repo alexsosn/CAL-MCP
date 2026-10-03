@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe current full-context text-cell tag vocabulary
+      - name: Probe current full-context row tag vocabulary
         run: |
           python - <<'PY'
           from collections import Counter
@@ -33,34 +33,33 @@ jobs:
           class Probe(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.in_cell = False
-                  self.depth = 0
-                  self.tags = []
-                  self.links = []
-                  self.cells = []
+                  self.row = None
+                  self.cell = None
+                  self.rows = []
               def handle_starttag(self, tag, attrs):
-                  if tag in {"td", "th"}:
-                      self.in_cell = True
-                      self.depth = 1
-                      self.tags = []
-                      self.links = []
+                  if tag == "tr":
+                      self.row = []
                       return
-                  if self.in_cell:
-                      self.depth += 1
-                      self.tags.append(tag)
+                  if tag in {"td", "th"} and self.row is not None:
+                      self.cell = {"tags": [], "links": []}
+                      return
+                  if self.cell is not None:
+                      self.cell["tags"].append(tag)
                       if tag == "a":
                           href = dict(attrs).get("href") or ""
-                          self.links.append(href.split("?", 1)[0])
+                          self.cell["links"].append(href.split("?", 1)[0])
               def handle_endtag(self, tag):
-                  if not self.in_cell:
+                  if tag in {"td", "th"} and self.row is not None and self.cell is not None:
+                      self.row.append(self.cell)
+                      self.cell = None
                       return
-                  if tag in {"td", "th"} and self.depth == 1:
-                      if any(x.endswith("getlex.php") or x.endswith("bablex.php") for x in self.links):
-                          self.cells.append((tuple(self.tags), tuple(self.links)))
-                      self.in_cell = False
-                      self.depth = 0
-                      return
-                  self.depth = max(1, self.depth - 1)
+                  if tag == "tr" and self.row is not None:
+                      if any(
+                          href.endswith("getlex.php") or href.endswith("bablex.php")
+                          for cell in self.row for href in cell["links"]
+                      ):
+                          self.rows.append(self.row)
+                      self.row = None
 
           for label, url in CASES.items():
               req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
@@ -69,9 +68,15 @@ jobs:
               p = Probe()
               p.feed(body)
               p.close()
-              vocab = Counter(tag for tags, _ in p.cells for tag in tags)
-              shapes = Counter(tags for tags, _ in p.cells)
-              print(label, "cells", len(p.cells), "vocab", dict(sorted(vocab.items())))
-              for shape, count in shapes.most_common(10):
-                  print(label, "shape", count, shape)
+              print(label, "rows", len(p.rows))
+              for index in range(max((len(row) for row in p.rows), default=0)):
+                  vocab = Counter(
+                      tag for row in p.rows if index < len(row) for tag in row[index]["tags"]
+                  )
+                  shapes = Counter(
+                      tuple(row[index]["tags"]) for row in p.rows if index < len(row)
+                  )
+                  print(label, "cell", index, "vocab", dict(sorted(vocab.items())))
+                  for shape, count in shapes.most_common(8):
+                      print(label, "cellshape", index, count, shape)
           PY
