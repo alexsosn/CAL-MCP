@@ -61,7 +61,10 @@ async def test_comment_link_rows_keep_display_coordinate_and_comment_url() -> No
 
 @pytest.mark.anyio
 async def test_plain_coordinate_rows_keep_display_coordinate_without_comment() -> None:
-    result = await _page(GINZA.read_bytes(), "74410")
+    body = GINZA.read_bytes()
+    start = body.index(b'<a href="get_a_chapter.php?file=74410&sub=002')
+    end = body.index(b"</a>", start) + len(b"</a>")
+    result = await _page(body[:start] + body[end:], "74410", "001")
 
     assert result.page is not None
     assert [(line.display_coordinate, line.comment_url) for line in result.page.lines] == [

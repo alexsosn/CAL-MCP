@@ -276,3 +276,76 @@ Consequences:
   supplies its explicit `NO LINES FOR ... ARE CURRENTLY STORED` marker (current direct CPA
   `55002`), text retrieval uses the existing `not_found` / `page=null` semantics rather than
   inventing a line.
+
+## D-019 — Mandaic subtext identity is distinct from pagination
+
+**Status:** accepted — 2026-10-01 (issue #188; research R-056)
+
+For current Mandaic collection 74, a `showsubtexts.php` file is a catalogue node. Its child
+`sub` selector identifies a scholarly subtext and is preserved exactly. The public one-based
+`page` argument selects a rendered page *within* that explicit subtext; it never synthesizes,
+pads, increments, or otherwise derives `sub`.
+
+Consequences:
+
+- category 74 returns current subdivided files as `categories` and direct files as `texts`;
+- following a subdivided category with `cal_text_catalogue(category_id=...)` returns child
+  `TextRef` values carrying CAL's exact `subtext_id`;
+- a known subdivided Mandaic `cal_text_page` call requires that returned `subtext_id`;
+- direct Mandaic pagination is enabled per exact file evidence: current `74501` uses the public
+  page axis without a public subtext, while every other current/legacy direct file remains
+  page-1-only until its pagination semantics are independently observed;
+- Mandaic child selectors preserve leading zeroes, sparse numbering, and the observed literal
+  `col`; `col` does not widen the ordinary or CPA subtext grammar;
+- `cal_text_information` accepts the same evidence-backed Mandaic selector so a returned child is
+  followable without inventing a different identifier;
+- each explicit catalogue/page/information operation remains bounded and does not perform hidden
+  route discovery or prefetch.
+
+## D-020 — Mandaic special machine coordinates are file-scoped
+
+**Status:** accepted — 2026-10-02 (issue #218; research R-057)
+
+CAL machine coordinates remain opaque upstream identifiers. Current direct Mandaic files
+`74425` and `74429` expose coordinate forms outside the shared decimal / embedded-lowercase
+grammar, and CAL's token-analysis endpoint accepts those exact observed forms.
+
+Consequences:
+
+- the shared generic machine-coordinate grammar is unchanged;
+- `74425` additionally accepts its researched file-prefixed decimal tail with at most two
+  trailing lowercase ASCII letters;
+- `74429` additionally accepts its researched file-prefixed decimal tail with at most one
+  trailing lowercase letter, or its uppercase `A` + decimal series;
+- text-page parsing enables those rules only for the exact direct file identities `74425`
+  and `74429`; foreign prefixes and nearby Mandaic files do not inherit them;
+- `cal_token_analysis` accepts the same exact coordinate families so any token returned by
+  those text pages remains followable without normalization;
+- the adapter does not decode the letter components or infer line/subtext semantics from them;
+- any broader coordinate family requires new upstream evidence rather than a generic
+  alphanumeric fallback.
+
+## D-021 — Mandaic special machine coordinates may be exact file/subtext families
+
+**Status:** accepted — 2026-10-02 (issue #220; research R-058)
+
+D-020's file-scoped exceptions remain unchanged for direct files `74425` and `74429`.
+Current subdivided text `74421/col` adds one separately evidenced family whose opaque machine
+coordinate begins with the exact selected file plus literal subtext:
+
+`74421col[0-9]+`.
+
+Consequences:
+
+- the shared generic machine-coordinate grammar remains unchanged;
+- the Mandaic-special predicate recognizes only explicitly researched exact families;
+- text-page parsing enables `74421col...` only when the requested identity is exactly
+  `file_id=74421, subtext_id=col`;
+- numeric `74421` subtexts keep the existing decimal coordinate rules;
+- `cal_token_analysis` accepts the same exact returned handle so page → token-analysis
+  composition is lossless;
+- arbitrary multi-letter selectors, other file ids, case variants, punctuation, missing decimal
+  tails, and guessed coordinate families remain invalid;
+- CAL-MCP preserves these handles verbatim and does not decode `col` or the decimal tail into an
+  undocumented local coordinate model.
+
