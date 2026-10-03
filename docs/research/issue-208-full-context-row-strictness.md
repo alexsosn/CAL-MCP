@@ -130,3 +130,21 @@ unknown element such as `<wmr>`.
 
 Request impact of this review research: three single explicit CAL GETs total across the failed
 acceptance and the two probes; no crawl, pagination, or link following.
+
+
+## Final live acceptance after raw-angle repair
+
+Run `37080898255` installed the candidate wheel and exercised `cal_kwic_full_context` through the
+stdio MCP boundary for the three already-known explicit targets from the plan. All three succeeded:
+
+- Roman Samaritan: 16 returned lines;
+- Hebrew Babylonian Talmud: 31 returned lines;
+- Unicode Syriac: 31 returned lines.
+
+For every returned line the acceptance revalidated target identity plus exact CAL-root lexical
+(`getlex.php` / `bablex.php`) and optional comment routes with no URL fragments. No hit discovery,
+pagination, or link following was performed.
+
+This run directly covers the Samaritan row that caused the earlier false parser drift, so the live
+evidence now agrees with the offline two-sided contract: raw scholarly `<` survives, while genuine
+unknown markup remains rejected by the fixture mutation.
