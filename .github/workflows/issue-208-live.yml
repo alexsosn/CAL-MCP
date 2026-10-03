@@ -1,4 +1,4 @@
-name: Issue 208 live markup probe
+name: Issue 208 live raw-angle probe
 
 on:
   push:
@@ -17,66 +17,25 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Probe current full-context row tag vocabulary
+      - name: Confirm current Samaritan raw angle-bracket shape
         run: |
           python - <<'PY'
-          from collections import Counter
-          from html.parser import HTMLParser
           from urllib.request import Request, urlopen
 
-          CASES = {
-              "R": "https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010",
-              "H": "https://cal.huc.edu/get_a_kwicchapter.php?file=71002&sub=01051&cset=H&target=7100201051217",
-              "U": "https://cal.huc.edu/get_a_kwicchapter.php?file=60301&sub=53&cset=U&target=603015323",
-          }
-
-          class Probe(HTMLParser):
-              def __init__(self):
-                  super().__init__(convert_charrefs=True)
-                  self.row = None
-                  self.cell = None
-                  self.rows = []
-              def handle_starttag(self, tag, attrs):
-                  if tag == "tr":
-                      self.row = []
-                      return
-                  if tag in {"td", "th"} and self.row is not None:
-                      self.cell = {"tags": [], "links": []}
-                      return
-                  if self.cell is not None:
-                      self.cell["tags"].append(tag)
-                      if tag == "a":
-                          href = dict(attrs).get("href") or ""
-                          self.cell["links"].append(href.split("?", 1)[0])
-              def handle_endtag(self, tag):
-                  if tag in {"td", "th"} and self.row is not None and self.cell is not None:
-                      self.row.append(self.cell)
-                      self.cell = None
-                      return
-                  if tag == "tr" and self.row is not None:
-                      if any(
-                          href.endswith("getlex.php") or href.endswith("bablex.php")
-                          for cell in self.row for href in cell["links"]
-                      ):
-                          self.rows.append(self.row)
-                      self.row = None
-
-          for label, url in CASES.items():
-              req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
-              with urlopen(req, timeout=20) as response:
-                  body = response.read().decode("utf-8", errors="replace")
-              p = Probe()
-              p.feed(body)
-              p.close()
-              print(label, "rows", len(p.rows))
-              for index in range(max((len(row) for row in p.rows), default=0)):
-                  vocab = Counter(
-                      tag for row in p.rows if index < len(row) for tag in row[index]["tags"]
-                  )
-                  shapes = Counter(
-                      tuple(row[index]["tags"]) for row in p.rows if index < len(row)
-                  )
-                  print(label, "cell", index, "vocab", dict(sorted(vocab.items())))
-                  for shape, count in shapes.most_common(8):
-                      print(label, "cellshape", index, count, shape)
+          url = "https://cal.huc.edu/get_a_kwicchapter.php?file=56000&sub=112&cset=R&target=56000112010"
+          req = Request(url, headers={"User-Agent": "CAL-MCP bounded research probe"})
+          with urlopen(req, timeout=20) as response:
+              body = response.read().decode("utf-8", errors="replace")
+          needle = "<w)th"
+          positions = []
+          start = 0
+          while True:
+              i = body.find(needle, start)
+              if i < 0:
+                  break
+              positions.append(i)
+              start = i + len(needle)
+          print("count", len(positions))
+          for i in positions[:5]:
+              print("shape", repr(body[i:i+18]))
           PY
