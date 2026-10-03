@@ -66,7 +66,6 @@ def test_loose_text_between_full_context_tokens_fails_closed() -> None:
         _parse_bt(body.replace(old, new, 1))
 
 
-
 def test_raw_leading_angle_bracket_in_full_context_token_is_preserved() -> None:
     body = SAMARITAN.read_bytes()
     old = b">yhwh</a>"
