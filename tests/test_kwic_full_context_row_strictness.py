@@ -34,8 +34,8 @@ def _parse_bt(body: bytes) -> None:
     )
 
 
-def _parse_samaritan(body: bytes) -> None:
-    parse_kwic_full_context_page(
+def _parse_samaritan(body: bytes):
+    return parse_kwic_full_context_page(
         CalResponse(
             status_code=200,
             url=(
@@ -64,6 +64,20 @@ def test_loose_text_between_full_context_tokens_fails_closed() -> None:
 
     with pytest.raises(ConcordanceParseError, match="loose|text"):
         _parse_bt(body.replace(old, new, 1))
+
+
+
+def test_raw_leading_angle_bracket_in_full_context_token_is_preserved() -> None:
+    body = SAMARITAN.read_bytes()
+    old = b">yhwh</a>"
+    new = b"><w)th</a>"
+    assert old in body
+
+    page = _parse_samaritan(body.replace(old, new, 1))
+
+    token_texts = [token.text for line in page.lines for token in line.tokens]
+    assert "<w)th" in token_texts
+    assert any("<w)th" in line.text for line in page.lines)
 
 
 def test_unknown_element_inside_full_context_token_fails_closed() -> None:
