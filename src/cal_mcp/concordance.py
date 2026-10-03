@@ -14,7 +14,7 @@ from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.normalization import _CAL_CODE_LETTERS, InputRepresentation, normalize_query
-from cal_mcp.texts import TextLine, TextToken
+from cal_mcp.texts import _RAW_TEXT_LT_RE, TextLine, TextToken
 
 _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
@@ -227,6 +227,8 @@ class _TableLink:
 class _TableCell:
     text: str
     links: tuple[_TableLink, ...]
+    loose_text: str = ""
+    unexpected_tags: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -251,6 +253,8 @@ class _TableHTMLParser(HTMLParser):
         self._row: list[_TableCell] | None = None
         self._cell_parts: list[str] | None = None
         self._cell_links: list[_TableLink] = []
+        self._cell_loose_parts: list[str] = []
+        self._cell_unexpected_tags: list[str] = []
         self._open_link: _OpenTableLink | None = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -260,7 +264,11 @@ class _TableHTMLParser(HTMLParser):
         if tag in {"td", "th"} and self._row is not None:
             self._cell_parts = []
             self._cell_links = []
+            self._cell_loose_parts = []
+            self._cell_unexpected_tags = []
             return
+        if self._cell_parts is not None and tag not in {"a", "span", "cal-variant"}:
+            self._cell_unexpected_tags.append(tag)
         if tag == "a" and self._cell_parts is not None:
             href = next((value for key, value in attrs if key == "href" and value), "")
             self._open_link = _OpenTableLink(href=href)
@@ -280,10 +288,14 @@ class _TableHTMLParser(HTMLParser):
                 _TableCell(
                     text=_clean_text("".join(self._cell_parts)),
                     links=tuple(self._cell_links),
+                    loose_text=_clean_text("".join(self._cell_loose_parts)),
+                    unexpected_tags=tuple(self._cell_unexpected_tags),
                 )
             )
             self._cell_parts = None
             self._cell_links = []
+            self._cell_loose_parts = []
+            self._cell_unexpected_tags = []
             return
         if tag == "tr" and self._row is not None:
             if self._row:
@@ -293,6 +305,8 @@ class _TableHTMLParser(HTMLParser):
     def handle_data(self, data: str) -> None:
         if self._cell_parts is not None:
             self._cell_parts.append(data)
+            if self._open_link is None:
+                self._cell_loose_parts.append(data)
         if self._open_link is not None:
             self._open_link.parts.append(data)
 
@@ -893,7 +907,11 @@ def parse_kwic_full_context_page(
         raise ConcordanceParseError("CAL full-context not-found target differs from request")
 
     parser = _TableHTMLParser()
-    parser.feed(response.body.decode("utf-8", errors="replace"))
+    # CAL full-context rows can contain the same raw scholarly leading "<" observed on
+    # text pages. Escape only syntactically impossible tag openings before HTML parsing;
+    # genuine unknown elements still reach the strict row allow-list and fail closed.
+    body = _RAW_TEXT_LT_RE.sub("&lt;", response.body.decode("utf-8", errors="replace"))
+    parser.feed(body)
     parser.close()
     lines = tuple(
         line
@@ -1026,6 +1044,8 @@ def _parse_full_context_row(
         return None
     if len(row.cells) != 2:
         raise ConcordanceParseError("CAL full-context text row must contain two cells")
+    if any(cell.unexpected_tags for cell in row.cells):
+        raise ConcordanceParseError("CAL full-context text row has an unexpected element")
     if any(_is_full_context_lexical(link) for link in row.cells[0].links):
         raise ConcordanceParseError("CAL full-context lexical link is in coordinate cell")
     if any(not _is_full_context_lexical(link) for link in row.cells[1].links):
@@ -1066,7 +1086,7 @@ def _parse_full_context_row(
     comment_url: str | None = None
     if comment_links:
         comment = comment_links[0]
-        comment_url = _cal_navigation_url(source_url, comment.href, "comment.php")
+        comment_url = _full_context_root_url(source_url, comment.href, "comment.php")
         query = parse_qs(urlsplit(comment_url).query, keep_blank_values=True)
         if set(query) != {"coord"}:
             raise ConcordanceParseError("CAL full-context comment link has unexpected selectors")
@@ -1077,6 +1097,10 @@ def _parse_full_context_row(
         if comment_coordinate != coordinate or comment.text != display_coordinate:
             raise ConcordanceParseError("CAL full-context comment coordinate contradicts its row")
 
+    if text_cell.loose_text:
+        raise ConcordanceParseError(
+            "CAL full-context text row has loose text between lexical links"
+        )
     rendered_text = text_cell.text
     if not rendered_text:
         raise ConcordanceParseError("CAL full-context text row has no rendered text")
@@ -1124,7 +1148,7 @@ def _parse_full_context_lexical_link(
     endpoint = _full_context_lexical_endpoint(link)
     if endpoint is None:
         raise ConcordanceParseError("CAL full-context text cell has an unexpected link")
-    lexical_url = _cal_navigation_url(source_url, link.href, endpoint)
+    lexical_url = _full_context_root_url(source_url, link.href, endpoint)
     query = parse_qs(urlsplit(lexical_url).query, keep_blank_values=True)
     if set(query) != _FULL_CONTEXT_LEXICAL_SELECTORS[endpoint]:
         raise ConcordanceParseError(
@@ -1619,6 +1643,19 @@ def _parse_returned_lemma_key(value: str, *, allow_cal_capitals: bool = False) -
     if canonical_key != value:
         raise ConcordanceParseError("CAL concordance row lemma key is not canonical")
     return canonical_key
+
+
+def _full_context_root_url(source_url: str, href: str, filename: str) -> str:
+    resolved = urljoin(source_url, href)
+    source = urlsplit(source_url)
+    target = urlsplit(resolved)
+    if (target.scheme, target.netloc) != (source.scheme, source.netloc):
+        raise ConcordanceParseError("CAL full-context link points outside the CAL origin")
+    if target.path != f"/{filename}":
+        raise ConcordanceParseError("CAL full-context link has an unexpected target path")
+    if target.fragment:
+        raise ConcordanceParseError("CAL full-context link has an unexpected fragment")
+    return resolved
 
 
 def _cal_navigation_url(source_url: str, href: str, filename: str) -> str:

@@ -327,6 +327,23 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-059 — KWIC full-context rows use the same fail-closed scholarly-text boundary
+
+**Rechecked:** 2026-10-03 from retained fixtures plus bounded live acceptance; issue #208.
+
+Current full-context captures cover `getlex.php` and `bablex.php` rows in Roman, Hebrew and
+Unicode Syriac renderings. The earlier full-context table parser flattened unlinked text between
+token anchors into `TextLine.text`, ignored unknown tags inside cells, and treated a same-origin
+nested path such as `/evil/bablex.php` as the lexical endpoint because route checks compared only
+the basename. Detailed analysis and TDD boundary:
+`docs/research/issue-208-full-context-row-strictness.md`.
+
+**Implication:** full-context scholarly rows retain structural evidence until row validation:
+non-whitespace loose text and unknown cell elements fail closed, and lexical/comment links must use
+the exact CAL-root endpoint with no fragment. Other concordance parsers keep their separately
+researched route rules.
+
+
 ## R-058 — Mandaic 74421/col embeds the literal subtext selector in machine coordinates
 
 **Rechecked:** 2026-10-02; issue #220.
