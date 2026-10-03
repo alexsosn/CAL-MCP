@@ -31,3 +31,26 @@ Date: 2026-10-01. Research: `docs/research/issue-208-full-context-row-strictness
    Unicode Syriac (`U`). Do not discover or crawl additional hits.
 9. Perform a logically independent adversarial review of the exact final SHA. Any finding gets a
    new plan amendment and RED → GREEN cycle before merge.
+
+
+## Adversarial-review amendment — raw scholarly `<` must survive strict tag validation
+
+Live installed-stdio acceptance and structural probes on 2026-10-03 found one current Samaritan
+Roman lexical token whose source begins with raw `<w)th`. The existing full-context HTML parser
+misreads that literal `<` as a pseudo-element and #208's new strict tag guard therefore rejects
+valid current data.
+
+10. RED before the production repair:
+    - mutate a reduced full-context lexical anchor so its visible token begins with raw
+      `<w)th`;
+    - require the parser to return that token and line text with the leading `<` preserved;
+    - retain the existing `<wmr>` mutation as the negative control and require it still to fail.
+11. GREEN with the narrowest shared semantics:
+    - preprocess only syntactically impossible tag-opening `<` characters with the same
+      `_RAW_TEXT_LT_RE` rule already used by `cal_text_page`;
+    - do not add `w)th<` or any other pseudo-tag to the allow-list;
+    - do not relax loose-text, exact-path, fragment, selector, or unknown-element checks.
+12. Rerun both CI matrices.
+13. Repeat the bounded installed-wheel/stdio R/H/U acceptance on the resulting exact head.
+14. Remove the temporary live/probe workflow and rerun normal CI on the workflow-free head.
+15. Perform a fresh logically independent exact-head adversarial review before merge.
