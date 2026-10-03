@@ -95,3 +95,38 @@ Positive controls must cover every retained full-context fixture family.
 
 No production request changes and no new live research. One explicit full-context call remains one
 bounded CAL request; no links are followed automatically.
+
+
+## 2026-10-03 adversarial-review follow-up — valid raw `<` in Samaritan token text
+
+The first installed-wheel/stdio acceptance on head `43f87979` invalidated the assumption that
+the retained fixtures covered every current full-context row shape. Run `36835494064` made the
+first planned bounded Roman call only and failed with:
+
+`parser_drift: CAL full-context text row has an unexpected element`.
+
+Two bounded structural probes then inspected the same explicit Samaritan target without following
+links or enumerating neighboring pages:
+
+- run `37080415413` found 16 lexical rows. Their Roman text cells contained ordinary `a`
+  elements except one HTMLParser pseudo-tag named `w)th<`;
+- run `37080496460` confirmed the raw source occurrence exactly as
+  `<w)th</a> <a href=` (one occurrence).
+
+This is not an upstream HTML element. It is scholarly token text beginning with an unescaped
+literal `<`, followed immediately by the real closing anchor. Python's `HTMLParser` consumes
+that raw `<` plus the closing-anchor opener as malformed tag syntax, which makes #208's new
+unknown-element guard reject a valid current row.
+
+The ordinary `cal_text_page` parser already has a narrow, evidence-backed defense for the same
+CAL defect: `_RAW_TEXT_LT_RE` escapes a `<` only when the following bytes cannot begin a valid
+HTML tag, comment, declaration, or processing instruction. A genuine `<wmr>` still reaches the
+tag allow-list and fails closed.
+
+Therefore the full-context parser should reuse the same raw-angle preprocessing semantics before
+feeding its table HTML parser. The tag allow-list itself must not widen. The regression contract is
+two-sided: preserve a token such as raw `<w)th` verbatim, while continuing to reject a genuine
+unknown element such as `<wmr>`.
+
+Request impact of this review research: three single explicit CAL GETs total across the failed
+acceptance and the two probes; no crawl, pagination, or link following.
