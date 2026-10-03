@@ -181,14 +181,17 @@ number/count; no page number is synthesized from `sub`.
 
 ### Direct Mandaic page
 
-For the eight current direct top-level files:
+All eight current direct top-level files support page 1 with the evidence-backed direct request
+`cset=M&file=<file>`. Public `page>1` is enabled only for files whose pagination semantics have
+been independently observed. Current evidence supports exactly `74501`:
 
-- page 1 keeps the evidence-backed direct request `cset=M&file=<file>`;
-- page N>1 adds zero-based `page=N-1`;
-- current pagination links preserve the file, `cset=M`, empty `sub`, and may carry `clen=5`.
+- `74501` page N>1 adds zero-based `page=N-1`;
+- its current pagination links preserve the file, `cset=M`, empty `sub`, and may carry `clen=5`;
+- `74420`, `74424`, `74425`, `74426`, `74427`, `74429`, and `74431` remain
+  page-1-only until new file-specific evidence is researched.
 
-Legacy/unknown direct collection-74 files are not assumed paginated merely from their prefix.
-Current hidden `74717` remains page-1-only until live evidence says otherwise.
+Legacy/unknown direct collection-74 files are likewise not assumed paginated merely from their
+prefix. Current hidden `74717` remains page-1-only until live evidence says otherwise.
 
 ## TDD boundary
 
