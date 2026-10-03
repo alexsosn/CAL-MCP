@@ -86,7 +86,7 @@ def test_mandaic_labelled_changed_root_route_fails_closed(href: str) -> None:
         parse_text_catalogue_page(response)
 
 
-def test_dedicated_mandaic_catalogue_returns_subdivided_and_direct_rows_as_texts() -> None:
+def test_dedicated_mandaic_catalogue_separates_subdivided_categories_and_direct_texts() -> None:
     page = _mandaic_parser()(
         _response(
             "<html><body>"
@@ -99,9 +99,10 @@ def test_dedicated_mandaic_catalogue_returns_subdivided_and_direct_rows_as_texts
         )
     )
 
-    assert page.categories == ()
+    assert [(item.category_id, item.label) for item in page.categories] == [
+        ("74401", "ATS (The Thousand and Twelve Questions)"),
+    ]
     assert [(item.file_id, item.subtext_id, item.label) for item in page.texts] == [
-        ("74401", None, "ATS (The Thousand and Twelve Questions)"),
         ("74501", None, "Haran Gauaita"),
     ]
 

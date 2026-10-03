@@ -327,9 +327,9 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
-## R-056 — KWIC full-context rows use the same fail-closed scholarly-text boundary
+## R-059 — KWIC full-context rows use the same fail-closed scholarly-text boundary
 
-**Rechecked:** 2026-10-01 from current retained CAL captures; issue #208.
+**Rechecked:** 2026-10-03 from retained fixtures plus bounded live acceptance; issue #208.
 
 Current full-context captures cover `getlex.php` and `bablex.php` rows in Roman, Hebrew and
 Unicode Syriac renderings. The earlier full-context table parser flattened unlinked text between
@@ -342,6 +342,69 @@ the basename. Detailed analysis and TDD boundary:
 non-whitespace loose text and unknown cell elements fail closed, and lexical/comment links must use
 the exact CAL-root endpoint with no fragment. Other concordance parsers keep their separately
 researched route rules.
+
+
+## R-058 — Mandaic 74421/col embeds the literal subtext selector in machine coordinates
+
+**Rechecked:** 2026-10-02; issue #220.
+
+A bounded three-request probe of the current `74421/col` page found 147 unique lexical-token
+machine coordinates, all of the exact form `74421col` followed by a non-empty decimal tail.
+Representative current coordinates include `74421col13614`; current comment coordinates use
+the same prefix. Numeric control `74421/103` remains on the ordinary decimal coordinate path.
+
+CAL's token-analysis endpoint accepted `getlex.php?coord=74421col13614&word=0` and returned its
+normal linked-analysis shape. Detailed evidence and request accounting are in
+`docs/research/issue-220-mandaic-col-machine-coordinates.md`.
+
+**Implication:** the literal `col` segment is preserved as opaque CAL machine-coordinate content.
+The shared generic coordinate grammar is not widened. CAL-MCP recognizes exactly
+`74421col[0-9]+` through the dedicated Mandaic special-coordinate predicate and enables it only
+for the exact selected text `file_id=74421, subtext_id=col`.
+
+## R-057 — Current direct Mandaic token coordinates include file-scoped letter forms
+
+**Rechecked:** 2026-10-02; issue #218.
+
+Bounded live probes of the current direct Mandaic catalogue texts found that token machine
+coordinates are not uniformly decimal. File `74425` uses decimal coordinates plus forms ending
+in one or two lowercase ASCII letters (for example `7442500a` and `74425231aa`). File `74429`
+uses decimal coordinates, forms ending in one lowercase letter, and an uppercase `A` series
+`74429A01`–`74429A32`. Other sampled direct Mandaic files and subdivided control `74401/12`
+used decimal token-coordinate tails.
+
+Direct `getlex.php` probes confirmed that CAL accepts `74425231aa` as a normal linked-analysis
+coordinate and accepts `74429A01` as a token-analysis selector yielding CAL's normal current
+no-lemma state. Detailed evidence and request accounting are in
+`docs/research/issue-218-mandaic-machine-coordinates.md`.
+
+**Implication:** these letters are preserved as opaque CAL coordinate content. The generic
+machine-coordinate grammar is not widened. CAL-MCP recognizes only the evidence-backed exact
+`74425` and `74429` coordinate families at the text-page and token-analysis boundaries;
+unrelated files retain their existing validation contracts.
+
+## R-056 — Current Mandaic subtext identity and pagination are separate axes
+
+**Rechecked:** 2026-10-01; issue #188.
+
+The current category-74 catalogue exposes 20 routed texts: eight direct `get_a_chapter.php`
+files and twelve subdivided `showsubtexts.php` files. The subdivided files do not share one
+page-number grammar: examples include sparse selectors (`74401`: `11`, `12`, `23`–`27`),
+one-digit selectors (`74430`: `1`–`5`), ranges beginning above one (`74422`: `106`–`170`),
+and the literal Mandaic selector `74421/col`.
+
+A selected Mandaic subtext may itself be paginated. Current `74401/12` page 2 keeps `sub=12`
+and changes CAL's private zero-based `page`; current direct `74501` page 2 changes the same
+private page axis while keeping an empty private sub selector in returned navigation. Detailed
+request/selector evidence is recorded in `docs/research/issue-188-mandaic-routing.md`.
+
+**Implication:** CAL-MCP exposes subdivided Mandaic files as catalogue nodes, preserves their exact
+returned `subtext_id`, and treats public one-based `page` as pagination within that selected
+subtext. It never derives a Mandaic subtext from the page number. Direct pagination is also
+file-evidenced rather than inferred from catalogue membership: current evidence supports
+`page>1` only for direct `74501`; the other current direct files remain page-1-only. The literal
+`col` extension is accepted only for known Mandaic subdivided files; ordinary/CPA subtext grammar
+is unchanged.
 
 ## R-055 — Syriac group pages use CAL's card layout
 
@@ -390,7 +453,7 @@ closed.
 
 `newsearchtxts.php` links some results as `showsubtexts.php?subtext=<id>&cset=H` (for example Neofiti `54001` and `70703012` HS 3030). These are catalogue nodes, and `cal_text_catalogue(category_id=<id>)` lists their texts. Detailed evidence: `docs/research/issue-171-text-search-subtext-links.md`.
 
-A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The route follows the collection: Mandaic `74…` links (`cset` `M` or `R`) keep text-page routing, other identifiers with a known script code are catalogue nodes, and everything else fails closed.
+A `Peshitta` search returns 59 such nodes with `cset=U`. **Implication at the time:** search matches state which tool follows them (`follow_up_tool`), and catalogue nodes report `category_id`. The original #171 conclusion treated Mandaic `74…` `showsubtexts.php` links as text-page follow-ups. **Superseded for Mandaic by R-056 / #188:** those links are now known to be real catalogue nodes and compose through `cal_text_catalogue`; direct `get_a_chapter.php` search hits remain page follow-ups.
 
 ## R-052 — Citation search explicitly rejects some single common words
 
@@ -701,7 +764,7 @@ Sources:
 - https://cal.huc.edu/show_Mandaic.php?R1=74
 - https://cal.huc.edu/showsubtexts.php?subtext=74410&cset=R
 
-**Implication:** Mandaic catalogue children accept `cset=R` or `M`, and titles come from the link text; page routing is unchanged.
+**Implication at the time:** Mandaic catalogue children accept `cset=R` or `M`, and titles come from the link text. **Superseded routing detail:** R-056 / #188 later established that current `showsubtexts.php` entries are catalogue nodes whose exact child `subtext_id` must be discovered explicitly before page retrieval.
 
 ## R-035 — Text pages render each line as a two-cell table row
 

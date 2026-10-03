@@ -30,17 +30,29 @@ def test_ginza_search_preserves_specialized_mandaic_results_in_cal_order() -> No
     page = parse_text_search_page(_response())
 
     assert [
-        (match.file_id, match.subtext_id, match.label, match.description) for match in page.matches
+        (
+            match.file_id,
+            match.subtext_id,
+            match.category_id,
+            match.follow_up_tool,
+            match.label,
+            match.description,
+        )
+        for match in page.matches
     ] == [
         (
-            "74410",
             None,
+            None,
+            "74410",
+            "cal_text_catalogue",
             "Ginza Rabba (Great Treasury) Right Side",
             "prepared by M. Morgenstern from the Petermann edition and collated manuscripts.",
         ),
         (
-            "74411",
             None,
+            None,
+            "74411",
+            "cal_text_catalogue",
             "Ginza Rabba (Great Treasury) Left Side",
             (
                 "Ginza Smala prepared from the Petermann edition and known manuscripts "
@@ -75,7 +87,7 @@ async def test_ginza_search_uses_one_existing_post_without_followup() -> None:
     finally:
         await client.aclose()
 
-    assert [match.file_id for match in result.matches] == ["74410", "74411"]
+    assert [match.category_id for match in result.matches] == ["74410", "74411"]
     assert result.provenance.original_query == "Ginza"
     assert result.provenance.submitted_query == "Ginza"
     assert transport.requests == [

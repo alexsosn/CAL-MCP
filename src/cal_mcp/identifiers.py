@@ -4,6 +4,9 @@ import re
 
 _SUBTEXT_ID_RE = re.compile(r"^[0-9]+[a-z]?$")
 _MACHINE_COORDINATE_RE = re.compile(r"^(?:[0-9]+|[0-9]+[a-z][0-9]+)$")
+_MANDAIC_74421_COL_MACHINE_COORDINATE_RE = re.compile(r"^74421col[0-9]+$")
+_MANDAIC_74425_MACHINE_COORDINATE_RE = re.compile(r"^74425[0-9]+[a-z]{0,2}$")
+_MANDAIC_74429_MACHINE_COORDINATE_RE = re.compile(r"^74429(?:[0-9]+[a-z]?|A[0-9]+)$")
 
 
 def is_cal_subtext_id(value: object) -> bool:
@@ -18,6 +21,18 @@ def is_cal_machine_coordinate(value: object) -> bool:
     return isinstance(value, str) and _MACHINE_COORDINATE_RE.fullmatch(value) is not None
 
 
+def is_cal_mandaic_machine_coordinate(value: object) -> bool:
+    """Return whether value matches a researched special Mandaic machine coordinate."""
+
+    if not isinstance(value, str):
+        return False
+    return (
+        _MANDAIC_74421_COL_MACHINE_COORDINATE_RE.fullmatch(value) is not None
+        or _MANDAIC_74425_MACHINE_COORDINATE_RE.fullmatch(value) is not None
+        or _MANDAIC_74429_MACHINE_COORDINATE_RE.fullmatch(value) is not None
+    )
+
+
 def has_subtext_letter_suffix(value: str) -> bool:
     """Return whether an already validated CAL subtext ID ends in a lowercase ASCII letter."""
 
@@ -27,5 +42,6 @@ def has_subtext_letter_suffix(value: str) -> bool:
 __all__ = [
     "has_subtext_letter_suffix",
     "is_cal_machine_coordinate",
+    "is_cal_mandaic_machine_coordinate",
     "is_cal_subtext_id",
 ]

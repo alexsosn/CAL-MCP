@@ -17,6 +17,7 @@ from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
 from cal_mcp.identifiers import (
     has_subtext_letter_suffix,
     is_cal_machine_coordinate,
+    is_cal_mandaic_machine_coordinate,
     is_cal_subtext_id,
 )
 from cal_mcp.lexicon import _Line, _Link, _parse_lines
@@ -99,6 +100,9 @@ _MANDAIC_SUBDIVIDED_FILE_IDS = frozenset(
         "74923",
     }
 )
+_MANDAIC_PAGINATED_DIRECT_FILE_IDS = frozenset({"74501"})
+_MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS = frozenset({"74425", "74429"})
+_MANDAIC_SPECIAL_COORDINATE_PREFIXES = frozenset({"74421col", "74425", "74429"})
 _ONKELOS_JONATHAN_CATEGORY_ID = "51"
 _ONKELOS_JONATHAN_PATH = "targum_onkelos_jonathan.html"
 _ONKELOS_JONATHAN_LABEL = "Targums Onkelos and Jonathan to the Prophets"
@@ -688,6 +692,7 @@ class _RouteLinkCounter(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.count = 0
+        self.chapter_count = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag != "a":
@@ -695,13 +700,23 @@ class _RouteLinkCounter(HTMLParser):
         path = urlsplit(dict(attrs).get("href") or "").path
         if path.endswith(("showsubtexts.php", "get_a_chapter.php")):
             self.count += 1
+        if path.endswith("get_a_chapter.php"):
+            self.chapter_count += 1
 
 
-def _count_mandaic_route_links(response: CalResponse) -> int:
+def _mandaic_route_counts(response: CalResponse) -> tuple[int, int]:
     counter = _RouteLinkCounter()
     counter.feed(response.body.decode("utf-8", errors="replace"))
     counter.close()
-    return counter.count
+    return counter.count, counter.chapter_count
+
+
+def _count_mandaic_route_links(response: CalResponse) -> int:
+    return _mandaic_route_counts(response)[0]
+
+
+def _count_mandaic_chapter_route_links(response: CalResponse) -> int:
+    return _mandaic_route_counts(response)[1]
 
 
 def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
@@ -712,12 +727,13 @@ def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
     if set(response_query) != {"R1"} or response_query.get("R1") != [_MANDAIC_CATEGORY_ID]:
         raise TextParseError("CAL Mandaic catalogue response selector changed unexpectedly")
 
+    categories: list[TextCategoryRef] = []
     texts: list[TextRef] = []
     seen_ids: set[str] = set()
     for line in _parse_lines(response):
-        candidates: list[TextRef] = []
+        candidates: list[TextCategoryRef | TextRef] = []
         for link in line.links:
-            candidate = _mandaic_catalogue_text_from_link(line, link, response.url)
+            candidate = _mandaic_catalogue_item_from_link(line, link, response.url)
             if candidate is not None:
                 candidates.append(candidate)
         if len(candidates) > 1:
@@ -725,19 +741,25 @@ def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
         if not candidates:
             continue
         candidate = candidates[0]
-        if candidate.file_id in seen_ids:
+        identifier = (
+            candidate.category_id if isinstance(candidate, TextCategoryRef) else candidate.file_id
+        )
+        if identifier in seen_ids:
             raise TextParseError("CAL Mandaic catalogue repeats a file identifier")
-        seen_ids.add(candidate.file_id)
-        texts.append(candidate)
+        seen_ids.add(identifier)
+        if isinstance(candidate, TextCategoryRef):
+            categories.append(candidate)
+        else:
+            texts.append(candidate)
 
-    if not texts:
+    if not categories and not texts:
         raise TextParseError("CAL Mandaic catalogue contains no recognizable text rows")
     # The shared line splitter drops a row with no text together with its links, so a
-    # route link without a title would vanish silently; every route link must be a text.
+    # route link without a title would vanish silently; every route link must be represented.
     route_links = _count_mandaic_route_links(response)
-    if route_links != len(texts):
+    if route_links != len(categories) + len(texts):
         raise TextParseError("CAL Mandaic catalogue has a text link without a rendered title")
-    return TextCataloguePage(categories=(), texts=tuple(texts))
+    return TextCataloguePage(categories=tuple(categories), texts=tuple(texts))
 
 
 def parse_text_search_page(response: CalResponse) -> TextSearchPage:
@@ -920,11 +942,20 @@ def _parse_text_page(
         next_page=next_page,
         allow_navigation_without_page_count=mandaic_page_route,
     )
-    expected_coordinate_prefix = (
-        f"{requested_file_id}{requested_subtext_id}"
-        if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
-        else None
-    )
+    expected_coordinate_prefix: str | None
+    if requested_file_id == "74421" and requested_subtext_id == "col":
+        expected_coordinate_prefix = "74421col"
+    else:
+        expected_coordinate_prefix = (
+            f"{requested_file_id}{requested_subtext_id}"
+            if requested_subtext_id is not None and has_subtext_letter_suffix(requested_subtext_id)
+            else None
+        )
+    if (
+        requested_subtext_id is None
+        and requested_file_id in _MANDAIC_ALPHANUMERIC_COORDINATE_FILE_IDS
+    ):
+        expected_coordinate_prefix = requested_file_id
     if cal_file_sub is not None:
         # A split six-digit id is accepted from indirect evidence, so every row must also
         # carry the requested id as its coordinate prefix (R-046).
@@ -1002,6 +1033,19 @@ class TextService:
                 params=(("R1", _MANDAIC_CATEGORY_ID),),
             )
             parser = parse_mandaic_catalogue_page
+        elif normalized_category in _MANDAIC_SUBDIVIDED_FILE_IDS:
+            request = CalRequest(
+                method="GET",
+                path="showsubtexts.php",
+                params=(("subtext", normalized_category),),
+            )
+
+            def parser(response: CalResponse) -> TextCataloguePage:
+                return _parse_mandaic_subtext_catalogue_page(
+                    response,
+                    requested_file_id=normalized_category,
+                )
+
         else:
             request = CalRequest(
                 method="GET",
@@ -1057,7 +1101,12 @@ class TextService:
         subtext_id: str | None = None,
     ) -> TextInformationResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
+        if subtext_id is None:
+            normalized_subtext = None
+        elif normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS:
+            normalized_subtext = _validate_mandaic_subtext_id(subtext_id)
+        else:
+            normalized_subtext = _validate_subtext_id(subtext_id)
         coord = (
             normalized_file
             if normalized_subtext is None
@@ -1126,28 +1175,39 @@ class TextService:
         page: int = 1,
     ) -> TextPageResult:
         normalized_file = _validate_id(file_id, "file_id")
-        normalized_subtext = None if subtext_id is None else _validate_subtext_id(subtext_id)
+        if subtext_id is None:
+            normalized_subtext = None
+        elif normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS:
+            normalized_subtext = _validate_mandaic_subtext_id(subtext_id)
+        else:
+            normalized_subtext = _validate_subtext_id(subtext_id)
         if isinstance(page, bool) or not isinstance(page, int) or page < 1:
             raise CalInputError("page must be a positive integer")
         if normalized_file in _CPA_DIRECT_FILE_IDS and normalized_subtext is not None:
             raise CalInputError("direct CPA texts do not accept subtext_id")
         if normalized_file in _CPA_SUBDIVIDED_FILE_IDS and normalized_subtext is None:
             raise CalInputError("subdivided CPA texts require subtext_id")
+        if normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS and normalized_subtext is None:
+            raise CalInputError("subdivided Mandaic texts require subtext_id")
+        if normalized_file in _MANDAIC_PAGINATED_DIRECT_FILE_IDS and normalized_subtext is not None:
+            raise CalInputError("direct Mandaic texts do not accept subtext_id")
 
-        mandaic_collection_route = normalized_subtext is None and normalized_file.startswith(
-            _MANDAIC_COLLECTION_PREFIX
-        )
-        mandaic_page_route = (
-            mandaic_collection_route and normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS
-        )
-        mandaic_direct_route = mandaic_collection_route and not mandaic_page_route
-        if mandaic_page_route:
+        mandaic_page_route = False
+        if normalized_file in _MANDAIC_SUBDIVIDED_FILE_IDS:
+            mandaic_page_route = True
             params = [
                 ("cset", "M"),
                 ("file", normalized_file),
-                ("sub", f"{page:03d}"),
+                ("sub", normalized_subtext or ""),
             ]
-        elif mandaic_direct_route:
+            if page > 1:
+                params.append(("page", str(page - 1)))
+        elif normalized_file in _MANDAIC_PAGINATED_DIRECT_FILE_IDS:
+            mandaic_page_route = True
+            params = [("cset", "M"), ("file", normalized_file)]
+            if page > 1:
+                params.append(("page", str(page - 1)))
+        elif normalized_subtext is None and normalized_file.startswith(_MANDAIC_COLLECTION_PREFIX):
             if page != 1:
                 raise CalInputError("direct Mandaic texts currently support only page 1")
             params = [("cset", "M"), ("file", normalized_file)]
@@ -1203,6 +1263,18 @@ def _validate_subtext_id(value: str) -> str:
             "subtext_id must be CAL decimal digits with an optional lowercase letter suffix"
         )
     return value
+
+
+def _validate_mandaic_subtext_id(value: str) -> str:
+    if value == "col":
+        return value
+    return _validate_subtext_id(value)
+
+
+def _parse_mandaic_subtext_id(value: str) -> str:
+    if value == "col":
+        return value
+    return _parse_subtext_id(value)
 
 
 def _validate_line_comment_coordinate(value: str) -> str:
@@ -1366,11 +1438,11 @@ def _text_ref_from_link(
     )
 
 
-def _mandaic_catalogue_text_from_link(
+def _mandaic_catalogue_item_from_link(
     line: _Line,
     link: _Link,
     source_url: str,
-) -> TextRef | None:
+) -> TextCategoryRef | TextRef | None:
     parsed = urlsplit(link.href)
     endpoint: str | None = None
     selector: str | None = None
@@ -1423,7 +1495,102 @@ def _mandaic_catalogue_text_from_link(
         info_query = parse_qs(urlsplit(other.href).query, keep_blank_values=True)
         if _single_query_value(info_query, "coord", "Mandaic catalogue") != file_id:
             raise TextParseError("CAL Mandaic catalogue information link names another file")
+    if endpoint == "showsubtexts.php":
+        return TextCategoryRef(category_id=file_id, label=rendered_label)
     return TextRef(file_id=file_id, subtext_id=None, label=rendered_label)
+
+
+def _parse_mandaic_subtext_catalogue_page(
+    response: CalResponse,
+    *,
+    requested_file_id: str,
+) -> TextCataloguePage:
+    parsed_response = urlsplit(response.url)
+    if parsed_response.path != "/showsubtexts.php":
+        raise TextParseError("CAL Mandaic subtext catalogue endpoint changed unexpectedly")
+    response_query = parse_qs(parsed_response.query, keep_blank_values=True)
+    if set(response_query) != {"subtext"} or response_query.get("subtext") != [requested_file_id]:
+        raise TextParseError("CAL Mandaic subtext catalogue selector changed unexpectedly")
+
+    texts: list[TextRef] = []
+    seen_subtexts: set[str] = set()
+    for line in _parse_lines(response):
+        chapter_links = [link for link in line.links if _is_path(link.href, "get_a_chapter.php")]
+        if len(chapter_links) > 1:
+            raise TextParseError("CAL Mandaic subtext row exposes multiple text routes")
+        if not chapter_links:
+            continue
+        link = chapter_links[0]
+        parsed = urlsplit(link.href)
+        if (
+            parsed.scheme
+            or parsed.netloc
+            or parsed.fragment
+            or parsed.path
+            not in {
+                "get_a_chapter.php",
+                "/get_a_chapter.php",
+            }
+        ):
+            raise TextParseError("CAL Mandaic subtext route changed unexpectedly")
+        query = parse_qs(parsed.query, keep_blank_values=True)
+        if set(query) != {"file", "sub", "cset"}:
+            raise TextParseError("CAL Mandaic subtext route has unexpected selectors")
+        if query.get("file") != [requested_file_id]:
+            raise TextParseError("CAL Mandaic subtext route names another file")
+        if query.get("cset") != ["J"]:
+            raise TextParseError("CAL Mandaic subtext route has an unexpected cset")
+        subtext_id = _parse_mandaic_subtext_id(_single_query_value(query, "sub", "Mandaic subtext"))
+        if subtext_id in seen_subtexts:
+            raise TextParseError("CAL Mandaic subtext catalogue repeats a subtext")
+        seen_subtexts.add(subtext_id)
+        label = link.text.strip()
+        if not label:
+            raise TextParseError("CAL Mandaic subtext route has no rendered label")
+
+        info_links = [link for link in line.links if _is_path(link.href, "get_file_info.php")]
+        if len(info_links) > 1:
+            raise TextParseError("CAL Mandaic subtext row exposes multiple information links")
+        if info_links:
+            info = urlsplit(info_links[0].href)
+            if (
+                info.scheme
+                or info.netloc
+                or info.fragment
+                or info.path
+                not in {
+                    "get_file_info.php",
+                    "/get_file_info.php",
+                }
+            ):
+                raise TextParseError("CAL Mandaic subtext information route changed unexpectedly")
+            info_query = parse_qs(info.query, keep_blank_values=True)
+            if set(info_query) - {"coord", "return", "script"}:
+                raise TextParseError(
+                    "CAL Mandaic subtext information link has unexpected selectors"
+                )
+            if (
+                _single_query_value(info_query, "coord", "Mandaic subtext information")
+                != requested_file_id + subtext_id
+            ):
+                raise TextParseError(
+                    "CAL Mandaic subtext information coordinate names another text"
+                )
+
+        texts.append(
+            TextRef(
+                file_id=requested_file_id,
+                subtext_id=subtext_id,
+                label=label,
+            )
+        )
+
+    raw_route_links = _count_mandaic_chapter_route_links(response)
+    if raw_route_links != len(texts):
+        raise TextParseError("CAL Mandaic subtext catalogue has a route without a rendered title")
+    if not texts:
+        raise TextParseError("CAL Mandaic subtext catalogue contains no recognizable text rows")
+    return TextCataloguePage(categories=(), texts=tuple(texts))
 
 
 def _search_text_ref_from_link(
@@ -1446,15 +1613,13 @@ def _search_text_ref_from_link(
         or _ID_RE.fullmatch(subtext_values[0]) is None
     ):
         raise TextParseError("CAL text search subtext result has an invalid file identifier")
-    # The route follows CAL's collection, not its script selector (R-053): Mandaic
-    # collection files are read by cal_text_page, other subtext links are catalogue nodes.
+    # A showsubtexts.php result is a catalogue node. Mandaic uses its own script
+    # selectors (M/R), while the other collections use the shared script set (R-056).
     identifier = subtext_values[0]
     cset_values = query.get("cset") or []
     cset = cset_values[0] if len(cset_values) == 1 else None
     mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
-    if mandaic and cset in _MANDAIC_SEARCH_CSETS:
-        file_id, category_id, tool = identifier, None, _FOLLOW_UP_TEXT_PAGE
-    elif not mandaic and cset in _SCRIPT_CSETS:
+    if (mandaic and cset in _MANDAIC_SEARCH_CSETS) or (not mandaic and cset in _SCRIPT_CSETS):
         file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
     else:
         raise TextParseError("CAL text search subtext result has an invalid cset")
@@ -1629,12 +1794,23 @@ def _page_navigation(
                 raise TextParseError("CAL text page navigation file differs from requested file")
 
             if mandaic_page_route:
-                cset = _single_query_value(query, "cset", "page-navigation")
-                if cset != "M":
+                core_keys = frozenset({"file", "sub", "cset", "page"})
+                with_clen_keys = core_keys | {"clen"}
+                if frozenset(query) not in {core_keys, with_clen_keys}:
+                    raise TextParseError("CAL Mandaic text navigation has unexpected selectors")
+                if query.get("cset") != ["M"]:
                     raise TextParseError("CAL text page navigation cset differs from Mandaic route")
-                upstream_sub = _single_query_value(query, "sub", "page-navigation")
-                _parse_id(upstream_sub, "subtext_id")
-                public_page = int(upstream_sub)
+                expected_sub = requested_subtext_id or ""
+                if query.get("sub") != [expected_sub]:
+                    raise TextParseError(
+                        "CAL text page navigation subtext differs from requested subtext"
+                    )
+                if "clen" in query and query.get("clen") != ["5"]:
+                    raise TextParseError("CAL Mandaic text navigation has an unexpected clen")
+                upstream_page = _single_query_value(query, "page", "page-navigation")
+                if not upstream_page.isascii() or not upstream_page.isdecimal():
+                    raise TextParseError("CAL text page navigation has a nonnumeric page")
+                public_page = int(upstream_page) + 1
             else:
                 if requested_file_id in _CPA_TEXT_FILE_IDS:
                     if requested_subtext_id is None:
@@ -1909,6 +2085,12 @@ def _parse_text_machine_coordinate(
         if require_positive_decimal:
             return _parse_positive_id(value, "coordinate")
         return _parse_id(value, "coordinate")
+    if expected_coordinate_prefix in _MANDAIC_SPECIAL_COORDINATE_PREFIXES:
+        if not is_cal_mandaic_machine_coordinate(value):
+            raise TextParseError("CAL returned an invalid special-Mandaic machine coordinate")
+        if not value.startswith(expected_coordinate_prefix):
+            raise TextParseError("CAL text coordinate differs from the requested Mandaic text")
+        return value
     if not is_cal_machine_coordinate(value):
         raise TextParseError("CAL returned an invalid machine coordinate")
     if not value.startswith(expected_coordinate_prefix):

@@ -73,19 +73,19 @@ def test_peshitta_mixes_text_links_and_unicode_catalogue_nodes() -> None:
     ]
 
 
-def test_mandaic_collection_results_are_read_with_the_text_page() -> None:
+def test_mandaic_subdivided_results_are_catalogue_nodes() -> None:
     matches = _parse(GINZA.read_bytes()).matches
 
     assert [_shape(match) for match in matches] == [
-        ("74410", None, None, "cal_text_page"),
-        ("74411", None, None, "cal_text_page"),
+        (None, None, "74410", "cal_text_catalogue"),
+        (None, None, "74411", "cal_text_catalogue"),
     ]
 
 
-def test_mandaic_collection_link_in_roman_script_is_still_the_text_page() -> None:
+def test_mandaic_collection_link_in_roman_script_is_still_a_catalogue_node() -> None:
     body = GINZA.read_bytes().replace(b"subtext=74410&amp;cset=M", b"subtext=74410&amp;cset=R")
 
-    assert _shape(_parse(body).matches[0]) == ("74410", None, None, "cal_text_page")
+    assert _shape(_parse(body).matches[0]) == (None, None, "74410", "cal_text_catalogue")
 
 
 @pytest.mark.parametrize(
