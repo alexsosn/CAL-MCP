@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
       - name: Install candidate
         run: python -m pip install .
-      - name: Inspect uncertain POS on browse and exact entry
+      - name: Inspect exact-entry uncertain POS structure and false header
         run: |
           python - <<'PY'
           from datetime import UTC, datetime
@@ -28,86 +28,66 @@ jobs:
           from urllib.request import Request, urlopen
 
           from cal_mcp.client import CalResponse
-          from cal_mcp.lexicon import (
-              _lemma_key_from_href,
-              _parse_lemma_header,
-              _parse_lines,
-              parse_browse_page,
-              parse_lexicon_entry,
-          )
+          from cal_mcp.lexicon import _parse_lemma_header, _parse_lines, parse_lexicon_entry
 
-          URLS = {
-              "browse": "https://cal.huc.edu/browseSKEYheaders.php?" + urlencode({"first3": '"$l"'}),
-              "entry": "https://cal.huc.edu/oneentry.php?" + urlencode({"lemma": "$lh N", "cits": "all"}),
-          }
+          url = "https://cal.huc.edu/oneentry.php?" + urlencode({"lemma": "$lh N", "cits": "all"})
+          req = Request(url, headers={"User-Agent": "CAL-MCP bounded issue-222 research"})
+          with urlopen(req, timeout=20) as response:
+              raw = response.read()
+              print("HTTP", response.status, "bytes", len(raw))
 
-          class PosProbe(HTMLParser):
+          class StackProbe(HTMLParser):
               def __init__(self):
                   super().__init__(convert_charrefs=True)
-                  self.in_pos = False
-                  self.parts = []
-                  self.values = []
+                  self.stack = []
               def handle_starttag(self, tag, attrs):
-                  if tag == "pos":
-                      self.in_pos = True
-                      self.parts = []
+                  attrs = dict(attrs)
+                  marker = tag
+                  if attrs.get("class"):
+                      marker += "." + ".".join(attrs["class"].split())
+                  self.stack.append(marker)
               def handle_endtag(self, tag):
-                  if tag == "pos" and self.in_pos:
-                      self.values.append(" ".join("".join(self.parts).split()))
-                      self.in_pos = False
+                  if self.stack:
+                      self.stack.pop()
               def handle_data(self, data):
-                  if self.in_pos:
-                      self.parts.append(data)
+                  if "n.f.?" in data:
+                      print("DOM", repr(data.strip()), "stack", self.stack[-6:])
 
-          pages = {}
-          for label, url in URLS.items():
-              req = Request(url, headers={"User-Agent": "CAL-MCP bounded issue-222 research"})
-              with urlopen(req, timeout=20) as response:
-                  raw = response.read()
-                  print("HTTP", label, response.status, "bytes", len(raw))
-              pages[label] = CalResponse(
-                  status_code=200,
-                  url=url,
-                  body=raw,
-                  content_type="text/html; charset=UTF-8",
-                  retrieved_at=datetime.now(UTC),
+          probe = StackProbe()
+          probe.feed(raw.decode("utf-8", errors="replace"))
+          probe.close()
+
+          cal = CalResponse(
+              status_code=200,
+              url=url,
+              body=raw,
+              content_type="text/html; charset=UTF-8",
+              retrieved_at=datetime.now(UTC),
+          )
+          parsed = parse_lexicon_entry(cal, lemma_key="$lh N")
+          print(
+              "RETURNED",
+              "lemma_key", repr(parsed.lemma.lemma_key),
+              "headwords", parsed.lemma.headwords,
+              "pos", repr(parsed.lemma.part_of_speech),
+              "gloss", repr(parsed.lemma.gloss),
+          )
+
+          for index, line in enumerate(_parse_lines(cal)):
+              candidate = _parse_lemma_header(
+                  line.text,
+                  lemma_key="$lh N",
+                  require_gloss=True,
               )
-              p = PosProbe()
-              p.feed(raw.decode("utf-8", errors="replace"))
-              p.close()
-              uncertain = [value for value in p.values if "?" in value]
-              print("POS", label, "uncertain_count", len(uncertain), "values", sorted(set(uncertain)))
-
-          browse = pages["browse"]
-          try:
-              parse_browse_page(browse)
-              print("BROWSE_PARSE ok")
-          except Exception as exc:
-              print("BROWSE_PARSE", type(exc).__name__, str(exc))
-
-          uncertain_headers = []
-          for line in _parse_lines(browse):
-              for link in line.links:
-                  key = _lemma_key_from_href(link.href)
-                  if key is None or "?" not in link.text:
-                      continue
-                  parsed = _parse_lemma_header(link.text, lemma_key=key, require_gloss=False)
-                  uncertain_headers.append((key, link.text, parsed is not None))
-          print("BROWSE_HEADERS", uncertain_headers)
-
-          entry = pages["entry"]
-          try:
-              parsed_entry = parse_lexicon_entry(entry, lemma_key="$lh N")
-              print("ENTRY_PARSE ok", parsed_entry.lemma.part_of_speech)
-          except Exception as exc:
-              print("ENTRY_PARSE", type(exc).__name__, str(exc))
-
-          for line in _parse_lines(entry):
-              if "?" in line.text:
-                  parsed = _parse_lemma_header(
-                      line.text,
-                      lemma_key="$lh N",
-                      require_gloss=True,
+              if "n.f.?" in line.text or candidate is not None:
+                  print(
+                      "LINE", index,
+                      repr(line.text),
+                      "candidate",
+                      None if candidate is None else {
+                          "headwords": candidate.headwords,
+                          "pos": candidate.part_of_speech,
+                          "gloss": candidate.gloss,
+                      },
                   )
-                  print("ENTRY_HEADER", repr(line.text), "header_parse", parsed is not None)
           PY
