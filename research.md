@@ -327,6 +327,24 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-061 — CAL lemma headers use a trailing question mark for uncertain POS
+
+**Rechecked:** 2026-10-03; issue #222.
+
+Current lemma `$lh N` is rendered as `šlh n.f.?` on the `$l` browse page and as
+`šlh n.f.? watering(?)` on its exact entry. On the exact page, DOM evidence places `n.f.?`
+inside `div.lemma-header > span.lemma-pos`, so the question mark is part of CAL's displayed POS,
+not gloss punctuation.
+
+The shared parser currently rejects that real header and the exact-entry path then silently accepts
+later prose containing `suggestions.` as a false lemma header, corrupting headword/POS/gloss
+fields.
+
+**Implication:** allow exactly one trailing uncertainty marker only when removing it leaves a token
+that already satisfies the existing POS grammar, and preserve the literal marked token in
+`part_of_speech`. Do not widen other punctuation. Detailed evidence:
+`docs/research/issue-222-uncertain-lexicon-pos.md`.
+
 ## R-059 — KWIC full-context rows use the same fail-closed scholarly-text boundary
 
 **Rechecked:** 2026-10-03 from retained fixtures plus bounded live acceptance; issue #208.
