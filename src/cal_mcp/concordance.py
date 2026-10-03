@@ -14,7 +14,7 @@ from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.normalization import _CAL_CODE_LETTERS, InputRepresentation, normalize_query
-from cal_mcp.texts import TextLine, TextToken
+from cal_mcp.texts import TextLine, TextToken, _RAW_TEXT_LT_RE
 
 _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
@@ -907,7 +907,11 @@ def parse_kwic_full_context_page(
         raise ConcordanceParseError("CAL full-context not-found target differs from request")
 
     parser = _TableHTMLParser()
-    parser.feed(response.body.decode("utf-8", errors="replace"))
+    # CAL full-context rows can contain the same raw scholarly leading "<" observed on
+    # text pages. Escape only syntactically impossible tag openings before HTML parsing;
+    # genuine unknown elements still reach the strict row allow-list and fail closed.
+    body = _RAW_TEXT_LT_RE.sub("&lt;", response.body.decode("utf-8", errors="replace"))
+    parser.feed(body)
     parser.close()
     lines = tuple(
         line
