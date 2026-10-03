@@ -14,7 +14,7 @@ from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.identifiers import is_cal_subtext_id
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.normalization import _CAL_CODE_LETTERS, InputRepresentation, normalize_query
-from cal_mcp.texts import TextLine, TextToken, _RAW_TEXT_LT_RE
+from cal_mcp.texts import _RAW_TEXT_LT_RE, TextLine, TextToken
 
 _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
