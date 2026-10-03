@@ -71,7 +71,7 @@ def test_browse_page_accepts_current_uncertain_pos_header() -> None:
               <div><span class="gloss">watering(?)</span></div>
             </body></html>
             """,
-            url='https://cal.huc.edu/browseSKEYheaders.php?first3=%22%24l%22',
+            url="https://cal.huc.edu/browseSKEYheaders.php?first3=%22%24l%22",
         )
     )
 
