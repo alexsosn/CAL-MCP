@@ -329,7 +329,7 @@ When new evidence changes an assumption:
 
 ## R-061 — CAL lemma headers use a trailing question mark for uncertain POS
 
-**Rechecked:** 2026-10-03; issue #222.
+**Rechecked:** 2026-10-04; issue #222. Final installed-stdio acceptance: run `37218694925`.
 
 Current lemma `$lh N` is rendered as `šlh n.f.?` on the `$l` browse page and as
 `šlh n.f.? watering(?)` on its exact entry. On the exact page, DOM evidence places `n.f.?`
