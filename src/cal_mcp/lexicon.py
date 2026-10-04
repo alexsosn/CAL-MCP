@@ -856,9 +856,10 @@ def _split_trailing_parenthetical(value: str) -> tuple[str, str] | None:
 
 
 def _looks_like_pos_token(value: str) -> bool:
-    if not value or not value[0].isascii() or not value[0].isalpha() or "." not in value:
+    candidate = value[:-1] if value.endswith("?") else value
+    if not candidate or not candidate[0].isascii() or not candidate[0].isalpha() or "." not in candidate:
         return False
-    return all(char.isascii() and (char.isalnum() or char in "./-") for char in value)
+    return all(char.isascii() and (char.isalnum() or char in "./-") for char in candidate)
 
 
 def _is_lemma_entry_href(href: str) -> bool:
