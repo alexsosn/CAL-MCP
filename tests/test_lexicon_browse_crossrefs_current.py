@@ -98,7 +98,7 @@ def test_redirect_target_can_later_appear_as_a_distinct_ordinary_entry() -> None
 @pytest.mark.parametrize(
     ("old", "new"),
     [
-        ('<span class="uni">šlhˀw</span> → <a ', '→ <a '),
+        ('<span class="uni">šlhˀw</span> → <a ', "→ <a "),
         (
             '<span class="uni">šlhˀw</span> → <a ',
             '<span class="uni">šlhˀw</span> → → <a ',
