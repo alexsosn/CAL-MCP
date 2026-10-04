@@ -93,3 +93,14 @@ upstream value.
 
 The final browse call may still expose #175's pre-existing flattened cross-reference semantics; this
 ticket validates header correctness only.
+
+## Validation result
+
+Run `37218694925` on 2026-10-04 completed the planned installed-wheel/stdio acceptance.
+Two explicit MCP calls exercised browse and exact lookup; the lookup's documented two-request
+workflow made the total live load three CAL GETs. Both surfaces preserved `n.f.?`, and the exact
+entry selected `šlh` rather than the known later-prose false header.
+
+The temporary workflow is removed before the final workflow-free CI and exact-head adversarial
+review.
+
