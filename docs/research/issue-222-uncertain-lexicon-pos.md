@@ -7,7 +7,7 @@
 ## Trigger
 
 The current `$l` lexicon browse page fails because lemma key `$lh N` is rendered as
-`šlh n.f.?`. The shared lemma-header parser does not recognize `n.f.?` as a part-of-speech
+`šlh n.f.?`. At the research base, the shared lemma-header parser did not recognize `n.f.?` as a part-of-speech
 token.
 
 The defect is shared by browse and exact-entry parsing. On the exact entry, the current parser does
