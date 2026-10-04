@@ -8,10 +8,10 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError
 from cal_mcp.lexicon import (
-    _NOT_FOUND_PHRASES,
     _is_lemma_entry_href,
     _lemma_key_from_href,
     _lemma_to_dict,
+    _NOT_FOUND_PHRASES,
     _parse_lemma_header,
     _parse_lines,
     LemmaRef,
