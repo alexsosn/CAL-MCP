@@ -356,11 +356,7 @@ def _browse_row_to_dict(row: LexiconBrowseRow) -> dict[str, object]:
             "lemma": _lemma_to_dict(row.lemma),
         }
 
-    if (
-        row.source_text is None
-        or row.target_lemma_key is None
-        or row.target_label is None
-    ):
+    if row.source_text is None or row.target_lemma_key is None or row.target_label is None:
         raise AssertionError("cross-reference browse row lacks target data")
     return {
         "kind": row.kind.value,
