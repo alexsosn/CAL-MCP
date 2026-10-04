@@ -106,9 +106,7 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
 
         if arrow_count:
             if arrow_count != 1:
-                raise LexiconParseError(
-                    "CAL lexicon browse cross-reference has multiple arrows"
-                )
+                raise LexiconParseError("CAL lexicon browse cross-reference has multiple arrows")
             if len(lemma_links) != 1 or len(line.links) != 1:
                 raise LexiconParseError(
                     "CAL lexicon browse cross-reference must have one target link"
@@ -117,9 +115,7 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
             arrow_index = line.text.index("→")
             source_text = line.text[:arrow_index].strip()
             if not source_text:
-                raise LexiconParseError(
-                    "CAL lexicon browse cross-reference has an empty source"
-                )
+                raise LexiconParseError("CAL lexicon browse cross-reference has an empty source")
 
             target = lemma_links[0]
             target_key = _lemma_key_from_href(target.href)
@@ -159,16 +155,12 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
         if not lemma_links:
             continue
         if len(lemma_links) != 1:
-            raise LexiconParseError(
-                "CAL lexicon browse entry row has multiple lemma links"
-            )
+            raise LexiconParseError("CAL lexicon browse entry row has multiple lemma links")
 
         link = lemma_links[0]
         lemma_key = _lemma_key_from_href(link.href)
         if lemma_key is None:
-            raise LexiconParseError(
-                "CAL lexicon browse candidate is missing a usable lemma key"
-            )
+            raise LexiconParseError("CAL lexicon browse candidate is missing a usable lemma key")
         parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
         if parsed is None:
             raise LexiconParseError(
