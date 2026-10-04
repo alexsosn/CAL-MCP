@@ -8,14 +8,14 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError
 from cal_mcp.lexicon import (
-    LemmaRef,
-    LexiconParseError,
     _NOT_FOUND_PHRASES,
     _is_lemma_entry_href,
     _lemma_key_from_href,
     _lemma_to_dict,
     _parse_lemma_header,
     _parse_lines,
+    LemmaRef,
+    LexiconParseError,
 )
 from cal_mcp.normalization import (
     AmbiguousQueryError,
@@ -136,7 +136,8 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
             target_index = line.text.find(target_label, arrow_index + 1)
             if target_index < 0:
                 raise LexiconParseError(
-                    "CAL lexicon browse cross-reference target label is not rendered after the arrow"
+                    "CAL lexicon browse cross-reference target label is not rendered "
+                    "after the arrow"
                 )
             between = line.text[arrow_index + 1 : target_index].strip()
             trailing = line.text[target_index + len(target_label) :].strip()
