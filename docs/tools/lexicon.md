@@ -73,7 +73,7 @@ The entry preserves, where present:
 
 - CAL lemma key;
 - headword variants and pronunciation;
-- part of speech and entry gloss, including compound/current CAL abbreviations rather than a small closed local POS vocabulary;
+- part of speech and entry gloss, including compound/current CAL abbreviations and CAL's literal trailing uncertainty marker (for example `n.f.?`) rather than a small closed local POS vocabulary;
 - numbered and recursively nested sense paths;
 - verb stem/sense headings;
 - dialect labels, including documented CAL dialect subcodes;
