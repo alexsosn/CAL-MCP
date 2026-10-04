@@ -336,9 +336,9 @@ Current lemma `$lh N` is rendered as `šlh n.f.?` on the `$l` browse page and as
 inside `div.lemma-header > span.lemma-pos`, so the question mark is part of CAL's displayed POS,
 not gloss punctuation.
 
-The shared parser currently rejects that real header and the exact-entry path then silently accepts
-later prose containing `suggestions.` as a false lemma header, corrupting headword/POS/gloss
-fields.
+At the pre-#222 research base, the shared parser rejected that real header and the exact-entry path
+then silently accepted later prose containing `suggestions.` as a false lemma header, corrupting
+headword/POS/gloss fields.
 
 **Implication:** allow exactly one trailing uncertainty marker only when removing it leaves a token
 that already satisfies the existing POS grammar, and preserve the literal marked token in
