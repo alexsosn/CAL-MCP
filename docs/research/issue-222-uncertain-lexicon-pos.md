@@ -124,3 +124,28 @@ invalid.
 Issue #175 remains responsible for modeling arrow cross-reference rows separately. This ticket must
 not change cross-reference semantics or `LemmaRef.aliases`.
 
+## Final installed-stdio acceptance
+
+**Run 37218694925 — 2026-10-04.**
+
+The candidate was installed from the PR branch and exercised through the public stdio MCP surface with
+exactly two explicit tool calls:
+
+1. `cal_lexicon_browse(prefix="$l", representation="cal_code")`;
+2. `cal_lexicon_lookup(query="$lh", lemma_key="$lh N")`.
+
+Those two MCP calls produced three bounded CAL GETs because exact lookup performs its documented
+browse-then-entry workflow: one `$l` browse GET, one `šlh` lookup browse GET, and one selected
+`cal_entry_web.php?lemma=$lh N` GET. No continuation, citation, or neighboring entry was followed.
+
+Observed result:
+
+- browse returned two current `$lh N` matches and both preserved
+  `part_of_speech="n.f.?"`;
+- exact lookup returned `status="found"`, headwords `["šlh"]`, and
+  `part_of_speech="n.f.?"`;
+- the known false prose headword `See DNWSI 17 for other` and false POS `suggestions.` were not
+  selected.
+
+This confirms the narrow shared predicate repair on the installed public MCP path.
+
