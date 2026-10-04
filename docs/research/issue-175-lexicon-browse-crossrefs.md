@@ -71,8 +71,7 @@ Results:
 - the same `$lh N` / `n.f.?` shape occurs once with an arrow before it and once as an ordinary
   entry, so treating arrow rows separately cannot by itself make `$l` succeed.
 
-Issue #222 owns the uncertain-POS parser boundary. #175 should not widen POS parsing as an
-incidental side effect.
+Issue #222 owns the uncertain-POS parser boundary and is now merged into this branch. #175 should not widen POS parsing as an incidental side effect.
 
 Total research load across the three runs: **7 explicit GETs** (3 + 2 + 2). Repeated `$l` / `by`
 requests were deliberate parser-validation controls. There was no pagination or link traversal.
@@ -134,7 +133,6 @@ redirect rows are ordinary entries.
 
 ## Dependency on #222
 
-#222 is release-blocking for #175's final `$l` acceptance. #175 can define and test the
-cross-reference row contract independently, but its final live MCP gate should run only after the
-uncertain `n.f.?` lemma-header shape is supported through the shared parser.
+#222 was merged before #175 RED. The cross-reference row contract therefore builds on the shared
+support for the current uncertain `n.f.?` lemma-header shape, without changing that grammar here.
 
