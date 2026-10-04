@@ -339,11 +339,11 @@ returns the target as an ordinary browse entry, erasing the row type.
 
 The same research also isolated a separate current parser drift: `$lh N` is rendered as
 `šlh n.f.?`, and the shared lemma-header parser rejects the uncertainty marker even on a
-non-arrow row. That blocker is tracked separately in #222.
+non-arrow row. That blocker was repaired separately in #222 and is present on this branch.
 
 **Implication:** #175 should expose a browse-specific ordered cross-reference row that preserves the
 displayed source plus validated target lemma key without fetching or merging the target. Final
-`$l` live acceptance depends on #222. Detailed evidence:
+`$l` live acceptance now runs on top of merged #222. Detailed evidence:
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 ## R-061 — CAL lemma headers use a trailing question mark for uncertain POS
