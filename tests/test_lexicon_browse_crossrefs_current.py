@@ -116,9 +116,7 @@ def test_redirect_target_can_later_appear_as_a_distinct_ordinary_entry() -> None
             'href="oneentry.php?cits=all"',
         ),
         (
-            (
-                '<span class="lem">šlˀhw, šlˀhwtˀ</span> <pos>n.f.</pos></a>'
-            ),
+            '<span class="lem">šlˀhw, šlˀhwtˀ</span> <pos>n.f.</pos></a>',
             (
                 '<span class="lem">šlˀhw, šlˀhwtˀ</span> <pos>n.f.</pos></a>'
                 ' <a href="oneentry.php?lemma=br+N&amp;cits=all">br n.m.</a>'
