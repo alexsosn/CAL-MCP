@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-03  
 **Research:** `docs/research/issue-175-lexicon-browse-crossrefs.md`  
-**Dependency:** #222 must land before final `$l` live acceptance.
+**Dependency:** #222 merged as `67154f05`; this branch is synchronized with that `main` state before RED.
 
 ## Goal
 
@@ -52,7 +52,7 @@ Ordinary candidate rows continue through the existing strict `_parse_lemma_heade
 the current gloss-follow-up behavior. The bracketed current header `[šl] (šal) n.m.` remains an
 ordinary entry.
 
-The `šlh n.f.?` ordinary header is outside #175's parser scope and belongs to #222.
+The `šlh n.f.?` ordinary header is outside #175's parser scope; #222 now supplies that shared parser support.
 
 ## TDD gates
 
