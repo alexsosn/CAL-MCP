@@ -1,0 +1,83 @@
+name: Issue 222 final live acceptance
+
+on:
+  push:
+    branches:
+      - dev/issue-222-uncertain-lexicon-pos
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Verify uncertain POS over installed stdio MCP
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client, StdioServerParameters
+
+          EXPECTED_KEY = "$lh N"
+          EXPECTED_POS = "n.f.?"
+          FALSE_HEADWORD = "See DNWSI 17 for other"
+          FALSE_POS = "suggestions."
+
+          async def main():
+              async with Client(StdioServerParameters(command="cal-mcp")) as client:
+                  browse = await client.call_tool(
+                      "cal_lexicon_browse",
+                      {"prefix": "$l", "representation": "cal_code"},
+                  )
+                  if browse.is_error:
+                      raise RuntimeError(f"browse failed: {browse.content!r}")
+                  data = browse.structured_content
+                  if not isinstance(data, dict):
+                      raise RuntimeError("browse returned no structured content")
+                  entries = data.get("entries")
+                  if not isinstance(entries, list):
+                      raise RuntimeError("browse entries missing")
+                  matches = [item for item in entries if item.get("lemma_key") == EXPECTED_KEY]
+                  if not matches:
+                      raise RuntimeError("browse did not return $lh N")
+                  if any(item.get("part_of_speech") != EXPECTED_POS for item in matches):
+                      raise RuntimeError(f"browse lost uncertain POS: {matches!r}")
+
+                  lookup = await client.call_tool(
+                      "cal_lexicon_lookup",
+                      {"query": "$lh", "lemma_key": EXPECTED_KEY},
+                  )
+                  if lookup.is_error:
+                      raise RuntimeError(f"lookup failed: {lookup.content!r}")
+                  result = lookup.structured_content
+                  if not isinstance(result, dict) or result.get("status") != "found":
+                      raise RuntimeError(f"lookup did not return found: {result!r}")
+                  entry = result.get("entry")
+                  if not isinstance(entry, dict):
+                      raise RuntimeError("lookup entry missing")
+                  lemma = entry.get("lemma")
+                  if not isinstance(lemma, dict):
+                      raise RuntimeError("lookup lemma missing")
+                  if lemma.get("part_of_speech") != EXPECTED_POS:
+                      raise RuntimeError(f"lookup lost uncertain POS: {lemma!r}")
+                  if FALSE_HEADWORD in (lemma.get("headwords") or []):
+                      raise RuntimeError(f"lookup accepted false prose headword: {lemma!r}")
+                  if lemma.get("part_of_speech") == FALSE_POS:
+                      raise RuntimeError(f"lookup accepted false prose POS: {lemma!r}")
+
+                  print(
+                      "live #222 OK:",
+                      f"browse_matches={len(matches)}",
+                      f"lookup_headwords={lemma.get('headwords')!r}",
+                      f"pos={lemma.get('part_of_speech')!r}",
+                  )
+
+          asyncio.run(main())
+          PY
