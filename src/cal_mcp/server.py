@@ -204,8 +204,10 @@ async def cal_lexicon_browse(
     """Browse one bounded CAL lexicon page without automatic pagination.
 
     One browse character follows CAL's JUMP TO workflow; two or three browse characters
-    follow CAL's documented prefix browser. Use only a returned ``next_continuation`` for a
-    later explicit continuation call. Entry pages are never fetched automatically.
+    follow CAL's documented prefix browser. Ordered ``rows`` distinguish genuine entries from
+    CAL arrow cross-references; ``entries`` projects only genuine entries. Cross-reference
+    source text and target lemma keys are preserved without fetching the target. Use only a
+    returned ``next_continuation`` for a later explicit continuation call.
     """
 
     client = ctx.request_context.lifespan_context.client

@@ -10,7 +10,12 @@ Use it when you want neighboring CAL lexicon headwords by prefix rather than an 
 
 Each call represents at most one CAL browse page. The tool never fetches entry pages, never follows NEXT PAGE automatically, and never crawls the lexicon. If the current CAL page exposes a canonical continuation, the result contains `next_continuation`; pass that exact returned value in a later explicit call together with the same prefix.
 
-A normal result contains the original and normalized prefix, input representation, ordered CAL lemma references from the current page, nullable `next_continuation`, and CAL provenance. Lemma references preserve CAL lemma keys, headword variants, pronunciation, part of speech, gloss, and aliases where CAL exposes them. A single trailing CAL uncertainty marker is preserved literally in the part of speech (for example `n.f.?`); it is not stripped or moved into the gloss. Use `cal_lexicon_lookup` with a selected lemma/headword when you need the structured entry itself.
+A normal result contains the original and normalized prefix, an authoritative ordered `rows` array, an `entries` convenience projection, nullable `next_continuation`, and CAL provenance. The mixed `rows` array preserves CAL's current browse-row distinction:
+
+- `{"kind": "entry", "lemma": ...}` is a genuine browse entry. Its lemma reference preserves CAL's lemma key, headword variants, pronunciation, part of speech, and gloss. A single trailing CAL uncertainty marker remains literal in the part of speech (for example `n.f.?`).
+- `{"kind": "cross_reference", "source_text": ..., "target_lemma_key": ..., "target_label": ...}` is CAL's rendered arrow cross-reference. `source_text` is the cleaned displayed spelling to the left of CAL's arrow; `target_lemma_key` comes from the validated target link; `target_label` is CAL's rendered target label.
+
+`entries` contains only the genuine `entry` rows in their relative CAL order. A cross-reference target is not reported as an ordinary entry merely because it is linked, and its source spelling is not inserted into the target lemma's `aliases`. The target entry is never fetched automatically. If you want it, explicitly call `cal_lexicon_lookup` with the returned target lemma key or another caller-selected lemma/headword.
 
 Input is validated locally before CAL I/O. Browse prefixes must normalize to one through three CAL browse consonants (or the documented bound-form separator where supported by the researched browser contract). Unsupported scripts, marks, punctuation, finite orthographic ambiguity, malformed continuation values, or prefixes outside the bounded browse contract fail before a request is sent.
 

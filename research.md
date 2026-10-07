@@ -327,6 +327,25 @@ When new evidence changes an assumption:
 4. update `wiki/decisions.md` if a durable project decision changes;
 5. update affected tickets/acceptance criteria before implementation continues.
 
+## R-060 — Lexicon browse cross-references are rows, not target-entry aliases
+
+**Rechecked:** 2026-10-04; issue #175. Final installed-stdio acceptance: run `37220555515`.
+
+Current CAL browse pages interleave ordinary lemma rows with arrow cross-references. Bounded live
+probes confirmed independent redirect families under `$l` and `by`. The browse page already
+contains the rendered left-hand source text and an exact linked target lemma key; no entry fetch is
+needed. At the pre-#175 research base, the parser converted the left-hand text into `LemmaRef.aliases`
+and returned the target as an ordinary browse entry, erasing the row type.
+
+The same research also isolated a separate current parser drift: `$lh N` is rendered as
+`šlh n.f.?`, and the shared lemma-header parser rejects the uncertainty marker even on a
+non-arrow row. That blocker was repaired separately in #222 and is present on this branch.
+
+**Implication:** the public browse result uses an ordered typed row model that preserves the
+displayed source plus validated target lemma key without fetching or merging the target. Final
+`$l` / Syriac / `by` acceptance passed on top of merged #222. Detailed evidence:
+`docs/research/issue-175-lexicon-browse-crossrefs.md`.
+
 ## R-061 — CAL lemma headers use a trailing question mark for uncertain POS
 
 **Rechecked:** 2026-10-04; issue #222. Final installed-stdio acceptance: run `37218694925`.
