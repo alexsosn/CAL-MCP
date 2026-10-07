@@ -136,3 +136,29 @@ redirect rows are ordinary entries.
 #222 was merged before #175 RED. The cross-reference row contract therefore builds on the shared
 support for the current uncertain `n.f.?` lemma-header shape, without changing that grammar here.
 
+## Final installed-stdio acceptance
+
+**Run 37220555515 — 2026-10-04.**
+
+The candidate was installed from the branch and exercised through the public stdio MCP surface with
+three explicit `cal_lexicon_browse` calls:
+
+1. CAL-code `$l`;
+2. Syriac `ܫܠ`;
+3. CAL-code `by`.
+
+The first two normalize to the same CAL browse request, so the client's completed-request cache
+reused the `$l` response for the Syriac spelling. The three MCP calls therefore produced exactly
+two CAL GETs: one `$l` page and one `by` page. No continuation or lemma-entry link was followed.
+
+Observed public results:
+
+- `$l`: 48 ordered rows = 39 ordinary entries + 9 cross-references;
+- `ܫܠ`: the same 48/39/9 result and the expected `$l)hw N` cross-reference;
+- `by`: 48 ordered rows = 29 ordinary entries + 19 cross-references;
+- the researched `šlhˀw → $l)hw N` and `by dny → dn#2 N` rows were present;
+- redirect source text did not leak into any ordinary entry's `aliases`.
+
+This confirms the typed-row model on current CAL data while keeping upstream request volume below
+the planned three-request ceiling.
+
