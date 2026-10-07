@@ -1,0 +1,124 @@
+name: Issue 155 bounded MT-label research
+
+on:
+  push:
+    branches:
+      - dev/issue-155-mt-label-leak
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install candidate
+        run: python -m pip install .
+      - name: Probe current MT markup
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          from datetime import UTC, datetime
+          from html.parser import HTMLParser
+          from urllib.parse import urlencode
+          from urllib.request import Request, urlopen
+
+          from cal_mcp.client import CalResponse
+          from cal_mcp.syriac import parse_syriac_peshitta_page
+          from cal_mcp.targum import parse_targum_parallel_page
+
+          BASE = "https://cal.huc.edu/"
+          USER_AGENT = "CAL-MCP/0.1.0 issue-155 bounded research"
+          CASES = (
+              ("targum", "showtargum.php", {"bookname": "01", "chapter": "01", "verse": "01"}),
+              ("peshitta", "showpesh.php", {"bookname": "01", "chapter": "01", "verse": "01"}),
+          )
+
+          class HebProbe(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.depth = 0
+                  self.events = []
+                  self.spans = []
+
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if tag == "span" and "heb" in (attrs.get("class") or "").split():
+                      if self.depth:
+                          raise RuntimeError("nested heb span")
+                      self.depth = 1
+                      self.events = [("start", "span.heb")]
+                      return
+                  if self.depth:
+                      self.depth += 1
+                      self.events.append(("start", tag))
+
+              def handle_endtag(self, tag):
+                  if not self.depth:
+                      return
+                  self.events.append(("end", tag))
+                  self.depth -= 1
+                  if self.depth == 0:
+                      self.spans.append(tuple(self.events))
+                      self.events = []
+
+              def handle_startendtag(self, tag, attrs):
+                  if self.depth:
+                      self.events.append(("empty", tag))
+
+              def handle_data(self, data):
+                  if self.depth and data.strip():
+                      self.events.append(("data", " ".join(data.split())))
+
+          for label, path, form in CASES:
+              raw = urlencode(form).encode()
+              req = Request(
+                  BASE + path,
+                  data=raw,
+                  method="POST",
+                  headers={
+                      "Content-Type": "application/x-www-form-urlencoded",
+                      "User-Agent": USER_AGENT,
+                  },
+              )
+              with urlopen(req, timeout=20) as response:
+                  body = response.read(262145)
+                  if len(body) > 262144:
+                      raise RuntimeError(f"{label}: response exceeded 256 KiB")
+                  status = response.status
+                  final_url = response.geturl()
+                  ctype = response.headers.get("Content-Type", "")
+
+              print(f"{label}: status={status} bytes={len(body)} url={final_url}")
+              html = body.decode("utf-8", errors="replace")
+              probe = HebProbe()
+              probe.feed(html)
+              probe.close()
+              print(f"{label}: heb_span_count={len(probe.spans)}")
+              for i, events in enumerate(probe.spans[:4]):
+                  print(f"{label}: heb[{i}]={events!r}")
+
+              cal_response = CalResponse(
+                  status_code=status,
+                  url=final_url,
+                  body=body,
+                  content_type=ctype,
+                  retrieved_at=datetime.now(UTC),
+              )
+              if label == "targum":
+                  page = parse_targum_parallel_page(
+                      cal_response, book="Gen", chapter=1, verse=1
+                  )
+                  print(f"{label}: current_mt_text={page.mt_text!r}")
+              else:
+                  page = parse_syriac_peshitta_page(
+                      cal_response, book="Gen", chapter=1, verse=1
+                  )
+                  print(f"{label}: current_mt_text={page.mt_text!r}")
+          PY
