@@ -962,19 +962,11 @@ def parse_syriac_peshitta_page(
 
     page_text = _clean_text(" ".join(parser.all_parts))
     coordinate_error = _COORDINATE_ERROR_RE.search(page_text) is not None
-    try:
-        hebrew = _clean_parallel_mt_text(
-            "".join(parser.hebrew_parts),
-            display_coordinate=display_coordinate,
-        )
-    except ValueError:
-        raise SyriacParseError(
-            "CAL Peshitta MT block has contradictory verse-label semantics"
-        ) from None
+    raw_hebrew = "".join(parser.hebrew_parts)
     syriac = _clean_text("".join(parser.syriac_parts))
     peshitta_links = [link for link in parser.links if _clean_text(link.text) == "Peshitta:"]
 
-    has_any_result_data = bool(hebrew or syriac or peshitta_links)
+    has_any_result_data = bool(_clean_text(raw_hebrew) or syriac or peshitta_links)
     if coordinate_error:
         if has_any_result_data:
             raise SyriacParseError("CAL Peshitta page contradicts its coordinate error")
@@ -985,6 +977,16 @@ def parse_syriac_peshitta_page(
             peshitta_text=None,
             peshitta_url=None,
         )
+
+    try:
+        hebrew = _clean_parallel_mt_text(
+            raw_hebrew,
+            display_coordinate=display_coordinate,
+        )
+    except ValueError:
+        raise SyriacParseError(
+            "CAL Peshitta MT block has contradictory verse-label semantics"
+        ) from None
 
     if not hebrew or not syriac or len(peshitta_links) != 1:
         raise SyriacParseError("CAL Peshitta page lacks a complete MT/Peshitta comparison")
