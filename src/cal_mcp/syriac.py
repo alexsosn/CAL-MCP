@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.biblical import (
+    _clean_parallel_mt_text,
     cal_biblical_book_id,
     cal_biblical_heading_matches,
 )
@@ -309,7 +310,7 @@ class _PeshittaParser(HTMLParser):
                 self._script_depth += 1
             return
         if tag == "br" and self._script_kind is not None:
-            self._append_script_data(" ")
+            self._append_script_data("\n")
             return
         if tag == "a":
             if self._open_link is not None:
@@ -957,10 +958,19 @@ def parse_syriac_peshitta_page(
         headings[0][len(_PESHITTA_HEADING_PREFIX) :], book=book, chapter=chapter, verse=verse
     ):
         raise SyriacParseError("CAL Peshitta heading does not match the requested verse")
+    display_coordinate = headings[0][len(_PESHITTA_HEADING_PREFIX) :]
 
     page_text = _clean_text(" ".join(parser.all_parts))
     coordinate_error = _COORDINATE_ERROR_RE.search(page_text) is not None
-    hebrew = _clean_text("".join(parser.hebrew_parts))
+    try:
+        hebrew = _clean_parallel_mt_text(
+            "".join(parser.hebrew_parts),
+            display_coordinate=display_coordinate,
+        )
+    except ValueError:
+        raise SyriacParseError(
+            "CAL Peshitta MT block has contradictory verse-label semantics"
+        ) from None
     syriac = _clean_text("".join(parser.syriac_parts))
     peshitta_links = [link for link in parser.links if _clean_text(link.text) == "Peshitta:"]
 
