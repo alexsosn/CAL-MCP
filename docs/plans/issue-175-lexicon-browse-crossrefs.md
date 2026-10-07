@@ -113,3 +113,16 @@ ordered mixed browse result.
 6. fresh logically independent adversarial review of the exact final SHA before merge.
 
 Final live budget: three explicit browse calls, sequential, no continuation or entry follow-up.
+
+## Validation result
+
+Installed-wheel/stdio acceptance run `37220555515` passed on 2026-10-04. The public tool returned
+typed mixed rows for `$l`, equivalent Syriac `ܫܠ`, and `by`. The observed row counts were
+`48/39/9` (rows/ordinary entries/cross-references) for `$l` and `ܫܠ`, and `48/29/19` for
+`by`. Redirect source text remained absent from ordinary-entry aliases.
+
+Because `$l` and `ܫܠ` normalize identically, cache reuse reduced the three explicit MCP calls
+to two CAL GETs. No continuation or target-entry fetch occurred. The temporary live workflow was
+removed immediately afterward; the remaining gates are workflow-free CI and exact-head adversarial
+review.
+
