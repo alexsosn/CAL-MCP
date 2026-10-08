@@ -346,6 +346,23 @@ displayed source plus validated target lemma key without fetching or merging the
 `$l` / Syriac / `by` acceptance passed on top of merged #222. Detailed evidence:
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
+## R-063 — Result rows mark a verb's vowel class inside `<pos>`; the exact entry shows it as the vocalized form
+
+**Rechecked:** 2026-10-08; issue #228. Two bounded GETs (browse `(hr`, entry `(hr V`), plus the
+R-062 captures.
+
+Browse and gloss-search rows render the full POS in a `<pos>` element inside the lemma link, for
+example `<pos>vb. a/u</pos>`, `vb. a(i)/u` (then `#2`) and `vb. a/u, e/a`. The flattened header
+grammar stopped at `vb.`, and the row parsers then overwrote the remainder, so the vowel class was
+silently dropped. The exact entry page instead renders
+`<span class="lemma-vocalized">(a/u)</span> <span class="lemma-pos">vb.</span>`, which CAL-MCP
+already keeps as `pronunciation: "a/u"`, `part_of_speech: "vb."`.
+
+**Implication:** row parsers use the `<pos>` element text when present. The grammar's POS token
+must be its prefix, and only a `#N` homograph marker may follow it in the link; otherwise the row
+fails closed. The exact entry is unchanged. Detailed evidence:
+`docs/research/issue-228-verb-vowel-class.md`.
+
 ## R-062 — Gloss-field pages use secondary-gender POS; gloss search repeats lemmas behind `⟹` redirects
 
 **Rechecked:** 2026-10-08; issue #154. Four bounded GETs/POSTs, with no link traversal.
