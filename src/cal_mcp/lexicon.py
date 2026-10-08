@@ -125,6 +125,7 @@ class _Link:
     # Text of CAL's <pos> element inside the link, if any, and how many there were.
     marked_pos: str | None = None
     marked_pos_count: int = 0
+    marked_pos_closed: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -310,6 +311,7 @@ class _SemanticHTMLParser(HTMLParser):
                 text=text,
                 marked_pos=marked_pos,
                 marked_pos_count=self._open_link.pos_count,
+                marked_pos_closed=not self._open_link.in_pos,
             )
         )
         self._open_link = None
@@ -327,6 +329,7 @@ class _SemanticHTMLParser(HTMLParser):
 
 _TOKEN_RE = re.compile(r"\S+")
 _HOMOGRAPH_MARKER_RE = re.compile(r"#\d+")
+_HOMOGRAPH_MARKER_TOKEN_RE = re.compile(r"(?:^|\s)#\s*\d+(?:\s|$)")
 _POS_SECONDARY_GENDER_RE = re.compile(r"/?\([a-z]+\.\)$")
 _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
@@ -874,7 +877,12 @@ def _apply_marked_pos(parsed: LemmaRef, link: _Link) -> LemmaRef | None:
     if link.marked_pos_count == 0:
         return parsed
     marked = link.marked_pos
-    if link.marked_pos_count != 1 or not marked:
+    if (
+        link.marked_pos_count != 1
+        or not link.marked_pos_closed
+        or not marked
+        or _HOMOGRAPH_MARKER_TOKEN_RE.search(marked) is not None
+    ):
         return None
     if not marked.startswith(parsed.part_of_speech):
         return None
