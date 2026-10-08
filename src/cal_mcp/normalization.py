@@ -630,11 +630,14 @@ def _unsupported_hebrew_mark_error(word: str, mark: str) -> UnsupportedQueryErro
     )
     # Suggest, never apply, the word without its pointing, and only when that form converts.
     # A shin/sin dot is kept only directly after shin, where the converter reads it.
+    # Every dot on a shin is kept, so conflicting dots still fail the dry run below.
     kept: list[str] = []
+    on_shin = False
     for char in word:
-        is_mark = unicodedata.category(char).startswith("M")
-        follows_shin = bool(kept) and kept[-1] == _HEBREW_SHIN
-        if not is_mark or (char in {_HEBREW_SHIN_DOT, _HEBREW_SIN_DOT} and follows_shin):
+        if not unicodedata.category(char).startswith("M"):
+            kept.append(char)
+            on_shin = char == _HEBREW_SHIN
+        elif char in {_HEBREW_SHIN_DOT, _HEBREW_SIN_DOT} and on_shin:
             kept.append(char)
     unpointed = "".join(kept)
     if unpointed and unpointed != word:

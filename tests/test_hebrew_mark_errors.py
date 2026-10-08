@@ -86,3 +86,11 @@ def test_multi_word_suggestion_names_the_failing_word() -> None:
 
 def test_vowel_with_two_dots_on_same_shin_reports_the_vowel() -> None:
     assert "U+05B8 HEBREW POINT QAMATS" in _message("ש\u05b8\u05c1\u05c1לום")
+
+
+@pytest.mark.parametrize("value", ["ש\u05b8\u05c1\u05c2", "ש\u05c1\u05b8\u05c2לום"])
+def test_conflicting_shin_and_sin_dots_get_no_suggestion(value: str) -> None:
+    message = _message(value)
+
+    assert "U+05B8 HEBREW POINT QAMATS" in message
+    assert "accepts" not in message
