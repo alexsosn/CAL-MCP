@@ -254,6 +254,9 @@ async def cal_gloss_search(
 
     Set ``all_glosses`` to include subsidiary CAL glosses as well as primary glosses.
 
+    CAL may list a lemma again behind a redirect row; such a match keeps CAL's redirecting
+    key in ``cross_reference_from`` (``null`` for ordinary rows) and is not deduplicated.
+
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
     """
