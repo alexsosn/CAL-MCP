@@ -346,6 +346,23 @@ displayed source plus validated target lemma key without fetching or merging the
 `$l` / Syriac / `by` acceptance passed on top of merged #222. Detailed evidence:
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
+## R-064 — CAL renders an explicitly empty POS; the current entry header is a `lemma-header` block
+
+**Rechecked:** 2026-10-08; issue #227. Two bounded GETs (browse `$yp`, entry `$yp#2 N`), plus the
+R-062 botany capture.
+
+The `$yp#2 N` browse and gloss-field rows carry `<pos></pos>` followed by `#2`. The header grammar
+requires a POS token, so `cal_gloss_field("botany")` and `cal_lexicon_browse("$yp")` failed on
+the whole page. The exact entry renders
+`<div class="lemma-header"><span class="lemma-formal">…</span> <span class="lemma-gloss">…</span></div>`
+with no POS span. The older header scan skipped it and silently accepted the later `dict-refs`
+line as the header (`Page` / `refs.`), which is the failure mode described in #224.
+
+**Implication:** on result rows, exactly one closed empty `<pos>` with no POS-looking header token,
+followed by at most `#N`, gives `part_of_speech: null`. The entry parser reads only the
+`lemma-header` block when the page has one and fails closed if it cannot parse it; a null POS on
+exact entries is left to #224. Detailed evidence: `docs/research/issue-227-empty-pos.md`.
+
 ## R-063 — Result rows mark a verb's vowel class inside `<pos>`; the exact entry shows it as the vocalized form
 
 **Rechecked:** 2026-10-08; issue #228. Two bounded GETs (browse `(hr`, entry `(hr V`), plus the
