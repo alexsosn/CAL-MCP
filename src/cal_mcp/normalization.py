@@ -626,17 +626,26 @@ def _convert_hebrew_word(value: str) -> CalCodeWordCandidates:
 def _unsupported_hebrew_mark_error(word: str, mark: str) -> UnsupportedQueryError:
     message = (
         "Hebrew vowel, accent, or combining marks are not converted to CAL code in v0.1: "
-        f"{_describe_character(mark)}"
+        f"{_describe_character(mark)} in {word}"
     )
-    # Suggest, never apply, the word without its pointing; shin/sin dots stay convertible.
-    unpointed = "".join(
-        char
-        for char in word
-        if not unicodedata.category(char).startswith("M")
-        or char in {_HEBREW_SHIN_DOT, _HEBREW_SIN_DOT}
-    )
-    if any(unicodedata.category(char).startswith("L") for char in unpointed):
-        message += f". Remove the pointing and submit the consonantal form {unpointed}"
+    # Suggest, never apply, the word without its pointing, and only when that form converts.
+    # A shin/sin dot is kept only directly after shin, where the converter reads it.
+    kept: list[str] = []
+    for char in word:
+        is_mark = unicodedata.category(char).startswith("M")
+        follows_shin = bool(kept) and kept[-1] == _HEBREW_SHIN
+        if not is_mark or (char in {_HEBREW_SHIN_DOT, _HEBREW_SIN_DOT} and follows_shin):
+            kept.append(char)
+    unpointed = "".join(kept)
+    if unpointed and unpointed != word:
+        try:
+            _convert_hebrew_word(unpointed)
+        except (UnsupportedQueryError, ConversionExpansionError):
+            pass
+        else:
+            message += (
+                f". Without its pointing the word is {unpointed}, which the converter accepts"
+            )
     return UnsupportedQueryError(message)
 
 

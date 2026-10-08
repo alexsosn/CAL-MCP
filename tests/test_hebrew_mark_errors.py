@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from cal_mcp.normalization import UnsupportedQueryError, convert_to_cal_code
@@ -49,12 +51,15 @@ def test_unanchored_leading_mark_is_named() -> None:
     assert "U+05B8 HEBREW POINT QAMATS" in _message("ָמלך")
 
 
-@pytest.mark.parametrize("value", ["בׁרא", "\u05c1מלך"])
-def test_misplaced_shin_dot_gets_no_suggestion_identical_to_input(value: str) -> None:
+@pytest.mark.parametrize(("value", "suggestion"), [("בׁרא", "ברא"), ("\u05c1מלך", "מלך")])
+def test_misplaced_shin_dot_is_named_and_dropped_from_the_suggestion(
+    value: str, suggestion: str
+) -> None:
     message = _message(value)
 
     assert "U+05C1 HEBREW POINT SHIN DOT" in message
-    assert "accepts" not in message
+    assert message.endswith(f"the word is {suggestion}, which the converter accepts")
+    convert_to_cal_code(suggestion)
 
 
 @pytest.mark.parametrize(
@@ -68,7 +73,7 @@ def test_suggestion_is_offered_only_when_it_would_convert(
 
     assert "accepts" not in message
     unpointed = "".join(c for c in value if not "\u0591" <= c <= "\u05c7" or c in "\u05be\u05c3")
-    with pytest.raises(UnsupportedQueryError, match=still_unsupported):
+    with pytest.raises(UnsupportedQueryError, match=re.escape(still_unsupported)):
         convert_to_cal_code(unpointed)
 
 

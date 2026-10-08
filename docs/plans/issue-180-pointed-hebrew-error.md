@@ -31,3 +31,11 @@ mark errors do not name the offending character either.
 - `שׁׁ` and shin dot plus sin dot → still the shin/sin message.
 - `מלך־רב` → the unmapped-character message names U+05BE HEBREW PUNCTUATION MAQAF.
 - Existing shin/sin ambiguity tests are unchanged.
+
+## Review follow-up
+
+The independent review found three problems with the suggestion: it could be identical to the
+input (a misplaced dot), could still contain unsupported characters (maqaf, sof pasuq), and
+named only the failing word in multi-word input. The suggestion is now offered only when a dry
+run of the unpointed word converts. Dots are kept only directly on shin, and the message names
+the word.
