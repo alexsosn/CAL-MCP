@@ -528,7 +528,9 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
     if header_blocks or marked_headers:
         # CAL's current page marks its header structurally; never substitute a later line (R-064).
         if header_blocks != 1:
-            raise LexiconParseError("CAL lexicon entry has more than one lemma-header block")
+            raise LexiconParseError(
+                "CAL lexicon entry does not have exactly one lemma-header block"
+            )
         if len(marked_headers) != 1:
             raise LexiconParseError(
                 "CAL lexicon entry lemma-header block does not render exactly one header line"
