@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
 from html.parser import HTMLParser
@@ -122,6 +122,9 @@ class LexiconLookupResult:
 class _Link:
     href: str
     text: str
+    # Text of CAL's <pos> element inside the link, if any, and how many there were.
+    marked_pos: str | None = None
+    marked_pos_count: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -137,6 +140,9 @@ class _OpenLink:
     href: str
     depth: int = 1
     parts: list[str] = field(default_factory=list)
+    pos_parts: list[str] = field(default_factory=list)
+    pos_count: int = 0
+    in_pos: bool = False
 
 
 _IGNORED_CONTENT_TAGS = frozenset({"script", "style"})
@@ -226,6 +232,9 @@ class _SemanticHTMLParser(HTMLParser):
 
         if self._open_link is not None and tag == self._open_link.tag:
             self._open_link.depth += 1
+        if tag == "pos" and self._open_link is not None:
+            self._open_link.pos_count += 1
+            self._open_link.in_pos = True
         if tag in {"ul", "ol"}:
             self._flush()
             self._list_depth += 1
@@ -257,6 +266,8 @@ class _SemanticHTMLParser(HTMLParser):
                 raise LexiconParseError("CAL lexicon has malformed excluded citation content")
             self._semantic_skip_tags.pop()
             return
+        if tag == "pos" and self._open_link is not None:
+            self._open_link.in_pos = False
         if tag in {"td", "th"} and self._open_link is not None and self._open_link.tag == "a":
             self._finish_open_link()
         elif self._open_link is not None and tag == self._open_link.tag:
@@ -275,6 +286,8 @@ class _SemanticHTMLParser(HTMLParser):
         self._parts.append(data)
         if self._open_link is not None:
             self._open_link.parts.append(data)
+            if self._open_link.in_pos:
+                self._open_link.pos_parts.append(data)
 
     def close(self) -> None:
         super().close()
@@ -288,7 +301,17 @@ class _SemanticHTMLParser(HTMLParser):
         if self._open_link is None:
             return
         text = _clean_text("".join(self._open_link.parts))
-        self._links.append(_Link(href=self._open_link.href, text=text))
+        marked_pos = (
+            _clean_text("".join(self._open_link.pos_parts)) if self._open_link.pos_count else None
+        )
+        self._links.append(
+            _Link(
+                href=self._open_link.href,
+                text=text,
+                marked_pos=marked_pos,
+                marked_pos_count=self._open_link.pos_count,
+            )
+        )
         self._open_link = None
 
     def _flush(self) -> None:
@@ -303,6 +326,7 @@ class _SemanticHTMLParser(HTMLParser):
 
 
 _TOKEN_RE = re.compile(r"\S+")
+_HOMOGRAPH_MARKER_RE = re.compile(r"#\d+")
 _POS_SECONDARY_GENDER_RE = re.compile(r"/?\([a-z]+\.\)$")
 _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
@@ -413,6 +437,8 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
                     "CAL lexicon browse candidate is missing a usable lemma key"
                 )
             parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
+            if parsed is not None:
+                parsed = _apply_marked_pos(parsed, link)
             if parsed is None:
                 raise LexiconParseError(
                     "CAL lexicon browse candidate is missing a recognizable lemma header"
@@ -835,6 +861,32 @@ def _parse_lemma_header(
         part_of_speech=part_of_speech,
         gloss=gloss,
     )
+
+
+def _apply_marked_pos(parsed: LemmaRef, link: _Link) -> LemmaRef | None:
+    """Use CAL's own <pos> element as the row POS when the link marks one (R-063).
+
+    The header grammar stops at the first POS token, so CAL's marked remainder (for example a
+    verb's vowel class in ``vb. a/u``) would otherwise be lost. The marked text must agree with
+    the rendered header; any disagreement returns ``None`` so the caller fails closed.
+    """
+
+    if link.marked_pos_count == 0:
+        return parsed
+    marked = link.marked_pos
+    if link.marked_pos_count != 1 or not marked:
+        return None
+    if not marked.startswith(parsed.part_of_speech):
+        return None
+    extra = marked[len(parsed.part_of_speech) :].strip()
+    remainder = parsed.gloss
+    if extra:
+        if not remainder.startswith(extra):
+            return None
+        remainder = remainder[len(extra) :].strip()
+    if remainder and _HOMOGRAPH_MARKER_RE.fullmatch(remainder) is None:
+        return None
+    return replace(parsed, part_of_speech=marked, gloss="")
 
 
 def _split_trailing_parenthetical(value: str) -> tuple[str, str] | None:

@@ -73,7 +73,7 @@ The entry preserves, where present:
 
 - CAL lemma key;
 - headword variants and pronunciation;
-- part of speech and entry gloss, including compound/current CAL abbreviations and CAL's literal trailing uncertainty marker (for example `n.f.?`) and parenthesized secondary gender (for example `n.m.(f.)`, `n.f./(m.)`) rather than a small closed local POS vocabulary;
+- part of speech and entry gloss, including compound/current CAL abbreviations and CAL's literal trailing uncertainty marker (for example `n.f.?`) and parenthesized secondary gender (for example `n.m.(f.)`, `n.f./(m.)`) rather than a small closed local POS vocabulary. On an exact entry, CAL renders a verb's vowel class as the vocalized form, so it is returned as `pronunciation` (for example `vb.` with `a/u`). Browse and search rows mark it inside the part of speech (`vb. a/u`);
 - numbered and recursively nested sense paths;
 - verb stem/sense headings;
 - dialect labels, including documented CAL dialect subcodes;
