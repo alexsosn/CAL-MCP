@@ -29,5 +29,5 @@
 
 ## Out of scope (follow-up issues)
 
-- Empty `<pos>` rows, which need a nullable `part_of_speech`.
-- `vb.` vowel class dropped in gloss/browse rows.
+- Empty `<pos>` rows, which need a nullable `part_of_speech` (#227).
+- `vb.` vowel class dropped in gloss/browse rows (#228).

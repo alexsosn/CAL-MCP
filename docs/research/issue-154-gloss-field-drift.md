@@ -48,13 +48,13 @@ The header parser is shared, so the same rows also break `cal_lexicon_browse` an
 on the affected prefixes. #222 (R-061) widened that grammar for one trailing `?` only.
 
 The empty-`<pos>` row on the botany page is a separate shape. It needs a nullable public
-`part_of_speech`, which is a contract change, so it is split into its own follow-up issue rather
+`part_of_speech`, which is a contract change, so it is split into follow-up issue #227 rather
 than accepted here.
 
 The control pages also show that verb rows render a vowel class after `vb.`, for example `vb. a/u`
 and `vb. a(i)/u #2`. The gloss-search path overwrites that remainder with the next-line gloss, so
 the vowel class is currently dropped. This was already the case before this issue and does not
-fail the page. It is recorded as a follow-up issue.
+fail the page. It is recorded as follow-up issue #228.
 
 ## Finding 2 — CAL itself lists `n)qh N` twice; the second row is a `⟹` redirect
 

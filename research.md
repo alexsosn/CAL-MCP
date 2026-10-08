@@ -355,7 +355,7 @@ displayed source plus validated target lemma key without fetching or merging the
 (`qlyd N`). The shared lemma-header grammar rejected those headers, and the field page markup
 itself was unchanged. The botany control also has one row with an empty `<pos></pos>`
 (`$yp#2 N`). Verb rows render a vowel class after `vb.` (`vb. a/u`), which the gloss/browse
-paths do not keep. Both are tracked separately.
+paths do not keep. They are tracked in #227 and #228.
 
 The `camel#` "duplicate" is real CAL output. CAL lists `n)qh N` once as an ordinary row and again
 behind `<span class="uni">nqh N </span>⟹`, a redirect from the alternate key `nqh N`. The earlier
