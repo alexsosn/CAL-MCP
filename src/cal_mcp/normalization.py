@@ -587,6 +587,11 @@ def _convert_hebrew_word(value: str) -> CalCodeWordCandidates:
                 candidates = _append_alternatives(candidates, ("&",))
                 index = mark_index
                 continue
+            unsupported_marks = [
+                mark for mark in following_marks if mark not in {_HEBREW_SHIN_DOT, _HEBREW_SIN_DOT}
+            ]
+            if unsupported_marks:
+                raise _unsupported_hebrew_mark_error(value, unsupported_marks[0])
             if following_marks:
                 raise UnsupportedQueryError(
                     "Hebrew shin/sin conversion supports only one explicit shin or sin dot"
@@ -599,23 +604,44 @@ def _convert_hebrew_word(value: str) -> CalCodeWordCandidates:
 
         mapped = _HEBREW_TO_CAL_CODE.get(char)
         if mapped is None:
+            if unicodedata.category(char).startswith("M"):
+                raise _unsupported_hebrew_mark_error(value, char)
             raise UnsupportedQueryError(
                 "Hebrew input contains a mark, punctuation sign, or letter without a v0.1 "
-                "CAL-code mapping"
+                f"CAL-code mapping: {_describe_character(char)}"
             )
         candidates = _append_alternatives(candidates, (mapped,))
         index += 1
 
         if index < len(value) and unicodedata.category(value[index]).startswith("M"):
-            raise UnsupportedQueryError(
-                "Hebrew vowel, accent, or combining marks are not converted to CAL code in v0.1"
-            )
+            raise _unsupported_hebrew_mark_error(value, value[index])
 
     return CalCodeWordCandidates(
         original=value,
         candidates=tuple(candidates),
         ambiguities=tuple(ambiguities),
     )
+
+
+def _unsupported_hebrew_mark_error(word: str, mark: str) -> UnsupportedQueryError:
+    message = (
+        "Hebrew vowel, accent, or combining marks are not converted to CAL code in v0.1: "
+        f"{_describe_character(mark)}"
+    )
+    # Suggest, never apply, the word without its pointing; shin/sin dots stay convertible.
+    unpointed = "".join(
+        char
+        for char in word
+        if not unicodedata.category(char).startswith("M")
+        or char in {_HEBREW_SHIN_DOT, _HEBREW_SIN_DOT}
+    )
+    if any(unicodedata.category(char).startswith("L") for char in unpointed):
+        message += f". Remove the pointing and submit the consonantal form {unpointed}"
+    return UnsupportedQueryError(message)
+
+
+def _describe_character(char: str) -> str:
+    return f"U+{ord(char):04X} {unicodedata.name(char, 'UNNAMED CHARACTER')}"
 
 
 def _append_alternatives(candidates: list[str], alternatives: tuple[str, ...]) -> list[str]:
