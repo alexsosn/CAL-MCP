@@ -280,6 +280,8 @@ async def cal_gloss_field(
     The readable enum is mapped to CAL's private current field selector. It does not expand or
     traverse other fields.
 
+    Matches have the same shape as ``cal_gloss_search``, including ``cross_reference_from``.
+
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
     """

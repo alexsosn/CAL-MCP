@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalResponse
-from cal_mcp.lexicon import _looks_like_pos_token
+from cal_mcp.lexicon import _looks_like_pos_token, parse_lexicon_entry
+from cal_mcp.lexicon_browse import parse_lexicon_browse_page
 from cal_mcp.search import SearchParseError, parse_gloss_search_page
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
@@ -92,7 +93,8 @@ def test_gloss_search_row_with_two_lemma_links_fails_closed() -> None:
         parse_gloss_search_page(_response(body.replace(needle, doubled, 1).encode()))
 
 
-@pytest.mark.parametrize("token", ["n.m.(f.)", "n.f./(m.)", "n.m.(f.)?", "n.m./f.", "n.f.?"])
+# CAL evidence (R-062) has the group without "?"; a combined "?" form is not evidenced or pinned.
+@pytest.mark.parametrize("token", ["n.m.(f.)", "n.f./(m.)", "n.m./f.", "n.f.?"])
 def test_pos_grammar_accepts_secondary_gender(token: str) -> None:
     assert _looks_like_pos_token(token)
 
@@ -103,3 +105,39 @@ def test_pos_grammar_accepts_secondary_gender(token: str) -> None:
 )
 def test_pos_grammar_rejects_other_parentheses(token: str) -> None:
     assert not _looks_like_pos_token(token)
+
+
+@pytest.mark.parametrize(
+    "fixture",
+    ["search_gloss_camel_redirect.html", "search_gloss_field_alt_gender.html"],
+)
+def test_gloss_row_without_its_gloss_span_fails_closed(fixture: str) -> None:
+    # A missing final gloss must not silently take the next rendered text, such as CAL's footer.
+    body = _fixture(fixture).decode()
+    last = body.rindex('<span class="gloss">')
+    end = body.index("</span>", last) + len("</span>")
+    footer = "<hr><div>© The Comprehensive Aramaic Lexicon ©</div>"
+    with pytest.raises(SearchParseError):
+        parse_gloss_search_page(_response((body[:last] + body[end:] + footer).encode()))
+
+
+@pytest.mark.parametrize("pos", ["n.m.(f.)", "n.f./(m.)"])
+def test_lexicon_entry_header_keeps_secondary_gender_pos(pos: str) -> None:
+    body = _fixture("entry_br_n.html").decode().replace("brā) n.m. son", f"brā) {pos} son", 1)
+    entry = parse_lexicon_entry(_response(body.encode()), lemma_key="br N")
+
+    assert entry.lemma.part_of_speech == pos
+    assert entry.lemma.gloss == "son"
+    assert entry.lemma.headwords == ("br", "brˀ")
+
+
+def test_lexicon_browse_row_keeps_secondary_gender_pos() -> None:
+    body = (
+        '<a href="oneentry.php?lemma=xyl N&cits=all"><span class="lem">ḥyl, ḥylˀ</span> '
+        '(<span class="uni">ḥayl/ḥēl, ḥaylā</span>) <pos>n.m.(f.)</pos></a><br>army; force'
+    )
+    page = parse_lexicon_browse_page(_response(body.encode()))
+
+    assert [(e.lemma_key, e.part_of_speech, e.gloss) for e in page.entries] == [
+        ("xyl N", "n.m.(f.)", "army; force")
+    ]

@@ -24,6 +24,7 @@ _GLOSS_EMPTY_MARKER = "there are no glosses with the word:"
 # (R-062). The legacy "<alias> →" form keeps its earlier alias meaning.
 _GLOSS_REDIRECT_ARROW = "\u27f9"
 _GLOSS_ALIAS_ARROW = "\u2192"
+_GLOSS_SPAN_RE = re.compile(r"<span\s+class=\"gloss\"", re.IGNORECASE)
 _CITATION_EMPTY_MARKER = "there are no citations with the word:"
 _CITATION_REJECTED_RE = re.compile(r'"(.*?)" is not a valid search string')
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
@@ -217,6 +218,10 @@ def parse_gloss_search_page(response: CalResponse) -> GlossSearchPage:
         )
     if not matches:
         raise SearchParseError("CAL gloss search page has no recognizable results")
+    # Each CAL row renders its gloss in one span.gloss; a row without one must not borrow the
+    # next rendered text (for example CAL's footer) as its gloss.
+    if len(_GLOSS_SPAN_RE.findall(text)) != len(matches):
+        raise SearchParseError("CAL gloss search rows and rendered glosses do not correspond")
     return GlossSearchPage(matches=tuple(matches))
 
 

@@ -30,4 +30,5 @@
 ## Out of scope (follow-up issues)
 
 - Empty `<pos>` rows, which need a nullable `part_of_speech` (#227).
+- Exact-entry header scan falling through to a later line (#229).
 - `vb.` vowel class dropped in gloss/browse rows (#228).

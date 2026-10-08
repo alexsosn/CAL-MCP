@@ -5,7 +5,9 @@
 
 ## Bounded current CAL evidence
 
-Four live requests were made with the production `CalHttpClient`, one per page. No result link,
+Four live requests were made for the research, plus a fifth during review (`camelsec`: `POST`,
+`English=camel#`, `secondary=true`, 200, 6761 bytes, used to rebuild `search_gloss_camel.html`
+verbatim). The four were made with the production `CalHttpClient`, one per page. No result link,
 lemma-entry link, or pagination was followed:
 
 | Label | Request | Status | Bytes |
@@ -44,8 +46,10 @@ slash-combined forms are already accepted. Only the parenthesized secondary gend
 `(m.)`, is new to the grammar. CAL renders it inside the `<pos>` element, so it is part of CAL's
 displayed POS. It is not gloss text.
 
-The header parser is shared, so the same rows also break `cal_lexicon_browse` and lexicon lookup
-on the affected prefixes. #222 (R-061) widened that grammar for one trailing `?` only.
+The header parser is shared, so the same rows also break `cal_lexicon_browse` and lookup's browse
+step on the affected prefixes. On an exact entry page, the header scan does not fail on an
+unrecognized real header. It can instead accept a later citation line as the header, and that is
+tracked as #229. #222 (R-061) widened that grammar for one trailing `?` only.
 
 The empty-`<pos>` row on the botany page is a separate shape. It needs a nullable public
 `part_of_speech`, which is a contract change, so it is split into follow-up issue #227 rather
@@ -78,6 +82,7 @@ indistinguishable.
    widen any other punctuation.
 2. Keep CAL's repeated rows (no deduplication), but expose the redirect source verbatim on
    gloss-search matches as `cross_reference_from` (`null` for ordinary rows). Text before the
-   lemma link that is not exactly one recognized arrow fails closed. The lexicon-lookup browse
+   lemma link that is not exactly one recognized arrow fails closed, and so does a page whose
+   `span.gloss` count differs from its row count, so a missing gloss cannot borrow the footer. The lexicon-lookup browse
    path is not changed.
 3. Production request load is unchanged.
