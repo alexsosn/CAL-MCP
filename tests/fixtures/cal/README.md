@@ -18,6 +18,8 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | `lexicon_citation_context_not_found.html` | `https://cal.huc.edu/showachapter.php?fullcoord=999999999999` | exact no-citations marker and selector-binding semantics for the explicit context follow-up |
 | `not_found.html` | CAL lexicon surface | explicit no-match semantic page |
 | `search_gloss_camel.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=camel#`, `secondary=true`) | ordered lemma-link + gloss result shape |
+| `search_gloss_field_alt_gender.html` | `GET https://cal.huc.edu/newsearchmngs.php?English=(med&secondary=true` plus one `(zool` row (2026-10-08; #154) | four verbatim field-search rows: ordinary `n.m.`, alternate-gender `n.m.(f.)` and `n.f./(m.)`, and `n.m.(f.)` followed by homograph `#3` |
+| `search_gloss_camel_redirect.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=camel#`; 2026-10-08; #154) | the last two verbatim rows: CAL lists `n)qh N`, then repeats it behind the `nqh N ⟹` redirect |
 | `search_gloss_empty.html` | `POST https://cal.huc.edu/newsearchmngs.php` (`English=qzxvjk#`, `secondary=true`) | exact current empty-gloss marker |
 | `search_citations_camel.html` | `POST https://cal.huc.edu/searchcits.php` (`English=camel`) | repeated lemma/context/citation rows with Hebrew and Syriac source text |
 | `search_citations_empty.html` | `POST https://cal.huc.edu/searchcits.php` (`English=qzxvjk`) | exact current empty-citation marker |
