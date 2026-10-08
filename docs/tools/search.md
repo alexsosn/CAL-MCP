@@ -29,7 +29,12 @@ CAL-MCP trims surrounding ASCII spaces and collapses repeated internal ASCII spa
 - rendered headword variants;
 - pronunciation when present;
 - part-of-speech text;
-- the gloss returned on the CAL result page.
+- the gloss returned on the CAL result page;
+- `cross_reference_from` — `null` for an ordinary row. When CAL repeats a lemma behind a redirect row such as `nqh N ⟹ nˀqh, nˀqtˀ`, this is CAL's redirecting key exactly as rendered (`"nqh N"`), and the rest of the match describes the linked target lemma.
+
+CAL can list the same lemma more than once. For example, a `camel#` search (2026-10-08) returns `n)qh N` ("female camel") twice: once as an ordinary row and once behind the `nqh N ⟹` redirect. CAL-MCP keeps both rows in CAL's order rather than deduplicating them. Use `cross_reference_from` to tell them apart.
+
+`part_of_speech` keeps CAL's literal abbreviation, including a secondary gender in parentheses such as `n.m.(f.)` or `n.f./(m.)`. Text before a row's lemma link other than one redirect (`⟹`) or alias (`→`) arrow fails closed as `parser_drift`.
 
 An ordinary no-match search returns `matches: []`. It is not represented as a parser or network failure.
 
@@ -68,7 +73,7 @@ The result contains:
 
 - `field` — the readable enum value;
 - `label` — CAL's current human-facing field label;
-- `matches` — the same ordered CAL lemma-reference shape used by ordinary gloss results;
+- `matches` — the same ordered match shape used by ordinary gloss results, including `cross_reference_from`;
 - provenance for the actual CAL request.
 
 Each valid explicit operation submits at most one new logical CAL request to the shared client. It does not search every field, follow matching lemmas, or expand the selected field into additional queries.

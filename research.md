@@ -346,6 +346,26 @@ displayed source plus validated target lemma key without fetching or merging the
 `$l` / Syriac / `by` acceptance passed on top of merged #222. Detailed evidence:
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
+## R-062 — Gloss-field pages use secondary-gender POS; gloss search repeats lemmas behind `⟹` redirects
+
+**Rechecked:** 2026-10-08; issue #154. Four bounded GETs/POSTs, with no link traversal.
+
+`cal_gloss_field("medicine")` failed because CAL renders a parenthesized secondary gender inside
+`<pos>`: `n.m.(f.)` (`xyl N`, `$wrnq N`, and zoology `gl#3 N` before `#3`) and `n.f./(m.)`
+(`qlyd N`). The shared lemma-header grammar rejected those headers, and the field page markup
+itself was unchanged. The botany control also has one row with an empty `<pos></pos>`
+(`$yp#2 N`). Verb rows render a vowel class after `vb.` (`vb. a/u`), which the gloss/browse
+paths do not keep. They are tracked in #227 and #228. On exact entry pages an unrecognized real header can fall through to a later line (#229).
+
+The `camel#` "duplicate" is real CAL output. CAL lists `n)qh N` once as an ordinary row and again
+behind `<span class="uni">nqh N </span>⟹`, a redirect from the alternate key `nqh N`. The earlier
+parser recognized only `→` and silently dropped the redirect source.
+
+**Implication:** accept exactly one trailing `(x.)` group, optionally after `/`, and keep the
+literal POS. Keep CAL's repeated rows and expose the redirect source verbatim as
+`cross_reference_from`. Any other text before a gloss-row link fails closed. Detailed evidence:
+`docs/research/issue-154-gloss-field-drift.md`.
+
 ## R-061 — CAL lemma headers use a trailing question mark for uncertain POS
 
 **Rechecked:** 2026-10-04; issue #222. Final installed-stdio acceptance: run `37218694925`.
