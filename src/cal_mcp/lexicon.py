@@ -212,7 +212,8 @@ class _SemanticHTMLParser(HTMLParser):
         self._line_depth = 0
         self._ignored_depth = 0
         self._semantic_skip_tags: list[str] = []
-        self._lemma_header_pending = False
+        # Depth of nested <div>s inside CAL's current div.lemma-header block (0 = outside).
+        self._lemma_header_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _IGNORED_CONTENT_TAGS:
@@ -251,8 +252,11 @@ class _SemanticHTMLParser(HTMLParser):
         if tag in _BLOCK_TAGS:
             self._flush()
             self._line_depth = max(self._list_depth, 0)
-        if tag == "div" and "lemma-header" in classes:
-            self._lemma_header_pending = True
+        if tag == "div":
+            if self._lemma_header_depth:
+                self._lemma_header_depth += 1
+            elif "lemma-header" in classes:
+                self._lemma_header_depth = 1
         if tag == "br":
             self._flush()
         if tag == "a" and self._open_link is None:
@@ -287,6 +291,8 @@ class _SemanticHTMLParser(HTMLParser):
                 self._finish_open_link()
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
+        if tag == "div" and self._lemma_header_depth:
+            self._lemma_header_depth -= 1
         if tag in {"ul", "ol"}:
             self._flush()
             self._list_depth -= 1
@@ -316,9 +322,10 @@ class _SemanticHTMLParser(HTMLParser):
         if self._open_link is None:
             return
         text = _clean_text("".join(self._open_link.parts))
-        marked_pos = (
-            _clean_text("".join(self._open_link.pos_parts)) if self._open_link.pos_count else None
-        )
+        raw_pos = "".join(self._open_link.pos_parts)
+        # Only a literally empty element means "no POS"; whitespace-only stays non-empty so it
+        # fails closed rather than becoming null.
+        marked_pos = (_clean_text(raw_pos) or raw_pos) if self._open_link.pos_count else None
         single = self._open_link.pos_count == 1
         self._links.append(
             _Link(
@@ -345,10 +352,9 @@ class _SemanticHTMLParser(HTMLParser):
                     text=text,
                     links=tuple(self._links),
                     list_depth=self._line_depth,
-                    lemma_header=self._lemma_header_pending,
+                    lemma_header=self._lemma_header_depth > 0,
                 )
             )
-        self._lemma_header_pending = False
         self._parts.clear()
         self._links.clear()
         self._line_depth = max(self._list_depth, 0)
@@ -356,6 +362,9 @@ class _SemanticHTMLParser(HTMLParser):
 
 _TOKEN_RE = re.compile(r"\S+")
 _HOMOGRAPH_MARKER_RE = re.compile(r"#\d+")
+_LEMMA_HEADER_BLOCK_RE = re.compile(
+    r"<div\b[^>]*\bclass\s*=\s*[\"'][^\"']*(?<![\w-])lemma-header(?![\w-])", re.IGNORECASE
+)
 _HOMOGRAPH_MARKER_TOKEN_RE = re.compile(r"(?:^|\s)#\s*\d+(?:\s|$)")
 _POS_SECONDARY_GENDER_RE = re.compile(r"/?\([a-z]+\.\)$")
 _NUMBER_RE = re.compile(r"^(\d+)$")
@@ -513,10 +522,17 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
     header_index = -1
     lemma: LemmaRef | None = None
     marked_headers = [index for index, line in enumerate(lines) if line.lemma_header]
-    if marked_headers:
+    header_blocks = len(
+        _LEMMA_HEADER_BLOCK_RE.findall(response.body.decode("utf-8", errors="replace"))
+    )
+    if header_blocks or marked_headers:
         # CAL's current page marks its header structurally; never substitute a later line (R-064).
-        if len(marked_headers) != 1:
+        if header_blocks != 1:
             raise LexiconParseError("CAL lexicon entry has more than one lemma-header block")
+        if len(marked_headers) != 1:
+            raise LexiconParseError(
+                "CAL lexicon entry lemma-header block does not render exactly one header line"
+            )
         header_index = marked_headers[0]
         lemma = _parse_lemma_header(
             lines[header_index].text, lemma_key=lemma_key, require_gloss=True

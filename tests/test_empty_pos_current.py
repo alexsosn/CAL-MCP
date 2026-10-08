@@ -113,3 +113,48 @@ def test_current_entry_lemma_header_still_parses() -> None:
         "vb.",
         "a/u",
     )
+
+
+_ENTRY_TAIL = "<div>1</div><div>a type of marsh reed</div><div>JBA</div></body>"
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        # A child block inside the header must not let a later line become the header.
+        ('<div class="lemma-header">', '<div class="lemma-header"><div class="x">'),
+        # An empty header block.
+        (
+            '<div class="lemma-header"><span class="lemma-formal"><b>šyp, šypˀ</b></span> '
+            '<span class="lemma-gloss"><b>a type of marsh reed</b></span></div>',
+            '<div class="lemma-header"></div>',
+        ),
+        # Two header blocks.
+        (
+            '<div class="dict-refs">',
+            '<div class="lemma-header">x n.m. y</div><div class="dict-refs">',
+        ),
+    ],
+)
+def test_lemma_header_block_shape_drift_fails_closed(old: str, new: str) -> None:
+    body = _fixture("entry_lemma_header_no_pos_current.html").replace("</body>", _ENTRY_TAIL)
+    assert old in body
+    with pytest.raises(LexiconParseError, match="lemma-header"):
+        parse_lexicon_entry(_response(body.replace(old, new, 1)), lemma_key="$yp#2 N")
+
+
+def test_nested_lemma_header_with_valid_header_still_parses() -> None:
+    body = (
+        '<div class="lemma-header"><div class="inner"><b>ˁhr, ˀhr</b> (a/u) vb. '
+        "to be sexually aroused</div></div>"
+        "<div>1</div><div>to be sexually aroused</div><div>Syriac</div>"
+    )
+    entry = parse_lexicon_entry(_response(body), lemma_key="(hr V")
+
+    assert entry.lemma.part_of_speech == "vb."
+
+
+def test_whitespace_only_pos_is_not_treated_as_empty() -> None:
+    body = _fixture("browse_empty_pos_current.html").replace("<pos></pos>", "<pos> </pos>", 1)
+    with pytest.raises(CalParseError):
+        parse_lexicon_browse_page(_response(body))

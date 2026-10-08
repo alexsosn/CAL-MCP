@@ -127,7 +127,7 @@ A successful `entry` has these top-level fields:
 
 | Field | Meaning |
 | --- | --- |
-| `lemma` | CAL lemma reference: key, headwords, pronunciation, part of speech (`null` only where a CAL result row marks an empty `<pos>`), gloss, aliases |
+| `lemma` | CAL lemma reference: key, headwords, pronunciation, part of speech, gloss, aliases. In `matches`, which are browse rows, `part_of_speech` is `null` where CAL marks an empty `<pos>`; an exact entry's `lemma` always has one |
 | `senses` | ordered CAL senses with `label_path`, optional stem heading, definition, dialects, citations |
 | `root` | CAL root text when exposed by the entry |
 | `grammar` | grammar/stem labels preceding the senses when present |

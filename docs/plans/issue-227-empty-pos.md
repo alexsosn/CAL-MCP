@@ -9,7 +9,7 @@
      pronunciation come from the rendered label, with a trailing `#N` homograph marker removed,
      and `part_of_speech` is `None`;
    - otherwise: the existing grammar plus `_apply_marked_pos` (#228).
-3. `_SemanticHTMLParser` marks a line produced by a `div.lemma-header` block.
+3. `_SemanticHTMLParser` marks every line rendered inside a `div.lemma-header` block, including nested divs. After review, `parse_lexicon_entry` requires exactly one such block and exactly one marked line whenever the page has the block, so an empty or nested block cannot fall back to the scan. Only a literally empty `<pos>` counts as no POS.
    `parse_lexicon_entry` uses only that line when one exists, and fails closed when it does not
    parse. Pages without that block keep the existing scan, which is #224's scope.
 4. Docs: `search.md`, `lexicon-browse.md`, `lexicon.md`, `CHANGELOG.md`, R-064.

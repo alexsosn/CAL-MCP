@@ -39,8 +39,8 @@ entire page.
 `parse_lexicon_entry` therefore skips the real header and accepts a later line as the header:
 `headwords=('Page',)`, `part_of_speech='refs.'`, gloss `in other dictionaries: DJBA: 1138b`. This
 is the silent corruption described in #224. Today lookup never reaches this entry, because its
-browse step fails first. Once browse accepts the row, a lookup of `šyp` would select `$yp#2 N` and
-return the corrupted header.
+browse step fails first. Once browse accepts the row, a lookup of `šyp` is ambiguous among `$yp N`, `$yp#2 N` and
+`$yp A`. Selecting `$yp#2 N` with `lemma_key` would then return the corrupted header.
 
 ## Implications
 
