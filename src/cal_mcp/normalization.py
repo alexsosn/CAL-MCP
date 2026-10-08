@@ -629,7 +629,6 @@ def _unsupported_hebrew_mark_error(word: str, mark: str) -> UnsupportedQueryErro
         f"{_describe_character(mark)} in {word}"
     )
     # Suggest, never apply, the word without its pointing, and only when that form converts.
-    # A shin/sin dot is kept only directly after shin, where the converter reads it.
     # Every dot on a shin is kept, so conflicting dots still fail the dry run below.
     kept: list[str] = []
     on_shin = False
