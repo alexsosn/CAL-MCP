@@ -5,7 +5,7 @@
 ## Changes
 
 1. `lexicon._looks_like_pos_token` accepts one trailing secondary-gender group:
-   `<existing POS token>[/](<letters>.)`, optionally followed by the #222 `?`. The literal token is
+   an existing POS token, optionally followed by `/`, then `(` + lowercase letters + `.)`, optionally followed by the #222 `?`. The literal token is
    preserved in `part_of_speech`. This shared fix also repairs lexicon browse and lookup headers.
 2. `search.parse_gloss_search_page` gets its own row parser in place of `parse_browse_page`:
    - exactly one lemma link per result row;

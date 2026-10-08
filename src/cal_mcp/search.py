@@ -12,15 +12,18 @@ from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError, CalRejectedInputError
 from cal_mcp.lexicon import (
     LemmaRef,
-    LexiconParseError,
+    _is_lemma_entry_href,
     _lemma_key_from_href,
     _parse_lemma_header,
     _parse_lines,
     _split_trailing_parenthetical,
-    parse_browse_page,
 )
 
 _GLOSS_EMPTY_MARKER = "there are no glosses with the word:"
+# Gloss-search rows may start with "<CAL key> ⟹" when CAL repeats a lemma behind a redirect
+# (R-062). The legacy "<alias> →" form keeps its earlier alias meaning.
+_GLOSS_REDIRECT_ARROW = "\u27f9"
+_GLOSS_ALIAS_ARROW = "\u2192"
 _CITATION_EMPTY_MARKER = "there are no citations with the word:"
 _CITATION_REJECTED_RE = re.compile(r'"(.*?)" is not a valid search string')
 _CITATION_PARTS_RE = re.compile(r"\s+:\s*")
@@ -99,8 +102,14 @@ class SearchProvenance:
 
 
 @dataclass(frozen=True, slots=True)
+class GlossSearchMatch:
+    lemma: LemmaRef
+    cross_reference_from: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class GlossSearchPage:
-    matches: tuple[LemmaRef, ...]
+    matches: tuple[GlossSearchMatch, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,13 +128,13 @@ class CitationSearchPage:
 
 @dataclass(frozen=True, slots=True)
 class GlossSearchResult:
-    matches: tuple[LemmaRef, ...]
+    matches: tuple[GlossSearchMatch, ...]
     all_glosses: bool
     provenance: SearchProvenance
 
     def to_dict(self) -> dict[str, object]:
         return {
-            "matches": [_lemma_to_dict(item) for item in self.matches],
+            "matches": [_gloss_match_to_dict(item) for item in self.matches],
             "all_glosses": self.all_glosses,
             "provenance": _provenance_to_dict(self.provenance),
         }
@@ -135,14 +144,14 @@ class GlossSearchResult:
 class GlossFieldSearchResult:
     field: GlossField
     label: str
-    matches: tuple[LemmaRef, ...]
+    matches: tuple[GlossSearchMatch, ...]
     provenance: SearchProvenance
 
     def to_dict(self) -> dict[str, object]:
         return {
             "field": self.field.value,
             "label": self.label,
-            "matches": [_lemma_to_dict(item) for item in self.matches],
+            "matches": [_gloss_match_to_dict(item) for item in self.matches],
             "provenance": _provenance_to_dict(self.provenance),
         }
 
@@ -163,13 +172,68 @@ def parse_gloss_search_page(response: CalResponse) -> GlossSearchPage:
     text = response.body.decode("utf-8", errors="replace")
     if _GLOSS_EMPTY_MARKER in text.lower():
         return GlossSearchPage(matches=())
-    try:
-        browse = parse_browse_page(response)
-    except LexiconParseError as exc:
-        raise SearchParseError("CAL gloss search page has no recognizable results") from exc
-    if not browse.entries:
-        raise SearchParseError("CAL gloss search page is unexpectedly empty")
-    return GlossSearchPage(matches=browse.entries)
+    lines = _parse_lines(response)
+    matches: list[GlossSearchMatch] = []
+    for index, line in enumerate(lines):
+        lemma_links = [link for link in line.links if _is_lemma_entry_href(link.href)]
+        if not lemma_links:
+            continue
+        if len(lemma_links) != 1:
+            raise SearchParseError("CAL gloss search row has more than one lemma link")
+        link = lemma_links[0]
+        lemma_key = _lemma_key_from_href(link.href)
+        if lemma_key is None:
+            raise SearchParseError("CAL gloss search row is missing a usable lemma key")
+        parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
+        if parsed is None:
+            raise SearchParseError("CAL gloss search row is missing a recognizable lemma header")
+        link_start = line.text.find(link.text) if link.text else -1
+        if link_start < 0:
+            raise SearchParseError("CAL gloss search row does not render its lemma link text")
+        if line.text[link_start + len(link.text) :].strip():
+            raise SearchParseError("CAL gloss search row has unrecognized text after its lemma")
+        cross_reference_from, aliases = _parse_gloss_row_prefix(line.text[:link_start].strip())
+
+        gloss = parsed.gloss
+        for next_line in lines[index + 1 :]:
+            if any(_lemma_key_from_href(item.href) is not None for item in next_line.links):
+                break
+            if next_line.text:
+                gloss = next_line.text
+                break
+
+        matches.append(
+            GlossSearchMatch(
+                lemma=LemmaRef(
+                    lemma_key=parsed.lemma_key,
+                    headwords=parsed.headwords,
+                    pronunciation=parsed.pronunciation,
+                    part_of_speech=parsed.part_of_speech,
+                    gloss=gloss,
+                    aliases=aliases,
+                ),
+                cross_reference_from=cross_reference_from,
+            )
+        )
+    if not matches:
+        raise SearchParseError("CAL gloss search page has no recognizable results")
+    return GlossSearchPage(matches=tuple(matches))
+
+
+def _parse_gloss_row_prefix(prefix: str) -> tuple[str | None, tuple[str, ...]]:
+    if not prefix:
+        return None, ()
+    redirects = prefix.count(_GLOSS_REDIRECT_ARROW)
+    alias_arrows = prefix.count(_GLOSS_ALIAS_ARROW)
+    arrow = _GLOSS_REDIRECT_ARROW if redirects else _GLOSS_ALIAS_ARROW
+    if redirects + alias_arrows != 1 or not prefix.endswith(arrow):
+        raise SearchParseError("CAL gloss search row has unrecognized text before its lemma")
+    source = prefix[: -len(arrow)].strip()
+    if not source:
+        raise SearchParseError("CAL gloss search row has an empty cross-reference source")
+    if redirects:
+        return source, ()
+    return None, tuple(part.strip() for part in source.split(",") if part.strip())
 
 
 def parse_citation_search_page(
@@ -603,6 +667,13 @@ def _lemma_to_dict(lemma: LemmaRef) -> dict[str, object]:
         "part_of_speech": lemma.part_of_speech,
         "gloss": lemma.gloss,
         "aliases": list(lemma.aliases),
+    }
+
+
+def _gloss_match_to_dict(match: GlossSearchMatch) -> dict[str, object]:
+    return {
+        **_lemma_to_dict(match.lemma),
+        "cross_reference_from": match.cross_reference_from,
     }
 
 

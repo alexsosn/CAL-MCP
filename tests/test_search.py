@@ -33,12 +33,12 @@ def test_gloss_search_parser_preserves_ordered_cal_lemma_refs() -> None:
         _response("search_gloss_camel.html", "https://cal.huc.edu/newsearchmngs.php")
     )
 
-    assert [item.lemma_key for item in page.matches] == ["bwkty N", "gml N", "ynqh N"]
-    assert page.matches[0].headwords == ("[bwkty]",)
-    assert page.matches[0].part_of_speech == "n.m."
-    assert page.matches[0].gloss == "bactrian camel"
-    assert page.matches[1].headwords == ("gml", "gmlˀ")
-    assert page.matches[1].gloss == "camel; beam"
+    assert [item.lemma.lemma_key for item in page.matches] == ["bwkty N", "gml N", "ynqh N"]
+    assert page.matches[0].lemma.headwords == ("[bwkty]",)
+    assert page.matches[0].lemma.part_of_speech == "n.m."
+    assert page.matches[0].lemma.gloss == "bactrian camel"
+    assert page.matches[1].lemma.headwords == ("gml", "gmlˀ")
+    assert page.matches[1].lemma.gloss == "camel; beam"
 
 
 def test_gloss_search_parser_preserves_explicit_empty_result() -> None:
@@ -120,7 +120,7 @@ async def test_gloss_search_uses_current_post_contract_and_preserves_provenance(
     assert request.path == "newsearchmngs.php"
     assert request.params == ()
     assert request.data == (("English", "camel#"), ("secondary", "true"))
-    assert [item.lemma_key for item in result.matches] == ["bwkty N", "gml N", "ynqh N"]
+    assert [item.lemma.lemma_key for item in result.matches] == ["bwkty N", "gml N", "ynqh N"]
     assert result.all_glosses is True
     assert result.provenance.source == "CAL"
     assert result.provenance.source_url == "https://cal.huc.edu/newsearchmngs.php"
@@ -163,7 +163,7 @@ async def test_specialized_gloss_field_uses_current_get_contract_once(
     ]
     assert result.field.value == field_slug
     assert result.label == label
-    assert [item.lemma_key for item in result.matches] == ["bwkty N", "gml N", "ynqh N"]
+    assert [item.lemma.lemma_key for item in result.matches] == ["bwkty N", "gml N", "ynqh N"]
     assert result.provenance.original_query == field_slug
     assert result.provenance.submitted_query == token
     assert result.provenance.search_kind == "gloss_field"

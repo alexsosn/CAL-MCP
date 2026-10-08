@@ -303,6 +303,7 @@ class _SemanticHTMLParser(HTMLParser):
 
 
 _TOKEN_RE = re.compile(r"\S+")
+_POS_SECONDARY_GENDER_RE = re.compile(r"/?\([a-z]+\.\)$")
 _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
 _STEM_HEADING_RE = re.compile(r"^(?P<heading>.+?)\s+\d+\s+senses?▶$")
@@ -857,6 +858,11 @@ def _split_trailing_parenthetical(value: str) -> tuple[str, str] | None:
 
 def _looks_like_pos_token(value: str) -> bool:
     candidate = value[:-1] if value.endswith("?") else value
+    # CAL marks a secondary gender as one trailing parenthesized group, e.g. ``n.m.(f.)`` or
+    # ``n.f./(m.)`` (R-062). The literal token is kept; only that single group is allowed.
+    secondary = _POS_SECONDARY_GENDER_RE.search(candidate)
+    if secondary is not None:
+        candidate = candidate[: secondary.start()]
     if (
         not candidate
         or not candidate[0].isascii()
