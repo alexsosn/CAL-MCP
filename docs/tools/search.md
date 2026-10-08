@@ -34,7 +34,7 @@ CAL-MCP trims surrounding ASCII spaces and collapses repeated internal ASCII spa
 
 CAL can list the same lemma more than once. For example, a `camel#` search (2026-10-08) returns `n)qh N` ("female camel") twice: once as an ordinary row and once behind the `nqh N ⟹` redirect. CAL-MCP keeps both rows in CAL's order rather than deduplicating them. Use `cross_reference_from` to tell them apart.
 
-`part_of_speech` is the text of CAL's `<pos>` element on the row, kept literally. That includes a secondary gender in parentheses such as `n.m.(f.)` or `n.f./(m.)`, and a verb's vowel class such as `vb. a/u` or `vb. a(i)/u`. A row whose `<pos>` disagrees with its rendered header, or that has more than one `<pos>`, fails closed as `parser_drift`. Text before a row's lemma link other than one redirect (`⟹`) or alias (`→`) arrow fails closed as `parser_drift`.
+`part_of_speech` is the text of CAL's `<pos>` element on the row, kept literally. That includes a secondary gender in parentheses such as `n.m.(f.)` or `n.f./(m.)`, and a verb's vowel class such as `vb. a/u` or `vb. a(i)/u`. When CAL renders an explicitly empty `<pos></pos>`, as for `$yp#2 N` ("a type of marsh reed") in the botany field, `part_of_speech` is `null`. CAL-MCP does not infer one. A row whose `<pos>` disagrees with its rendered header, or that has more than one `<pos>`, fails closed as `parser_drift`. Text before a row's lemma link other than one redirect (`⟹`) or alias (`→`) arrow fails closed as `parser_drift`.
 
 An ordinary no-match search returns `matches: []`. It is not represented as a parser or network failure.
 

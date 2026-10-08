@@ -63,7 +63,7 @@ class LemmaRef:
     lemma_key: str
     headwords: tuple[str, ...]
     pronunciation: str | None
-    part_of_speech: str
+    part_of_speech: str | None
     gloss: str
     aliases: tuple[str, ...] = ()
 
@@ -126,6 +126,9 @@ class _Link:
     marked_pos: str | None = None
     marked_pos_count: int = 0
     marked_pos_closed: bool = True
+    # Rendered link text before and after the <pos> element, when there is exactly one.
+    before_marked_pos: str | None = None
+    after_marked_pos: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -133,6 +136,8 @@ class _Line:
     text: str
     links: tuple[_Link, ...]
     list_depth: int
+    # True for the line rendered from CAL's current ``div.lemma-header`` block (R-064).
+    lemma_header: bool = False
 
 
 @dataclass(slots=True)
@@ -142,6 +147,8 @@ class _OpenLink:
     depth: int = 1
     parts: list[str] = field(default_factory=list)
     pos_parts: list[str] = field(default_factory=list)
+    before_pos_parts: list[str] = field(default_factory=list)
+    after_pos_parts: list[str] = field(default_factory=list)
     pos_count: int = 0
     in_pos: bool = False
 
@@ -205,6 +212,8 @@ class _SemanticHTMLParser(HTMLParser):
         self._line_depth = 0
         self._ignored_depth = 0
         self._semantic_skip_tags: list[str] = []
+        # Depth of nested <div>s inside CAL's current div.lemma-header block (0 = outside).
+        self._lemma_header_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _IGNORED_CONTENT_TAGS:
@@ -243,6 +252,11 @@ class _SemanticHTMLParser(HTMLParser):
         if tag in _BLOCK_TAGS:
             self._flush()
             self._line_depth = max(self._list_depth, 0)
+        if tag == "div":
+            if self._lemma_header_depth:
+                self._lemma_header_depth += 1
+            elif "lemma-header" in classes:
+                self._lemma_header_depth = 1
         if tag == "br":
             self._flush()
         if tag == "a" and self._open_link is None:
@@ -277,6 +291,8 @@ class _SemanticHTMLParser(HTMLParser):
                 self._finish_open_link()
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
+        if tag == "div" and self._lemma_header_depth:
+            self._lemma_header_depth -= 1
         if tag in {"ul", "ol"}:
             self._flush()
             self._list_depth -= 1
@@ -289,6 +305,10 @@ class _SemanticHTMLParser(HTMLParser):
             self._open_link.parts.append(data)
             if self._open_link.in_pos:
                 self._open_link.pos_parts.append(data)
+            elif self._open_link.pos_count:
+                self._open_link.after_pos_parts.append(data)
+            else:
+                self._open_link.before_pos_parts.append(data)
 
     def close(self) -> None:
         super().close()
@@ -302,9 +322,11 @@ class _SemanticHTMLParser(HTMLParser):
         if self._open_link is None:
             return
         text = _clean_text("".join(self._open_link.parts))
-        marked_pos = (
-            _clean_text("".join(self._open_link.pos_parts)) if self._open_link.pos_count else None
-        )
+        raw_pos = "".join(self._open_link.pos_parts)
+        # Only a literally empty element means "no POS"; whitespace-only stays non-empty so it
+        # fails closed rather than becoming null.
+        marked_pos = (_clean_text(raw_pos) or raw_pos) if self._open_link.pos_count else None
+        single = self._open_link.pos_count == 1
         self._links.append(
             _Link(
                 href=self._open_link.href,
@@ -312,6 +334,12 @@ class _SemanticHTMLParser(HTMLParser):
                 marked_pos=marked_pos,
                 marked_pos_count=self._open_link.pos_count,
                 marked_pos_closed=not self._open_link.in_pos,
+                before_marked_pos=(
+                    _clean_text("".join(self._open_link.before_pos_parts)) if single else None
+                ),
+                after_marked_pos=(
+                    _clean_text("".join(self._open_link.after_pos_parts)) if single else None
+                ),
             )
         )
         self._open_link = None
@@ -320,7 +348,12 @@ class _SemanticHTMLParser(HTMLParser):
         text = _clean_text("".join(self._parts))
         if text:
             self.lines.append(
-                _Line(text=text, links=tuple(self._links), list_depth=self._line_depth)
+                _Line(
+                    text=text,
+                    links=tuple(self._links),
+                    list_depth=self._line_depth,
+                    lemma_header=self._lemma_header_depth > 0,
+                )
             )
         self._parts.clear()
         self._links.clear()
@@ -329,6 +362,9 @@ class _SemanticHTMLParser(HTMLParser):
 
 _TOKEN_RE = re.compile(r"\S+")
 _HOMOGRAPH_MARKER_RE = re.compile(r"#\d+")
+_LEMMA_HEADER_BLOCK_RE = re.compile(
+    r"<div\b[^>]*\bclass\s*=\s*[\"'][^\"']*(?<![\w-])lemma-header(?![\w-])", re.IGNORECASE
+)
 _HOMOGRAPH_MARKER_TOKEN_RE = re.compile(r"(?:^|\s)#\s*\d+(?:\s|$)")
 _POS_SECONDARY_GENDER_RE = re.compile(r"/?\([a-z]+\.\)$")
 _NUMBER_RE = re.compile(r"^(\d+)$")
@@ -439,9 +475,7 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
                 raise LexiconParseError(
                     "CAL lexicon browse candidate is missing a usable lemma key"
                 )
-            parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
-            if parsed is not None:
-                parsed = _apply_marked_pos(parsed, link)
+            parsed = _parse_row_lemma_header(link, lemma_key=lemma_key)
             if parsed is None:
                 raise LexiconParseError(
                     "CAL lexicon browse candidate is missing a recognizable lemma header"
@@ -487,7 +521,31 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
     lines = _parse_lines(response)
     header_index = -1
     lemma: LemmaRef | None = None
+    marked_headers = [index for index, line in enumerate(lines) if line.lemma_header]
+    header_blocks = len(
+        _LEMMA_HEADER_BLOCK_RE.findall(response.body.decode("utf-8", errors="replace"))
+    )
+    if header_blocks or marked_headers:
+        # CAL's current page marks its header structurally; never substitute a later line (R-064).
+        if header_blocks != 1:
+            raise LexiconParseError(
+                "CAL lexicon entry does not have exactly one lemma-header block"
+            )
+        if len(marked_headers) != 1:
+            raise LexiconParseError(
+                "CAL lexicon entry lemma-header block does not render exactly one header line"
+            )
+        header_index = marked_headers[0]
+        lemma = _parse_lemma_header(
+            lines[header_index].text, lemma_key=lemma_key, require_gloss=True
+        )
+        if lemma is None:
+            raise LexiconParseError(
+                "CAL lexicon entry lemma-header block is not a recognizable lemma header"
+            )
     for index, line in enumerate(lines):
+        if lemma is not None:
+            break
         parsed = _parse_lemma_header(line.text, lemma_key=lemma_key, require_gloss=True)
         if parsed is not None:
             lemma = parsed
@@ -866,6 +924,38 @@ def _parse_lemma_header(
     )
 
 
+def _parse_row_lemma_header(link: _Link, *, lemma_key: str) -> LemmaRef | None:
+    """Parse a result-row lemma link, honouring CAL's own <pos> element (R-063, R-064)."""
+
+    parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
+    if link.marked_pos_count == 1 and link.marked_pos == "":
+        # CAL's explicitly empty <pos>: no POS, so nothing in the header may look like one, and
+        # only a homograph marker may follow the element.
+        label = link.before_marked_pos or ""
+        after = link.after_marked_pos or ""
+        if parsed is not None or not label or not link.marked_pos_closed:
+            return None
+        if after and _HOMOGRAPH_MARKER_RE.fullmatch(after) is None:
+            return None
+        pronunciation: str | None = None
+        pronunciation_parts = _split_trailing_parenthetical(label)
+        if pronunciation_parts is not None:
+            label, pronunciation = pronunciation_parts
+        headwords = tuple(part.strip() for part in label.split(",") if part.strip())
+        if not headwords:
+            return None
+        return LemmaRef(
+            lemma_key=lemma_key,
+            headwords=headwords,
+            pronunciation=pronunciation,
+            part_of_speech=None,
+            gloss="",
+        )
+    if parsed is None:
+        return None
+    return _apply_marked_pos(parsed, link)
+
+
 def _apply_marked_pos(parsed: LemmaRef, link: _Link) -> LemmaRef | None:
     """Use CAL's own <pos> element as the row POS when the link marks one (R-063).
 
@@ -881,6 +971,7 @@ def _apply_marked_pos(parsed: LemmaRef, link: _Link) -> LemmaRef | None:
         link.marked_pos_count != 1
         or not link.marked_pos_closed
         or not marked
+        or parsed.part_of_speech is None
         or _HOMOGRAPH_MARKER_TOKEN_RE.search(marked) is not None
     ):
         return None

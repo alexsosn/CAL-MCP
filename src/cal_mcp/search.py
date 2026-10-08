@@ -12,11 +12,11 @@ from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError, CalRejectedInputError
 from cal_mcp.lexicon import (
     LemmaRef,
-    _apply_marked_pos,
     _is_lemma_entry_href,
     _lemma_key_from_href,
     _parse_lemma_header,
     _parse_lines,
+    _parse_row_lemma_header,
     _split_trailing_parenthetical,
 )
 
@@ -186,9 +186,7 @@ def parse_gloss_search_page(response: CalResponse) -> GlossSearchPage:
         lemma_key = _lemma_key_from_href(link.href)
         if lemma_key is None:
             raise SearchParseError("CAL gloss search row is missing a usable lemma key")
-        parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
-        if parsed is not None:
-            parsed = _apply_marked_pos(parsed, link)
+        parsed = _parse_row_lemma_header(link, lemma_key=lemma_key)
         if parsed is None:
             raise SearchParseError("CAL gloss search row is missing a recognizable lemma header")
         link_start = line.text.find(link.text) if link.text else -1
