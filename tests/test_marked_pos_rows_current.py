@@ -80,6 +80,9 @@ _PARSERS = [
         ("</font>", " x.y.</font>"),
         # Unexplained rendered text after the marked POS inside the link.
         ("</pos>", "</pos> stray"),
+        # A homograph marker inside the marked POS, or a <pos> left unclosed.
+        ("</pos>", " #2</pos>"),
+        ("</pos>", ""),
     ],
 )
 def test_marked_pos_disagreement_fails_closed(

@@ -125,6 +125,7 @@ class _Link:
     # Text of CAL's <pos> element inside the link, if any, and how many there were.
     marked_pos: str | None = None
     marked_pos_count: int = 0
+    marked_pos_closed: bool = True
     # Rendered link text before and after the <pos> element, when there is exactly one.
     before_marked_pos: str | None = None
     after_marked_pos: str | None = None
@@ -325,6 +326,7 @@ class _SemanticHTMLParser(HTMLParser):
                 text=text,
                 marked_pos=marked_pos,
                 marked_pos_count=self._open_link.pos_count,
+                marked_pos_closed=not self._open_link.in_pos,
                 before_marked_pos=(
                     _clean_text("".join(self._open_link.before_pos_parts)) if single else None
                 ),
@@ -354,6 +356,7 @@ class _SemanticHTMLParser(HTMLParser):
 
 _TOKEN_RE = re.compile(r"\S+")
 _HOMOGRAPH_MARKER_RE = re.compile(r"#\d+")
+_HOMOGRAPH_MARKER_TOKEN_RE = re.compile(r"(?:^|\s)#\s*\d+(?:\s|$)")
 _POS_SECONDARY_GENDER_RE = re.compile(r"/?\([a-z]+\.\)$")
 _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
@@ -912,7 +915,7 @@ def _parse_row_lemma_header(link: _Link, *, lemma_key: str) -> LemmaRef | None:
         # only a homograph marker may follow the element.
         label = link.before_marked_pos or ""
         after = link.after_marked_pos or ""
-        if parsed is not None or not label:
+        if parsed is not None or not label or not link.marked_pos_closed:
             return None
         if after and _HOMOGRAPH_MARKER_RE.fullmatch(after) is None:
             return None
@@ -946,7 +949,13 @@ def _apply_marked_pos(parsed: LemmaRef, link: _Link) -> LemmaRef | None:
     if link.marked_pos_count == 0:
         return parsed
     marked = link.marked_pos
-    if link.marked_pos_count != 1 or not marked or parsed.part_of_speech is None:
+    if (
+        link.marked_pos_count != 1
+        or not link.marked_pos_closed
+        or not marked
+        or parsed.part_of_speech is None
+        or _HOMOGRAPH_MARKER_TOKEN_RE.search(marked) is not None
+    ):
         return None
     if not marked.startswith(parsed.part_of_speech):
         return None
