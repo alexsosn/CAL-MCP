@@ -29,7 +29,12 @@ CAL-MCP trims surrounding ASCII spaces and collapses repeated internal ASCII spa
 - rendered headword variants;
 - pronunciation when present;
 - part-of-speech text;
-- the gloss returned on the CAL result page.
+- the gloss returned on the CAL result page;
+- `cross_reference_from` — `null` for an ordinary row. When CAL repeats a lemma behind a redirect row such as `nqh N ⟹ nˀqh, nˀqtˀ`, this is CAL's redirecting key exactly as rendered (`"nqh N"`), and the rest of the match describes the linked target lemma.
+
+CAL can list the same lemma more than once. For example, a `camel#` search (2026-10-08) returns `n)qh N` ("female camel") twice: once as an ordinary row and once behind the `nqh N ⟹` redirect. CAL-MCP keeps both rows in CAL's order rather than deduplicating them. Use `cross_reference_from` to tell them apart.
+
+`part_of_speech` is the text of CAL's `<pos>` element on the row, kept literally. That includes a secondary gender in parentheses such as `n.m.(f.)` or `n.f./(m.)`, and a verb's vowel class such as `vb. a/u` or `vb. a(i)/u`. When CAL renders an explicitly empty `<pos></pos>`, as for `$yp#2 N` ("a type of marsh reed") in the botany field, `part_of_speech` is `null`. CAL-MCP does not infer one. A row whose `<pos>` disagrees with its rendered header, or that has more than one `<pos>`, fails closed as `parser_drift`. Text before a row's lemma link other than one redirect (`⟹`) or alias (`→`) arrow fails closed as `parser_drift`.
 
 An ordinary no-match search returns `matches: []`. It is not represented as a parser or network failure.
 
@@ -68,7 +73,7 @@ The result contains:
 
 - `field` — the readable enum value;
 - `label` — CAL's current human-facing field label;
-- `matches` — the same ordered CAL lemma-reference shape used by ordinary gloss results;
+- `matches` — the same ordered match shape used by ordinary gloss results, including `cross_reference_from`;
 - provenance for the actual CAL request.
 
 Each valid explicit operation submits at most one new logical CAL request to the shared client. It does not search every field, follow matching lemmas, or expand the selected field into additional queries.
@@ -89,7 +94,7 @@ Each ordered hit preserves:
 
 Repeated hits for the same lemma remain separate and in CAL order. CAL-MCP does not deduplicate or rerank them.
 
-CAL renders one lemma header per cited sense. The header's `part_of_speech` is CAL's own marked part of speech, including a verb's vowel class (for example `vb. a/u`); the lemma's `gloss` is empty here, because the sense text is in `lexical_context`. Other tools derive `part_of_speech` from CAL's rendered header text and may give a shorter value for the same verb (`vb.`). `source_text` keeps CAL's trailing right-to-left mark (U+200F) as CAL renders it. Rarely, one CAL result row carries a further context and citation after the first pair, with no header of its own. For example, a `king` search (2026-09-29) has one such row out of 1068: the `brt ym` ("dolphin") row also carries a Syriac citation about a "wall". CAL-MCP returns that citation as its own hit with `lemma: null` and keeps CAL's context, reference, source text and translation. A `house` search (2026-09-29) also has two rows where CAL adds further citations after a row's pair with no context or header at all (for example, after `ˀlp` "tribal unit", Luke 5:27 about a "custom house"). Those hits have both `lemma` and `lexical_context` set to `null`. A citation reference can itself be an external link (for example Bar Bahlul references); CAL-MCP keeps the rendered reference text. It never attributes it to the preceding header, and it does not guess the missing lemma. Any other row shape fails closed as `parser_drift`.
+CAL renders one lemma header per cited sense. The header's `part_of_speech` is CAL's own marked part of speech, including a verb's vowel class (for example `vb. a/u`); the lemma's `gloss` is empty here, because the sense text is in `lexical_context`. Gloss search, gloss-field search and lexicon browse rows also take `part_of_speech` from CAL's marked `<pos>`, so they give the same `vb. a/u`. The exact entry returned by `cal_lexicon_lookup` is different, because CAL renders the vowel class there as the vocalized form: its `part_of_speech` is `vb.` and its `pronunciation` is `a/u`. Token analysis still derives `part_of_speech` from the rendered header text and may give the shorter `vb.` for the same verb. `source_text` keeps CAL's trailing right-to-left mark (U+200F) as CAL renders it. Rarely, one CAL result row carries a further context and citation after the first pair, with no header of its own. For example, a `king` search (2026-09-29) has one such row out of 1068: the `brt ym` ("dolphin") row also carries a Syriac citation about a "wall". CAL-MCP returns that citation as its own hit with `lemma: null` and keeps CAL's context, reference, source text and translation. A `house` search (2026-09-29) also has two rows where CAL adds further citations after a row's pair with no context or header at all (for example, after `ˀlp` "tribal unit", Luke 5:27 about a "custom house"). Those hits have both `lemma` and `lexical_context` set to `null`. A citation reference can itself be an external link (for example Bar Bahlul references); CAL-MCP keeps the rendered reference text. It never attributes it to the preceding header, and it does not guess the missing lemma. Any other row shape fails closed as `parser_drift`.
 
 ## Request behavior
 

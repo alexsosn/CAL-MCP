@@ -89,7 +89,7 @@ Update:
 - `docs/tools/targum.md`;
 - `docs/tools/syriac.md`;
 - `CHANGELOG.md`;
-- R-062 only if implementation/live evidence changes the research conclusion.
+- R-065 (originally drafted as R-062; renumbered after #154 took R-062 on main) only if implementation/live evidence changes the research conclusion.
 
 Document that `mt_text` excludes CAL's repeated display coordinate labels.
 

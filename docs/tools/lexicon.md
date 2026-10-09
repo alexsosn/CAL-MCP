@@ -73,7 +73,7 @@ The entry preserves, where present:
 
 - CAL lemma key;
 - headword variants and pronunciation;
-- part of speech and entry gloss, including compound/current CAL abbreviations and CAL's literal trailing uncertainty marker (for example `n.f.?`) rather than a small closed local POS vocabulary;
+- part of speech and entry gloss, including compound/current CAL abbreviations and CAL's literal trailing uncertainty marker (for example `n.f.?`) and parenthesized secondary gender (for example `n.m.(f.)`, `n.f./(m.)`) rather than a small closed local POS vocabulary. On an exact entry, CAL renders a verb's vowel class as the vocalized form, so it is returned as `pronunciation` (for example `vb.` with `a/u`). Browse and search rows mark it inside the part of speech (`vb. a/u`). Lookup `matches`, including ambiguous candidates, are browse rows, so a found verb shows `vb. a/u` in `matches` and `vb.` with pronunciation `a/u` in `entry.lemma`. CAL's current entry page marks its header in a `lemma-header` block. CAL-MCP reads only that block, and an entry whose header block it cannot parse fails as `parser_drift` rather than taking a later line as the header. For example, the current `$yp#2 N` entry has no part of speech in its header, so it fails today (#224);
 - numbered and recursively nested sense paths;
 - verb stem/sense headings;
 - dialect labels, including documented CAL dialect subcodes;
@@ -127,7 +127,7 @@ A successful `entry` has these top-level fields:
 
 | Field | Meaning |
 | --- | --- |
-| `lemma` | CAL lemma reference: key, headwords, pronunciation, part of speech, gloss, aliases |
+| `lemma` | CAL lemma reference: key, headwords, pronunciation, part of speech, gloss, aliases. In `matches`, which are browse rows, `part_of_speech` is `null` where CAL marks an empty `<pos>`; an exact entry's `lemma` always has one |
 | `senses` | ordered CAL senses with `label_path`, optional stem heading, definition, dialects, citations |
 | `root` | CAL root text when exposed by the entry |
 | `grammar` | grammar/stem labels preceding the senses when present |

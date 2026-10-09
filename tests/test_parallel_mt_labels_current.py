@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 import pytest
 
@@ -55,9 +55,7 @@ def test_peshitta_current_multiline_mt_text_excludes_repeated_coordinate() -> No
         verse=1,
     )
 
-    assert page.mt_text == (
-        "בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ"
-    )
+    assert page.mt_text == ("בְּרֵאשִׁית בָּרָא אֱלֹהִים אֵת הַשָּׁמַיִם וְאֵת הָאָרֶץ")
     assert "Gen 1:1" not in page.mt_text
 
 

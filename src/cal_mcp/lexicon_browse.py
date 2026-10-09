@@ -14,8 +14,8 @@ from cal_mcp.lexicon import (
     _is_lemma_entry_href,
     _lemma_key_from_href,
     _lemma_to_dict,
-    _parse_lemma_header,
     _parse_lines,
+    _parse_row_lemma_header,
 )
 from cal_mcp.normalization import (
     AmbiguousQueryError,
@@ -161,7 +161,7 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
         lemma_key = _lemma_key_from_href(link.href)
         if lemma_key is None:
             raise LexiconParseError("CAL lexicon browse candidate is missing a usable lemma key")
-        parsed = _parse_lemma_header(link.text, lemma_key=lemma_key, require_gloss=False)
+        parsed = _parse_row_lemma_header(link, lemma_key=lemma_key)
         if parsed is None:
             raise LexiconParseError(
                 "CAL lexicon browse candidate is missing a recognizable lemma header"

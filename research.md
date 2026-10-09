@@ -347,7 +347,7 @@ displayed source plus validated target lemma key without fetching or merging the
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 
-## R-062 — Targum/Peshitta MT spans repeat the requested verse coordinate per display line
+## R-065 — Targum/Peshitta MT spans repeat the requested verse coordinate per display line
 
 **Rechecked:** 2026-10-08; issue #155.
 
@@ -370,6 +370,60 @@ coordinate from the end of complete MT display lines, and fail closed on mixed o
 coordinate-like suffixes. Keep the public result as one `mt_text` string: the observed line breaks
 are display segmentation of the same verse, not separate scholarly records. Detailed evidence:
 `docs/research/issue-155-mt-verse-labels.md`.
+
+## R-064 — CAL renders an explicitly empty POS; the current entry header is a `lemma-header` block
+
+**Rechecked:** 2026-10-08; issue #227. Two bounded GETs (browse `$yp`, entry `$yp#2 N`), plus the
+R-062 botany capture.
+
+The `$yp#2 N` browse and gloss-field rows carry `<pos></pos>` followed by `#2`. The header grammar
+requires a POS token, so `cal_gloss_field("botany")` and `cal_lexicon_browse("$yp")` failed on
+the whole page. The exact entry renders
+`<div class="lemma-header"><span class="lemma-formal">…</span> <span class="lemma-gloss">…</span></div>`
+with no POS span. The older header scan skipped it and silently accepted the later `dict-refs`
+line as the header (`Page` / `refs.`), which is the failure mode described in #224.
+
+**Implication:** on result rows, exactly one closed empty `<pos>` with no POS-looking header token,
+followed by at most `#N`, gives `part_of_speech: null`. The entry parser reads only the
+`lemma-header` block when the page has one and fails closed if it cannot parse it; a null POS on
+exact entries is left to #224. Detailed evidence: `docs/research/issue-227-empty-pos.md`.
+
+## R-063 — Result rows mark a verb's vowel class inside `<pos>`; the exact entry shows it as the vocalized form
+
+**Rechecked:** 2026-10-08; issue #228. Two bounded GETs (browse `(hr`, entry `(hr V`), plus the
+R-062 captures.
+
+Browse and gloss-search rows render the full POS in a `<pos>` element inside the lemma link, for
+example `<pos>vb. a/u</pos>`, `vb. a(i)/u` (then `#2`) and `vb. a/u, e/a`. The flattened header
+grammar stopped at `vb.`, and the row parsers then overwrote the remainder, so the vowel class was
+silently dropped. The exact entry page instead renders
+`<span class="lemma-vocalized">(a/u)</span> <span class="lemma-pos">vb.</span>`, which CAL-MCP
+already keeps as `pronunciation: "a/u"`, `part_of_speech: "vb."`.
+
+**Implication:** row parsers use the `<pos>` element text when present. The grammar's POS token
+must be its prefix, and only a `#N` homograph marker may follow it in the link; otherwise the row
+fails closed. The exact entry is unchanged. Detailed evidence:
+`docs/research/issue-228-verb-vowel-class.md`.
+
+## R-062 — Gloss-field pages use secondary-gender POS; gloss search repeats lemmas behind `⟹` redirects
+
+**Rechecked:** 2026-10-08; issue #154. Four bounded GETs/POSTs, with no link traversal.
+
+`cal_gloss_field("medicine")` failed because CAL renders a parenthesized secondary gender inside
+`<pos>`: `n.m.(f.)` (`xyl N`, `$wrnq N`, and zoology `gl#3 N` before `#3`) and `n.f./(m.)`
+(`qlyd N`). The shared lemma-header grammar rejected those headers, and the field page markup
+itself was unchanged. The botany control also has one row with an empty `<pos></pos>`
+(`$yp#2 N`). Verb rows render a vowel class after `vb.` (`vb. a/u`), which the gloss/browse
+paths do not keep. They are tracked in #227 and #228. On exact entry pages an unrecognized real header can fall through to a later line (#229).
+
+The `camel#` "duplicate" is real CAL output. CAL lists `n)qh N` once as an ordinary row and again
+behind `<span class="uni">nqh N </span>⟹`, a redirect from the alternate key `nqh N`. The earlier
+parser recognized only `→` and silently dropped the redirect source.
+
+**Implication:** accept exactly one trailing `(x.)` group, optionally after `/`, and keep the
+literal POS. Keep CAL's repeated rows and expose the redirect source verbatim as
+`cross_reference_from`. Any other text before a gloss-row link fails closed. Detailed evidence:
+`docs/research/issue-154-gloss-field-drift.md`.
 
 ## R-061 — CAL lemma headers use a trailing question mark for uncertain POS
 

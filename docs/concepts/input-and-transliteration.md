@@ -151,6 +151,8 @@ The converter deliberately fails closed outside its researched tables. Unsupport
 - Syriac, Hebrew, Samaritan, and Mandaic combining marks are unsupported unless a specific mapping has been researched and implemented;
 - unverified punctuation and numeric signs in dedicated script blocks remain unsupported.
 
+A Hebrew conversion error names the first unsupported character by code point and Unicode name. For a vowel or other combining mark, it names the word. When the word without its pointing would convert, it also shows that form, keeping a shin or sin dot only directly on `ש`. For example, `שָׁלוֹם` reports `U+05B8 HEBREW POINT QAMATS in שָׁלוֹם` and shows `שׁלום`. No form is suggested when the unpointed word would still fail, for example because of a maqaf (`־`) or sof pasuq (`׃`). The suggestion is only shown, never applied: resubmit it yourself if the consonantal form is what you mean. To look up a pointed Hebrew word without removing its pointing, use `cal_lexicon_lookup`, which keeps documented pointing on its CAL-native path (see [Lexicon](../tools/lexicon.md)).
+
 The converter never performs morphology, root inference, historical-spelling reconstruction, vowel restoration, or contextual disambiguation. Failure is preferable to producing a plausible but unjustified CAL spelling.
 
 ## Explicit representation override

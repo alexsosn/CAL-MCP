@@ -85,9 +85,7 @@ _CAL_HEADING_LABELS = {
     "Esther": "Esther",
 }
 _HEADING_VERSE_RE = re.compile(r"(?P<label>.+) (?P<chapter>[0-9]+):(?P<verse>[0-9]+)")
-_DISPLAY_COORDINATE_RE = re.compile(
-    r"(?<!\\S)[A-Za-z0-9][A-Za-z0-9. ]* [0-9]+:[0-9]+(?=\\s|$)"
-)
+_DISPLAY_COORDINATE_RE = re.compile(r"(?<!\\S)[A-Za-z0-9][A-Za-z0-9. ]* [0-9]+:[0-9]+(?=\\s|$)")
 
 
 def cal_biblical_book_id(book: str) -> str:
@@ -122,17 +120,12 @@ def _clean_parallel_mt_text(raw_text: str, *, display_coordinate: str) -> str:
     if _HEADING_VERSE_RE.fullmatch(display_coordinate) is None:
         raise ValueError("display coordinate must be one validated CAL biblical heading")
 
-    lines = tuple(
-        cleaned
-        for line in raw_text.split("\n")
-        if (cleaned := " ".join(line.split()))
-    )
+    lines = tuple(cleaned for line in raw_text.split("\n") if (cleaned := " ".join(line.split())))
     if not lines:
         raise ValueError("MT block contains no rendered text")
 
     exact_suffixes = tuple(
-        line == display_coordinate or line.endswith(f" {display_coordinate}")
-        for line in lines
+        line == display_coordinate or line.endswith(f" {display_coordinate}") for line in lines
     )
     if any(exact_suffixes):
         if not all(exact_suffixes):
