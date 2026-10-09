@@ -20,7 +20,11 @@ for _line in _FIXTURE.read_text(encoding="utf-8").splitlines():
 _HEADER = (
     '<div class="lemma-header"><span class="lemma-formal"><b>ktb</b></span> '
     '<span class="lemma-pos">vb.</span> <span class="lemma-gloss"><b>to write</b></span></div>'
-    "<div>G D C Gt</div>"
+    # Verbatim current stem summary from the ktb V page (2026-10-09).
+    '<div class="summary-meta">\n    <span class="tag stem-tag" onclick="openStem(\'01\')">G</span>'
+    '<span class="tag stem-tag" onclick="openStem(\'02\')">D</span>'
+    '<span class="tag stem-tag" onclick="openStem(\'03\')">C</span>'
+    '<span class="tag stem-tag" onclick="openStem(\'04\')">Gt</span>\n  </div>'
 )
 
 

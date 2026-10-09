@@ -347,6 +347,23 @@ displayed source plus validated target lemma key without fetching or merging the
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 
+## R-068 — Current verb entries mark stem headings in `div.stem-header` and stem summaries in `span.stem-tag`
+
+**Rechecked:** 2026-10-09; issue #237. One bounded GET (`ktb V`), plus the #224 `)mr V` and #228
+`(hr V` captures.
+
+Each stem begins with a `div.stem-header` made of `span.stem-label`, `span.stem-name`,
+`span.stem-gloss` (which may contain `<small>`/`<i>`), `span.stem-count` (`N sense(s)`, the number
+of top-level senses) and `span.stem-chevron`, with no whitespace between them. The entry's stem
+summary is a `div.summary-meta` of adjacent `span.stem-tag`s. Flattened, these read
+`Gtˀeṯpəˁelto be said2 senses▶` and `GDCGt`. The older-layout pattern missed both, so every current
+verb entry gained fabricated senses and lost its stem headings, and multi-stem entries (`)mr V`,
+`ktb V`) failed on a citation count.
+
+**Implication:** read stem headers from their spans. Every sense of a stem carries the heading
+`label name gloss` (the older layout's form), and the declared count must match. Stem tags are
+separated so the summary stays `grammar`. Detailed evidence: `docs/research/issue-237-stem-headings.md`.
+
 ## R-067 — Current exact entries mark every header field in `div.lemma-header`
 
 **Rechecked:** 2026-10-09; issue #224. Six bounded GETs of `cal_entry_web.php` (`mlk N`, `)mr V`,
