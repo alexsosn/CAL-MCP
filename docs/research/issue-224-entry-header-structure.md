@@ -1,7 +1,7 @@
 # Issue #224 research — current exact entries mark every header field in `div.lemma-header`
 
 **Date:** 2026-10-09  
-**Base:** `main` at `c1106aa` (after #227's narrow guard, #156 and #232's research)
+**Base:** `main` at `c1106aa` (after #227's narrow guard and #156)
 
 ## Bounded current CAL evidence
 

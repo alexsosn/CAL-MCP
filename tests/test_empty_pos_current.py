@@ -89,14 +89,19 @@ def test_empty_pos_disagreement_fails_closed(
         parser(_response(body.replace(old, new, 1)))  # type: ignore[operator]
 
 
-def test_current_entry_header_without_pos_fails_closed_instead_of_taking_a_later_line() -> None:
-    # Minimal synthetic sense lines make the rest of the page parseable, so that only the header
-    # decides the outcome.
+def test_current_entry_header_without_pos_parses_instead_of_taking_a_later_line() -> None:
+    # #224 reads CAL's header fields structurally: an absent lemma-pos span is a null POS, and the
+    # later dict-refs prose is never taken as the header. Minimal synthetic sense lines follow.
     body = _fixture("entry_lemma_header_no_pos_current.html").replace(
         "</body>", "<div>1</div><div>a type of marsh reed</div><div>JBA</div></body>"
     )
-    with pytest.raises(LexiconParseError, match="lemma-header"):
-        parse_lexicon_entry(_response(body), lemma_key="$yp#2 N")
+    lemma = parse_lexicon_entry(_response(body), lemma_key="$yp#2 N").lemma
+
+    assert (lemma.headwords, lemma.part_of_speech, lemma.gloss) == (
+        ("šyp", "šypˀ"),
+        None,
+        "a type of marsh reed",
+    )
 
 
 def test_current_entry_lemma_header_still_parses() -> None:
@@ -143,15 +148,16 @@ def test_lemma_header_block_shape_drift_fails_closed(old: str, new: str) -> None
         parse_lexicon_entry(_response(body.replace(old, new, 1)), lemma_key="$yp#2 N")
 
 
-def test_nested_lemma_header_with_valid_header_still_parses() -> None:
+def test_lemma_header_without_field_spans_fails_closed() -> None:
+    # A header block whose content is not CAL's field spans is drift (#224), even if its flattened
+    # text would satisfy the older header grammar.
     body = (
         '<div class="lemma-header"><div class="inner"><b>ˁhr, ˀhr</b> (a/u) vb. '
         "to be sexually aroused</div></div>"
         "<div>1</div><div>to be sexually aroused</div><div>Syriac</div>"
     )
-    entry = parse_lexicon_entry(_response(body), lemma_key="(hr V")
-
-    assert entry.lemma.part_of_speech == "vb."
+    with pytest.raises(LexiconParseError, match="lemma-header"):
+        parse_lexicon_entry(_response(body), lemma_key="(hr V")
 
 
 def test_whitespace_only_pos_is_not_treated_as_empty() -> None:

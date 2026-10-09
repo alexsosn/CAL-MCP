@@ -107,10 +107,13 @@ def test_current_header_shape_drift_fails_closed(old: str, new: str) -> None:
 
 
 def test_older_layout_without_a_header_first_line_fails_closed() -> None:
-    # #224: prose before any header must not let later header-looking prose become the lemma.
+    # #224: when the first line is not a header, later header-looking prose must not become the
+    # lemma (the older scan returned "See DNWSI 17 for other" / "suggestions.").
     body = (
-        "<html><body><div>See DNWSI 17 for other suggestions. Compare CPA šlyh.</div>"
-        "<div>šlh n.f. watering</div>" + _SENSES + "</body></html>"
+        "<html><body><div>1</div><div>watering</div>"
+        "<div>See DNWSI 17 for other suggestions. Compare CPA šlyh.</div>"
+        + _SENSES
+        + "</body></html>"
     )
     with pytest.raises(LexiconParseError):
         parse_lexicon_entry(

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import html
 import re
 import unicodedata
 from dataclasses import dataclass, field, replace
@@ -362,6 +363,7 @@ class _SemanticHTMLParser(HTMLParser):
 
 _TOKEN_RE = re.compile(r"\S+")
 _HOMOGRAPH_MARKER_RE = re.compile(r"#\d+")
+_TITLE_RE = re.compile(r"<title\b[^>]*>(.*?)</title>", re.IGNORECASE | re.DOTALL)
 _LEMMA_HEADER_BLOCK_RE = re.compile(
     r"<div\b[^>]*\bclass\s*=\s*[\"'][^\"']*(?<![\w-])lemma-header(?![\w-])", re.IGNORECASE
 )
@@ -536,21 +538,19 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
                 "CAL lexicon entry lemma-header block does not render exactly one header line"
             )
         header_index = marked_headers[0]
-        lemma = _parse_lemma_header(
-            lines[header_index].text, lemma_key=lemma_key, require_gloss=True
+        lemma = _structural_lemma_header(response, lemma_key=lemma_key)
+    else:
+        # Older layout without the block: the header must be the first rendered line. Never scan
+        # on to later prose that merely looks like a header (#224).
+        # The document <title> may render as a leading line (for example "CAL: b"); skip only that.
+        title_match = _TITLE_RE.search(response.body.decode("utf-8", errors="replace"))
+        title = _clean_text(html.unescape(title_match.group(1))) if title_match else None
+        header_index = 1 if lines and title and lines[0].text == title else 0
+        lemma = (
+            _parse_lemma_header(lines[header_index].text, lemma_key=lemma_key, require_gloss=True)
+            if header_index < len(lines)
+            else None
         )
-        if lemma is None:
-            raise LexiconParseError(
-                "CAL lexicon entry lemma-header block is not a recognizable lemma header"
-            )
-    for index, line in enumerate(lines):
-        if lemma is not None:
-            break
-        parsed = _parse_lemma_header(line.text, lemma_key=lemma_key, require_gloss=True)
-        if parsed is not None:
-            lemma = parsed
-            header_index = index
-            break
     if lemma is None:
         raise LexiconParseError("CAL lexicon entry is missing a recognizable lemma header")
 
@@ -915,6 +915,127 @@ def _parse_lemma_header(
     headwords = tuple(part.strip() for part in headword_text.split(",") if part.strip())
     if not headwords:
         return None
+    return LemmaRef(
+        lemma_key=lemma_key,
+        headwords=headwords,
+        pronunciation=pronunciation,
+        part_of_speech=part_of_speech,
+        gloss=gloss,
+    )
+
+
+_LEMMA_HEADER_FIELDS = frozenset({"lemma-formal", "lemma-vocalized", "lemma-pos", "lemma-gloss"})
+
+
+class _LemmaHeaderParser(HTMLParser):
+    """Collect the field spans of CAL's single current ``div.lemma-header`` (R-067)."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.fields: list[tuple[str, str]] = []
+        self.unexpected = False
+        self._div_depth = 0
+        self._field: str | None = None
+        self._field_depth = 0
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        classes = (dict(attrs).get("class") or "").split()
+        if self._div_depth == 0:
+            if tag == "div" and "lemma-header" in classes:
+                self._div_depth = 1
+            return
+        if tag in _HTML_VOID_TAGS:
+            return
+        if self._field is not None:
+            self._field_depth += 1
+            return
+        if tag == "div":
+            self.unexpected = True
+            self._div_depth += 1
+            return
+        field_classes = [name for name in classes if name in _LEMMA_HEADER_FIELDS]
+        if tag != "span" or len(classes) != 1 or len(field_classes) != 1:
+            self.unexpected = True
+            self._field = ""
+        else:
+            self._field = field_classes[0]
+        self._field_depth = 1
+        self._parts = []
+
+    def handle_endtag(self, tag: str) -> None:
+        if self._div_depth == 0 or tag in _HTML_VOID_TAGS:
+            return
+        if self._field is not None:
+            self._field_depth -= 1
+            if self._field_depth == 0:
+                self.fields.append((self._field, _clean_text("".join(self._parts))))
+                self._field = None
+            return
+        if tag == "div":
+            self._div_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._div_depth == 0:
+            return
+        if self._field is not None:
+            self._parts.append(data)
+        elif data.strip():
+            self.unexpected = True
+
+
+def _structural_lemma_header(response: CalResponse, *, lemma_key: str) -> LemmaRef:
+    """Build the entry lemma from CAL's marked header fields; fail closed on any drift."""
+
+    parser = _LemmaHeaderParser()
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+    counts = {name: 0 for name in _LEMMA_HEADER_FIELDS}
+    values: dict[str, str] = {}
+    for name, text in parser.fields:
+        if name in counts:
+            counts[name] += 1
+            values[name] = text
+    if (
+        parser.unexpected
+        or counts["lemma-formal"] != 1
+        or counts["lemma-gloss"] != 1
+        or counts["lemma-vocalized"] > 1
+        or counts["lemma-pos"] > 1
+    ):
+        raise LexiconParseError("CAL lexicon entry lemma-header has an unexpected field structure")
+
+    headwords = tuple(part.strip() for part in values["lemma-formal"].split(",") if part.strip())
+    gloss = values["lemma-gloss"]
+    if not headwords or not gloss:
+        raise LexiconParseError("CAL lexicon entry lemma-header lacks headwords or a gloss")
+
+    pronunciation: str | None = None
+    if "lemma-vocalized" in values:
+        vocalized = values["lemma-vocalized"]
+        inner = vocalized[1:-1].strip() if len(vocalized) > 2 else ""
+        if not (vocalized.startswith("(") and vocalized.endswith(")")) or not inner:
+            raise LexiconParseError(
+                "CAL lexicon entry lemma-header vocalization is not one parenthesized form"
+            )
+        depth = 0
+        for char in inner:
+            depth += 1 if char == "(" else -1 if char == ")" else 0
+            if depth < 0:
+                break
+        if depth != 0:
+            # "(a) (b)" or "(a))": not one group enclosed by the outer parentheses.
+            raise LexiconParseError(
+                "CAL lexicon entry lemma-header vocalization is not one parenthesized form"
+            )
+        pronunciation = inner
+
+    part_of_speech: str | None = None
+    if "lemma-pos" in values:
+        part_of_speech = values["lemma-pos"]
+        if not part_of_speech:
+            raise LexiconParseError("CAL lexicon entry lemma-header has an empty POS field")
+
     return LemmaRef(
         lemma_key=lemma_key,
         headwords=headwords,
