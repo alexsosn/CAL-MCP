@@ -179,6 +179,8 @@ Song of Songs, Qoheleth, Lamentations, Esther,
 
 CAL heads the returned MT/Peshitta verse with its own book abbreviation (for example `Ps 23:1`, `Sam1 1:1`, `Chron1 1:1`). CAL-MCP accepts the page only when that heading names the requested chapter and verse with CAL's recorded label for the requested book (or the exact selector label), so a page for another book or verse fails closed. The result's `book` is always the selector label you passed.
 
+CAL repeats the verse coordinate at the end of every displayed MT line, inside the Hebrew text (for example `… הַשָּׁמַיִם Gen 1:1` / `וְאֵת הָאָרֶץ Gen 1:1`). CAL-MCP removes only that exact, validated heading coordinate from each line and joins the lines with one space, so `mt_text` contains only CAL's MT text. A line that lacks the label while others carry it, a different or embedded coordinate, or a line that is only a label fails closed as `parser_drift` rather than being guessed at.
+
 `chapter` and `verse` must be positive integers no greater than 999. Invalid public values fail before transport.
 
 CAL currently reports a nonexistent coordinate through an HTTP-200 page containing an explicit `error in coord` / `error in coordinate` marker. CAL-MCP returns `status: "not_found"` only when that marker occurs without a contradictory valid comparison result. Wrong-reference headings, marker/result contradictions, missing Hebrew or Syriac result semantics, unexpected endpoint families, or cross-origin chapter links fail closed as `SyriacParseError`.

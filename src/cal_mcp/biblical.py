@@ -85,7 +85,7 @@ _CAL_HEADING_LABELS = {
     "Esther": "Esther",
 }
 _HEADING_VERSE_RE = re.compile(r"(?P<label>.+) (?P<chapter>[0-9]+):(?P<verse>[0-9]+)")
-_DISPLAY_COORDINATE_RE = re.compile(r"(?<!\\S)[A-Za-z0-9][A-Za-z0-9. ]* [0-9]+:[0-9]+(?=\\s|$)")
+_DISPLAY_COORDINATE_RE = re.compile(r"(?<!\S)[A-Za-z0-9][A-Za-z0-9. ]* [0-9]+:[0-9]+(?=\s|$)")
 
 
 def cal_biblical_book_id(book: str) -> str:
