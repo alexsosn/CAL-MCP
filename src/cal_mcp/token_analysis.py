@@ -132,6 +132,10 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         self._done = False
         # True once CAL's footer or "Return to the Text Browser" link ends the result.
         self.reached_end = False
+        # A return link ends the result, but nothing result-like may follow it (R-066).
+        self._ended_by_link = False
+        self._in_return_link = False
+        self.content_after_end = False
         self.segments: list[_CurrentSegment] = []
         self._open_link: _CurrentLinkBuilder | None = None
 
@@ -151,16 +155,22 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             self._h2_parts = []
             return
 
+        if self._ended_by_link:
+            if tag in {"table", "hr", "a", "pos"}:
+                self.content_after_end = True
+            return
         if not self._after_marker or self._done:
             return
         segment = self._segment()
-        if segment.table_depth == 0 and (
-            (tag == "div" and "cal-footer" in (attrs_d.get("class") or "").split())
-            or (
-                tag == "a" and urlsplit(attrs_d.get("href") or "").path.endswith("newtextmenu.html")
-            )
-        ):
+        class_names = (attrs_d.get("class") or "").split()
+        if segment.table_depth == 0 and tag == "div" and "cal-footer" in class_names:
             self._done = True
+            self.reached_end = True
+            return
+        href_path = urlsplit(attrs_d.get("href") or "").path
+        if segment.table_depth == 0 and tag == "a" and href_path.endswith("newtextmenu.html"):
+            self._ended_by_link = True
+            self._in_return_link = True
             self.reached_end = True
             return
         if tag == "hr" and segment.table_depth == 0:
@@ -207,6 +217,10 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             self._open_link.in_pos = True
 
     def handle_endtag(self, tag: str) -> None:
+        if self._ended_by_link:
+            if tag == "a":
+                self._in_return_link = False
+            return
         if tag == "h2" and self._in_h2:
             marker = _clean_text("".join(self._h2_parts))
             if marker.lower() == _ANALYSIS_MARKER:
@@ -250,6 +264,10 @@ class _CurrentLinkedRedirectParser(HTMLParser):
                 segment.table_closed = True
 
     def handle_data(self, data: str) -> None:
+        if self._ended_by_link:
+            if not self._in_return_link and data.strip(" \t\r\n\xa0·|"):
+                self.content_after_end = True
+            return
         if self._in_h2:
             self._h2_parts.append(data)
             return
@@ -286,6 +304,10 @@ def _current_linked_page(response: CalResponse) -> TokenAnalysisPage | None:
     if not parser.reached_end:
         raise TokenAnalysisParseError(
             "CAL current token-analysis result lacks its closing navigation boundary"
+        )
+    if parser.content_after_end:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis result continues after its closing navigation link"
         )
     candidates: list[TokenAnalysisCandidate] = []
     summaries: list[str] = []

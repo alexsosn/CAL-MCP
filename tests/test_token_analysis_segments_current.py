@@ -100,6 +100,17 @@ _VERB = "token_analysis_multi_lexeme_verb_current.html"
         (_LINKED_THEN_UNLINKED, ")brM PN Personal name", "<span>)brM PN Personal name</span>"),
         # Bare text after a result table, before the next <hr>.
         (_LINKED_THEN_UNLINKED, "</small><hr><br>)brM", "</small>)brM"),
+        # A return link before a later lexeme or inside a summary must not truncate the result.
+        (
+            _VERB,
+            "</small><hr>)mr verb G",
+            '<a href="/newtextmenu.html">r</a></small><hr>)mr verb G',
+        ),
+        (
+            _LINKED_THEN_UNLINKED,
+            ")brM PN Personal name",
+            ')brM PN<a href="/newtextmenu.html">r</a> Personal name',
+        ),
         # Two, empty or unclosed <pos> elements in a candidate link.
         (_VERB, "<pos>vb. a/a</pos>", "<pos>vb.</pos><pos>a/a</pos>"),
         (_VERB, "<pos>vb. a/a</pos>", "<pos></pos>vb. a/a"),
@@ -110,6 +121,8 @@ _VERB = "token_analysis_multi_lexeme_verb_current.html"
         "link-in-summary",
         "markup-in-summary",
         "text-after-table",
+        "return-link-before-later-lexeme",
+        "return-link-inside-summary",
         "two-pos",
         "empty-pos",
         "unclosed-pos",
