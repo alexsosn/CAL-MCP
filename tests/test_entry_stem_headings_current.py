@@ -114,9 +114,12 @@ def test_unclosed_stem_header_fails_closed() -> None:
     # were present; this is independent of the downstream sense-count heuristic.
     (g,) = _STEMS["(hr V"]
     assert g.endswith("</div>")
-    response = _response(
-        f"<html><body>{g.removesuffix('</div>')}</body></html>",
+    response = CalResponse(
+        status_code=200,
         url="https://cal.huc.edu/cal_entry_web.php?lemma=%28hr+V",
+        body=f"<html><body>{g.removesuffix('</div>')}</body></html>".encode(),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 10, 9, tzinfo=UTC),
     )
     with pytest.raises(LexiconParseError):
         _parse_lines(response)
