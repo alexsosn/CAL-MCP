@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+import argparse
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
@@ -987,6 +988,20 @@ async def cal_dictionary_collation(
     return result.to_dict()
 
 
-def main() -> None:
-    """Run the CAL-MCP server over stdio."""
+_CLI_DESCRIPTION = (
+    "Run the CAL-MCP server, a read-only MCP adapter over the Comprehensive Aramaic Lexicon "
+    "(https://cal.huc.edu), over stdio. It is meant to be launched by an MCP client, which "
+    "talks to it on stdin/stdout; run without arguments it waits for that client."
+)
+_CLI_EPILOG = "Documentation: https://github.com/alexsosn/CAL-MCP/tree/main/docs"
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Run the CAL-MCP server over stdio, or print help or the version and exit."""
+
+    parser = argparse.ArgumentParser(
+        prog="cal-mcp", description=_CLI_DESCRIPTION, epilog=_CLI_EPILOG
+    )
+    parser.add_argument("--version", action="version", version=f"cal-mcp {__version__}")
+    parser.parse_args(argv)
     mcp.run()

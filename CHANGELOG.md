@@ -40,6 +40,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 - Primary v0.1 transport: local stdio.
 - Installed command: `cal-mcp`.
 - Equivalent module entry point: `python -m cal_mcp`.
+- `cal-mcp --version` and `cal-mcp --help` print and exit without starting the server; any other argument is rejected with the usage.
 - Agora is not a runtime dependency; optional Agora registration remains the downstream issue #16 after publication.
 
 ### Release and drift validation

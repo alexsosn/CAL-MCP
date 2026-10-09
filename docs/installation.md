@@ -45,7 +45,16 @@ The equivalent module entry point is:
 python -m cal_mcp
 ```
 
-Both start the same local MCP server over stdio. CAL-MCP does not require Agora to run.
+Both start the same local MCP server over stdio. Run without arguments, the command waits silently for an MCP client on stdin; it is normally launched by your MCP client rather than typed into a terminal. CAL-MCP does not require Agora to run.
+
+To check an installation without starting the server:
+
+```bash
+cal-mcp --version   # prints "cal-mcp <version>" and exits
+cal-mcp --help      # prints usage and exits
+```
+
+Any other argument prints the usage to stderr and exits with a non-zero status without starting the server.
 
 See [Standalone MCP](integrations/standalone-mcp.md) for the client/process boundary and [Configuration](configuration.md) for request-policy defaults.
 
