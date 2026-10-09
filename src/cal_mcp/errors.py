@@ -148,6 +148,7 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             upstream_reached=True,
             retryable=False,
             message=_safe_message(error),
+            source_url=_error_source_url(error),
         )
     if isinstance(error, CalContentError):
         return PublicToolError(
@@ -156,11 +157,17 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             upstream_reached=True,
             retryable=False,
             message=_safe_content_message(error),
+            source_url=_error_source_url(error),
         )
     return None
 
 
-def _trusted_cal_url(value: str) -> str | None:
+def _error_source_url(error: CalContentError) -> str | None:
+    url = getattr(error, "url", None)
+    return None if url is None else _trusted_cal_url(url)
+
+
+def _trusted_cal_url(value: str | None) -> str | None:
     # urlsplit silently strips some controls. Validate the original string before parsing
     # because it is the original string that will be published as source_url.
     if type(value) is not str or any(not 0x21 <= ord(char) <= 0x7E for char in value):

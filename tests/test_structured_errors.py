@@ -163,6 +163,7 @@ async def test_parser_drift_returns_structured_error(
         upstream_reached=True,
         retryable=False,
         message="CAL text search page is missing its result marker",
+        source_url="https://cal.huc.edu/newsearchtxts.php",
     )
     rendered = " ".join(block.text for block in result.content if isinstance(block, TextContent))
     assert "unrecognized successful markup" not in rendered

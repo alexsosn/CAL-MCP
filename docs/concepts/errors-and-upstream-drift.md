@@ -63,7 +63,7 @@ Redirect responses are not followed automatically. A 3xx therefore remains an up
 
 A successful HTTP status is not enough to trust a response.
 
-`CalContentError` covers responses that are unsafe to interpret as the expected CAL content, for example an unexpected media type or recognized maintenance page. These return `kind=content` unless a more specific typed subclass applies.
+`CalContentError` covers responses that are unsafe to interpret as the expected CAL content, for example an unexpected media type or recognized maintenance page. These return `kind=content` unless a more specific typed subclass applies. A content failure detected on a received page carries that page's CAL URL as `source_url`, subject to the same origin validation as HTTP errors.
 
 `CalResponseTooLargeError` is raised while streaming when decoded response bytes exceed the configured bound. Oversized content is not truncated and passed to a parser; it returns `kind=response_too_large` and is not marked retryable.
 
@@ -71,7 +71,7 @@ See [Configuration](../configuration.md) for the shared HTTP policy.
 
 ## Parser drift
 
-Each CAL research surface has a small parser with a surface-specific parse-error subclass under the shared `CalParseError` base. Parser drift means CAL returned a successful-looking response but the adapter can no longer recognize the required semantics with enough confidence to return a faithful result. Public results use `kind=parser_drift`, `upstream_reached=true`, and `retryable=false`.
+Each CAL research surface has a small parser with a surface-specific parse-error subclass under the shared `CalParseError` base. Parser drift means CAL returned a successful-looking response but the adapter can no longer recognize the required semantics with enough confidence to return a faithful result. Public results use `kind=parser_drift`, `upstream_reached=true`, and `retryable=false`. `source_url` is the CAL page that could not be parsed, so you can open it to see what changed. It is published only after the exact CAL-origin validation above, and the diagnostic message itself never quotes the page.
 
 Examples include:
 

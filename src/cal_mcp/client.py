@@ -53,6 +53,9 @@ class CalUpstreamError(CalClientError):
 class CalContentError(CalClientError):
     """Raised when a successful HTTP response is unsafe to parse as CAL HTML."""
 
+    # The CAL response URL, set by ``CalHttpClient`` when validation or parsing rejects a page.
+    url: str | None = None
+
 
 class CalResponseTooLargeError(CalContentError):
     """Raised while streaming when a CAL response exceeds the configured byte limit."""
@@ -358,8 +361,13 @@ class CalHttpClient:
         cache_key: str,
     ) -> CalFetchResult[T]:
         response = await self._request_with_retries(request)
-        self._validate_content(response)
-        parsed = parser(response)
+        try:
+            self._validate_content(response)
+            parsed = parser(response)
+        except CalContentError as exc:
+            if exc.url is None:
+                exc.url = response.url
+            raise
 
         self._cache.put(
             cache_key,
