@@ -347,6 +347,29 @@ displayed source plus validated target lemma key without fetching or merging the
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 
+## R-070 — Release smoke must validate stdio MCP and enforce actual transport attempts
+
+**Rechecked:** 2026-10-10; issue #157.
+
+`release.yml` and the weekly `live-smoke.yml` currently run eight representative Python
+service calls through `cal_mcp.live_smoke`, not the installed `cal-mcp` stdio endpoint.
+The current nine-request limiter wraps `CalHttpClient.fetch` in that direct-service process;
+it does not cover public tool schemas, structured MCP errors or result serialization. The
+artifact verifier lists tools over stdio but does not invoke representative live operations.
+
+An MCP driver in a *separate* process cannot safely equate a tool call to one CAL request:
+services can use multiple requests, retries are attempts, and cache hits make none. Therefore
+the replacement smoke needs an opt-in **server-side hard cap on actual transport attempts**,
+configured at startup and enforced before each outbound request, along with sequential
+MCP calls, schema/provenance validation, and aggregated failure classification.
+
+The same single suite must serve tag release and scheduled/manual smoke; stacking its proposed
+25-attempt budget on top of the old nine-request suite would exceed the intended CAL load.
+The proposed D-022 decision must be reviewed before this policy is implemented.
+
+Detailed offline research: `docs/research/issue-157-installed-stdio-live-smoke.md`.
+No CAL requests were made during this repository audit.
+
 ## R-067 — Current exact entries mark every header field in `div.lemma-header`
 
 **Rechecked:** 2026-10-09; issue #224. Six bounded GETs of `cal_entry_web.php` (`mlk N`, `)mr V`,
