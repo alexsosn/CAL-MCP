@@ -90,7 +90,7 @@ def test_exact_entry_prefers_real_uncertain_header_over_later_period_prose() -> 
             <html><body>
               <div class="summary-card">
                 <div class="lemma-header">
-                  <span class="lemma-headword">šlh</span>
+                  <span class="lemma-formal">šlh</span>
                   <span class="lemma-pos">n.f.?</span>
                   <span class="lemma-gloss">watering(?)</span>
                 </div>
