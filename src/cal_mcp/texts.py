@@ -1917,7 +1917,7 @@ class _TextTableParser(HTMLParser):
         attributes = {key: value or "" for key, value in attrs}
         if self._cell is not None and tag not in _TEXT_CELL_TAGS:
             # A tag-shaped editorial bracket (``<wmr>``) would otherwise vanish silently.
-            raise TextParseError(f"CAL text row has an unexpected <{tag}> element")
+            raise TextParseError("CAL text row has an unexpected element")
         if tag == "table":
             self._end_row()
             self._in_table = "text-display" in attributes.get("class", "").split()

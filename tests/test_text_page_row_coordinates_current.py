@@ -150,7 +150,7 @@ _SAM_TOKENS = '<td><a href="getlex.php?coord=56000112010&word=0&hasvariant=0">w)
             "unclosed",
         ),
         # A tag-shaped editorial bracket inside a token would otherwise vanish.
-        (">yhwh</a>", "><yhwh>yhwh</a>", "unexpected <yhwh> element"),
+        (">yhwh</a>", "><yhwh>yhwh</a>", "unexpected element"),
         # Text between the cells of a row.
         (
             '(  </a></td><td><a href="getlex.php?coord=56000112010',

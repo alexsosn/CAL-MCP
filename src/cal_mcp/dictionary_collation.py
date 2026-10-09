@@ -461,24 +461,28 @@ class DictionaryCollationService:
         submitted_page = _normalize_page_reference(page)
         spec = _SOURCE_SPECS[dictionary_source]
 
+        def parse(response: CalResponse) -> DictionaryCollationPage:
+            page = parse_dictionary_collation_page(response)
+            if page.page != submitted_page:
+                raise DictionaryCollationParseError(
+                    "CAL dictionary collation result page does not match the submitted page"
+                )
+            if page.source_label not in spec.accepted_labels:
+                raise DictionaryCollationParseError(
+                    "CAL dictionary collation result source does not match the submitted source"
+                )
+            return page
+
         result = await self._client.fetch(
             CalRequest(
                 method="POST",
                 path="searchdicts.php",
                 data=(("dict", spec.code), ("page", submitted_page)),
             ),
-            parser=parse_dictionary_collation_page,
+            parser=parse,
             cache_namespace="dictionary-collation-v1",
         )
         parsed = result.value
-        if parsed.page != submitted_page:
-            raise DictionaryCollationParseError(
-                "CAL dictionary collation result page does not match the submitted page"
-            )
-        if parsed.source_label not in spec.accepted_labels:
-            raise DictionaryCollationParseError(
-                "CAL dictionary collation result source does not match the submitted source"
-            )
 
         return DictionaryCollationResult(
             source=dictionary_source,
