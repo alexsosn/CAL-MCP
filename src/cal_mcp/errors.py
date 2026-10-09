@@ -148,6 +148,7 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             upstream_reached=True,
             retryable=False,
             message=_safe_message(error),
+            source_url=_error_source_url(error),
         )
     if isinstance(error, CalContentError):
         return PublicToolError(
@@ -156,8 +157,14 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             upstream_reached=True,
             retryable=False,
             message=_safe_content_message(error),
+            source_url=_error_source_url(error),
         )
     return None
+
+
+def _error_source_url(error: CalContentError) -> str | None:
+    url = getattr(error, "url", None)
+    return None if url is None else _trusted_cal_url(url)
 
 
 def _trusted_cal_url(value: str) -> str | None:

@@ -7,7 +7,8 @@ from enum import StrEnum
 from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
-from cal_mcp.client import CalContentError, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalParseError
 from cal_mcp.texts import TextLine, TextToken
 
 _CAL_SCHEME = "https"
@@ -22,7 +23,7 @@ _IGNORED_TAGS = frozenset({"script", "style"})
 _BLOCK_TAGS = frozenset({"center", "div", "h1", "h2", "h3", "p", "td", "th", "tr"})
 
 
-class LexiconCitationContextParseError(CalContentError):
+class LexiconCitationContextParseError(CalParseError):
     """Raised when CAL citation-context markup no longer exposes required semantics."""
 
 

@@ -109,7 +109,7 @@ def test_untrusted_parse_error_url_is_not_published() -> None:
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     ("tag", "shown"),
-    [("yhwh", True), ("do_not_leak", False), ("abcdefghijklmnopq", False)],
+    [("yhwh", True), ("zz9", True), ("a-b", False), ("abcdefghijklmnopq", False)],
 )
 async def test_text_row_error_shows_only_plain_tag_names(tag: str, shown: bool) -> None:
     from test_text_page_row_coordinates_current import SAMARITAN, _page

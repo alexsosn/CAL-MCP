@@ -44,6 +44,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 
 ### Release and drift validation
 
+- Structured `parser_drift` and `content` errors name the CAL page that failed in `source_url` (CAL origin only). Citation-context drift is reported as `parser_drift` rather than as unsafe content.
 - The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 34-tool schema without contacting CAL.
 - Deterministic CI and release validation use committed Python 3.11 target/build constraints with exact-environment verification; a separate latest-compatible job checks the broad dependency ranges declared for downstream users.
 - Those deterministic constraints are validation inputs only; downstream package metadata retains the reviewed broad runtime dependency ranges.

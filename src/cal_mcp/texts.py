@@ -24,6 +24,7 @@ from cal_mcp.lexicon import _Line, _Link, _parse_lines
 from cal_mcp.syriac import syriac_text_category_slugs
 
 _ID_RE = re.compile(r"^\d+$")
+_PLAIN_TAG_NAME_RE = re.compile(r"[a-z][a-z0-9]{0,15}")
 _LINE_COMMENT_COORD_RE = re.compile(r"^[A-Za-z0-9]{1,64}$")
 _PAGE_MARKER_RE = re.compile(
     r"^Page\s+(?P<page>\d+)\s+of\s+(?P<count>\d+)"
@@ -1917,6 +1918,8 @@ class _TextTableParser(HTMLParser):
         attributes = {key: value or "" for key, value in attrs}
         if self._cell is not None and tag not in _TEXT_CELL_TAGS:
             # A tag-shaped editorial bracket (``<wmr>``) would otherwise vanish silently.
+            if _PLAIN_TAG_NAME_RE.fullmatch(tag) is None:
+                raise TextParseError("CAL text row has an unexpected element")
             raise TextParseError(f"CAL text row has an unexpected <{tag}> element")
         if tag == "table":
             self._end_row()
