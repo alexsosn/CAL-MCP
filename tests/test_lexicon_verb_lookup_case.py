@@ -51,6 +51,7 @@ def test_case_is_folded_only_for_uppercase_verb_roots() -> None:
     # A verb headword that is not entirely uppercase is not folded.
     assert not _query_matches("ktb", _lemma("ktb V", "Ktb"))
 
+
 @pytest.mark.parametrize("query", ["ktb", "כתב"])
 def test_lowercase_cal_and_hebrew_query_match_uppercase_verb_root(query: str) -> None:
     assert _query_matches(query, _lemma("ktb V", "KTB"))
