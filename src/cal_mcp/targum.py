@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.biblical import (
+    MT_LINE_BREAK,
     _clean_parallel_mt_text,
     cal_biblical_book_id,
     cal_biblical_heading_matches,
@@ -238,7 +239,7 @@ class _ParallelParser(HTMLParser):
         if self._block is None:
             return
         if tag == "br" and self._block.script_depth:
-            self._block.text_parts.append("\n")
+            self._block.text_parts.append(MT_LINE_BREAK)
             return
         if tag == "a":
             href = attributes.get("href")

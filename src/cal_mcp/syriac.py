@@ -8,6 +8,7 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.biblical import (
+    MT_LINE_BREAK,
     _clean_parallel_mt_text,
     cal_biblical_book_id,
     cal_biblical_heading_matches,
@@ -310,7 +311,7 @@ class _PeshittaParser(HTMLParser):
                 self._script_depth += 1
             return
         if tag == "br" and self._script_kind is not None:
-            self._append_script_data("\n")
+            self._append_script_data(MT_LINE_BREAK)
             return
         if tag == "a":
             if self._open_link is not None:
