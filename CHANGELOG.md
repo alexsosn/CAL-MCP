@@ -17,7 +17,7 @@ v0.1.0 freezes **34 public tools** across these research families:
 - bibliography author, text/subject-tag, and lemma search (one record per CAL bibliography entry on CAL's current result layout);
 - dictionary spelling collation;
 - citations from sources that CAL cites but does not expose as full online texts;
-- Targum parallel verse, Targum concordance (current-layout label rows reported as `section_labels` rather than applied to rows), and MT-Hebrew reflex workflows;
+- Targum parallel verse (CAL's per-line verse labels are removed from `mt_text`, as in the MT/Peshitta comparison), Targum concordance (current-layout label rows reported as `section_labels` rather than applied to rows), and MT-Hebrew reflex workflows;
 - Syriac text-category discovery, explicit grouped-text follow-up (`cal_syriac_group`, including CAL's current card layout, whose children carry `subtext_id`), CAL's missing-from-*A Syriac Lexicon* lists, and MT/Peshitta verse comparison.
 
 The executable MCP schemas remain the technical source of truth. CAL endpoint names and private form fields are not part of the public contract.
@@ -40,6 +40,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 - Primary v0.1 transport: local stdio.
 - Installed command: `cal-mcp`.
 - Equivalent module entry point: `python -m cal_mcp`.
+- `cal-mcp --version` and `cal-mcp --help` print and exit without starting the server; any other argument is rejected with the usage.
 - Agora is not a runtime dependency; optional Agora registration remains the downstream issue #16 after publication.
 
 ### Release and drift validation

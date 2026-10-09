@@ -50,6 +50,8 @@ Qoheleth, Lamentations, Proverbs, 1 Chronicles, 2 Chronicles, Esther
 
 CAL heads the returned MT/Targum verse with its own book abbreviation (for example `Ps 23:1`, `Sam1 1:1`, `Chron1 1:1`). CAL-MCP accepts the page only when that heading names the requested chapter and verse with CAL's recorded label for the requested book (or the exact selector label), so a page for another book or verse fails closed. The result's `book` is always the selector label you passed.
 
+CAL repeats the verse coordinate at the end of every displayed MT line, inside the Hebrew text (for example `… הַשָּׁמַיִם Gen 1:1` / `וְאֵת הָאָרֶץ Gen 1:1`). CAL-MCP removes only that exact, validated heading coordinate from each line and joins the lines with one space, so `mt_text` contains only CAL's MT text. CAL's `<br>` line breaks are the only line boundaries. A line that lacks the label while others carry it, a line that is only a label, a different coordinate, or any chapter:verse-shaped text left in the MT after that removal (glued to a word, bracketed, a verse range, a bare `1:1`, or joined by markup other than `<br>`) fails closed as `parser_drift` rather than being guessed at.
+
 `chapter` and `verse` are positive integers bounded at 999. Invalid public values fail before transport.
 
 `include_peshitta` and `include_samaritan` request CAL's optional comparison sources. They do **not** promise that a reading exists for the requested verse. In particular, CAL's Samaritan coverage is conditional; absence remains absence and CAL-MCP never manufactures an empty source row to make the result look uniform.

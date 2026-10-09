@@ -346,6 +346,31 @@ displayed source plus validated target lemma key without fetching or merging the
 `$l` / Syriac / `by` acceptance passed on top of merged #222. Detailed evidence:
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
+
+## R-065 — Targum/Peshitta MT spans repeat the requested verse coordinate per display line
+
+**Rechecked:** 2026-10-08; issue #155.
+
+Current CAL renderings of both MT/Targum and MT/Peshitta parallels append the displayed biblical
+coordinate to every Masoretic Text display line. Current public examples include `Gen 1:1` on the
+Peshitta surface and `Sam1 1:10` on the ordinary Targum surface. Reduced current DOM fixtures
+captured on 2026-09-25 place that repeated coordinate inside `span.heb`, with `<br>` separating
+display lines.
+
+The pre-#155 parsers treat all data inside the Hebrew span as MT content. The Targum parser also
+drops the `<br>` boundary entirely, which can glue `Gen 1:1` directly to the first Hebrew word
+of the next display line.
+
+The page heading already supplies CAL's coordinate label and is independently validated against the
+requested book/chapter/verse. Each current labeled MT line ends with exactly that validated label.
+Older reduced Targum markup without repeated labels remains part of the compatibility contract.
+
+**Implication:** preserve `<br>` boundaries internally, remove only the exact validated page-heading
+coordinate from the end of complete MT display lines, and fail closed on mixed or contradictory
+coordinate-like suffixes. Keep the public result as one `mt_text` string: the observed line breaks
+are display segmentation of the same verse, not separate scholarly records. Detailed evidence:
+`docs/research/issue-155-mt-verse-labels.md`.
+
 ## R-064 — CAL renders an explicitly empty POS; the current entry header is a `lemma-header` block
 
 **Rechecked:** 2026-10-08; issue #227. Two bounded GETs (browse `$yp`, entry `$yp#2 N`), plus the
