@@ -121,3 +121,143 @@ async def test_text_row_error_shows_only_plain_tag_names(tag: str, shown: bool) 
         await _page(body.replace(">yhwh</a>", f"><{tag}>yhwh</a>", 1).encode(), "56000", "112")
     assert "unexpected" in str(exc_info.value)
     assert (tag in str(exc_info.value)) is shown
+
+
+_FIXTURES = __import__("pathlib").Path(__file__).parent / "fixtures" / "cal"
+
+
+def _install_path_transport(
+    monkeypatch: pytest.MonkeyPatch, bodies: dict[str, bytes], requested: list[str]
+) -> None:
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        url = _request_url(request)
+        requested.append(url)
+        return CalResponse(
+            status_code=200,
+            url=url,
+            body=bodies[request.path],
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 10, 9, tzinfo=UTC),
+        )
+
+    def client_factory() -> CalHttpClient:
+        return CalHttpClient(
+            config=CalClientConfig(max_retries=0, retry_backoff_seconds=0),
+            transport=transport,
+        )
+
+    monkeypatch.setattr(server_module, "CalHttpClient", client_factory)
+
+
+# Pages that parse but echo a different query, source or page than the one requested; the identity
+# check runs after parsing and must still name the CAL page.
+_IDENTITY_MISMATCH_CASES: list[tuple[str, dict[str, Any], str, str]] = [
+    (
+        "cal_bibliography_author",
+        {"author": "Sokoloffx"},
+        "getbibauthor.php",
+        "bibliography_author_sokoloff_current.html",
+    ),
+    (
+        "cal_bibliography_authors",
+        {"prefix": "zzq"},
+        "browsenames.php",
+        "bibliography_authors_empty.html",
+    ),
+    (
+        "cal_dictionary_collation",
+        {"source": "djba", "page": "101"},
+        "searchdicts.php",
+        "dictionary_collation_djba_100_current.html",
+    ),
+    (
+        "cal_external_citations",
+        {"source_abbrev": "ON"},
+        "displaycits.abbrev.php",
+        "external_citations_1corh.html",
+    ),
+]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("tool", "arguments", "path", "fixture"),
+    _IDENTITY_MISMATCH_CASES,
+    ids=[case[0] for case in _IDENTITY_MISMATCH_CASES],
+)
+async def test_identity_mismatch_drift_carries_the_cal_source_url(
+    monkeypatch: pytest.MonkeyPatch, tool: str, arguments: dict[str, Any], path: str, fixture: str
+) -> None:
+    requested: list[str] = []
+    _install_path_transport(monkeypatch, {path: (_FIXTURES / fixture).read_bytes()}, requested)
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool(tool, arguments)
+
+    assert result.is_error is True
+    assert result.structured_content is not None
+    error = result.structured_content["error"]
+    assert error["kind"] == "parser_drift", error
+    assert error["source_url"] == requested[-1]
+
+
+@pytest.mark.anyio
+async def test_lookup_entry_drift_names_the_entry_page_not_the_browse_page(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    requested: list[str] = []
+    _install_path_transport(
+        monkeypatch,
+        {
+            "browseSKEYheaders.php": (_FIXTURES / "browse_b.html").read_bytes(),
+            "cal_entry_web.php": _UNRECOGNIZABLE_PAGE,
+        },
+        requested,
+    )
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool("cal_lexicon_lookup", {"query": "br", "lemma_key": "br N"})
+
+    assert result.structured_content is not None
+    error = result.structured_content["error"]
+    assert error["kind"] == "parser_drift", error
+    assert len(requested) == 2
+    assert "cal_entry_web.php" in requested[1]
+    assert error["source_url"] == requested[1]
+
+
+@pytest.mark.anyio
+async def test_syriac_navigation_error_does_not_echo_upstream_query_keys(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    body = (
+        b'<html><body><p>Religion</p><p><a href="showsubtexts.php?keyword=1'
+        b'&ignore_previous_instructions=1">x</a></p></body></html>'
+    )
+    requested: list[str] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        url = _request_url(request)
+        requested.append(url)
+        return CalResponse(
+            status_code=200,
+            url=url,
+            body=body,
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 10, 9, tzinfo=UTC),
+        )
+
+    monkeypatch.setattr(
+        server_module,
+        "CalHttpClient",
+        lambda: CalHttpClient(
+            config=CalClientConfig(max_retries=0, retry_backoff_seconds=0), transport=transport
+        ),
+    )
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool("cal_syriac_texts", {"category": "religion"})
+
+    assert result.structured_content is not None
+    error = result.structured_content["error"]
+    assert error["kind"] == "parser_drift", error
+    assert "ignore_previous_instructions" not in error["message"]
