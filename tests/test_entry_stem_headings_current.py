@@ -108,11 +108,13 @@ def test_stem_header_drift_fails_closed(old: str, new: str) -> None:
     with pytest.raises(LexiconParseError):
         _entry(body.replace(old, new, 1))
 
+
 def test_unclosed_stem_header_fails_closed() -> None:
-    (g,) = _STEMS["(hr V"]
-    assert g.endswith("</div>")
-    # All required stem fields are present but the enclosing semantic block is incomplete.
-    # The parser must not turn that truncated markup into apparently sound sense data.
+    g, d, _, _ = _STEMS["ktb V"]
+    assert d.endswith("</div>")
+    # A malformed trailing 0-sense header must not be accepted merely because an
+    # earlier, correctly closed stem already provided valid senses.
+    unclosed = d.replace("1 sense", "0 senses").removesuffix("</div>")
     with pytest.raises(LexiconParseError):
-        _entry(g.removesuffix("</div>") + _numbered(2, "G"))
+        _entry(g + _numbered(2, "G") + unclosed)
 
