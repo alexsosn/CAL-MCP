@@ -150,12 +150,32 @@ def _parse_peshitta(body: str) -> str:
         "בְּרֵאשִׁית Gen 1:2<br>",
         "בְּרֵאשִׁית Gen 1:1<br>Gen 1:1<br>",
         "בְּרֵאשִׁית Gen 1:1 extra<br>",
+        "<p>בראשית Gen 1:1</p><p>וְאֵת Gen 1:1</p>",
+        "<div>בראשית Gen 1:1</div><div>וְאֵת Gen 1:1</div>",
+        "בראשית Gen 1:1וְאֵת Gen 1:1",
+        "בראשית Gen 1:1\nוְאֵת Gen 1:1",
+        "בראשיתGen 1:1<br>",
+        "בראשית׃Gen 1:1<br>",
+        "בראשית Gen 1:1.<br>",
+        "בראשית (Gen 1:1)<br>",
+        "בראשית Gen 1:1-2<br>",
+        "בראשית 1:1<br>וְאֵת 1:1<br>",
     ],
     ids=[
         "mixed-labeled-unlabeled",
         "wrong-coordinate",
         "coordinate-only-line",
         "embedded-coordinate",
+        "p-separated",
+        "div-separated",
+        "glued-without-break",
+        "raw-newline",
+        "no-space-label",
+        "label-after-sof-pasuq",
+        "label-with-period",
+        "parenthesized-label",
+        "verse-range-label",
+        "bare-chapter-verse",
     ],
 )
 def test_parallel_mt_coordinate_drift_fails_closed(
@@ -166,3 +186,23 @@ def test_parallel_mt_coordinate_drift_fails_closed(
 ) -> None:
     with pytest.raises(error):
         parse(build(mt))
+
+
+@pytest.mark.parametrize(
+    ("build", "parse"),
+    [(_targum_html, _parse_targum), (_peshitta_html, _parse_peshitta)],
+    ids=["targum", "peshitta"],
+)
+@pytest.mark.parametrize(
+    "mt",
+    [
+        "בראשית ברא Gen 1:1<br>ואת הארץ Gen 1:1<br>",
+        "בראשית ברא Gen 1:1<br/>\n  ואת הארץ Gen 1:1<br>",
+        "<b>בראשית ברא Gen 1:1<br></b>ואת הארץ Gen 1:1",
+    ],
+    ids=["br", "self-closing-br-with-indent", "br-inside-bold"],
+)
+def test_multi_line_mt_labels_are_removed(
+    build: Callable[[str], str], parse: Callable[[str], str], mt: str
+) -> None:
+    assert parse(build(mt)) == "בראשית ברא ואת הארץ"
