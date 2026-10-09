@@ -349,3 +349,28 @@ Consequences:
 - CAL-MCP preserves these handles verbatim and does not decode `col` or the decimal tail into an
   undocumented local coordinate model.
 
+## D-022 — Installed-stdio release smoke has one hard total CAL transport budget
+
+**Status:** proposed — 2026-10-10 (issue #157; research `docs/research/issue-157-installed-stdio-live-smoke.md`)
+
+The release/scheduled live drift smoke should exercise representative MCP tools through a
+freshly installed `cal-mcp` stdio process, validate advertised output schemas and provenance,
+and report each case as success, drift, unavailable, or harness failure.
+
+**Proposed CAL load contract (requires independent review before implementation):**
+
+- **25 total CAL transport attempts maximum per scheduled/release invocation**, not 25 calls
+  *in addition* to the existing direct-service nine-request suite;
+- no concurrent MCP calls; smoke server's CAL concurrency set to one; retries disabled;
+- bounded completed-response cache shared across the one process;
+- account for every attempted GET/POST at the server's transport boundary, including failures,
+  **before** sending it; cached responses cost zero;
+- run all fixed independent cases where budget permits, never follow arbitrary returned links
+  or pages, and stop immediately rather than exceeding the cap;
+- no change to CAL-MCP's default request behavior outside opt-in smoke mode;
+- publish only if the exact installed-wheel stdio E2E suite passes; regular CI remains offline.
+
+Do not enable this expanded smoke until the hard budget has deterministic RED/GREEN tests,
+representative CAL calls have been trialed below the cap, and this decision is accepted through
+an independent review. A failed smoke must not trigger automatic retry loops.
+
