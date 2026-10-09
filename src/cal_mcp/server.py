@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -994,14 +995,21 @@ _CLI_DESCRIPTION = (
     "talks to it on stdin/stdout; run without arguments it waits for that client."
 )
 _CLI_EPILOG = "Documentation: https://github.com/alexsosn/CAL-MCP/tree/main/docs"
+_CLI_ARGUMENTS = frozenset({"-h", "--help", "--version"})
 
 
 def main(argv: Sequence[str] | None = None) -> None:
     """Run the CAL-MCP server over stdio, or print help or the version and exit."""
 
     parser = argparse.ArgumentParser(
-        prog="cal-mcp", description=_CLI_DESCRIPTION, epilog=_CLI_EPILOG
+        prog="cal-mcp", description=_CLI_DESCRIPTION, epilog=_CLI_EPILOG, allow_abbrev=False
     )
     parser.add_argument("--version", action="version", version=f"cal-mcp {__version__}")
-    parser.parse_args(argv)
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    # Reject anything else before argparse acts on --help/--version, so a stray argument never
+    # starts the server or exits 0 (argparse alone would honour --version first).
+    unknown = [item for item in arguments if item not in _CLI_ARGUMENTS]
+    if unknown:
+        parser.error(f"unrecognized arguments: {' '.join(unknown)}")
+    parser.parse_args(arguments)
     mcp.run()

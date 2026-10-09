@@ -3,6 +3,8 @@ from __future__ import annotations
 import subprocess
 import sys
 
+import pytest
+
 from cal_mcp import __version__
 
 
@@ -26,8 +28,9 @@ def test_version_prints_and_exits() -> None:
     assert result.stdout.strip() == f"cal-mcp {__version__}"
 
 
-def test_help_prints_usage_and_exits() -> None:
-    result = _run("--help")
+@pytest.mark.parametrize("flag", ["--help", "-h"])
+def test_help_prints_usage_and_exits(flag: str) -> None:
+    result = _run(flag)
 
     assert result.returncode == 0
     assert "usage: cal-mcp" in result.stdout
@@ -36,8 +39,12 @@ def test_help_prints_usage_and_exits() -> None:
     assert "jsonrpc" not in result.stdout
 
 
-def test_unknown_argument_fails_with_usage() -> None:
-    result = _run("--bogus")
+@pytest.mark.parametrize(
+    "arguments",
+    [("--bogus",), ("foo",), ("--bogus", "--version"), ("--version", "--bogus"), ("--vers",)],
+)
+def test_unknown_argument_fails_with_usage(arguments: tuple[str, ...]) -> None:
+    result = _run(*arguments)
 
     assert result.returncode != 0
     assert "usage: cal-mcp" in result.stderr

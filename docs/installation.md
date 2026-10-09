@@ -54,7 +54,7 @@ cal-mcp --version   # prints "cal-mcp <version>" and exits
 cal-mcp --help      # prints usage and exits
 ```
 
-Any other argument prints the usage to stderr and exits with a non-zero status without starting the server.
+Any other argument, including one combined with `--help` or `--version` and abbreviations such as `--vers`, prints the usage to stderr and exits with status 2 without starting the server.
 
 See [Standalone MCP](integrations/standalone-mcp.md) for the client/process boundary and [Configuration](configuration.md) for request-policy defaults.
 
