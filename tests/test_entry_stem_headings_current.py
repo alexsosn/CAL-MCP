@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalResponse
-from cal_mcp.lexicon import LexiconParseError, parse_lexicon_entry
+from cal_mcp.lexicon import LexiconParseError, _parse_lines, parse_lexicon_entry
 
 _FIXTURE = Path(__file__).parent / "fixtures" / "cal" / "entry_stem_headers_current.txt"
 # Verbatim div.stem-header elements, in page order per lemma (see the fixture's provenance).
@@ -110,11 +110,14 @@ def test_stem_header_drift_fails_closed(old: str, new: str) -> None:
 
 
 def test_unclosed_stem_header_fails_closed() -> None:
-    g, d, _, _ = _STEMS["ktb V"]
-    assert d.endswith("</div>")
-    # A malformed trailing 0-sense header must not be accepted merely because an
-    # earlier, correctly closed stem already provided valid senses.
-    unclosed = d.replace("1 sense", "0 senses").removesuffix("</div>")
+    # The semantic HTML parser must reject an open header even if all marked fields
+    # were present; this is independent of the downstream sense-count heuristic.
+    (g,) = _STEMS["(hr V"]
+    assert g.endswith("</div>")
+    response = _response(
+        f"<html><body>{g.removesuffix('</div>')}</body></html>",
+        url="https://cal.huc.edu/cal_entry_web.php?lemma=%28hr+V",
+    )
     with pytest.raises(LexiconParseError):
-        _entry(g + _numbered(2, "G") + unclosed)
+        _parse_lines(response)
 
