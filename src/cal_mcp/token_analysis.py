@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import StrEnum
 from html.parser import HTMLParser
@@ -80,6 +80,9 @@ class _CurrentLinkBuilder:
     href: str
     classes: tuple[str, ...]
     parts: list[str]
+    pos_parts: list[str] = field(default_factory=list)
+    pos_count: int = 0
+    in_pos: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,10 +90,30 @@ class _CurrentLink:
     href: str
     classes: tuple[str, ...]
     text: str
+    # CAL's <pos> element inside the link: its text (None when absent) and how many there were.
+    marked_pos: str | None = None
+    marked_pos_count: int = 0
+
+
+@dataclass(slots=True)
+class _CurrentSegment:
+    """One ``<hr>``-separated lexeme block after the result marker (R-066)."""
+
+    label_parts: list[str] = field(default_factory=list)
+    table_started: bool = False
+    table_closed: bool = False
+    table_depth: int = 0
+    nested_table: bool = False
+    extra_table: bool = False
+    row_count: int = 0
+    cell_count: int = 0
+    links: list[_CurrentLink] = field(default_factory=list)
+    table_loose_parts: list[str] = field(default_factory=list)
+    unclosed_link: bool = False
 
 
 class _CurrentLinkedRedirectParser(HTMLParser):
-    """Read the bounded current lexlink result-table shape without consuming its sense outline."""
+    """Read the current lexlink result segments without consuming their sense outlines."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -98,17 +121,18 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         self._in_h2 = False
         self._h2_parts: list[str] = []
         self._after_marker = False
-        self.label_parts: list[str] = []
-        self.table_started = False
-        self.table_closed = False
-        self.table_depth = 0
-        self.nested_table = False
-        self.row_count = 0
-        self.cell_count = 0
-        self.links: list[_CurrentLink] = []
-        self.table_loose_parts: list[str] = []
+        self._done = False
+        self.segments: list[_CurrentSegment] = []
         self._open_link: _CurrentLinkBuilder | None = None
-        self.unclosed_link = False
+
+    @property
+    def table_started(self) -> bool:
+        return any(segment.table_started for segment in self.segments)
+
+    def _segment(self) -> _CurrentSegment:
+        if not self.segments:
+            self.segments.append(_CurrentSegment())
+        return self.segments[-1]
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attrs_d = dict(attrs)
@@ -117,33 +141,46 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             self._h2_parts = []
             return
 
-        if not self._after_marker:
+        if not self._after_marker or self._done:
+            return
+        segment = self._segment()
+        if tag == "div" and "cal-footer" in (attrs_d.get("class") or "").split():
+            self._done = True
+            return
+        if tag == "hr" and segment.table_depth == 0:
+            self.segments.append(_CurrentSegment())
             return
 
-        if not self.table_started:
+        if not segment.table_started:
             if tag == "table":
-                self.table_started = True
-                self.table_depth = 1
+                segment.table_started = True
+                segment.table_depth = 1
             return
 
-        if self.table_depth < 1:
+        if segment.table_depth < 1:
+            if tag == "table":
+                # A second result table without an <hr> between: not the current contract.
+                segment.extra_table = True
             return
         if tag == "table":
-            self.nested_table = True
-            self.table_depth += 1
+            segment.nested_table = True
+            segment.table_depth += 1
         elif tag == "tr":
-            self.row_count += 1
+            segment.row_count += 1
         elif tag == "td":
-            self.cell_count += 1
+            segment.cell_count += 1
         elif tag == "a":
             if self._open_link is not None:
-                self.unclosed_link = True
+                segment.unclosed_link = True
             classes = tuple((attrs_d.get("class") or "").split())
             self._open_link = _CurrentLinkBuilder(
                 href=attrs_d.get("href") or "",
                 classes=classes,
                 parts=[],
             )
+        elif tag == "pos" and self._open_link is not None:
+            self._open_link.pos_count += 1
+            self._open_link.in_pos = True
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "h2" and self._in_h2:
@@ -155,50 +192,81 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             self._h2_parts = []
             return
 
-        if not self.table_started or self.table_depth < 1:
+        if not self._after_marker or self._done or not self.segments:
             return
-        if tag == "a" and self._open_link is not None:
-            self.links.append(
+        segment = self.segments[-1]
+        if not segment.table_started or segment.table_depth < 1:
+            return
+        if tag == "pos" and self._open_link is not None:
+            self._open_link.in_pos = False
+        elif tag == "a" and self._open_link is not None:
+            builder = self._open_link
+            segment.links.append(
                 _CurrentLink(
-                    href=self._open_link.href,
-                    classes=self._open_link.classes,
-                    text=_clean_text("".join(self._open_link.parts)),
+                    href=builder.href,
+                    classes=builder.classes,
+                    text=_clean_text("".join(builder.parts)),
+                    marked_pos=(
+                        _clean_text("".join(builder.pos_parts)) if builder.pos_count else None
+                    ),
+                    marked_pos_count=builder.pos_count if not builder.in_pos else -1,
                 )
             )
             self._open_link = None
         elif tag == "table":
-            self.table_depth -= 1
-            if self.table_depth == 0:
+            segment.table_depth -= 1
+            if segment.table_depth == 0:
                 if self._open_link is not None:
-                    self.unclosed_link = True
-                self.table_closed = True
+                    segment.unclosed_link = True
+                    self._open_link = None
+                segment.table_closed = True
 
     def handle_data(self, data: str) -> None:
         if self._in_h2:
             self._h2_parts.append(data)
             return
-        if not self._after_marker:
+        if not self._after_marker or self._done:
             return
-        if not self.table_started:
-            self.label_parts.append(data)
-        elif self.table_depth > 0:
+        segment = self._segment()
+        if not segment.table_started:
+            segment.label_parts.append(data)
+        elif segment.table_depth > 0:
             if self._open_link is not None:
                 self._open_link.parts.append(data)
+                if self._open_link.in_pos:
+                    self._open_link.pos_parts.append(data)
             else:
-                self.table_loose_parts.append(data)
+                segment.table_loose_parts.append(data)
 
 
-def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCandidate | None:
+def _current_linked_page(response: CalResponse) -> TokenAnalysisPage | None:
+    """Return every current lexeme segment, or ``None`` when the page is not that shape."""
+
     parser = _CurrentLinkedRedirectParser()
     parser.feed(response.body.decode("utf-8", errors="replace"))
     parser.close()
-
-    analysis_label = _clean_text("".join(parser.label_parts))
-    redirect = _REDIRECT_SUFFIX_RE.search(analysis_label)
-    current_shape_hint = parser.marker_h2_count > 0 and parser.table_started
-    if not current_shape_hint:
+    if not (parser.marker_h2_count > 0 and parser.table_started):
         return None
+    if parser.marker_h2_count != 1:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis candidate lacks one unique result marker"
+        )
 
+    candidates: list[TokenAnalysisCandidate] = []
+    summaries: list[str] = []
+    for segment in parser.segments:
+        label = _clean_text("".join(segment.label_parts))
+        if segment.table_started:
+            candidates.append(_current_segment_candidate(segment, label))
+        elif label:
+            summaries.append(label)
+    return TokenAnalysisPage(candidates=tuple(candidates), unlinked_summaries=tuple(summaries))
+
+
+def _current_segment_candidate(
+    segment: _CurrentSegment, analysis_label: str
+) -> TokenAnalysisCandidate:
+    redirect = _REDIRECT_SUFFIX_RE.search(analysis_label)
     if not analysis_label:
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate has an empty analysis label"
@@ -207,26 +275,26 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate has malformed redirect notation"
         )
-
-    if parser.marker_h2_count != 1:
-        raise TokenAnalysisParseError(
-            "CAL current token-analysis candidate lacks one unique result marker"
-        )
-    if not parser.table_started or not parser.table_closed or parser.table_depth != 0:
+    if not segment.table_closed or segment.table_depth != 0:
         raise TokenAnalysisParseError("CAL current token-analysis candidate table is incomplete")
-    if parser.nested_table or parser.row_count != 1 or parser.cell_count != 1:
+    if (
+        segment.nested_table
+        or segment.extra_table
+        or segment.row_count != 1
+        or segment.cell_count != 1
+    ):
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate table has an unexpected structure"
         )
-    if _clean_text("".join(parser.table_loose_parts)):
+    if _clean_text("".join(segment.table_loose_parts)):
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate table has rendered text outside its linked header"
         )
-    if parser.unclosed_link or len(parser.links) != 1:
+    if segment.unclosed_link or len(segment.links) != 1:
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate does not have exactly one linked header"
         )
-    link = parser.links[0]
+    link = segment.links[0]
     if link.classes != ("lexlink",):
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate is missing its lexlink header"
@@ -271,6 +339,8 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
         lemma_key=lemma_key,
         require_gloss=True,
     )
+    if lemma is not None:
+        lemma = _apply_candidate_marked_pos(lemma, link)
     if lemma is None:
         raise TokenAnalysisParseError(
             "CAL current token-analysis candidate has an unrecognized lemma header"
@@ -280,6 +350,27 @@ def _current_linked_redirect_candidate(response: CalResponse) -> TokenAnalysisCa
         lemma=lemma,
         analyzed_lemma_key=analyzed_lemma_key,
     )
+
+
+def _apply_candidate_marked_pos(lemma: LemmaRef, link: _CurrentLink) -> LemmaRef | None:
+    """Use CAL's <pos> element as the candidate POS, keeping the gloss after it (R-066)."""
+
+    if link.marked_pos_count == 0:
+        return lemma
+    marked = link.marked_pos
+    if link.marked_pos_count != 1 or not marked or lemma.part_of_speech is None:
+        return None
+    if not marked.startswith(lemma.part_of_speech):
+        return None
+    extra = marked[len(lemma.part_of_speech) :].strip()
+    gloss = lemma.gloss
+    if extra:
+        if not gloss.startswith(extra):
+            return None
+        gloss = gloss[len(extra) :].strip()
+    if not gloss:
+        return None
+    return replace(lemma, part_of_speech=marked, gloss=gloss)
 
 
 def _clean_text(value: str) -> str:
@@ -431,9 +522,9 @@ def parse_token_analysis_page(response: CalResponse) -> TokenAnalysisPage:
     if len(marker_indices) != 1:
         raise TokenAnalysisParseError("CAL token-analysis page is missing its unique result marker")
 
-    current_candidate = _current_linked_redirect_candidate(response)
-    if current_candidate is not None:
-        return TokenAnalysisPage(candidates=(current_candidate,))
+    current_page = _current_linked_page(response)
+    if current_page is not None:
+        return current_page
 
     unlinked_summaries = _current_linkless_summaries(
         response,

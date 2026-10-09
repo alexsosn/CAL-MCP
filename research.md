@@ -347,6 +347,22 @@ displayed source plus validated target lemma key without fetching or merging the
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 
+## R-066 — Current token-analysis pages render one `<hr>`-separated segment per lexeme
+
+**Rechecked:** 2026-10-09; issue #232. Three bounded GETs (`getlex.php`, Samaritan `56000112010`,
+words 0–2).
+
+After the H2 result marker, CAL renders one segment per lexeme, separated by `<hr>`. A linked
+segment is a label followed by a one-cell `a.lexlink` table (with a sense outline after it for
+verbs); an unlinked segment is text only. `w)mr` gives `w_ c` (conj.) and `)mr V`
+(`<pos>vb. a/a</pos>`, "to say"); `l)brM` gives `l_ p` (prep.) and `)brM PN Personal name`. The
+earlier parser read only the first table, silently dropping the verb and the summary.
+
+**Implication:** return every segment in order: tables become candidates under the existing
+one-table contract, text-only segments become `unlinked_summaries`. Candidate POS is CAL's
+`<pos>`, with the gloss after it. Detailed evidence:
+`docs/research/issue-232-token-analysis-segments.md`.
+
 ## R-065 — Targum/Peshitta MT spans repeat the requested verse coordinate per display line
 
 **Rechecked:** 2026-10-08; issue #155.
