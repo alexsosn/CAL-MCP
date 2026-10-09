@@ -107,3 +107,12 @@ def test_stem_header_drift_fails_closed(old: str, new: str) -> None:
     assert old in body
     with pytest.raises(LexiconParseError):
         _entry(body.replace(old, new, 1))
+
+def test_unclosed_stem_header_fails_closed() -> None:
+    (g,) = _STEMS["(hr V"]
+    assert g.endswith("</div>")
+    # All required stem fields are present but the enclosing semantic block is incomplete.
+    # The parser must not turn that truncated markup into apparently sound sense data.
+    with pytest.raises(LexiconParseError):
+        _entry(g.removesuffix("</div>") + _numbered(2, "G"))
+
