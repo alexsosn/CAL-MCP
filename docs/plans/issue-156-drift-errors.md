@@ -23,8 +23,9 @@ This change is local only, with no CAL request.
 3. `classify_public_tool_error` publishes `source_url` for `parser_drift` and `content` errors
    only through the existing `_trusted_cal_url` check (https, `cal.huc.edu`, no controls). An
    untrusted URL is never published. Messages are unchanged.
-4. The text-row message keeps the tag name only when it is a plain short element name
-   (`[a-z][a-z0-9]{0,15}`), and is generic otherwise.
+4. The text-row message no longer quotes CAL's tag name, and the Syriac subtext-navigation
+   message no longer lists CAL's unexpected query keys. Both are generic; `source_url` now
+   points to the page.
 5. Docs: the error-model section, plus a CHANGELOG line.
 
 ## Tests
@@ -36,3 +37,18 @@ This change is local only, with no CAL request.
   the fetched CAL URL and `upstream_reached: true`;
 - an untrusted URL on a parse error is never published;
 - the tag-name guard.
+
+## Review follow-up
+
+The independent review found:
+
+- identity checks that ran after `client.fetch` returned, with no URL: bibliography author and
+  result headings, dictionary collation page and source, and the external-citation heading.
+  These checks now run inside each `parser=` callback. As a result a mismatched page is never
+  cached either;
+- a Syriac message built by string concatenation from CAL query keys, which the f-string audit
+  missed.
+
+Tests now cover each post-fetch site through MCP, a lookup whose entry stage drifts (the error
+names the entry URL, not the browse URL), and the Syriac key leak. `live_smoke` treats any
+`CalParseError` as parser drift. `_trusted_cal_url` accepts `None`.

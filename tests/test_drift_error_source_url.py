@@ -109,9 +109,9 @@ def test_untrusted_parse_error_url_is_not_published() -> None:
 @pytest.mark.anyio
 @pytest.mark.parametrize(
     ("tag", "shown"),
-    [("yhwh", True), ("zz9", True), ("a-b", False), ("abcdefghijklmnopq", False)],
+    [("yhwh", False), ("zz9", False), ("a-b", False), ("abcdefghijklmnopq", False)],
 )
-async def test_text_row_error_shows_only_plain_tag_names(tag: str, shown: bool) -> None:
+async def test_text_row_error_never_echoes_the_upstream_tag_name(tag: str, shown: bool) -> None:
     from test_text_page_row_coordinates_current import SAMARITAN, _page
 
     from cal_mcp.texts import TextParseError

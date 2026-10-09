@@ -500,10 +500,9 @@ def _parse_syriac_navigation_items(
                 resolved = _validated_same_origin_url(source_url, link.href, endpoint)
                 query = parse_qs(urlsplit(resolved).query, keep_blank_values=True)
                 allowed_keys = {"keyword", "subtext", "cset", "script"}
-                if unknown_keys := set(query) - allowed_keys:
+                if set(query) - allowed_keys:
                     raise SyriacParseError(
-                        "CAL Syriac subtext navigation has unexpected query fields: "
-                        + ", ".join(sorted(unknown_keys))
+                        "CAL Syriac subtext navigation has unexpected query fields"
                     )
                 for presentation_key in ("cset", "script"):
                     if presentation_key in query:

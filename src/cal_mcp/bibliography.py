@@ -443,19 +443,25 @@ class BibliographyService:
 
     async def authors(self, prefix: str) -> BibliographyAuthorOptionsResult:
         submitted = _prepare_single_line(prefix, "prefix", max_length=6)
+
+        def parse(response: CalResponse) -> BibliographyAuthorOptionsPage:
+            # Checked inside the parser so the error names the CAL page and is never cached.
+            page = parse_author_options_page(response)
+            if page.empty_query is not None and page.empty_query != submitted:
+                raise BibliographyParseError(
+                    "CAL bibliography author no-match marker does not match the submitted prefix"
+                )
+            return page
+
         result = await self._client.fetch(
             CalRequest(
                 method="POST",
                 path="browsenames.php",
                 data=(("first3", submitted),),
             ),
-            parser=parse_author_options_page,
+            parser=parse,
             cache_namespace="bibliography-authors-v1",
         )
-        if result.value.empty_query is not None and result.value.empty_query != submitted:
-            raise BibliographyParseError(
-                "CAL bibliography author no-match marker does not match the submitted prefix"
-            )
         return BibliographyAuthorOptionsResult(
             prefix=submitted,
             candidates=result.value.candidates,
@@ -512,20 +518,25 @@ class BibliographyService:
         operation: str,
         cache_namespace: str,
     ) -> BibliographyResult:
+        expected_heading = f"{_RESULT_HEADING_PREFIX}{submitted}"
+
+        def parse(response: CalResponse) -> BibliographyPage:
+            page = parse_bibliography_page(response)
+            if page.heading != expected_heading:
+                raise BibliographyParseError(
+                    "CAL bibliography result heading does not match the submitted query"
+                )
+            return page
+
         result = await self._client.fetch(
             CalRequest(
                 method="GET",
                 path=path,
                 params=(("myauthor", submitted),),
             ),
-            parser=parse_bibliography_page,
+            parser=parse,
             cache_namespace=cache_namespace,
         )
-        expected_heading = f"{_RESULT_HEADING_PREFIX}{submitted}"
-        if result.value.heading != expected_heading:
-            raise BibliographyParseError(
-                "CAL bibliography result heading does not match the submitted query"
-            )
         return BibliographyResult(
             query_kind=query_kind,
             query=submitted,

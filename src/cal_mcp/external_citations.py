@@ -678,19 +678,24 @@ class ExternalCitationService:
 
     async def citations(self, source_abbrev: str) -> ExternalCitationResult:
         submitted = _prepare_source_abbrev(source_abbrev)
+
+        def parse(response: CalResponse) -> ExternalCitationPage:
+            page = parse_external_citations_page(response)
+            if page.source_abbrev != submitted:
+                raise ExternalCitationParseError(
+                    "CAL external-citation result heading does not match the submitted source"
+                )
+            return page
+
         result = await self._client.fetch(
             CalRequest(
                 method="GET",
                 path="displaycits.abbrev.php",
                 params=(("abbrev", submitted),),
             ),
-            parser=parse_external_citations_page,
+            parser=parse,
             cache_namespace="external-citations-v1",
         )
-        if result.value.source_abbrev != submitted:
-            raise ExternalCitationParseError(
-                "CAL external-citation result heading does not match the submitted source"
-            )
         return ExternalCitationResult(
             source_abbrev=submitted,
             total=result.value.total,

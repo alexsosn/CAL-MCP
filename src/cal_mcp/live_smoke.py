@@ -25,6 +25,7 @@ from cal_mcp.dictionary_collation import (
     DictionaryCollationService,
     DictionarySource,
 )
+from cal_mcp.errors import CalParseError
 from cal_mcp.external_citations import ExternalCitationParseError, ExternalCitationService
 from cal_mcp.lexicon import LexiconLookupService, LexiconParseError
 from cal_mcp.search import SearchParseError
@@ -128,6 +129,7 @@ class BudgetCalHttpClient(CalHttpClient):
 
 _PARSER_ERRORS = (
     LiveSmokeSemanticError,
+    CalParseError,
     LexiconParseError,
     SearchParseError,
     TextParseError,
