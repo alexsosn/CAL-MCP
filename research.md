@@ -347,6 +347,24 @@ displayed source plus validated target lemma key without fetching or merging the
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 
+## R-067 — Current exact entries mark every header field in `div.lemma-header`
+
+**Rechecked:** 2026-10-09; issue #224. Six bounded GETs of `cal_entry_web.php` (`mlk N`, `)mr V`,
+`(hr A`, `tly N`, `$lh N`, `$yp#2 N`).
+
+Every page has exactly one `div.lemma-header`, whose only children are whitespace-separated spans:
+`lemma-formal` (headwords) and `lemma-gloss`, always present; `lemma-vocalized`, an optional single
+parenthesized group (a pronunciation, or a verb's vowel class); and `lemma-pos`, optional and
+absent only for `$yp#2 N`. The flattened-text grammar recovered the same values for the five
+POS-bearing headers but cannot represent a header without a POS. The older unbounded scan could
+take later prose as the header (R-061).
+
+**Implication:** read the header from the spans, with `part_of_speech: null` when `lemma-pos` is
+absent, and fail closed on any other shape. Pages without the block must start with the header
+line (after the document title). Detailed evidence: `docs/research/issue-224-entry-header-structure.md`.
+The same research found that multi-stem entries such as `)mr V` fail on unspaced stem headings
+(#237), separately from the header.
+
 ## R-066 — Current token-analysis pages render one `<hr>`-separated segment per lexeme
 
 **Rechecked:** 2026-10-09; issue #232. Three bounded GETs (`getlex.php`, Samaritan `56000112010`,
@@ -362,6 +380,7 @@ earlier parser read only the first table, silently dropping the verb and the sum
 one-table contract, text-only segments become `unlinked_summaries`. Candidate POS is CAL's
 `<pos>`, with the gloss after it. Detailed evidence:
 `docs/research/issue-232-token-analysis-segments.md`.
+
 
 ## R-065 — Targum/Peshitta MT spans repeat the requested verse coordinate per display line
 

@@ -7,6 +7,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
 | `browse_b.html` | `https://cal.huc.edu/browseSKEYheaders.php?first3=%22b%22` | direct headwords, homographs, alias-arrow resolution |
+| `entry_lemma_headers_current.txt` | `GET https://cal.huc.edu/cal_entry_web.php` for `mlk N`, `)mr V`, `(hr A`, `tly N`, `$lh N`, `$yp#2 N` (2026-10-09; #224) | one verbatim `div.lemma-header` line per page: noun, verb, adjective, verbal noun, uncertain POS, and a header with no POS span |
 | `entry_br_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | numbered/nested senses, dialects, Unicode citation text, form/usage, derivative depth, notes |
 | `entry_br_nested.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | repeated parenthetical sense levels plus mixed linked/plain citations sharing rendered rows |
 | `entry_bysh_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=by%24h+N` | full-form alias resolution and optional-section absence |

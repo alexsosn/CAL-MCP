@@ -1,0 +1,9 @@
+<!doctype html>
+<meta charset="utf-8">
+<!-- Verbatim div.lemma-header lines from GET https://cal.huc.edu/cal_entry_web.php?lemma=<key> (mlk+N, %29mr+V, %28hr+A, tly+N, %24lh+N, %24yp%232+N), captured 2026-10-09 (#224, R-067). One line per page: the lemma key, a tab, then that page's header line exactly as rendered. Nothing else from the pages is kept. -->
+mlk N	<div class="lemma-header"><span class="lemma-formal"><b>mlk, mlkˀ</b></span> <span class="lemma-vocalized">(mleḵ, malkā)</span> <span class="lemma-pos">n.m.</span> <span class="lemma-gloss"><b>king</b></span></div>
+)mr V	<div class="lemma-header"><span class="lemma-formal"><b>ˀmr</b></span> <span class="lemma-vocalized">(a/a)</span> <span class="lemma-pos">vb.</span> <span class="lemma-gloss"><b>to say</b></span></div>
+(hr A	<div class="lemma-header"><span class="lemma-formal"><b>ˁhr</b></span> <span class="lemma-vocalized">(ˁāhar)</span> <span class="lemma-pos">adj.</span> <span class="lemma-gloss"><b>lustful</b></span></div>
+tly N	<div class="lemma-header"><span class="lemma-formal"><b>tly, tlyˀ</b></span> <span class="lemma-vocalized">(tlāy, tlāyā)</span> <span class="lemma-pos">v.n.</span> <span class="lemma-gloss"><b>suspension</b></span></div>
+$lh N	<div class="lemma-header"><span class="lemma-formal"><b>šlh</b></span> <span class="lemma-pos">n.f.?</span> <span class="lemma-gloss"><b>watering(?)</b></span></div>
+$yp#2 N	<div class="lemma-header"><span class="lemma-formal"><b>šyp, šypˀ</b></span> <span class="lemma-gloss"><b>a type of marsh reed</b></span></div>
