@@ -1,7 +1,7 @@
 # Issue #232 research — current token-analysis pages list several `<hr>`-separated lexemes
 
 **Date:** 2026-10-09  
-**Base:** `main` at `ad13c29`
+**Base:** `main` at `f0e9d84`
 
 ## Bounded current CAL evidence
 

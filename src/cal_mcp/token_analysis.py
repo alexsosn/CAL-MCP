@@ -11,6 +11,7 @@ from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.identifiers import is_cal_machine_coordinate, is_cal_mandaic_machine_coordinate
 from cal_mcp.lexicon import (
+    _HTML_VOID_TAGS,
     LemmaRef,
     _lemma_key_from_href,
     _lemma_to_dict,
@@ -18,6 +19,8 @@ from cal_mcp.lexicon import (
     _parse_lines,
 )
 
+# HTML closes these implicitly; CAL's sense outlines open <p> without closing it.
+_OPTIONAL_END_TAGS = frozenset({"p", "li", "dt", "dd"})
 _ANALYSIS_MARKER = "click on a headword to see a complete lexicon entry"
 _NO_DATA_MARKER = "there is no data for this word"
 _NO_LEMMA_MARKER = "unrecognizable query or no such lemma found"
@@ -110,6 +113,11 @@ class _CurrentSegment:
     links: list[_CurrentLink] = field(default_factory=list)
     table_loose_parts: list[str] = field(default_factory=list)
     unclosed_link: bool = False
+    # Markup other than <br> in the label/summary text (a link, span, div …) is not a plain summary.
+    unexpected_markup: bool = False
+    # After the table: depth of elements opened there (the sense outline) and stray bare text.
+    post_table_depth: int = 0
+    post_table_loose: bool = False
 
 
 class _CurrentLinkedRedirectParser(HTMLParser):
@@ -122,6 +130,8 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         self._h2_parts: list[str] = []
         self._after_marker = False
         self._done = False
+        # True once CAL's footer or "Return to the Text Browser" link ends the result.
+        self.reached_end = False
         self.segments: list[_CurrentSegment] = []
         self._open_link: _CurrentLinkBuilder | None = None
 
@@ -144,10 +154,20 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         if not self._after_marker or self._done:
             return
         segment = self._segment()
-        if tag == "div" and "cal-footer" in (attrs_d.get("class") or "").split():
+        if segment.table_depth == 0 and (
+            (tag == "div" and "cal-footer" in (attrs_d.get("class") or "").split())
+            or (
+                tag == "a" and urlsplit(attrs_d.get("href") or "").path.endswith("newtextmenu.html")
+            )
+        ):
             self._done = True
+            self.reached_end = True
             return
         if tag == "hr" and segment.table_depth == 0:
+            if segment.post_table_depth > 0:
+                # An <hr> inside a candidate's sense outline is not a segment boundary we know.
+                segment.post_table_loose = True
+                return
             self.segments.append(_CurrentSegment())
             return
 
@@ -155,12 +175,16 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             if tag == "table":
                 segment.table_started = True
                 segment.table_depth = 1
+            elif tag != "br":
+                segment.unexpected_markup = True
             return
 
         if segment.table_depth < 1:
             if tag == "table":
                 # A second result table without an <hr> between: not the current contract.
                 segment.extra_table = True
+            elif tag not in _HTML_VOID_TAGS and tag not in _OPTIONAL_END_TAGS:
+                segment.post_table_depth += 1
             return
         if tag == "table":
             segment.nested_table = True
@@ -195,6 +219,10 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         if not self._after_marker or self._done or not self.segments:
             return
         segment = self.segments[-1]
+        if segment.table_closed and segment.table_depth == 0:
+            if segment.post_table_depth > 0 and tag not in _OPTIONAL_END_TAGS:
+                segment.post_table_depth -= 1
+            return
         if not segment.table_started or segment.table_depth < 1:
             return
         if tag == "pos" and self._open_link is not None:
@@ -230,6 +258,9 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         segment = self._segment()
         if not segment.table_started:
             segment.label_parts.append(data)
+        elif segment.table_closed and segment.table_depth == 0:
+            if segment.post_table_depth == 0 and data.strip():
+                segment.post_table_loose = True
         elif segment.table_depth > 0:
             if self._open_link is not None:
                 self._open_link.parts.append(data)
@@ -252,9 +283,21 @@ def _current_linked_page(response: CalResponse) -> TokenAnalysisPage | None:
             "CAL current token-analysis candidate lacks one unique result marker"
         )
 
+    if not parser.reached_end:
+        raise TokenAnalysisParseError(
+            "CAL current token-analysis result lacks its closing navigation boundary"
+        )
     candidates: list[TokenAnalysisCandidate] = []
     summaries: list[str] = []
     for segment in parser.segments:
+        if segment.unexpected_markup:
+            raise TokenAnalysisParseError(
+                "CAL current token-analysis segment has unexpected markup outside its result table"
+            )
+        if segment.post_table_loose:
+            raise TokenAnalysisParseError(
+                "CAL current token-analysis segment has unexplained text after its result table"
+            )
         label = _clean_text("".join(segment.label_parts))
         if segment.table_started:
             candidates.append(_current_segment_candidate(segment, label))

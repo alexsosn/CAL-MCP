@@ -23,3 +23,21 @@
 - Fail-closed cases: two tables in one segment; a linked segment with no label; `<pos>` that
   disagrees with the rendered header.
 - The existing token-analysis fixtures and tests stay unchanged.
+
+## Review follow-up
+
+The independent review found three ways a segment could still drift silently:
+
+- a missing footer, which let CAL's navigation text become a summary;
+- a link or other markup inside a text-only segment, which was flattened into a summary;
+- an `<hr>` inside a sense outline, which split the rest of the outline into a summary.
+
+The fixes:
+
+- a page must reach CAL's footer or "Return to the Text Browser" link;
+- labels and summaries may contain only text and `<br>`;
+- bare text after a result table, outside outline elements, fails closed;
+- an `<hr>` inside an outline fails closed.
+
+Outline depth ignores elements whose end tag is optional (`p`, `li`, `dt`, `dd`), because CAL
+leaves `<p>` unclosed.
