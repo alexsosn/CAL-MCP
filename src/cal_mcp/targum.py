@@ -8,6 +8,8 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.biblical import (
+    MT_LINE_BREAK,
+    _clean_parallel_mt_text,
     cal_biblical_book_id,
     cal_biblical_heading_matches,
 )
@@ -235,6 +237,9 @@ class _ParallelParser(HTMLParser):
             return
 
         if self._block is None:
+            return
+        if tag == "br" and self._block.script_depth:
+            self._block.text_parts.append(MT_LINE_BREAK)
             return
         if tag == "a":
             href = attributes.get("href")
@@ -556,6 +561,7 @@ def parse_targum_parallel_page(
         headings[0][len(_PARALLEL_HEADING_PREFIX) :], book=book, chapter=chapter, verse=verse
     ):
         raise TargumParseError("CAL parallel Targum heading does not match the requested verse")
+    display_coordinate = headings[0][len(_PARALLEL_HEADING_PREFIX) :]
 
     page_text = _clean_text(" ".join(parser.all_parts))
     coordinate_error = _COORDINATE_ERROR_RE.search(page_text) is not None
@@ -573,7 +579,15 @@ def parse_targum_parallel_page(
 
     mt_block = parser.blocks[0]
     mt_label = _clean_text("".join(mt_block.label_parts))
-    mt_text = _clean_text("".join(mt_block.text_parts))
+    try:
+        mt_text = _clean_parallel_mt_text(
+            "".join(mt_block.text_parts),
+            display_coordinate=display_coordinate,
+        )
+    except ValueError:
+        raise TargumParseError(
+            "CAL parallel Targum MT block has contradictory verse-label semantics"
+        ) from None
     if mt_label or mt_block.hrefs or not mt_text:
         raise TargumParseError("CAL parallel Targum MT block has unexpected semantics")
 

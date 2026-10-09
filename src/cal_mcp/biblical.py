@@ -85,6 +85,12 @@ _CAL_HEADING_LABELS = {
     "Esther": "Esther",
 }
 _HEADING_VERSE_RE = re.compile(r"(?P<label>.+) (?P<chapter>[0-9]+):(?P<verse>[0-9]+)")
+# Any chapter:verse-shaped token left in MT text is CAL coordinate metadata, whatever surrounds it
+# (glued to a word, bracketed, a range, or bare), so it fails closed rather than leaking.
+_ANY_COORDINATE_RE = re.compile(r"[0-9]+\s*:\s*[0-9]+")
+# Parsers mark CAL's <br> display-line boundaries with this separator. Raw source newlines are
+# ordinary whitespace, not display lines.
+MT_LINE_BREAK = "\u2029"
 
 
 def cal_biblical_book_id(book: str) -> str:
@@ -111,6 +117,40 @@ def cal_biblical_heading_matches(heading: str, *, book: str, chapter: int, verse
         and int(found.group("chapter")) == chapter
         and int(found.group("verse")) == verse
     )
+
+
+def _clean_parallel_mt_text(raw_text: str, *, display_coordinate: str) -> str:
+    """Remove only CAL's validated per-line verse label from parallel MT text."""
+
+    if _HEADING_VERSE_RE.fullmatch(display_coordinate) is None:
+        raise ValueError("display coordinate must be one validated CAL biblical heading")
+
+    lines = tuple(
+        cleaned for line in raw_text.split(MT_LINE_BREAK) if (cleaned := " ".join(line.split()))
+    )
+    if not lines:
+        raise ValueError("MT block contains no rendered text")
+
+    exact_suffixes = tuple(
+        line == display_coordinate or line.endswith(f" {display_coordinate}") for line in lines
+    )
+    if any(exact_suffixes):
+        if not all(exact_suffixes):
+            raise ValueError("MT block mixes labeled and unlabeled display lines")
+
+        cleaned_lines: list[str] = []
+        for line in lines:
+            text = line[: -len(display_coordinate)].rstrip()
+            if not text:
+                raise ValueError("MT display line contains only a verse label")
+            if _ANY_COORDINATE_RE.search(text):
+                raise ValueError("MT display line contains embedded coordinate metadata")
+            cleaned_lines.append(text)
+        return " ".join(cleaned_lines)
+
+    if any(_ANY_COORDINATE_RE.search(line) for line in lines):
+        raise ValueError("MT block contains contradictory coordinate metadata")
+    return " ".join(lines)
 
 
 __all__ = ["cal_biblical_book_id", "cal_biblical_heading_matches"]
