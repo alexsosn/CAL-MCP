@@ -109,7 +109,6 @@ def test_stem_header_drift_fails_closed(old: str, new: str) -> None:
         _entry(body.replace(old, new, 1))
 
 
-
 def test_unclosed_stem_header_fails_closed() -> None:
     g, d, _, _ = _STEMS["ktb V"]
     assert d.endswith("</div>")
