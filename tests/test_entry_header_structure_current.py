@@ -89,6 +89,13 @@ _NOUN = _HEADERS["mlk N"]
         ("(mleḵ, malkā)", "mleḵ, malkā"),
         # Empty headwords.
         ("<b>mlk, mlkˀ</b>", "<b> </b>"),
+        # A field nested inside another field.
+        (
+            '<span class="lemma-pos">n.m.</span> <span class="lemma-gloss"><b>king</b></span>',
+            '<span class="lemma-gloss"><b>king <span class="lemma-pos">n.m.</span></b></span>',
+        ),
+        # A script inside a field.
+        ("n.m.</span>", "n.m.<script>document.write('x')</script></span>"),
     ],
     ids=[
         "unknown-span",
@@ -98,6 +105,8 @@ _NOUN = _HEADERS["mlk N"]
         "empty-pos",
         "unparenthesized-vocalization",
         "empty-headwords",
+        "nested-field",
+        "script-in-field",
     ],
 )
 def test_current_header_shape_drift_fails_closed(old: str, new: str) -> None:

@@ -49,7 +49,7 @@ not work. Consequences:
 
    An unknown span or stray text, a duplicate or missing required span, an empty `lemma-pos`, an
    unparenthesized vocalization, or an empty field fails closed.
-2. For the older layout without the block, bound the fallback: the header must be the first rendered
+2. For the older layout without the block, bound the fallback. Production fetches only `cal_entry_web.php`, which always renders the block (all six samples here and the #222 research). The fallback exists only for the historical reduced test fixtures, which use the older flattened layout, and is a candidate for removal once those fixtures are migrated: the header must be the first rendered
    content line. A page whose first line is not a header fails closed instead of scanning on to later
    prose.
 3. There is no public schema change: `part_of_speech` is already nullable (#227). Request load is

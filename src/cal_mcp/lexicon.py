@@ -947,7 +947,13 @@ class _LemmaHeaderParser(HTMLParser):
             return
         if tag in _HTML_VOID_TAGS:
             return
+        if tag in _IGNORED_CONTENT_TAGS:
+            # Scripts and styles have no place in CAL's header fields.
+            self.unexpected = True
         if self._field is not None:
+            if tag == "div" or _LEMMA_HEADER_FIELDS.intersection(classes):
+                # A field nested inside another field must not be absorbed into its text.
+                self.unexpected = True
             self._field_depth += 1
             return
         if tag == "div":
