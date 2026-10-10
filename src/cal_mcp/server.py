@@ -119,7 +119,12 @@ async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppConte
             raise ValueError("CAL live smoke requires the reviewed 25-attempt cap")
         budget = SmokeAttemptBudget(max_attempts=25)
         client = CalHttpClient(
-            config=CalClientConfig(max_concurrency=1, max_retries=0, cache_enabled=True),
+            config=CalClientConfig(
+                max_concurrency=1,
+                max_retries=0,
+                cache_enabled=True,
+                min_request_interval_seconds=3.0,
+            ),
             before_transport_attempt=budget.before_attempt,
         )
     try:

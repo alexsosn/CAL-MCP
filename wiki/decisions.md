@@ -397,3 +397,40 @@ Consequences:
 - text catalogue/page/information and token-analysis identifiers keep D-016. Following a KWIC
   letter selector into those tools needs its own research and decision.
 
+## D-024 — Per-process CAL request pacing and fail-closed rate-limit handling
+
+**Status:** accepted for implementation — 2026-10-10 (#262).
+
+The installed-wheel Peshitta John 1:1–4 check sent 37 sequential requests at roughly eight
+attempts/second, eliciting six HTTP 429 responses. The old semaphore bounded parallelism but
+did not limit *sequential* request starts. CAL's own rejection is direct empirical evidence that
+this pace is too high.
+
+- The MCP server configures a **3-second minimum interval between actual CAL transport
+  attempt starts**, shared by all CAL-backed tools in that server process. A client-level
+  monotonic scheduler enforces that interval even for concurrent requests and retries. The
+  cached path, already-coalesced in-flight waiters and local input rejection do not wait.
+- `CalClientConfig` permits a finite, bounded nonnegative interval; the **server** selects
+  the conservative 3-second default. A direct `CalHttpClient()` using the real HTTP
+  transport also selects 1 second. Injected/offline fake transports and an explicitly
+  supplied `CalClientConfig()` preserve the configurable `0` default for test and
+  programmatic use; callers overriding it must select safe pacing when contacting CAL. We do not imply a cross-process rate
+  guarantee.
+- A 429 is a typed `upstream_http` error, `retryable: true` to communicate *safe to retry
+  later*, never permission to hammer the endpoint. Preserve only the `Retry-After` response
+  header, not an arbitrary headers map. If an unambiguous small positive delta-seconds hint is
+  within the capped retry/deadline budget, **at most one** automatic 429 retry is permitted;
+  absent, malformed, too-large or unsafe hints fail with a typed 429 without retry.
+- The existing opt-in `SmokeAttemptBudget.before_attempt` hook continues to count **every
+  real transport** (including retries), immediately before sending, but never cache hits.
+  Scheduling cannot count a slot as an attempted CAL request.
+- Preserve existing 5xx-only bounded retries, redirect refusal, safe URL provenance and
+  parser-drift behavior. No automatic source traversal, batch fetch or corpus indexing.
+
+A 37-token live acceptance requires a separate bounded explicit decision after full offline
+tests and adversarial review: another burst before deploying pacing would itself violate
+the evidence in this decision. A hard server-side request cap still applies to smoke.
+
+**D-024 amendment — independently observed live backpressure (2026-10-10).** A separate #261 installed-wheel acceptance issued 21 sequential token calls around 1.2 seconds apart and still saw **3 HTTP 429s** (issue #262 comment 6101570708). Therefore the initially selected one-second installed-MCP rate is **superseded by three seconds** per actual transport attempt as a conservative starting limit, not a claim of CAL's official allowance. Cache, single-flight, retry hook and per-process boundaries remain unchanged. Live 37-token acceptance is mandatory before treating this as release-ready; a 429 at the new pace must halt acceptance without automatic repeated probes.
+
+**D-024 second amendment — measured three-second pacing STILL encountered 429 (2026-10-10).** One clean installed-wheel MCP run (38083038703) made **10 actual CAL requests** with minimum 3.002 s monotonic start gap: nine succeeded, tenth received HTTP 429, then the harness stopped. The previous 1-s and 3-s fixed pacing designs do not demonstrate CAL's unknown rolling rate/window policy. The shared client must now **stop issuing fresh CAL requests after one 429**, for a minimum **60 seconds** of monotonic time, extended to a valid longer server Retry-After when supplied. Calls during cooldown must fail fast with a typed `upstream_http`/429 classification indicating `upstream_reached=false` (locally suppressed), zero transport use, no source URL falsely attributed to the new operation; cached responses remain available. A successfully completed short validated single retry must not latch a terminal cooldown. The 37-token zero429 release acceptance is **still open**; do not repeat the load test automatically. This circuit breaker is a protective safety step, not a proof that an agent can finish a 37-token CAL workflow at the unknown sustainable rate.

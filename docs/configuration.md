@@ -12,6 +12,7 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Read timeout | 10 s | number (`int`/`float`, not boolean); finite, > 0 |
 | Total attempt timeout | 15 s | number (`int`/`float`, not boolean); finite, > 0 |
 | Maximum concurrency | 2 | integer; 1–8 |
+| Minimum CAL transport interval | 3 s for MCP server; 0 s for direct programmatic client | number (`int`/`float`, not boolean); finite, 0–5 s |
 | Retry count | 1 | integer; 0–3 |
 | Initial retry backoff | 0.25 s | number (`int`/`float`, not boolean); finite, 0–1 s; exponential, capped at 1 second per retry sleep |
 | Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
@@ -20,9 +21,9 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Cache TTL | 900 s (15 min) | number (`int`/`float`, not boolean); > 0 and <= 86400 s |
 | User-Agent | `CAL-MCP/<version> (+https://github.com/alexsosn/CAL-MCP)` | non-empty printable-ASCII string (`0x20`–`0x7E`) |
 
-Timeout, TTL, and retry-backoff settings accept ordinary numeric `int` or `float` values; booleans and non-numeric values are rejected at `CalClientConfig` construction rather than coerced or allowed to fail later inside transport operations. `cache_enabled` must be an actual boolean. User-Agent must be a non-empty string and may contain only printable ASCII characters (`0x20`–`0x7E`); non-string values, whitespace-empty values, non-ASCII Unicode, and control characters are rejected at `CalClientConfig` construction before HTTPX2 transport creation. These runtime checks complement Python type annotations, which do not validate constructor arguments by themselves.
+Timeout, TTL, retry-backoff, and minimum-interval settings accept ordinary numeric `int` or `float` values; booleans and non-numeric values are rejected at `CalClientConfig` construction rather than coerced or allowed to fail later inside transport operations. `cache_enabled` must be an actual boolean. User-Agent must be a non-empty string and may contain only printable ASCII characters (`0x20`–`0x7E`); non-string values, whitespace-empty values, non-ASCII Unicode, and control characters are rejected at `CalClientConfig` construction before HTTPX2 transport creation. These runtime checks complement Python type annotations, which do not validate constructor arguments by themselves.
 
-HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout.
+HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout. The installed MCP server configures **three seconds between CAL transport starts** across all of its tools and retries, even for strictly sequential requests. It enforces the interval at the actual transport boundary, after cache and single-flight checks. Plain `CalHttpClient()` with the real HTTP transport defaults to one-second pacing. An injected/offline fake transport and an explicit `CalClientConfig()` retain a configurable `0` default for existing fast tests/programmatic use; callers overriding the live client configuration must select safe pacing when contacting CAL. This is a per-process, not multi-process/global, limit.
 
 ## Response-size limit
 
@@ -52,7 +53,7 @@ Retries are explicitly whitelisted rather than applied to every transport except
 
 Other HTTPX2 errors, including local/protocol-type errors, are surfaced after one attempt as typed CAL-MCP transport failures. A bare `OSError` from an injected/custom transport is also treated as non-retryable rather than being assumed transient. This keeps retries tied to the explicit production HTTPX2 transient categories instead of a broad base exception class.
 
-Other HTTP statuses are returned as typed upstream errors without blind retry. In particular, CAL-MCP does not automatically retry HTTP 429; a rate/overload response should reduce request pressure rather than create another immediate request.
+Other HTTP statuses are returned as typed upstream errors without blind retry. For HTTP 429, `upstream_http` reports `retryable: true` to indicate that a caller may try *later*, not immediately. A short, syntactically valid positive `Retry-After` (maximum 2 seconds) may trigger **at most one** retry within the existing retry budget, provided the hinted delay leaves time under the total-attempt policy; a missing, malformed, zero, negative, or longer server hint does not cause an automatic retry. CAL-MCP does not retry **before** the server's requested delay. Valid Retry-After values may be surfaced as a safe delay in the error message. The HTTP transport retains only this rate-limit header, not an arbitrary collection of response headers.
 
 Production HTTP responses that are going to be retried or rejected on status are closed without consuming their application body. For a transient 500/502/503/504, each failed attempt is therefore status-classified before the retry sleep rather than downloading an error page that CAL-MCP will never parse. This does not alter the retry count or status-code whitelist.
 
@@ -144,3 +145,7 @@ async with CalHttpClient(config=config) as client:
 ```
 
 The public MCP tools do not expose these low-level settings as arguments. Endpoint-specific services consume the server's shared request layer and inherit its bounded defaults. See [Lexicon lookup](tools/lexicon.md) and [Concordance and KWIC](tools/concordance.md) for representative CAL-backed tool behavior.
+
+## Shared terminal 429 cooldown
+
+After one terminal CAL HTTP 429, the client suppresses subsequent uncached calls for at least 60 seconds, or the longer validated Retry-After. Suppressed calls are typed rate-limit errors with `upstream_reached=false` and zero transport attempts. Cached results remain available.

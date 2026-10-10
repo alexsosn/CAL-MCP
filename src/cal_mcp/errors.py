@@ -8,6 +8,7 @@ from cal_mcp.client import (
     _RETRYABLE_TRANSPORT_EXCEPTIONS,
     CalContentError,
     CalNetworkError,
+    CalRateLimitCooldownError,
     CalRequestValidationError,
     CalResponseTooLargeError,
     CalUpstreamError,
@@ -114,16 +115,27 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             retryable=retryable,
             message=_safe_message(error),
         )
+    if isinstance(error, CalRateLimitCooldownError):
+        return PublicToolError(
+            kind=PublicErrorKind.UPSTREAM_HTTP,
+            operation=operation,
+            upstream_reached=False,
+            retryable=True,
+            message=_safe_message(error),
+            status_code=429,
+        )
     if isinstance(error, CalUpstreamError):
         source_url = _trusted_cal_url(error.url)
         message = f"CAL returned HTTP {error.status_code}"
         if source_url is not None:
             message = f"{message} for {source_url}"
+        if error.status_code == 429 and error.retry_after_seconds is not None:
+            message = f"{message}; Retry-After {error.retry_after_seconds} seconds"
         return PublicToolError(
             kind=PublicErrorKind.UPSTREAM_HTTP,
             operation=operation,
             upstream_reached=True,
-            retryable=error.status_code in _TRANSIENT_STATUS_CODES,
+            retryable=error.status_code == 429 or error.status_code in _TRANSIENT_STATUS_CODES,
             message=_safe_text(message),
             source_url=source_url,
             status_code=error.status_code,
