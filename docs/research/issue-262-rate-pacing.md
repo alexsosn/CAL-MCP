@@ -1,0 +1,23 @@
+# Issue #262 — request pacing and CAL HTTP 429: current-client architecture
+
+Date: 2026-10-10. Baseline main at time of research: `48c9c640a5314a95e3fe0aefe7751a5a404f2e54`. Based on the user-facing Peshitta John 1:1–4 37-token installed-wheel MCP E2E recorded in issue #262, and actual source `src/cal_mcp/client.py`, `src/cal_mcp/errors.py`, `src/cal_mcp/smoke_budget.py`, `src/cal_mcp/server.py`. No additional CAL calls.
+
+## Verified failure and location
+
+In issue #262 the installed MCP server issued **37 sequential** `cal_token_analysis` requests in ~4.6 s (~8/s) and CAL answered **six HTTP 429**. No concurrent caller is needed to reproduce the overload. Default `CalClientConfig(max_concurrency=2, max_retries=1)` restricts concurrent in-flight requests but imposes no time between starts. All tools share the single `CalHttpClient` created by `server.app_lifespan`; therefore its per-instance pacing state is **process-wide** for all CAL calls from that server instance (not globally shared across separate processes).
+
+`CalHttpClient.fetch` first checks the cache/singleflight; cache hits and coalesced waiters never enter `_request_once`. `_request_once` takes a semaphore, then `asyncio.timeout(total_timeout_seconds)`, invokes the opt-in `before_transport_attempt` accounting hook, and sends via `_transport`. `_request_with_retries` loops `max_retries+1` attempts, retrying only selected network exceptions and HTTP 500/502/503/504. **429 is not retryable**, flows to `CalUpstreamError`, then `classify_public_tool_error` reports `upstream_http` with `retryable=False`.
+
+**Important architectural blocker:** `CalResponse` holds `status_code, url, body, content_type, retrieved_at`, but **no response headers**; production `_Httpx2Transport` discards `Retry-After` even on 429. Consequently a correct implementation must add a *backward-compatible defaulted representation* for rate-limit metadata, capturing only the trusted response header and never logging an arbitrary header blob. Fake transports and the many existing `CalResponse(...)` fixtures must remain compatible.
+
+**Timeout subtlety:** `asyncio.timeout(total_timeout_seconds)` currently encloses **each transport attempt**, not the entire fetch/retry cycle. A new pace-wait plus server `Retry-After` delay can extend total user latency. Moving/adding a logical-operation deadline requires careful tests against current backoff/timeout semantics. Also the live-smoke `SmokeAttemptBudget.before_attempt` is placed immediately before actual transport and must remain the authoritative request counter, including every retry but excluding cached/coalesced requests.
+
+## Provisional safety design for planning / adversarial evaluation
+
+- One per-`CalHttpClient` monotonic `next_allowed_at` under `asyncio.Lock` **at actual transport attempts** (including retries), with an explicitly bounded configurable `min_attempt_interval_seconds`, conservative default e.g. **1.0 s**. A cache hit must have zero artificial delay. Hold the scheduler lock while sleeping for the reserved slot, release **before** potentially slow HTTP I/O; retain the separate concurrency semaphore to bound in-flight requests. Set the next slot only when truly dispatching, not on an early canceled attempt.
+- A 429 is always a typed `upstream_http` error with `status_code=429`, `upstream_reached=True`, and `retryable=True` (meaning safe to try later, not invitation to flood). Its message can include only a sanitized bounded delay, not raw server header text. **Never immediately retry 429**. Honor a well-formed, short `Retry-After` only when the chosen bounded retry policy permits a safe reattempt; if the server asks for longer than our wait cap, **fail without retry** rather than sleeping less than CAL instructed.
+- Retry-After numeric delta and optionally RFC date form need independent syntax/overflow/negative tests; malformed/missing headers must never yield zero-delay retry floods. The single hard total CAL request budget must still account for any retries.
+- Future test harness needs injected/fake monotonic clock and sleeper rather than real sleeps, so pacing tests run offline quickly and deterministically. Test cancellations, semaphore ordering, cache hits, and two concurrent distinct calls to different routes.
+- Low-load live acceptance only after complete offline RED/GREEN and independent review. An intentional 37-token real-CAL experiment warrants a **separate explicit decision and capped request accounting**, not opportunistic polling: issue #262 already documents overload.
+
+This is research and a proposed plan, **not evidence that pacing or 429 handling has been implemented**, and not permission to publish v0.1. No CAL access or release-tag changes made during research.
