@@ -32,7 +32,7 @@ def _reduced_current_dialect_page() -> str:
     body = body.replace(old, "<b>2</b> examples found for <b>mlk N</b> in dialect 71")
     old_end = '</p><div dir="ltr"'
     assert old_end in body
-    return body.replace(old_end, f"</p><p>{_NOTICE}<br></p><div dir=\"ltr\"", 1)
+    return body.replace(old_end, f'</p><p>{_NOTICE}<br></p><div dir="ltr"', 1)
 
 
 def _parse(body: str):
