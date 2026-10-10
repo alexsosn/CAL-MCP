@@ -145,3 +145,7 @@ async with CalHttpClient(config=config) as client:
 ```
 
 The public MCP tools do not expose these low-level settings as arguments. Endpoint-specific services consume the server's shared request layer and inherit its bounded defaults. See [Lexicon lookup](tools/lexicon.md) and [Concordance and KWIC](tools/concordance.md) for representative CAL-backed tool behavior.
+
+## Shared terminal 429 cooldown
+
+After one terminal CAL HTTP 429, the client suppresses subsequent uncached calls for at least 60 seconds, or the longer validated Retry-After. Suppressed calls are typed rate-limit errors with `upstream_reached=false` and zero transport attempts. Cached results remain available.
