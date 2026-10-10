@@ -112,6 +112,37 @@ def _valid_provenance(data: dict[str, object]) -> bool:
     return parsed.tzinfo is not None and parsed.utcoffset() is not None
 
 
+def _has_representative_content(case_name: str, data: dict[str, object]) -> bool:
+    """Require the studied reference queries to contain recognizable scholarly rows."""
+
+    field_by_case = {
+        "bibliography": ("records", "citation", 2),
+        "gloss": ("matches", "lemma_key", 1),
+        "text_concordance": ("lemmas", "lemma_key", 1),
+        "dictionary": ("entries", "display_lemma", 1),
+        "external_citations": ("dialects", "dialect_id", 1),
+    }
+    expected = field_by_case.get(case_name)
+    if expected is None:
+        return True
+    field, identity, minimum = expected
+    rows = data.get(field)
+    if not isinstance(rows, list) or len(rows) < minimum:
+        return False
+    if any(
+        not isinstance(row, dict)
+        or not isinstance(row.get(identity), str)
+        or not row[identity].strip()
+        for row in rows
+    ):
+        return False
+    if case_name == "text_concordance" and not any(
+        row.get("cal_reports_no_data") is False for row in rows
+    ):
+        return False
+    return True
+
+
 def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) -> SmokeOutcome:
     """Inspect public MCP results without copying upstream HTML or error bodies into reports."""
 
@@ -146,6 +177,8 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
         return SmokeOutcome(case.name, "drift", "unexpected CAL success status")
     if case.needs_provenance and not _valid_provenance(payload):
         return SmokeOutcome(case.name, "drift", "missing or untrusted CAL provenance")
+    if not _has_representative_content(case.name, payload):
+        return SmokeOutcome(case.name, "drift", "missing representative CAL result rows")
     return SmokeOutcome(case.name, "ok", "success")
 
 
