@@ -373,6 +373,8 @@ _AUTHOR_MAX_LENGTH = 160
 _KEYWORD_MAX_LENGTH = 128
 _LEMMA_MAX_LENGTH = 128
 _RESULT_HEADING_PREFIX = "CAL Bibliography for "
+# getbiblemma.php echoes "$" and "(" in the submitted key backslash-escaped (R-075).
+_LEMMA_ECHO_ESCAPES = str.maketrans({"$": "\\$", "(": "\\("})
 
 
 def parse_author_options_page(response: CalResponse) -> BibliographyAuthorOptionsPage:
@@ -518,11 +520,14 @@ class BibliographyService:
         operation: str,
         cache_namespace: str,
     ) -> BibliographyResult:
-        expected_heading = f"{_RESULT_HEADING_PREFIX}{submitted}"
+        echoes = {submitted}
+        if query_kind is BibliographyQueryKind.LEMMA:
+            echoes.add(submitted.translate(_LEMMA_ECHO_ESCAPES))
+        expected_headings = {f"{_RESULT_HEADING_PREFIX}{echo}" for echo in echoes}
 
         def parse(response: CalResponse) -> BibliographyPage:
             page = parse_bibliography_page(response)
-            if page.heading != expected_heading:
+            if page.heading not in expected_headings:
                 raise BibliographyParseError(
                     "CAL bibliography result heading does not match the submitted query"
                 )

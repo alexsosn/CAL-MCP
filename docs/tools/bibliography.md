@@ -77,6 +77,8 @@ Lemma-key validation is shared with the concordance/KWIC surface. A terminal pos
 
 The result uses the common bibliography record model with `query_kind: "lemma"`.
 
+CAL echoes a lemma key containing `$` (shin) or `(` (ʿayin) with those characters backslash-escaped. For example, `(bd V` comes back as `CAL Bibliography for \(bd V`. CAL-MCP accepts exactly that escaped echo, or the unescaped key, as naming the submitted key. `query` and provenance always carry the canonical unescaped key, while `heading` preserves CAL's literal text. Any other difference between the echo and the key is `parser_drift`.
+
 ## Bibliography records and links
 
 Each final bibliography result preserves CAL's ordered records. CAL currently renders every record of a result page as one `<p>` element inside a single result card, which wraps CAL's legacy result document. The earlier layout used one card per record and is still accepted. A record contains:

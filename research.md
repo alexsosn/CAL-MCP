@@ -360,6 +360,25 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-075 — Bibliography-by-lemma echoes `$` and `(` backslash-escaped
+
+**Rechecked:** 2026-10-10; issue #257.
+
+`getbiblemma.php?myauthor=<key>` renders `<h1>CAL Bibliography for <echo></h1>`. When there is
+no data it also renders `NO data FOR <echo> ARE CURRENTLY STORED`. In the echo, CAL prefixes
+every `$` and `(` with a backslash and leaves other key characters unchanged. Observed:
+`$lm N` → `\$lm N`, `y$b V` → `y\$b V`, `(bd V` → `\(bd V` (2 records, each linking back to
+the unescaped `(bd V`), `b(l N` → `b\(l N`, `&b( V` → `&amp;b\( V`. Unchanged: `)b N`,
+`ml#2 N`, `byt@mlkw N`, `mlk N`. CAL's lookup itself is unaffected (escaped `(bd V` still
+returns records). Before this fix, every lemma key with shin or ʿayin failed as `parser_drift`.
+Evidence: 9 single GETs (2026-10-10, project User-Agent), plus the E2E smoke observation.
+
+**Implication:** for lemma queries only, the heading may equal the submitted key or that key
+with exactly `$`→`\$` and `(`→`\(` applied. `query` and provenance keep the canonical key, and
+`heading` stays CAL's literal text. Author and keyword routes keep the exact-echo check
+(no escaping evidence). Reduced fixtures: `bibliography_lemma_ayin_escaped_current.html`,
+`bibliography_lemma_shin_escaped_empty_current.html`.
+
 ## R-074 — KWIC hits use letter-bearing subtexts and target coordinates
 
 **Rechecked:** 2026-10-10; issue #253.
