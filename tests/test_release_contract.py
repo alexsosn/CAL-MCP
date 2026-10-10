@@ -134,7 +134,6 @@ def test_legacy_service_smoke_remains_offline_tested() -> None:
     assert [case.name for case in module.DEFAULT_SMOKE_CASES] == [
         "lexicon",
         "text_search",
-        "text_page_followup",
         "text_concordance",
         "bibliography",
         "dictionary_collation",
@@ -153,6 +152,7 @@ def test_current_installed_stdio_smoke_matrix_is_fixed_and_release_bounded() -> 
         "lexicon_verb",
         "gloss",
         "text_search",
+        "text_page_followup",
         "text_concordance",
         "bibliography",
         "dictionary",
