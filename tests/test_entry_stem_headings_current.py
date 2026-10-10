@@ -123,3 +123,19 @@ def test_unclosed_stem_header_fails_closed() -> None:
     )
     with pytest.raises(LexiconParseError):
         _parse_lines(response)
+
+
+def test_mismatched_nested_stem_markup_fails_closed() -> None:
+    # A malformed close tag must not be treated as the close of whatever
+    # nested span happens to be open; flattened stem text still looks valid.
+    d = _STEMS["ktb V"][1]
+    assert "</i></small>" in d
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/cal_entry_web.php?lemma=ktb+V",
+        body=f"<html><body>{d.replace('</i></small>', '</small></i>')}</body></html>".encode(),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 10, 9, tzinfo=UTC),
+    )
+    with pytest.raises(LexiconParseError):
+        _parse_lines(response)
