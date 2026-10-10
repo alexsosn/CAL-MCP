@@ -42,7 +42,7 @@ def test_scheduled_smoke_uses_one_installed_wheel_suite_without_source_shadowing
     assert "schedule:" in workflow
     assert "python -m build --wheel" in workflow
     assert "dist/*.whl" in workflow
-    assert "cd \"$RUNNER_TEMP\"" in workflow
+    assert 'cd "$RUNNER_TEMP"' in workflow
     assert "-m cal_mcp.stdio_live_smoke" in workflow
     assert "-m cal_mcp.live_smoke" not in workflow
     assert "continue-on-error" not in workflow
