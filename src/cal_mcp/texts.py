@@ -970,7 +970,7 @@ def _parse_text_page(
         requested_file_id,
         requested_subtext_id,
     )
-    previous_page, next_page, previous_subtext, next_subtext = _page_navigation(
+    previous_page, next_page, previous_subtext, next_subtext = _page_navigation_with_subtexts(
         lines,
         requested_file_id=navigation_file_id,
         requested_subtext_id=navigation_subtext_id,
@@ -1923,6 +1923,23 @@ def _page_metadata(lines: list[_Line]) -> tuple[int, int | None, int | None]:
 
 
 def _page_navigation(
+    lines: list[_Line],
+    *,
+    requested_file_id: str,
+    requested_subtext_id: str | None,
+    mandaic_page_route: bool = False,
+) -> tuple[int | None, int | None]:
+    """Retain the existing two-axis helper contract for page-only callers."""
+    previous, next_page, _, _ = _page_navigation_with_subtexts(
+        lines,
+        requested_file_id=requested_file_id,
+        requested_subtext_id=requested_subtext_id,
+        mandaic_page_route=mandaic_page_route,
+    )
+    return previous, next_page
+
+
+def _page_navigation_with_subtexts(
     lines: list[_Line],
     *,
     requested_file_id: str,
