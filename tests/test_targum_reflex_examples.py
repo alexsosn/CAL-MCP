@@ -22,10 +22,10 @@ ONQELOS_BODY = (
     "tyq#2 N</a></h3>"
     "Click the Aramaic lemma to see the full entry<br>"
     '<div><span class="heb">MT line A Deut 22:8<br>'
-    'MT line B Deut 22:8</span><br>'
+    "MT line B Deut 22:8</span><br>"
     '<div><span class="heb">Targum line A</span></div></div><hr>'
     '<div><span class="heb">MT line A Deut 22:8<br>'
-    'MT line B Deut 22:8</span><br>'
+    "MT line B Deut 22:8</span><br>"
     '<div><span class="heb">Targum line A</span></div></div>'
     "</center></body></html>"
 )
@@ -122,7 +122,6 @@ async def test_new_tool_schema_is_explicit_and_has_no_arbitrary_url() -> None:
     schema = tools["cal_targum_reflex_examples"].input_schema
     assert set(schema["properties"]) == {"targum", "mt_lemma_id", "lemma_key"}
     assert set(schema["required"]) == {"targum", "mt_lemma_id", "lemma_key"}
-
 
 
 def test_neofiti_examples_use_distinct_route_and_same_observed_block_semantics() -> None:
