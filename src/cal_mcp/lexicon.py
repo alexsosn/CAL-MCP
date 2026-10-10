@@ -867,6 +867,10 @@ class LexiconLookupService:
         requires_cal_code_search = conversion is not None and (
             any(word.ambiguities for word in conversion.words)
             or conversion.representation in _DEDICATED_CAL_CODE_SEARCH_REPRESENTATIONS
+            or (
+                conversion.representation is InputRepresentation.CAL_CODE
+                and "@" in normalized.original
+            )
         )
 
         if requires_cal_code_search:
