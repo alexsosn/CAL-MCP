@@ -8,7 +8,7 @@ from html.parser import HTMLParser
 from urllib.parse import parse_qs, urljoin, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
-from cal_mcp.errors import CalParseError
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.texts import TextLine, TextToken
 
 _CAL_SCHEME = "https"
@@ -297,7 +297,7 @@ class LexiconCitationContextService:
 
 def _validate_full_coordinate(value: object) -> str:
     if type(value) is not str or _ASCII_DECIMAL_RE.fullmatch(value) is None or int(value) < 1:
-        raise ValueError("full_coordinate must be a positive ASCII-decimal CAL coordinate")
+        raise CalInputError("full_coordinate must be a positive ASCII-decimal CAL coordinate")
     return value
 
 
