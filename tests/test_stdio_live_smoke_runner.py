@@ -40,6 +40,7 @@ def _result(data: dict[str, object], *, is_error: bool = False) -> CallToolResul
         is_error=is_error,
     )
 
+
 def _error(kind: PublicErrorKind) -> dict[str, object]:
     return PublicToolError(
         kind=kind,
