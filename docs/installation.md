@@ -58,6 +58,29 @@ Any other argument, including one combined with `--help` or `--version` and abbr
 
 See [Standalone MCP](integrations/standalone-mcp.md) for the client/process boundary and [Configuration](configuration.md) for request-policy defaults.
 
+## Proxy and CA troubleshooting for MCP clients
+
+An MCP client starts `cal-mcp` as a **child process**. The server's HTTP client
+uses the process environment for proxy and CA trust settings; a proxy configured
+in your terminal or desktop session may **not** be passed through by your MCP
+launcher. In particular, pass the required `HTTPS_PROXY`, `HTTP_PROXY`,
+`NO_PROXY`, `SSL_CERT_FILE`, and `SSL_CERT_DIR` variables to the child
+process where applicable. These are environment variables, not CAL-MCP
+command-line flags.
+
+If your network requires a proxy but the child process lacks that configuration,
+every CAL-backed tool may fail. One observed egress-gateway symptom was
+`upstream_http` / `CAL returned HTTP 403` with a gateway message
+`Host not in allowlist`. **Not every 403 is a proxy error**; inspect the
+launcher environment and network policy before deciding whether it came from
+CAL or an intermediate gateway. An unconfigured CA bundle can instead produce
+a TLS verification failure.
+
+For a Python MCP SDK launcher, set `StdioServerParameters(env=...)` explicitly.
+See the runnable [standalone MCP proxy example](integrations/standalone-mcp.md#proxy-and-certificate-environments)
+for `env=os.environ.copy()` and the security considerations when forwarding
+the parent environment. Avoid placing proxy credentials in logs or issue reports.
+
 ## Release validation
 
 The v0.1 release pipeline builds one wheel and one source distribution. Before publication it validates the source archive's embedded package identity/required root metadata, then installs the exact wheel and exact source distribution independently in fresh virtual environments. Each installed artifact launches its `cal-mcp` executable over stdio and must expose the same release version and frozen 34-tool MCP surface. A separate bounded live smoke then checks representative CAL-backed surfaces before publication.
