@@ -357,6 +357,8 @@ class _SemanticHTMLParser(HTMLParser):
             raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")
         if self._semantic_skip_tags:
             raise LexiconParseError("CAL lexicon has an unclosed excluded citation subtree")
+        if self._stem_header_depth or self._stem_field is not None or self._stem_field_depth:
+            raise LexiconParseError("CAL lexicon has an unclosed stem-header subtree")
         self._flush()
 
     def _finish_open_link(self) -> None:
