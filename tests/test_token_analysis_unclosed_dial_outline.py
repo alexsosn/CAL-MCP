@@ -20,7 +20,8 @@ _CAL_DIALECT = '<span class="dial-tag"><sup><dial title="except for OA">-OA</sup
 def _mutated(extra: str) -> CalResponse:
     body = FIXTURE.read_text(encoding="utf-8")
     assert _NEEDLE in body
-    body = body.replace(_NEEDLE, _NEEDLE + extra, 1)
+    # CAL's next <hr> (not the footer) reveals leftover unclosed outline depth.
+    body = body.replace(_NEEDLE, _NEEDLE + extra + "<hr>", 1)
     return CalResponse(
         status_code=200,
         url="https://cal.huc.edu/getlex.php?coord=620430101&word=1",
