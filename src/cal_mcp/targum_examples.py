@@ -83,6 +83,8 @@ class _ReflexExamplesParser(HTMLParser):
         self._div_depth = 0
         self._span_parts: list[str] | None = None
         self._span_role = 0
+        self._spans_in_div = 0
+        self.sequence: list[str] = []
         self.spans: list[tuple[int, str]] = []
         self.anchor_href: str | None = None
         self.anchor_text: list[str] = []
@@ -110,18 +112,23 @@ class _ReflexExamplesParser(HTMLParser):
         elif tag == "div":
             if len(self.headings) == 2:
                 self._div_depth += 1
-                if self._div_depth > 2:
-                    raise TargumReflexExamplesParseError("unexpected nested example wrapper")
+                if self._div_depth != 1:
+                    raise TargumReflexExamplesParseError("nested CAL example wrapper is not supported")
+                self._spans_in_div = 0
         elif tag == "span" and len(self.headings) == 2:
             if self._span_parts is not None:
                 raise TargumReflexExamplesParseError("nested reflex-example text spans")
             classes = (dict(attrs).get("class") or "").split()
-            if classes != ["heb"] or self._div_depth not in (1, 2):
+            if classes != ["heb"] or self._div_depth != 1 or self._spans_in_div:
                 raise TargumReflexExamplesParseError("unexpected reflex-example text span")
             self._span_parts = []
             self._span_role = self._div_depth
         elif tag == "br" and self._span_parts is not None:
             self._span_parts.append("\n")
+        elif tag == "hr" and len(self.headings) == 2:
+            if self._div_depth or self._span_parts is not None:
+                raise TargumReflexExamplesParseError("separator inside CAL example block")
+            self.sequence.append("separator")
 
     def handle_endtag(self, tag: str) -> None:
         if tag in ("style", "script"):
@@ -142,12 +149,16 @@ class _ReflexExamplesParser(HTMLParser):
             if not text:
                 raise TargumReflexExamplesParseError("empty reflex-example text span")
             self.spans.append((self._span_role, text))
+            self._spans_in_div += 1
             self._span_parts = None
             self._span_role = 0
+        elif tag == "span" and len(self.headings) == 2:
+            raise TargumReflexExamplesParseError("unmatched CAL example span")
         elif tag == "div" and len(self.headings) == 2:
-            if not self._div_depth:
-                raise TargumReflexExamplesParseError("unmatched example wrapper")
-            self._div_depth -= 1
+            if self._div_depth != 1 or self._spans_in_div != 1:
+                raise TargumReflexExamplesParseError("incomplete CAL example wrapper")
+            self._div_depth = 0
+            self.sequence.append("block")
 
     def handle_data(self, data: str) -> None:
         if self._skip:
@@ -243,11 +254,29 @@ def parse_targum_reflex_examples_page(
         raise TargumReflexExamplesParseError(
             "CAL reflex example lacks complete ordered MT/Aramaic pairs"
         )
+    # CAL renders each pair as two one-span sibling divs and an hr;
+    # a redundant trailing separator is allowed, not unseparated pairs.
+    blocks_since_separator = 0
+    finished_pairs = 0
+    for event in parser.sequence:
+        if event == "block":
+            blocks_since_separator += 1
+            if blocks_since_separator > 2:
+                raise TargumReflexExamplesParseError("CAL example blocks lack pair boundary")
+        elif event == "separator":
+            if blocks_since_separator == 1:
+                raise TargumReflexExamplesParseError("separator splits an MT/Aramaic pair")
+            if blocks_since_separator == 2:
+                finished_pairs += 1
+                blocks_since_separator = 0
+    if blocks_since_separator or finished_pairs != len(parser.spans) // 2:
+        raise TargumReflexExamplesParseError("CAL example pair lacks a source separator")
+
     examples: list[TargumReflexExample] = []
     for i in range(0, len(parser.spans), 2):
         mt_depth, mt_text = parser.spans[i]
         targum_depth, targum_text = parser.spans[i + 1]
-        if (mt_depth, targum_depth) != (1, 2):
+        if (mt_depth, targum_depth) != (1, 1):
             raise TargumReflexExamplesParseError("CAL reflex examples have wrong pairing structure")
         examples.append(TargumReflexExample(mt_text=mt_text, targum_text=targum_text))
     return TargumReflexExamplesPage(
