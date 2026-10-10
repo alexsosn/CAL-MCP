@@ -328,7 +328,9 @@ async def test_service_consumes_kwic_hit_selectors_with_exactly_one_request() ->
         (("13250", "target", "R"), {}),
         (("13250", "1325003", "X"), {}),
         (("13250", "1325003", "roman"), {}),
-        (("13250", "1325003", "R"), {"subtext_id": "bad"}),
+        (("13250", "1325003", "R"), {"subtext_id": "b-d"}),
+        (("13250", "13250AR1", "R"), {"subtext_id": "BR"}),
+        (("13250", "99999AR1", "R"), {"subtext_id": "AR"}),
     ],
 )
 async def test_invalid_full_context_selectors_fail_before_transport(

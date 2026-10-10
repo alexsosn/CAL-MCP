@@ -601,7 +601,8 @@ async def test_kwic_full_context_accepts_alphanumeric_subtext_id() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("bad", ["a01001", "01001ab", "01001A", "01-001a"])
+# D-023 widens KWIC/full-context subtexts to CAL's observed 1-8 ASCII letters/digits (AR, C01).
+@pytest.mark.parametrize("bad", ["", "01-001a", "01 001", "abcdefghi", "01001\u0430"])
 async def test_kwic_full_context_rejects_non_subtext_shapes_before_transport(bad: str) -> None:
     transport = FullContextTransport()
     service = ConcordanceService(CalHttpClient(transport=transport))
@@ -637,6 +638,31 @@ def test_returned_kwic_hit_preserves_alphanumeric_subtext_id() -> None:
     assert page.hits[0].subtext_id == "01001a"
 
 
-def test_returned_kwic_hit_rejects_broader_alphanumeric_shape() -> None:
+@pytest.mark.parametrize("subtext_id", ["01001ab", "AR", "C01"])
+def test_returned_kwic_hit_preserves_observed_letter_subtext_ids(subtext_id: str) -> None:
+    # D-023: CAL's Imperial Aramaic KWIC hits use subtexts such as AR and C01, with targets
+    # under the same file + subtext prefix (23350AR201).
+    body = KWIC.read_text(encoding="utf-8")
+    assert "sub=53" in body
+    target = f"60301{subtext_id}23"
+    body = body.replace("sub=53", f"sub={subtext_id}").replace("603015323", target)
+    page = parse_kwic_result(
+        _response(
+            body.encode(), "https://cal.huc.edu/show1dialectKWIC.php?lemma=n%29qh&pos=N&texts=6"
+        ),
+        lemma_key="n)qh N",
+        scope_kind=KwicScopeKind.DIALECT,
+        scope_ids=("6",),
+    )
+    assert (page.hits[0].subtext_id, page.hits[0].target_coordinate) == (subtext_id, target)
+
+
+def test_letter_subtext_with_a_decimal_target_is_drift() -> None:
     with pytest.raises(ConcordanceParseError):
-        _kwic_with_subtext("01001ab")
+        _kwic_with_subtext("AR")
+
+
+@pytest.mark.parametrize("subtext_id", ["01-001", "abcdefghi", "01%2B1"])
+def test_returned_kwic_hit_rejects_broader_subtext_shapes(subtext_id: str) -> None:
+    with pytest.raises(ConcordanceParseError):
+        _kwic_with_subtext(subtext_id)

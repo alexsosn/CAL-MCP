@@ -360,6 +360,94 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-074 — KWIC hits use letter-bearing subtexts and target coordinates
+
+**Rechecked:** 2026-10-10; issue #253.
+
+Current one-dialect KWIC pages link many hits with letters in their selectors. For `mlk N`, all
+357 Imperial Aramaic hits (`texts=2`) and all 92 Old Aramaic hits (`texts=1`) satisfy
+`target.startswith(file + sub)`. Observed shapes are `sub` letters-only (`AR`), letters+digits
+(`C01`), digits+letter (`9A`), digits, or empty. Tails are digits, digits+letters+digits, or
+letters+digits. Examples: `file=23350&sub=AR&target=23350AR201`,
+`file=27351&sub=C01&target=27351C01R101`, `file=22352&sub=12&target=2235212A1`,
+`file=13200&sub=202&target=13200202a01`. More than half of the Old Aramaic hits use a
+letter-bearing target. JBA (`texts=71`) also failed on non-decimal targets but was not captured.
+
+Two bounded full-context GETs confirmed that CAL serves these selectors exactly as linked
+(`23350/AR/23350AR201` and `22352/12/2235212A1`). Rows carry letter-bearing `getlex.php` and
+`comment.php` coordinates, display labels such as `A.R2:01` and `12A1`, and the bare-file
+info link (as in R-047). Rows around the target can belong to other line groups of the same
+file (`2235201A1` beside target `2235212A1`), so they share only the file-id prefix with it.
+Evidence came from the 2026-10-10 E2E smoke plus those two requests (project User-Agent).
+
+An independent review of the change made one more bounded GET: for a missing letter-bearing target, CAL prints its usual
+not-found paragraph, `Target coordinate <b>23350AR999</b> not found.`, so the not-found marker
+accepts the same opaque coordinate shape.
+
+**Implication:** see D-023. Reduced fixtures: `kwic_dialect_mlk_2_alphanumeric_current.html`,
+`kwic_full_context_22352_12_alphanumeric_current.html`, `kwic_full_context_23350_ar_letter_subtext_current.html`.
+
+## R-073 — CAL uses charset `T` (Unicode transliteration) on KWIC and text-search links
+
+**Rechecked:** 2026-10-10; issue #254.
+
+Current CAL emits a fifth charset selector, `T`, alongside `R`, `H`, `S` and `U`. On
+`show1dialectKWIC.php?lemma=mlk&pos=N&texts=1` (Old Aramaic), all 92 hit links carry `cset=T`
+(for example `get_a_kwicchapter.php?file=11200&sub=2&cset=T&target=11200206`). The Palmyrene
+text-search results (`newsearchtxts.php`, search `Palmyr`) link `showsubtexts.php?subtext=41201&cset=T`.
+One full-context GET with `cset=T` returned HTTP 200 with ordinary file-info, comment and
+`getlex.php` token rows, rendered in Unicode transliteration (`mrʾ`, `hdysʿy`, `ḥ`, `ṭ`). The
+page offers "View in Cal Code" (`R`), Syriac and Hebrew alternatives, so `T` is a distinct
+rendering, not an alias. Evidence came from the 2026-10-10 E2E smoke plus that one bounded
+full-context request (project User-Agent).
+
+**Implication:** `T` joins the accepted KWIC hit, full-context and non-Mandaic text-search
+`cset` values and is preserved exactly. It is never mapped to `R`. Other unknown letters
+still fail closed. Reduced fixtures: `kwic_dialect_mlk_1_charset_t_current.html`,
+`kwic_full_context_fakh_11200_2_charset_t_current.html`, `text_search_palmyr_charset_t_current.html`.
+Old Aramaic dialect KWIC also needs alphanumeric target coordinates (#253).
+
+## R-072 — Peshitta Matthew's concordance links a key with capital `C`
+
+**Rechecked:** 2026-10-10; issue #255.
+
+`newconcord.php?text=62040&cset=S` (P Mt) has 1375 lemma rows. Exactly one key fails CAL-MCP's
+returned-key check: the proper noun `prC PN` (Perez), which carries an undocumented capital `C`.
+Because of that one row, `cal_text_concordance("62040")` failed as `parser_drift`. The earlier
+report in #255 named keys with a trailing `_` (`b_ p`, `dyl_ P`, `l_ p`). Those were a regex
+artefact of the E2E smoke: such keys already validate. One concordance GET (2026-10-10, project
+User-Agent), made during the E2E smoke, is the evidence.
+
+**Implication:** extend R-045's observed returned-key capitals from `K`/`M` to `C`/`K`/`M`.
+The key is kept verbatim. As with `bwlbrK PN`, the KWIC tools still reject it as input and point
+to the row's `kwic_url`, and any other undocumented capital still fails closed. Reduced fixture:
+`text_concordance_62040_capital_c_current.html`.
+
+## R-071 — Current lexicon browse reports an empty prefix as "There are no headwords beginning with"
+
+**Rechecked:** 2026-10-10; issue #252.
+
+For a `first3` prefix with no headwords, `browseSKEYheaders.php` now answers HTTP 200 with its
+normal JUMP TO chrome and a results table whose only text is `There are no headwords beginning
+with: <prefix>`. None of the older no-match phrases appears. The echo is CAL code even when the
+submitted prefix was Hebrew or Syriac: `first3="קקק"` and `first3="ܩܩܩ"` both echo `qqq`, and
+`first3="&lm"` echoes the raw `&lm`. Because bare Hebrew `ש` expands to both `$` and `&`, and
+most `&` prefixes are empty, every ש-initial Hebrew lookup used to fail as `parser_drift`
+(found by the 2026-10-10 E2E smoke, `docs/research/release-e2e-smoke-2026-10-10.md`).
+
+Five single browse GETs, made through `CalHttpClient` with the project User-Agent, established
+this (`qqq`, `&lm` twice, `קקק`, `ܩܩܩ`). Reduced fixtures: `browse_no_headwords_*_current.html`.
+
+The base recognition of the marker landed separately in #265 (`docs/research/issue-252-lexicon-explicit-empty.md`).
+That version required the echo to equal the submitted `first3` exactly, so Hebrew/Syriac prefixes
+still failed. This entry adds the CAL-code echo evidence.
+
+**Implication:** both lexicon browse parsers treat the marker as an explicit no-match only when it
+is the sole text of its line, appears once, accompanies no browse rows, and echoes the submitted
+prefix or that prefix's single deterministic CAL-code conversion. Any other shape remains
+`parser_drift`. Lookup then returns `not_found` (or resolves via another candidate prefix), and
+`cal_lexicon_browse` returns an empty page with no continuation. Request counts are unchanged.
+
 ## R-070 — Release smoke must validate stdio MCP and enforce actual transport attempts
 
 **Rechecked:** 2026-10-10; issue #157.

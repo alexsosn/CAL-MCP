@@ -373,3 +373,27 @@ and report each case as success, drift, unavailable, or harness failure.
 Do not enable this expanded smoke until the hard budget has deterministic RED/GREEN tests,
 representative CAL calls have been trialed below the cap, and the implementation independently passes review. A failed smoke must not trigger automatic retry loops.
 
+## D-023 — KWIC selectors accept CAL's letter-bearing subtexts and coordinates
+
+**Status:** accepted — 2026-10-10 (issue #253; research R-074). Amends D-016 for KWIC only.
+
+CAL's current KWIC hits disprove D-016's assumption that KWIC/full-context subtexts and target
+coordinates follow the text-catalogue grammar. For the KWIC and full-context surfaces only:
+
+- a returned or submitted `subtext_id` may be D-016's grammar or one to eight ASCII letters/digits;
+- a `target_coordinate` (and a full-context row's lexical/comment coordinate) may be decimal or
+  an ASCII alphanumeric string of at most 32 characters that starts with digits;
+- a letter-bearing hit or requested target must start with its own `file_id + subtext_id`. A
+  full-context row coordinate must start with the requested `file_id`, because neighbouring rows
+  can belong to other line groups. A decimal target cannot sit under a D-023 letter subtext.
+  D-016 subtexts keep their existing decimal-target behavior;
+- coordinates stay opaque: never split, case-folded, or mapped to another form; anything else
+  (punctuation, whitespace, non-ASCII, another file's prefix) fails closed.
+
+Consequences:
+
+- `cal_kwic_dialect`, `cal_kwic_texts` and `cal_kwic_full_context` work for Imperial and Old
+  Aramaic hits; request counts are unchanged;
+- text catalogue/page/information and token-analysis identifiers keep D-016. Following a KWIC
+  letter selector into those tools needs its own research and decision.
+

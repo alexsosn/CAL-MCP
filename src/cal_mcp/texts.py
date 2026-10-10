@@ -46,7 +46,7 @@ _FOLLOW_UP_TEXT_PAGE = "cal_text_page"
 _FOLLOW_UP_CATALOGUE = "cal_text_catalogue"
 # Script selectors on catalogue-node search links: H (Neofiti) and U (Peshitta) are observed;
 # R and S are CAL's other script codes (R-053).
-_SCRIPT_CSETS = frozenset({"R", "H", "S", "U"})
+_SCRIPT_CSETS = frozenset({"R", "H", "S", "U", "T"})
 # Mandaic collection links: M observed in search, R in CAL's Mandaic catalogue (R-053).
 _MANDAIC_SEARCH_CSETS = frozenset({"M", "R"})
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"

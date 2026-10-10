@@ -16,6 +16,7 @@ from cal_mcp.normalization import (
     CalCodeConversion,
     ConversionExpansionError,
     InputRepresentation,
+    NormalizationError,
     NormalizedQuery,
     UnsupportedQueryError,
     convert_to_cal_code,
@@ -451,7 +452,12 @@ def _browse_has_explicit_no_match(lines: list[_Line], *, source_url: str) -> boo
     ]
     if marker_prefixes:
         expected = parse_qs(urlsplit(source_url).query, keep_blank_values=True).get("first3")
-        if len(marker_prefixes) != 1 or expected != [f'"{marker_prefixes[0]}"']:
+        if (
+            len(marker_prefixes) != 1
+            or expected is None
+            or len(expected) != 1
+            or marker_prefixes[0] not in _no_headwords_echoes(expected[0])
+        ):
             raise LexiconParseError(
                 "CAL lexicon no-headwords marker does not match the requested prefix"
             )
@@ -462,6 +468,27 @@ def _browse_has_explicit_no_match(lines: list[_Line], *, source_url: str) -> boo
         return True
     page_text = " ".join(line.text.lower() for line in lines)
     return any(phrase in page_text for phrase in _NOT_FOUND_PHRASES)
+
+
+def _no_headwords_echoes(first3: str) -> frozenset[str]:
+    """Return the prefixes CAL may echo for one submitted ``first3`` value (R-071).
+
+    CAL echoes the submitted prefix, but a Hebrew or Syriac prefix comes back in CAL code
+    (``"קקק"`` and ``"ܩܩܩ"`` both echo ``qqq``), so its single deterministic CAL-code
+    conversion is accepted too. An ambiguous conversion (bare ``ש``) adds nothing.
+    """
+
+    if len(first3) < 2 or not (first3.startswith('"') and first3.endswith('"')):
+        return frozenset()
+    prefix = first3[1:-1]
+    echoes = {prefix}
+    try:
+        conversion = convert_to_cal_code(prefix)
+    except NormalizationError:
+        return frozenset(echoes)
+    if len(conversion.words) == 1 and len(conversion.words[0].candidates) == 1:
+        echoes.add(conversion.words[0].candidates[0])
+    return frozenset(echoes)
 
 
 _DIALECT_EXACT = frozenset(
