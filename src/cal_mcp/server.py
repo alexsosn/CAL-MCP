@@ -383,8 +383,9 @@ async def cal_text_catalogue(
     """List one explicit CAL text catalogue level without recursive traversal.
 
     Omit ``category_id`` for the root catalogue or pass one CAL category identifier returned
-    by a prior call. One explicit call submits at most one new logical CAL request. A
-    completed cache hit performs no new upstream I/O.
+    by a prior call or by ``cal_text_search`` (decimal, or a CPA node such as ``5500056125a``).
+    One explicit call submits at most one new logical CAL request. A completed cache hit
+    performs no new upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client

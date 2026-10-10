@@ -50,6 +50,9 @@ _FOLLOW_UP_CATALOGUE = "cal_text_catalogue"
 _SCRIPT_CSETS = frozenset({"R", "H", "S", "U", "T"})
 # Mandaic collection links: M observed in search, R in CAL's Mandaic catalogue (R-053).
 _MANDAIC_SEARCH_CSETS = frozenset({"M", "R"})
+# CPA catalogue nodes use CAL's own CPA script selector (R-083).
+_CPA_SEARCH_CSETS = frozenset({"C"})
+_SEARCH_LABEL_SEPARATOR_RE = re.compile(r":(?=\s|$)")
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
 # CAL echoes the term it actually searched; it may differ from the submitted query (R-077).
 _TEXT_SEARCH_ECHO_RE = re.compile(
@@ -1065,9 +1068,7 @@ class TextService:
         self._client = client
 
     async def catalogue(self, *, category_id: str | None = None) -> TextCatalogueResult:
-        normalized_category = (
-            None if category_id is None else _validate_id(category_id, "category_id")
-        )
+        normalized_category = None if category_id is None else _validate_category_id(category_id)
         parser = parse_text_catalogue_page
         if normalized_category is None:
             request = CalRequest(method="GET", path="newtextmenu.html")
@@ -1304,6 +1305,30 @@ def _validate_id(value: str, name: str) -> str:
     return value
 
 
+def _is_cpa_node(value: str) -> bool:
+    """A CPA catalogue node: an observed subdivided CPA file followed by a subtext (R-083).
+
+    CAL addresses some CPA nodes with a letter-suffixed identifier such as ``5500056125a``.
+    The identifier is opaque CAL data and is never split into a file and subtext.
+    """
+
+    file_id, subtext = value[:5], value[5:]
+    return file_id in _CPA_SUBDIVIDED_FILE_IDS and is_cal_subtext_id(subtext)
+
+
+def _is_suffixed_cpa_node(value: str) -> bool:
+    return _ID_RE.fullmatch(value) is None and _is_cpa_node(value)
+
+
+def _validate_category_id(value: str) -> str:
+    if isinstance(value, str) and (_ID_RE.fullmatch(value) is not None or _is_cpa_node(value)):
+        return value
+    raise CalInputError(
+        "category_id must be a CAL decimal identifier or a returned CPA node identifier "
+        "such as 5500056125a"
+    )
+
+
 def _validate_subtext_id(value: str) -> str:
     if not is_cal_subtext_id(value):
         raise CalInputError(
@@ -1419,9 +1444,13 @@ def _is_own_script_toggle(link: _Link, requested_node: str) -> bool:
     if not _is_path(link.href, "showsubtexts.php"):
         return False
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+    own_nodes = [[requested_node]]
+    if _is_suffixed_cpa_node(requested_node):
+        # A suffixed CPA node's toggle names its suffix-less form (R-083).
+        own_nodes.append([requested_node[:-1]])
     return (
         set(query) == {"subtext", "script"}
-        and query["subtext"] == [requested_node]
+        and query["subtext"] in own_nodes
         and len(query["script"]) == 1
         and _SCRIPT_TOGGLE_RE.fullmatch(query["script"][0]) is not None
     )
@@ -1681,19 +1710,25 @@ def _search_text_ref_from_link(
 
     query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
     subtext_values = query.get("subtext")
-    if (
-        subtext_values is None
-        or len(subtext_values) != 1
-        or _ID_RE.fullmatch(subtext_values[0]) is None
-    ):
+    if subtext_values is None or len(subtext_values) != 1:
         raise TextParseError("CAL text search subtext result has an invalid file identifier")
     # A showsubtexts.php result is a catalogue node. Mandaic uses its own script
-    # selectors (M/R), while the other collections use the shared script set (R-056).
+    # selectors (M/R), CPA nodes use C (R-083), and the other collections use the shared
+    # script set (R-056).
     identifier = subtext_values[0]
     cset_values = query.get("cset") or []
     cset = cset_values[0] if len(cset_values) == 1 else None
+    if _ID_RE.fullmatch(identifier) is None and not (
+        cset in _CPA_SEARCH_CSETS and _is_cpa_node(identifier)
+    ):
+        raise TextParseError("CAL text search subtext result has an invalid file identifier")
     mandaic = identifier.startswith(_MANDAIC_COLLECTION_PREFIX)
-    if (mandaic and cset in _MANDAIC_SEARCH_CSETS) or (not mandaic and cset in _SCRIPT_CSETS):
+    cpa = _is_cpa_node(identifier)
+    if (
+        (mandaic and cset in _MANDAIC_SEARCH_CSETS)
+        or (cpa and cset in _CPA_SEARCH_CSETS)
+        or (not mandaic and cset in _SCRIPT_CSETS)
+    ):
         file_id, category_id, tool = None, identifier, _FOLLOW_UP_CATALOGUE
     else:
         raise TextParseError("CAL text search subtext result has an invalid cset")
@@ -1731,12 +1766,21 @@ def _search_label_and_description(line: _Line, link: _Link) -> tuple[str, str | 
     remainder = remainder[1:].strip()
     if not remainder:
         raise TextParseError("CAL text search result row has no text label")
-    label, separator, description = remainder.partition(":")
+    # CAL separates label and description with ": "; a colon inside a label (a verse range
+    # such as "John 13:15-16:9") has no following space (R-083).
+    label, separator, description = _partition_label_separator(remainder)
     label = label.strip()
     if not label:
         raise TextParseError("CAL text search result row has an empty text label")
     rendered_description = description.strip() if separator and description.strip() else None
     return label, rendered_description
+
+
+def _partition_label_separator(text: str) -> tuple[str, str, str]:
+    match = _SEARCH_LABEL_SEPARATOR_RE.search(text)
+    if match is None:
+        return text, "", ""
+    return text[: match.start()], ":", text[match.end() :]
 
 
 def _page_text_ref(
