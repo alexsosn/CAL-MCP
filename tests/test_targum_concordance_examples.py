@@ -206,9 +206,7 @@ async def test_direct_service_bad_group_type_is_input_error_before_io(bad: objec
         requests.append(request)
         raise AssertionError("invalid input reached the CAL transport")
 
-    service = module.TargumConcordanceExamplesService(
-        CalHttpClient(transport=rejecting)
-    )
+    service = module.TargumConcordanceExamplesService(CalHttpClient(transport=rejecting))
     with pytest.raises(CalInputError):
         await service.examples("klb N", bad)
     assert requests == []
