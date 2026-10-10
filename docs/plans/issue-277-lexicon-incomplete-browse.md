@@ -1,0 +1,8 @@
+# Issue #277 — research/plan/TDD gates
+
+1. Research precedes all code: `docs/research/issue-277-lexicon-incomplete-browse.md`.
+2. RED: use the current checked-in CAL `browse_br_unclosed_jump_2026_09_06.html` fixture and a synthetic 48-row-bounded NEXT page modeled on issue #277. Assert typed `next_continuation` on parser and returned `status=truncated` plus `browse_continuations=[{prefix,continuation}]` from one first-page GET, zero automatic followups, source provenance, strict redirect/extra/duplicate cursor failures, and ordinary exhaustive `not_found` remains unchanged.
+3. RED: CAL-code `xd@(sr` derives a consonantal prefix without `@` and exact matching against `xd@(sr b` machine lemma key; ordinary `byt mlkw` compares carefully with `byt@mlkw N` without ignoring POS or inventing lexical aliases. Assert no extra transport and no change to Hebrew/Syriac ambiguity fanout.
+4. GREEN: centralize the exact existing NEXT PAGE link validator (no duplicate parsing), add bounded page completeness to `BrowsePage` and `LexiconLookupResult`, retain no-match and parser-drift semantics. Expose additive typed fields to clients without changing 36-tool manifest.
+5. Ruff, mypy and full pytest in deterministic and latest-compatible matrices. Independent adversarial review of exact production diff against source-shaped fixtures; fix any findings in a new RED→GREEN subcycle, and merge only after exact-head CI.
+6. No live CAL probes, no v0.1 tag, no PyPI publication. The remaining larger pagination/seek investigation requires its own source research and is not folded into an automatic crawler.
