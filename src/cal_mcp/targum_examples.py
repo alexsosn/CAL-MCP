@@ -90,6 +90,7 @@ class _ReflexExamplesParser(HTMLParser):
         self.spans: list[tuple[int, str]] = []
         self.anchor_href: str | None = None
         self.anchor_text: list[str] = []
+        self.loose_parts: list[str] = []
         self._in_anchor = False
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -147,7 +148,9 @@ class _ReflexExamplesParser(HTMLParser):
             self.spans.append((self._span_role, text))
             self._span_parts = None
             self._span_role = 0
-        elif tag == "div" and self._div_depth:
+        elif tag == "div" and len(self.headings) == 2:
+            if not self._div_depth:
+                raise TargumReflexExamplesParseError("unmatched example wrapper")
             self._div_depth -= 1
 
     def handle_data(self, data: str) -> None:
@@ -159,6 +162,8 @@ class _ReflexExamplesParser(HTMLParser):
             self.anchor_text.append(data)
         if self._span_parts is not None:
             self._span_parts.append(data)
+        elif self._heading_parts is None and len(self.headings) == 2 and data.strip():
+            self.loose_parts.append(" ".join(data.split()))
 
 
 def _check_origin_and_selectors(
@@ -224,6 +229,8 @@ def parse_targum_reflex_examples_page(
     _check_lexicon_link(
         parser.anchor_href, " ".join("".join(parser.anchor_text).split()), selected_lemma
     )
+    if " ".join(parser.loose_parts) != "Click the Aramaic lemma to see the full entry":
+        raise TargumReflexExamplesParseError("unrecognized text outside reflex example blocks")
     if (
         not parser.spans
         or len(parser.spans) % 2
