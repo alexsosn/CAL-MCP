@@ -1006,8 +1006,16 @@ def _parse_lemma_header(
     require_gloss: bool,
 ) -> LemmaRef | None:
     tokens = list(_TOKEN_RE.finditer(text))
+    depths = _parenthesis_depths(text)
+    # A POS never starts inside the parenthesized pronunciation, which can itself contain
+    # POS-like gender labels such as "(m. ḥəḏaˁsar, f. ḥəḏaˁesrē)" (R-079). An unclosed
+    # group leaves the rest of the header inside it, so no POS is found and the row fails.
     pos_index = next(
-        (index for index, token in enumerate(tokens) if _looks_like_pos_token(token.group(0))),
+        (
+            index
+            for index, token in enumerate(tokens)
+            if depths[token.start()] == 0 and _looks_like_pos_token(token.group(0))
+        ),
         None,
     )
     if pos_index is None:
@@ -1269,6 +1277,20 @@ def _apply_marked_pos(parsed: LemmaRef, link: _Link) -> LemmaRef | None:
     if remainder and _HOMOGRAPH_MARKER_RE.fullmatch(remainder) is None:
         return None
     return replace(parsed, part_of_speech=marked, gloss="")
+
+
+def _parenthesis_depths(text: str) -> list[int]:
+    """Return the parenthesis nesting depth before each character; unclosed groups stay open."""
+
+    depths: list[int] = []
+    depth = 0
+    for char in text:
+        depths.append(depth)
+        if char == "(":
+            depth += 1
+        elif char == ")" and depth > 0:
+            depth -= 1
+    return depths
 
 
 def _split_trailing_parenthetical(value: str) -> tuple[str, str] | None:

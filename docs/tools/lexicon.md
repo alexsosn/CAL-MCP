@@ -129,7 +129,7 @@ A successful `entry` has these top-level fields:
 
 | Field | Meaning |
 | --- | --- |
-| `lemma` | CAL lemma reference: key, headwords, pronunciation, part of speech, gloss, aliases. `part_of_speech` is `null` where CAL marks no part of speech: an empty `<pos>` on browse rows (`matches`), or no part-of-speech field in an exact entry's header |
+| `lemma` | CAL lemma reference: key, headwords, pronunciation, part of speech, gloss, aliases. `pronunciation` is CAL's parenthesized vocalization verbatim, including gender labels on numerals (for example `m. ḥəḏaˁsar, f. ḥəḏaˁesrē` for `xd@(sr b`); those labels are never read as the part of speech. `part_of_speech` is `null` where CAL marks no part of speech: an empty `<pos>` on browse rows (`matches`), or no part-of-speech field in an exact entry's header |
 | `senses` | ordered CAL senses with `label_path`, optional stem heading, definition, dialects, citations |
 | `root` | CAL root text when exposed by the entry |
 | `grammar` | grammar/stem labels preceding the senses when present |
