@@ -1,0 +1,15 @@
+# Issue #262 — research-plan-TDD gates for rate-limit-safe CAL client
+
+Research: `docs/research/issue-262-rate-pacing.md`.
+
+**Before code:** record the request-policy decision in `wiki/decisions.md` after independently reviewing possible lock/deadline strategies and default interval cost for 12-case live smoke and 37-token verse analysis. Avoid widening `max_retries` or timeout unintentionally.
+
+1. **RED, config:** numeric finite `min_attempt_interval_seconds` accepted within a documented safe range, reject booleans/NaN/infinity/negative or policy-floor violations. Frozen/default config docs and tests synchronized.
+2. **RED, scheduler:** fake monotonic clock/sleep (no wall-time CI), sequential distinct requests spaced by configured interval, concurrent distinct requests serialized by reservation, singleflight de-duplicated, cached success instant, retries paced too. Cancellation before transport should not spend a request budget or create a burst. Ensure each server process has one scheduler and that `max_concurrency` still caps actual in-flight requests.
+3. **RED, header + 429:** add an optional defaulted sanitized Retry-After field to `CalResponse`/production HTTPX2 transport without changing current fixture constructors; prove real transport can surface the header. 429 with absent, malformed, negative, huge and ordinary Retry-After: typed `upstream_http` with retryable true and correct HTTP status/source; no immediate retries. Only a bounded short valid hint may schedule at most one retry, within a single defensible logical deadline. If server asks to wait longer than allowed, fail safely, do not try early. Existing transient-only 5xx and no-redirect regressions remain green.
+4. **RED, budgets:** count every actual attempt and retry via the existing `SmokeAttemptBudget.before_attempt`; caching, validation and canceled waits do not count. Do not let a 429 cause a second request after the opt-in 25-attempt cap.
+5. **GREEN:** minimal implementation in shared `client.py`, shared error classification, and configuration docs. Update `wiki/decisions.md`, `docs/configuration.md`, `docs/tools/token-analysis.md`. Run deterministic and latest-compatible entire CI and source-grounded independent adversarial review, iterating on failures.
+6. **Live acceptance decision:** **after** all offline gates, explicitly authorize exactly one bounded paced Peshitta passage run (issue observed 37 token calls, six 429); account for the request cap and do not repeat after a 429 without reconsideration. Do not combine with the 12-case release smoke or assume absence of rate limiting from tiny runs.
+7. Tag/PyPI release remains blocked until #15 trust registration is verified; issue #262 is release-blocking independently.
+
+No other CAL surfaces are fetched automatically, and no third-party server is used as a pace oracle.
