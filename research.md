@@ -360,6 +360,28 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-083 — Text search returns CPA catalogue nodes with `cset=C` and letter-suffixed ids
+
+**Rechecked:** 2026-10-10; issue #263.
+
+`newsearchtxts.php` (search `John`) returns 34 rows. Fifteen are CPA catalogue nodes linked as
+`showsubtexts.php?subtext=<id>&cset=C`: 13 letter-suffixed (`5500056125a` … `5500056233a`) and
+two decimal (`55400122`, `55422056`). `cset=C` appears on no other row. Every id is an observed
+subdivided CPA file (`55000`, `55400`, `55422`) followed by a subtext: `showsubtexts.php?subtext=5500056125a`
+lists exactly one text, `get_a_chapter.php?file=55000&sub=56125a&cset=C` ("John 13:15-16:9
+Cambridge TS"), and its "View in" toggle names the suffix-less `5500056125`. CAL-MCP rejected
+`cset=C`, so the whole search failed as parser drift, and `cal_text_catalogue` rejected the
+suffixed id. The search row label/description separator is `": "`; labels such as `John
+13:15-16:9 Cambridge TS` contain bare colons and were truncated to `John 13`. Evidence: 4 GETs/POSTs
+(2026-10-10, project User-Agent).
+
+**Implication:** accept `cset=C` only on identifiers formed from an observed subdivided CPA file
+plus a subtext in the D-016 grammar; return them whole as `category_id` for
+`cal_text_catalogue`, which accepts the same shape and treats the suffix-less toggle as the
+page's own. Never split the id. Split search labels only at a colon followed by whitespace or
+the end of the row. Reduced fixtures: `text_search_john_cpa_nodes_current.html`,
+`text_catalogue_cpa_5500056125a_node_current.html`.
+
 ## R-082 — Catalogue pages render a script toggle that names the same node
 
 **Rechecked:** 2026-10-10; issue #264.
