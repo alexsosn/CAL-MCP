@@ -11,7 +11,7 @@ from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalRespon
 from cal_mcp.texts import TextPageStatus, TextParseError, TextService
 
 SOURCE = Path(__file__).parent / "fixtures" / "cal" / "text_page_ginza_right_001_current.html"
-LINK = b'get_a_chapter.php?file=74410&sub=002&cset=M&clen=5&page=0'
+LINK = b"get_a_chapter.php?file=74410&sub=002&cset=M&clen=5&page=0"
 BASE_URL = "https://cal.huc.edu/get_a_chapter.php?cset=M&file=74410&sub=001"
 STAMP = datetime(2026, 10, 10, tzinfo=UTC)
 
