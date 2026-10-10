@@ -112,7 +112,7 @@ async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppConte
     smoke_budget = os.environ.get("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS")
     budget: SmokeAttemptBudget | None = None
     if smoke_budget is None:
-        client = CalHttpClient(config=CalClientConfig(min_request_interval_seconds=1.0))
+        client = CalHttpClient()
     else:
         # Never silently accept an expanded cap or apply this policy to ordinary users.
         if smoke_budget != "25":
