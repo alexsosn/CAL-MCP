@@ -19,7 +19,7 @@ A successful result preserves:
 - `word_index`: CAL's zero-based token index;
 - `status`: `found` or `not_found`;
 - `candidates`: CAL's ordered **linked** lexical analyses for that token;
-- `unlinked_summaries`: ordered rendered CAL analysis-summary lines when the current result has no linked lemma-entry identity; otherwise an empty list;
+- `unlinked_summaries`: ordered rendered CAL analysis-summary lines for lexemes that CAL renders without a linked lemma-entry identity, for example a personal name after a linked prefix; otherwise an empty list;
 - `provenance`: CAL source URL and timezone-aware retrieval timestamp plus the requested coordinate and token index.
 
 Each candidate contains:
@@ -66,7 +66,7 @@ The states are intentionally distinct:
 
 The current no-lemma sentence is accepted only together with exactly one normal token-analysis result marker and no lemma-entry link. The explicit no-data page is likewise validated as a complete state: CAL's current title/history-back chrome may precede one unlinked no-data line, but extra semantic lines or a link on the no-data line are parser drift. If CAL mixes either empty state with unexplained result content, the parser fails closed instead of silently treating drift as an empty result.
 
-Current linked result pages can use a one-row `a.lexlink` table followed by a full lexicon sense outline. CAL-MCP treats the table close as the candidate boundary and does not reinterpret following sense lines as additional token analyses. When CAL renders an explicit `SOURCE --> TARGET` suffix (current Peshitta example), TARGET must equal the linked `lemma` selector and SOURCE becomes `analyzed_lemma_key`. Current Targum also uses the same `lexlink` table without redirect notation; in that case `analyzed_lemma_key` remains `null` rather than being inferred from the free-form label.
+Current linked result pages render one segment per lexeme of the token, separated by `<hr>`. A linked segment is an analysis label, then a one-row `a.lexlink` table, sometimes followed by a full lexicon sense outline. CAL-MCP returns every segment in CAL order. For example, Samaritan `56000112010` word 0, `w)mr`, gives two candidates: `w_ c` (conj., "and, also") and `)mr V` (verb, "to say"). Word 2, `l)brM`, gives the candidate `l_ p` plus the unlinked summary `)brM PN Personal name`. CAL-MCP treats each table close as that candidate's boundary and does not reinterpret the following sense lines as further analyses. A candidate's `part_of_speech` is CAL's own `<pos>` text, so a verb keeps its vowel class (`vb. a/a`) and `gloss` is only the gloss (`to say`). A segment with two tables, a linked segment without a label, markup other than line breaks in a label or summary, bare text after a result table, a page without CAL's closing navigation, or a `<pos>` that disagrees with the rendered header fails closed as `parser_drift`. `candidates` and `unlinked_summaries` each keep CAL's order; the relative order between a candidate and a summary is not represented. When CAL renders an explicit `SOURCE --> TARGET` suffix (current Peshitta example), TARGET must equal the linked `lemma` selector and SOURCE becomes `analyzed_lemma_key`. Current Targum also uses the same `lexlink` table without redirect notation; in that case `analyzed_lemma_key` remains `null` rather than being inferred from the free-form label.
 
 CAL also currently returns **linkless** successful token-analysis summaries for some Peshitta and CPA tokens. These pages have the normal result marker but no result table and no lemma-entry link. CAL-MCP preserves their ordered rendered lines in `unlinked_summaries` and leaves `candidates` empty. It does not interpret POS-looking text, `=`, or `-->` as typed lemma/redirect semantics because CAL exposes no linked identity against which those interpretations can be validated. A result with one or more such summaries has `status: "found"`; explicit CAL no-data/no-lemma states remain `not_found` with both collections empty.
 
@@ -104,7 +104,9 @@ Offline tests use reduced semantic excerpts rechecked against current CAL behavi
 - contradictory current empty-state markup with a lemma link;
 - current empty-state text without the required result marker;
 - current one- and two-line linkless Peshitta summaries plus a CPA linkless summary;
-- linkless-summary drift with unexpected links, tables, or mixed linked/unlinked structure;
+- linkless-summary drift with unexpected links or tables;
+- current multi-lexeme pages (2026-10-09): a prefixed verb whose two linked lexemes are both returned, and a linked prefix followed by an unlinked personal-name summary;
+- segment drift: a missing closing navigation boundary, links or other markup in a summary segment, bare text after a result table, an `<hr>` inside a sense outline, and duplicate, empty or unclosed `<pos>`;
 - incomplete/missing lemma-link markup;
 - unknown successful markup;
 - local coordinate/token-index validation, including current CPA suffix-bearing coordinates, the exact current `74425` / `74429` Mandaic letter forms, and malformed near-misses;
