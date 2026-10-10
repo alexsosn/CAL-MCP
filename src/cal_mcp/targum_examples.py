@@ -13,7 +13,7 @@ from urllib.parse import parse_qs, urlsplit
 
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.concordance import _validate_lemma_key
-from cal_mcp.errors import CalInputError
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.targum import (
     TargumProvenance,
     _make_provenance,
@@ -26,7 +26,7 @@ _EXAMPLE_PATHS = {"onqelos": "getOMT.php", "neofiti": "getNMT.php"}
 _SOURCE_HEADINGS = {"onqelos": "Onqelos", "neofiti": "Neofiti"}
 
 
-class TargumReflexExamplesParseError(ValueError):
+class TargumReflexExamplesParseError(CalParseError):
     """The chosen CAL example page no longer expresses its claimed semantics."""
 
 
