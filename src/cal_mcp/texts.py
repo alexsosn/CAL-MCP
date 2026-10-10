@@ -1971,9 +1971,7 @@ def _page_navigation(
                     ):
                         raise TextParseError("CAL Ginza subtext navigation changed origin or path")
                     if "clen" in query and query.get("clen") != ["5"]:
-                        raise TextParseError(
-                            "CAL Mandaic text navigation has an unexpected clen"
-                        )
+                        raise TextParseError("CAL Mandaic text navigation has an unexpected clen")
                     upstream_page = _single_query_value(query, "page", "page-navigation")
                     if upstream_page != "0":
                         raise TextParseError(
