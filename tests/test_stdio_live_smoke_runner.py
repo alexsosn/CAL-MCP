@@ -24,8 +24,11 @@ def _tool() -> Tool:
         input_schema={"type": "object"},
         output_schema={
             "type": "object",
-            "properties": {"status": {"type": "string"}},
-            "required": ["status"],
+            "properties": {
+                "status": {"type": "string"},
+                "error": {"type": "object"},
+            },
+            "anyOf": [{"required": ["status"]}, {"required": ["error"]}],
         },
     )
 
