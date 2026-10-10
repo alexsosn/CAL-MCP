@@ -234,7 +234,9 @@ async def evaluate_smoke_cases(
         if case.from_case is not None:
             parent = successful.get(case.from_case)
             if parent is None:
-                outcomes.append(SmokeOutcome(case.name, "skipped_dependency", "parent case did not pass"))
+                outcomes.append(
+                    SmokeOutcome(case.name, "skipped_dependency", "parent case did not pass")
+                )
                 continue
             if case.tool != "cal_text_page":
                 outcomes.append(SmokeOutcome(case.name, "harness", "unsupported smoke follow-up"))
