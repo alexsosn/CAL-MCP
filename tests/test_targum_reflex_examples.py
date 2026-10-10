@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from importlib import import_module
+from pathlib import Path
 
 import pytest
 from mcp import Client
@@ -293,3 +294,16 @@ def test_missing_second_sibling_block_is_parser_drift() -> None:
     )
     with pytest.raises(module.TargumReflexExamplesParseError):
         _parse(only_mt)
+
+
+def test_server_instructions_expose_explicit_targum_reflex_followup() -> None:
+    instructions = (
+        Path("src/cal_mcp/server.py")
+        .read_text(encoding="utf-8")
+        .split("instructions=(", 1)[1]
+        .split("version=__version__", 1)[0]
+    )
+    assert "cal_targum_hebrew_reflexes" in instructions
+    assert "cal_targum_reflex_examples" in instructions
+    assert "mt_lemma_id" in instructions
+    assert "example_url" in instructions
