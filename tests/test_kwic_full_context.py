@@ -348,7 +348,7 @@ def test_v01_release_manifest_includes_explicit_full_context_tool() -> None:
     assert "cal_kwic_full_context" in V01_PUBLIC_TOOLS
     assert "cal_lexicon_browse" in V01_PUBLIC_TOOLS
     assert "cal_lexicon_citation_context" in V01_PUBLIC_TOOLS
-    assert len(V01_PUBLIC_TOOLS) == 34
+    assert len(V01_PUBLIC_TOOLS) == 35
 
 
 @pytest.mark.anyio

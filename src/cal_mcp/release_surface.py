@@ -29,6 +29,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
         "cal_targum_concordance",
         "cal_targum_hebrew_lemmas",
         "cal_targum_hebrew_reflexes",
+        "cal_targum_reflex_examples",
         "cal_external_citation_dialects",
         "cal_external_citation_sources",
         "cal_external_citations",

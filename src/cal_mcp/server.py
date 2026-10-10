@@ -35,6 +35,7 @@ from cal_mcp.syriac import (
     syriac_missing_word_category_slugs,
 )
 from cal_mcp.targum import TargumService
+from cal_mcp.targum_examples import TargumReflexExamplesService
 from cal_mcp.texts import TextService
 from cal_mcp.token_analysis import TokenAnalysisService
 
@@ -172,8 +173,11 @@ mcp = CalMCPServer(
         "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma correspondences "
         "for one explicit dictionary page reference. Use cal_targum_parallel for one biblical "
         "verse across current CAL Targum readings, cal_targum_concordance for Targum-specific "
-        "lemma counts, and the two cal_targum_hebrew_* tools for explicit MT-lemma "
-        "discovery/reflex lookup. Use cal_syriac_texts for one explicit CAL Syriac text "
+        "lemma counts, cal_targum_hebrew_lemmas to discover one MT Hebrew lemma, "
+        "and cal_targum_hebrew_reflexes to retrieve its ordered CAL reflexes. Follow "
+        "one chosen reflex with cal_targum_reflex_examples using the returned targum, "
+        "mt_lemma_id and lemma_key, not its example_url. Use cal_syriac_texts for one "
+        "explicit CAL Syriac text "
         "category and cal_syriac_group for one GROUP selector returned by that tool. Use "
         "cal_syriac_missing_words for one CAL-curated missing-from-A-Syriac-Lexicon list, and "
         "cal_syriac_peshitta_parallel for one MT/Peshitta verse. Syriac direct-text, "
@@ -838,6 +842,30 @@ async def cal_targum_hebrew_reflexes(
 
     client = ctx.request_context.lifespan_context.client
     result = await TargumService(client).hebrew_reflexes(targum, mt_lemma_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_reflex_examples",
+    title="Read one selected Onqelos or Neofiti Hebrew-reflex example page",
+    structured_output=True,
+)
+async def cal_targum_reflex_examples(
+    targum: str,
+    mt_lemma_id: str,
+    lemma_key: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Follow a returned reflex using exact CAL selectors, never an arbitrary URL.
+
+    Use ``targum`` and ``mt_lemma_id`` from ``cal_targum_hebrew_reflexes`` and
+    the chosen row's canonical ``lemma_key``. Exactly one GET is fetched on a
+    cache miss; no other reflexes, chapter links or lexical entries are followed.
+    Ordered MT/Targum text blocks are preserved, including repetitions.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumReflexExamplesService(client).examples(targum, mt_lemma_id, lemma_key)
     return result.to_dict()
 
 

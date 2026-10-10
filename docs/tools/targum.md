@@ -1,8 +1,8 @@
 # CAL Targum Studies
 
-CAL-MCP exposes four bounded task-level operations over CAL's current Targum Studies interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, fetch examples, or build a local Targum corpus.
+CAL-MCP exposes five bounded task-level operations over CAL's current Targum Studies interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, automatically fetch examples, or build a local Targum corpus.
 
-Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, and `cal_targum_hebrew_reflexes`.
+Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`, and `cal_targum_reflex_examples`.
 
 ## Which tool to use
 
@@ -12,6 +12,7 @@ Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebre
 | Count one CAL lemma across CAL's Targum source groups | `cal_targum_concordance(lemma_key)` |
 | Discover CAL's MT Hebrew lemma choices for Onqelos or Neofiti reflex study | `cal_targum_hebrew_lemmas(initial, targum)` |
 | Retrieve the CAL Aramaic lemma reflexes for one selected MT Hebrew lemma | `cal_targum_hebrew_reflexes(targum, mt_lemma_id)` |
+| Read one explicit MT/Aramaic reflex example page | `cal_targum_reflex_examples(targum, mt_lemma_id, lemma_key)` |
 
 Single-source chapter reading is intentionally **not** duplicated as a Targum-specific MCP tool. Where CAL exposes a source chapter link, it points into CAL's ordinary text browser and can be followed through the existing text tools in a separate caller-controlled step.
 
@@ -143,6 +144,30 @@ The two-step boundary is deliberate. One discovery call plus one reflex call rem
 
 CAL has a notable invalid-ID fallback: a nonexistent opaque MT selector may return a broad frequency list with a heading ending at `correspondences to` and no selected Hebrew lemma. CAL-MCP rejects that response as parser drift instead of presenting an unrelated broad list as the requested result.
 
+### Step 3: explicitly read one returned reflex example
+
+```text
+cal_targum_reflex_examples(
+    targum: string,
+    mt_lemma_id: string,
+    lemma_key: string,
+)
+```
+
+Choose one `reflexes[].lemma_key` in the Step 2 response. Preserve the
+same `targum` and opaque `mt_lemma_id` returned by the parent; do **not**
+pass `example_url` as an argument. CAL-MCP constructs exactly one allowed
+GET (`getOMT.php` or `getNMT.php`) from these exact typed selectors.
+
+The response keeps CAL's selected Hebrew lemma and its rendered
+Onqelos/Neofiti source label, then ordered `examples` containing
+`mt_text` and `targum_text`. Original CAL line breaks and repeated
+example blocks are preserved; no verse IDs, distinct-verse count,
+cross-source alignment, or preferred reading is invented. Each response
+includes the actual CAL source URL and retrieval timestamp in provenance.
+Invalid selectors are rejected before any CAL request. The upstream
+lexicon link is validated but never followed automatically.
+
 ## CAL labels and Unicode fidelity
 
 CAL-MCP preserves CAL's source/version labels and returned order. It does not harmonize names such as `Onqelos:`, `Pseudo Jonathan:`, `Neofiti:`, or fragment labels into a local ontology, and it does not infer equivalence between versions.
@@ -156,9 +181,10 @@ Each valid explicit operation submits at most one new logical CAL request to the
 - one verse-comparison request;
 - one Targum concordance request;
 - one source/initial MT-lemma chooser request;
-- one selected MT-lemma reflex request.
+- one selected MT-lemma reflex request;
+- one explicitly selected Onqelos/Neofiti reflex-example request.
 
-There is no hidden biblical verse walking, all-book traversal, all-version expansion, chooser-alphabet crawl, concordance example fetching, chapter prefetch, background indexing, or local mirror. The shared CAL HTTP client still enforces origin, redirect, timeout, concurrency, retry, cache/single-flight, and response-size policy.
+There is no hidden biblical verse walking, all-book traversal, all-version expansion, chooser-alphabet crawl, automatic example fetching, chapter prefetch, background indexing, or local mirror. The shared CAL HTTP client still enforces origin, redirect, timeout, concurrency, retry, cache/single-flight, and response-size policy.
 
 Private CAL form fields such as `bookname`, `Peshitta`, `Sam`, `R1`, `lemma`, `pos`, `texts`, and `charset` are adapter implementation details and are not public MCP parameters.
 
