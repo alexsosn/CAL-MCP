@@ -53,7 +53,7 @@ class TargumConcordanceExamplesResult:
 
 
 def _validate_group(text_ids: Sequence[str]) -> tuple[str, ...]:
-    if isinstance(text_ids, (str, bytes)):
+    if not isinstance(text_ids, Sequence) or isinstance(text_ids, (str, bytes)):
         raise CalInputError("text_ids must be an ordered array of CAL decimal text IDs")
     ids = tuple(text_ids)
     if not 1 <= len(ids) <= _MAX_TARGUM_GROUP_SIZE:
