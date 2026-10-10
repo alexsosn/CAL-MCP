@@ -8,6 +8,8 @@ import shutil
 import sys
 from dataclasses import asdict, dataclass
 from datetime import datetime
+from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Literal
 from urllib.parse import urlsplit
 
@@ -211,11 +213,33 @@ async def evaluate_smoke_cases(
     return tuple(outcomes)
 
 
-async def _run_live(executable: str) -> tuple[SmokeOutcome, ...]:
-    env = dict(os.environ)
-    env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = "25"
-    async with Client(StdioServerParameters(command=executable, env=env)) as client:
-        return await evaluate_smoke_cases(client)
+def _read_actual_attempts(report_path: Path) -> int:
+    """Only accept a complete measured count from the terminated smoke server."""
+
+    try:
+        contents = json.loads(report_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as error:
+        raise ValueError("installed smoke server did not report actual attempts") from error
+    if (
+        not isinstance(contents, dict)
+        or set(contents) != {"actual_cal_transport_attempts", "max_cal_transport_attempts"}
+        or contents.get("max_cal_transport_attempts") != 25
+        or type(contents.get("actual_cal_transport_attempts")) is not int
+        or not 0 <= contents["actual_cal_transport_attempts"] <= 25
+    ):
+        raise ValueError("installed smoke server reported an invalid transport attempt count")
+    return contents["actual_cal_transport_attempts"]
+
+
+async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
+    with TemporaryDirectory(prefix="cal-mcp-stdio-smoke-") as directory:
+        count_file = Path(directory) / "attempts.json"
+        env = dict(os.environ)
+        env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = "25"
+        env["CAL_MCP_LIVE_SMOKE_REPORT_PATH"] = str(count_file)
+        async with Client(StdioServerParameters(command=executable, env=env)) as client:
+            outcomes = await evaluate_smoke_cases(client)
+        return outcomes, _read_actual_attempts(count_file)
 
 
 def main() -> None:
@@ -228,7 +252,7 @@ def main() -> None:
         raise SystemExit(1)
 
     try:
-        outcomes = asyncio.run(_run_live(executable))
+        outcomes, actual_attempts = asyncio.run(_run_live(executable))
     except Exception:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
@@ -237,6 +261,7 @@ def main() -> None:
     report = {
         "status": "passed" if successful else "failed",
         "max_cal_transport_attempts": 25,
+        "actual_cal_transport_attempts": actual_attempts,
         "cases": [asdict(item) for item in outcomes],
     }
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
