@@ -411,9 +411,10 @@ this pace is too high.
   monotonic scheduler enforces that interval even for concurrent requests and retries. The
   cached path, already-coalesced in-flight waiters and local input rejection do not wait.
 - `CalClientConfig` permits a finite, bounded nonnegative interval; the **server** selects
-  the conservative 1-second default. Programmatic callers and offline fake transports use the
-  explicit opt-out `0` default to preserve their current direct-client/test semantics; they
-  must select safe pacing when contacting CAL themselves. We do not imply a cross-process rate
+  the conservative 1-second default. A direct `CalHttpClient()` using the real HTTP
+  transport also selects 1 second. Injected/offline fake transports and an explicitly
+  supplied `CalClientConfig()` preserve the configurable `0` default for test and
+  programmatic use; callers overriding it must select safe pacing when contacting CAL. We do not imply a cross-process rate
   guarantee.
 - A 429 is a typed `upstream_http` error, `retryable: true` to communicate *safe to retry
   later*, never permission to hammer the endpoint. Preserve only the `Retry-After` response
