@@ -28,7 +28,7 @@ class BrowseOnlyTransport:
 
 
 @pytest.mark.anyio
-async def test_multiword_browser_prefix_preserves_space_equivalent_of_cal_at_sign() -> None:
+async def test_multiword_cal_code_browse_prefix_uses_machine_consonants_before_at() -> None:
     transport = BrowseOnlyTransport()
     service = LexiconLookupService(CalHttpClient(transport=transport))
 
@@ -39,7 +39,7 @@ async def test_multiword_browser_prefix_preserves_space_equivalent_of_cal_at_sig
         CalRequest(
             method="GET",
             path="browseSKEYheaders.php",
-            params=(("first3", '"br "'),),
+            params=(("first3", '"br"'),),
         )
     ]
 
