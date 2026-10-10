@@ -114,12 +114,12 @@ class CalClientConfig:
     max_concurrency: int = 2
     max_retries: int = 1
     retry_backoff_seconds: float = 0.25
-    min_request_interval_seconds: float = 0.0
     max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
     cache_enabled: bool = True
     cache_max_entries: int = 128
     cache_ttl_seconds: float = 900.0
     user_agent: str = f"CAL-MCP/{__version__} (+https://github.com/alexsosn/CAL-MCP)"
+    min_request_interval_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         for name, value in (
