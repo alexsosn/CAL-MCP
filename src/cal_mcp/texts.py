@@ -13,7 +13,7 @@ from cal_mcp.client import (
     CalRequest,
     CalResponse,
 )
-from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError
+from cal_mcp.errors import CalInputError, CalOutOfRangeError, CalParseError, CalRejectedInputError
 from cal_mcp.identifiers import (
     has_subtext_letter_suffix,
     is_cal_machine_coordinate,
@@ -50,6 +50,14 @@ _SCRIPT_CSETS = frozenset({"R", "H", "S", "U", "T"})
 # Mandaic collection links: M observed in search, R in CAL's Mandaic catalogue (R-053).
 _MANDAIC_SEARCH_CSETS = frozenset({"M", "R"})
 _TEXT_SEARCH_EMPTY_MARKER = "there are no files associated with the search term"
+# CAL echoes the term it actually searched; it may differ from the submitted query (R-077).
+_TEXT_SEARCH_ECHO_RE = re.compile(
+    r"CAL search for texts like: (.*?)\. Click on the file number to view\.", re.IGNORECASE
+)
+_TEXT_SEARCH_EMPTY_ECHO_RE = re.compile(
+    r"There are no files associated with the search term (.*?)$", re.IGNORECASE
+)
+_TEXT_SEARCH_REJECTED_RE = re.compile(r'"(.*?)" is not a valid search string')
 _TEXT_INFORMATION_HEADING = "Text Information"
 _TEXT_INFORMATION_MISSING_MARKER = "No information on record for this text."
 _LINE_COMMENTS_EMPTY_MARKER = "NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED"
@@ -762,10 +770,45 @@ def parse_mandaic_catalogue_page(response: CalResponse) -> TextCataloguePage:
     return TextCataloguePage(categories=tuple(categories), texts=tuple(texts))
 
 
-def parse_text_search_page(response: CalResponse) -> TextSearchPage:
+def parse_text_search_page(
+    response: CalResponse, *, submitted_query: str | None = None
+) -> TextSearchPage:
     lines = _parse_lines(response)
     page_text = " ".join(line.text for line in lines)
     lowered = page_text.lower()
+
+    rejections = [
+        match.group(1) for line in lines if (match := _TEXT_SEARCH_REJECTED_RE.search(line.text))
+    ]
+    if rejections:
+        if len(rejections) != 1 or _TEXT_SEARCH_MARKER in lowered:
+            raise TextParseError("CAL text search rejection contradicts the rest of the page")
+        raise CalRejectedInputError(
+            f'CAL rejected the text search: "{rejections[0]}" is not a valid search string '
+            "(CAL removes the characters it does not search on, such as non-ASCII letters "
+            "and punctuation)"
+        )
+
+    echoes = [
+        match.group(1).strip()
+        for line in lines
+        if (match := _TEXT_SEARCH_ECHO_RE.search(line.text)) is not None
+    ]
+    if len(echoes) > 1:
+        raise TextParseError("CAL text search page repeats its search-term heading")
+    empty_echoes = [
+        match.group(1).strip()
+        for line in lines
+        if (match := _TEXT_SEARCH_EMPTY_ECHO_RE.search(line.text)) is not None
+    ]
+    if echoes and empty_echoes and empty_echoes != echoes:
+        raise TextParseError("CAL text search no-files marker contradicts its heading")
+    if echoes and submitted_query is not None and echoes[0] != submitted_query:
+        raise CalRejectedInputError(
+            f'CAL searched for "{echoes[0]}", not "{submitted_query}": CAL text search drops '
+            "characters it does not search on. Call cal_text_search again with "
+            f'"{echoes[0]}" to use the term CAL actually searched.'
+        )
 
     if _TEXT_SEARCH_EMPTY_MARKER in lowered:
         return TextSearchPage(matches=())
@@ -1079,7 +1122,7 @@ class TextService:
                 path="newsearchtxts.php",
                 data=(("search", submitted),),
             ),
-            parser=parse_text_search_page,
+            parser=lambda response: parse_text_search_page(response, submitted_query=submitted),
             cache_namespace="text-search-v1",
         )
         return TextSearchResult(
