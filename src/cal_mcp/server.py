@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
+from pathlib import Path
 from dataclasses import dataclass
 from typing import Any
 
@@ -110,6 +112,18 @@ async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppConte
     finally:
         await client.aclose()
         if budget is not None:
+            report_path = os.environ.get("CAL_MCP_LIVE_SMOKE_REPORT_PATH")
+            if report_path is not None:
+                # The runner supplies an exclusive file in its private temporary
+                # directory. Never put machine-readable counts on MCP stdout.
+                with Path(report_path).open("x", encoding="utf-8") as report:
+                    json.dump(
+                        {
+                            "actual_cal_transport_attempts": budget.attempts,
+                            "max_cal_transport_attempts": budget.max_attempts,
+                        },
+                        report,
+                    )
             print(
                 f"CAL-MCP smoke actual transport attempts: {budget.attempts}/25",
                 file=sys.stderr,
