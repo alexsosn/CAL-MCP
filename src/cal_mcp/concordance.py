@@ -17,6 +17,12 @@ from cal_mcp.normalization import _CAL_CODE_LETTERS, InputRepresentation, normal
 from cal_mcp.texts import _RAW_TEXT_LT_RE, TextLine, TextToken
 
 _ID_RE = re.compile(r"^[0-9]+$")
+# KWIC and full-context selectors only (R-074): CAL also uses ASCII letters in subtext ids
+# (AR, C01, 9A) and in target/line coordinates (2235212A1, 23350AR201). Such a coordinate is
+# opaque and must start with its own file id plus subtext id; it is never split.
+_KWIC_SUBTEXT_RE = re.compile(r"^[0-9A-Za-z]{1,8}$")
+_ALPHANUMERIC_COORDINATE_RE = re.compile(r"^[0-9]+[0-9A-Za-z]*$")
+_MAX_COORDINATE_LENGTH = 32
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
 _NO_DATA_GLOSS_PREFIX = "no data found for "
 _UNDOCUMENTED_KEY_CAPITALS = frozenset(string.ascii_uppercase) - _CAL_CODE_LETTERS
@@ -829,10 +835,12 @@ class ConcordanceService:
         subtext_id: str | None = None,
     ) -> KwicFullContextResult:
         normalized_file = _validate_decimal_id(file_id, "file_id")
-        normalized_target = _validate_decimal_id(target_coordinate, "target_coordinate")
+        normalized_sub = None if subtext_id is None else _validate_subtext_id(subtext_id)
+        normalized_target = _validate_kwic_target(
+            target_coordinate, file_id=normalized_file, subtext_id=normalized_sub
+        )
         if not isinstance(charset, str) or charset not in _KWIC_CHARSETS:
             raise CalInputError("charset must be one of: H, R, S, T, U")
-        normalized_sub = None if subtext_id is None else _validate_subtext_id(subtext_id)
 
         def parse_requested(response: CalResponse) -> KwicFullContextPage:
             return parse_kwic_full_context_page(
@@ -1090,9 +1098,10 @@ def _parse_full_context_row(
         query = parse_qs(urlsplit(comment_url).query, keep_blank_values=True)
         if set(query) != {"coord"}:
             raise ConcordanceParseError("CAL full-context comment link has unexpected selectors")
-        comment_coordinate = _parse_decimal_id(
+        comment_coordinate = _parse_kwic_coordinate(
             _single_query_value(query, "coord", "full-context comment"),
             "coordinate",
+            file_id=_full_context_file_id(source_url),
         )
         if comment_coordinate != coordinate or comment.text != display_coordinate:
             raise ConcordanceParseError("CAL full-context comment coordinate contradicts its row")
@@ -1154,9 +1163,10 @@ def _parse_full_context_lexical_link(
         raise ConcordanceParseError(
             "CAL full-context lexical link has unexpected or missing selectors"
         )
-    coordinate = _parse_decimal_id(
+    coordinate = _parse_kwic_coordinate(
         _single_query_value(query, "coord", "full-context lexical coordinate"),
         "coordinate",
+        file_id=_full_context_file_id(source_url),
     )
     word = _single_query_value(query, "word", "full-context lexical word")
     if not word.isascii() or not word.isdecimal():
@@ -1430,14 +1440,16 @@ def _kwic_hit_from_link(
     full_context_url = _cal_navigation_url(source_url, href, "get_a_kwicchapter.php")
     query = parse_qs(urlsplit(full_context_url).query, keep_blank_values=True)
     file_id = _parse_decimal_id(_single_query_value(query, "file", "KWIC file"), "file_id")
-    target = _parse_decimal_id(
+    subtext_id = _optional_subtext_query_value(query, "sub")
+    target = _parse_kwic_coordinate(
         _single_query_value(query, "target", "KWIC target"),
         "target_coordinate",
+        file_id=file_id,
+        subtext_id=subtext_id,
     )
     charset = _single_query_value(query, "cset", "KWIC charset")
     if charset not in _KWIC_CHARSETS:
         raise ConcordanceParseError("CAL KWIC target link has an unknown charset")
-    subtext_id = _optional_subtext_query_value(query, "sub")
     if link_text != target and not (allow_reversed and link_text == target[::-1]):
         raise ConcordanceParseError("CAL KWIC target link text differs from its coordinate")
     return KwicHit(
@@ -1682,19 +1694,66 @@ def _parse_decimal_id(value: str, name: str) -> str:
 
 
 def _validate_subtext_id(value: str) -> str:
-    if not is_cal_subtext_id(value):
+    if not _is_kwic_subtext_id(value):
         raise CalInputError(
-            "subtext_id must be CAL decimal digits with an optional lowercase letter suffix"
+            "subtext_id must be a CAL subtext id returned by a KWIC hit "
+            "(one to eight ASCII letters or digits)"
         )
     return value
 
 
 def _parse_subtext_id(value: str) -> str:
-    if not is_cal_subtext_id(value):
-        raise ConcordanceParseError(
-            "CAL returned a subtext_id outside the digits-plus-optional-lowercase-suffix contract"
+    if not _is_kwic_subtext_id(value):
+        raise ConcordanceParseError("CAL returned a subtext_id outside the KWIC subtext contract")
+    return value
+
+
+def _is_kwic_subtext_id(value: object) -> bool:
+    return is_cal_subtext_id(value) or (
+        isinstance(value, str) and _KWIC_SUBTEXT_RE.fullmatch(value) is not None
+    )
+
+
+def _validate_kwic_target(value: str, *, file_id: str, subtext_id: str | None) -> str:
+    if not isinstance(value, str) or not _is_kwic_coordinate(
+        value, file_id=file_id, subtext_id=subtext_id
+    ):
+        raise CalInputError(
+            "target_coordinate must be a CAL decimal identifier or the letter-bearing "
+            "coordinate a KWIC hit returned for this file_id and subtext_id"
         )
     return value
+
+
+def _parse_kwic_coordinate(
+    value: str, name: str, *, file_id: str, subtext_id: str | None = None
+) -> str:
+    if not _is_kwic_coordinate(value, file_id=file_id, subtext_id=subtext_id):
+        raise ConcordanceParseError(f"CAL returned an unsupported {name}")
+    return value
+
+
+def _is_kwic_coordinate(value: str, *, file_id: str, subtext_id: str | None) -> bool:
+    """Decimal, or a letter-bearing coordinate under its own file+subtext prefix (R-074)."""
+
+    if len(value) > _MAX_COORDINATE_LENGTH:
+        return False
+    if _ID_RE.fullmatch(value) is not None:
+        # D-016 subtexts keep their decimal targets; a D-023 letter subtext cannot have one.
+        return subtext_id is None or is_cal_subtext_id(subtext_id)
+    prefix = file_id + (subtext_id or "")
+    return (
+        _ALPHANUMERIC_COORDINATE_RE.fullmatch(value) is not None
+        and len(value) > len(prefix)
+        and value.startswith(prefix)
+    )
+
+
+def _full_context_file_id(source_url: str) -> str:
+    # Rows around the target can belong to other CAL line groups of the same file
+    # (2235201A1 beside target 2235212A1), so row coordinates bind to the file id only.
+    query = parse_qs(urlsplit(source_url).query, keep_blank_values=True)
+    return _parse_decimal_id(_single_query_value(query, "file", "full-context file"), "file_id")
 
 
 def _validate_text_ids(values: Sequence[str]) -> tuple[str, ...]:

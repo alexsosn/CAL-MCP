@@ -360,6 +360,29 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-074 — KWIC hits use letter-bearing subtexts and target coordinates
+
+**Rechecked:** 2026-10-10; issue #253.
+
+Current one-dialect KWIC pages link many hits with letters in their selectors. For `mlk N`, all
+357 Imperial Aramaic hits (`texts=2`) and all 92 Old Aramaic hits (`texts=1`) satisfy
+`target.startswith(file + sub)`. Observed shapes are `sub` letters-only (`AR`), letters+digits
+(`C01`), digits+letter (`9A`), digits, or empty. Tails are digits, digits+letters+digits, or
+letters+digits. Examples: `file=23350&sub=AR&target=23350AR201`,
+`file=27351&sub=C01&target=27351C01R101`, `file=22352&sub=12&target=2235212A1`,
+`file=13200&sub=202&target=13200202a01`. More than half of the Old Aramaic hits use a
+letter-bearing target. JBA (`texts=71`) also failed on non-decimal targets but was not captured.
+
+Two bounded full-context GETs confirmed that CAL serves these selectors exactly as linked
+(`23350/AR/23350AR201` and `22352/12/2235212A1`). Rows carry letter-bearing `getlex.php` and
+`comment.php` coordinates, display labels such as `A.R2:01` and `12A1`, and the bare-file
+info link (as in R-047). Rows around the target can belong to other line groups of the same
+file (`2235201A1` beside target `2235212A1`), so they share only the file-id prefix with it.
+Evidence came from the 2026-10-10 E2E smoke plus those two requests (project User-Agent).
+
+**Implication:** see D-023. Reduced fixtures: `kwic_dialect_mlk_2_alphanumeric_current.html`,
+`kwic_full_context_22352_12_alphanumeric_current.html`, `kwic_full_context_23350_ar_letter_subtext_current.html`.
+
 ## R-073 — CAL uses charset `T` (Unicode transliteration) on KWIC and text-search links
 
 **Rechecked:** 2026-10-10; issue #254.
