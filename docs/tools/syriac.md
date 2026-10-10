@@ -116,6 +116,8 @@ cal_syriac_missing_words(category: string)
 
 This exposes CAL's own curated lists headed as words “not found in *A Syriac Lexicon*” that nevertheless have citations in CAL. The comparison target is therefore **CAL's published *A Syriac Lexicon* surface**. CAL-MCP does not reinterpret the lists as SEDRA coverage, a universal Syriac-dictionary comparison, or an automatically inferred lexical equivalence.
 
+The MCP input schema exposes `category` as an enum containing exactly the supported values, so clients can enumerate valid choices before calling the tool. Invalid choices return a structured `invalid_input` error listing those choices without contacting CAL. Categories are exact slugs, not Syriac text-category selectors.
+
 Supported categories are:
 
 ```text
