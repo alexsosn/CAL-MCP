@@ -360,6 +360,22 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-082 — Catalogue pages render a script toggle that names the same node
+
+**Rechecked:** 2026-10-10; issue #264.
+
+`showsubtexts.php?subtext=62043` (P Jn) and `…?subtext=55400122` (a CPA node returned by
+text search) open with `div.script-toggle`, whose links are `showsubtexts.php?subtext=<same
+node>&script=<S|R|U|C>`, labelled `Syriac`/`Roman` and `Serto`/`CPA`. `cal_text_catalogue`
+returned them as self-referential `categories`, which invited a wasted, looping follow-up.
+Evidence: 2 GETs (2026-10-10, project User-Agent) plus the earlier P Mt catalogue in the E2E
+smoke.
+
+**Implication:** a catalogue link to the page's own node with exactly `subtext` and a
+single-capital `script` selector is navigation and is not returned. Other `showsubtexts.php`
+links keep their existing handling. Reduced fixtures: `text_catalogue_62043_script_toggle_current.html`,
+`text_catalogue_cpa_55400122_script_toggle_current.html`.
+
 ## R-079 — Numeral pronunciations carry gender labels inside the parentheses
 
 **Rechecked:** 2026-10-10; issue #267.

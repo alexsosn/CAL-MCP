@@ -42,6 +42,7 @@ _NO_LINES_ANYWHERE_RE = re.compile(
     re.IGNORECASE,
 )
 _TEXT_SEARCH_MARKER = "cal search for texts like:"
+_SCRIPT_TOGGLE_RE = re.compile(r"[A-Z]")
 _FOLLOW_UP_TEXT_PAGE = "cal_text_page"
 _FOLLOW_UP_CATALOGUE = "cal_text_catalogue"
 # Script selectors on catalogue-node search links: H (Neofiti) and U (Peshitta) are observed;
@@ -660,9 +661,12 @@ def parse_text_catalogue_page(response: CalResponse) -> TextCataloguePage:
     specialized_collections: list[TextSpecializedCollectionRef] = []
     seen_specialized_keys: set[str] = set()
     is_root_catalogue = _is_root_catalogue_response(response.url)
+    requested_node = _requested_catalogue_node(response.url)
 
     for line in _parse_lines(response):
         for link in line.links:
+            if requested_node is not None and _is_own_script_toggle(link, requested_node):
+                continue
             if is_root_catalogue:
                 specialized = _specialized_collection_from_link(link)
                 if specialized is not None:
@@ -1395,6 +1399,32 @@ def _specialized_collection_from_link(
     if label == _SYRIAC_ROOT_LABEL:
         raise TextParseError("CAL Syriac root route changed unexpectedly")
     return None
+
+
+def _requested_catalogue_node(url: str) -> str | None:
+    parsed = urlsplit(url)
+    if parsed.path != "/showsubtexts.php":
+        return None
+    values = parse_qs(parsed.query, keep_blank_values=True).get("subtext")
+    return values[0] if values is not None and len(values) == 1 else None
+
+
+def _is_own_script_toggle(link: _Link, requested_node: str) -> bool:
+    """CAL's "View in" control re-renders the same node in another script (R-082).
+
+    It is navigation, not a sub-category, so only an exact ``subtext=<this node>&script=<X>``
+    link is skipped; a script link to any other node is still parsed as before.
+    """
+
+    if not _is_path(link.href, "showsubtexts.php"):
+        return False
+    query = parse_qs(urlsplit(link.href).query, keep_blank_values=True)
+    return (
+        set(query) == {"subtext", "script"}
+        and query["subtext"] == [requested_node]
+        and len(query["script"]) == 1
+        and _SCRIPT_TOGGLE_RE.fullmatch(query["script"][0]) is not None
+    )
 
 
 def _category_from_link(link: _Link) -> TextCategoryRef | None:
