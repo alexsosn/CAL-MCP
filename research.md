@@ -383,6 +383,23 @@ The proposed D-022 decision must be reviewed before this policy is implemented.
 Detailed offline research: `docs/research/issue-157-installed-stdio-live-smoke.md`.
 No CAL requests were made during this repository audit.
 
+## R-068 — Current verb entries mark stem headings in `div.stem-header` and stem summaries in `span.stem-tag`
+
+**Rechecked:** 2026-10-09; issue #237. One bounded GET (`ktb V`), plus the #224 `)mr V` and #228
+`(hr V` captures.
+
+Each stem begins with a `div.stem-header` made of `span.stem-label`, `span.stem-name`,
+`span.stem-gloss` (which may contain `<small>`/`<i>`), `span.stem-count` (`N sense(s)`, the number
+of top-level senses) and `span.stem-chevron`, with no whitespace between them. The entry's stem
+summary is a `div.summary-meta` of adjacent `span.stem-tag`s. Flattened, these read
+`Gtˀeṯpəˁelto be said2 senses▶` and `GDCGt`. The older-layout pattern missed both, so every current
+verb entry gained fabricated senses and lost its stem headings, and multi-stem entries (`)mr V`,
+`ktb V`) failed on a citation count.
+
+**Implication:** read stem headers from their spans. Every sense of a stem carries the heading
+`label name gloss` (the older layout's form), and the declared count must match. Stem tags are
+separated so the summary stays `grammar`. Detailed evidence: `docs/research/issue-237-stem-headings.md`.
+
 ## R-067 — Current exact entries mark every header field in `div.lemma-header`
 
 **Rechecked:** 2026-10-09; issue #224. Six bounded GETs of `cal_entry_web.php` (`mlk N`, `)mr V`,
@@ -400,23 +417,6 @@ absent, and fail closed on any other shape. Pages without the block must start w
 line (after the document title). Detailed evidence: `docs/research/issue-224-entry-header-structure.md`.
 The same research found that multi-stem entries such as `)mr V` fail on unspaced stem headings
 (#237), separately from the header.
-
-## R-066 — Current token-analysis pages render one `<hr>`-separated segment per lexeme
-
-**Rechecked:** 2026-10-09; issue #232. Three bounded GETs (`getlex.php`, Samaritan `56000112010`,
-words 0–2).
-
-After the H2 result marker, CAL renders one segment per lexeme, separated by `<hr>`. A linked
-segment is a label followed by a one-cell `a.lexlink` table (with a sense outline after it for
-verbs); an unlinked segment is text only. `w)mr` gives `w_ c` (conj.) and `)mr V`
-(`<pos>vb. a/a</pos>`, "to say"); `l)brM` gives `l_ p` (prep.) and `)brM PN Personal name`. The
-earlier parser read only the first table, silently dropping the verb and the summary.
-
-**Implication:** return every segment in order: tables become candidates under the existing
-one-table contract, text-only segments become `unlinked_summaries`. Candidate POS is CAL's
-`<pos>`, with the gloss after it. Detailed evidence:
-`docs/research/issue-232-token-analysis-segments.md`.
-
 
 ## R-065 — Targum/Peshitta MT spans repeat the requested verse coordinate per display line
 
