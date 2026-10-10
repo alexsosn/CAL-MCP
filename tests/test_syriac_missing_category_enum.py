@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
 
 import pytest
 from jsonschema import Draft202012Validator, ValidationError
@@ -66,11 +65,13 @@ async def test_invalid_mcp_category_reports_all_valid_slugs_without_cal_request(
 ) -> None:
     requests: list[CalRequest] = []
 
+    async def rejecting_transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        raise AssertionError("invalid category must not contact CAL")
+
     def make_client() -> CalHttpClient:
-        client, captured = _rejecting_client()
-        # Keep the owned list accessible when the fake app context starts.
-        requests.extend(captured)
-        return client
+        return CalHttpClient(transport=rejecting_transport)
 
     monkeypatch.setattr(server_module, "CalHttpClient", make_client)
     async with Client(server_module.mcp, raise_exceptions=True) as client:
