@@ -139,9 +139,7 @@ def parse_targum_concordance_examples_page(
         )
 
     positioned = _parse_kwic_hit_lines(lines, response.url)
-    checked = _apply_kwic_target_structure(
-        response, positioned, scope_kind=KwicScopeKind.DIALECT
-    )
+    checked = _apply_kwic_target_structure(response, positioned, scope_kind=KwicScopeKind.DIALECT)
     hits = tuple(hit for _, hit in checked)
     if len(hits) != total:
         raise TargumConcordanceExamplesParseError(
