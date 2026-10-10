@@ -224,7 +224,7 @@ def parse_targum_reflex_examples_page(
         raise TargumReflexExamplesParseError("CAL reflex example page lacks two source headings")
     prefix = f"{source} verses where MT "
     first, second = parser.headings
-    if not first.startswith(prefix) or not first[len(prefix):].strip():
+    if not first.startswith(prefix) or not first[len(prefix) :].strip():
         raise TargumReflexExamplesParseError("CAL reflex example MT heading contradicts source")
     if second != f"is rendered by Aramaic {selected_lemma}":
         raise TargumReflexExamplesParseError("CAL reflex example heading names another CAL lemma")
@@ -252,7 +252,7 @@ def parse_targum_reflex_examples_page(
         examples.append(TargumReflexExample(mt_text=mt_text, targum_text=targum_text))
     return TargumReflexExamplesPage(
         source_label=source,
-        mt_hebrew_lemma=first[len(prefix):],
+        mt_hebrew_lemma=first[len(prefix) :],
         lemma_key=selected_lemma,
         examples=tuple(examples),
     )
