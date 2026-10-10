@@ -175,3 +175,28 @@ async def test_invalid_selector_is_rejected_before_cal_transport(
     with pytest.raises(ValueError):
         await service.examples(targum, mt_lemma_id, lemma_key)
     assert requests == []
+
+
+def test_visible_unrecognized_cal_content_is_not_silently_dropped() -> None:
+    """A result with valid pairs plus an additional warning is still drift."""
+
+    module = import_module("cal_mcp.targum_examples")
+    unexpected = ONQELOS_BODY.replace(
+        "Click the Aramaic lemma to see the full entry",
+        "Click the Aramaic lemma to see the full entry"
+        "<div>Notice: some examples are unavailable</div>",
+    )
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        _parse(unexpected)
+
+
+def test_source_query_must_match_all_three_caller_selectors() -> None:
+    module = import_module("cal_mcp.targum_examples")
+    invalid = _response(url=ONQELOS_URL.replace("MT=1751", "MT=1752"))
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        module.parse_targum_reflex_examples_page(
+            invalid,
+            targum="onqelos",
+            mt_lemma_id="1751",
+            lemma_key="tyq#2 N",
+        )
