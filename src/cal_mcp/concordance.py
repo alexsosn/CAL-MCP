@@ -20,8 +20,8 @@ _ID_RE = re.compile(r"^[0-9]+$")
 _SUFFIX_RE = re.compile(r"^[A-Za-z][A-Za-z0-9.]{0,7}$")
 _NO_DATA_GLOSS_PREFIX = "no data found for "
 _UNDOCUMENTED_KEY_CAPITALS = frozenset(string.ascii_uppercase) - _CAL_CODE_LETTERS
-# Only the capitals observed in CAL's own concordance keys (R-045).
-_OBSERVED_CAL_KEY_CAPITALS = frozenset("KM")
+# Only the capitals observed in CAL's own concordance keys (R-045, R-072).
+_OBSERVED_CAL_KEY_CAPITALS = frozenset("CKM")
 _FREQUENCY_MARKER_RE = re.compile(r"^Frequencies of lemmas in text ([0-9]+)$", re.IGNORECASE)
 _FREQUENCY_RE = re.compile(r"^([0-9]+)\s*:")
 _INLINE_FREQUENCY_PREFIX_RE = re.compile(r"^([0-9]+)\s*:\s*\.*$")
@@ -1626,8 +1626,8 @@ def _validate_lemma_key(value: str, *, allow_cal_capitals: bool = False) -> tupl
         )
     if allow_cal_capitals:
         # Returned concordance rows only: CAL links some keys with capitals outside the
-        # documented cal_code letters ("bwlbrK PN"). Only the observed K and M are exempt;
-        # the rest of the key is still validated (R-045).
+        # documented cal_code letters ("bwlbrK PN"). Only the observed C, K and M are exempt;
+        # the rest of the key is still validated (R-045, R-072).
         base_lemma = "".join(char for char in base_lemma if char not in _OBSERVED_CAL_KEY_CAPITALS)
         if not base_lemma:
             raise CalInputError("lemma_key has no documented CAL letters")

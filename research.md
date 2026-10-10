@@ -360,6 +360,22 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-072 — Peshitta Matthew's concordance links a key with capital `C`
+
+**Rechecked:** 2026-10-10; issue #255.
+
+`newconcord.php?text=62040&cset=S` (P Mt) has 1375 lemma rows. Exactly one key fails CAL-MCP's
+returned-key check: the proper noun `prC PN` (Perez), which carries an undocumented capital `C`.
+Because of that one row, `cal_text_concordance("62040")` failed as `parser_drift`. The earlier
+report in #255 named keys with a trailing `_` (`b_ p`, `dyl_ P`, `l_ p`). Those were a regex
+artefact of the E2E smoke: such keys already validate. One concordance GET (2026-10-10, project
+User-Agent), made during the E2E smoke, is the evidence.
+
+**Implication:** extend R-045's observed returned-key capitals from `K`/`M` to `C`/`K`/`M`.
+The key is kept verbatim. As with `bwlbrK PN`, the KWIC tools still reject it as input and point
+to the row's `kwic_url`, and any other undocumented capital still fails closed. Reduced fixture:
+`text_concordance_62040_capital_c_current.html`.
+
 ## R-071 — Current lexicon browse reports an empty prefix as "There are no headwords beginning with"
 
 **Rechecked:** 2026-10-10; issue #252.

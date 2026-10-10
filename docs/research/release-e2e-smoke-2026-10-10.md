@@ -66,13 +66,15 @@ release, **m** = minor/UX.
 - `_KWIC_CHARSETS` and `_SCRIPT_CSETS` allow only `R/H/S/U`. `T` is new upstream evidence:
   record it in `research.md` and confirm what it renders before adding it.
 
-### B4 — `cal_text_concordance` rejects CAL keys containing `_`
+### B4 — `cal_text_concordance` rejects CAL's returned key `prC PN`
 
 - `cal_text_concordance("62040")` (Peshitta Matthew) → `parser_drift: CAL concordance row
-  contains an invalid lemma key`. The offending keys are `b_ p`, `dyl_ P`, `l_ p` (3 of 1375 rows).
-  One rare key shape fails a whole core Syriac text.
-- Decide whether `_` is a CAL key character to preserve (as `#2` and `@` already are), then
-  update `_validate_lemma_key`/the CAL-code alphabet with a fixture.
+  contains an invalid lemma key`. Exactly one of 1375 rows fails: the proper noun `prC PN`
+  (Perez), whose key has the capital `C`. Returned keys only allow the observed capitals
+  `K`/`M` (R-045). One proper noun fails a whole core Syriac text.
+- *Correction:* the first version of this report blamed the trailing-underscore keys `b_ p`,
+  `dyl_ P` and `l_ p`. That came from a faulty ad-hoc regex. Those keys already validate (R-072).
+- Fix: add `C` to the observed returned-key capitals, with a fixture.
 
 ### M1 — Mandaic Ginza catalogue: subtext info links name the parent text
 
