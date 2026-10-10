@@ -1,12 +1,19 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+import argparse
+import asyncio
+import json
+import os
+import shutil
+import sys
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Literal
 from urllib.parse import urlsplit
 
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError, ValidationError
+from mcp import Client, StdioServerParameters
 from mcp.types import CallToolResult, Tool
 
 SmokeCategory = Literal["ok", "drift", "unavailable", "harness", "skipped_dependency"]
@@ -90,3 +97,97 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
     if case.needs_provenance and not _valid_provenance(payload):
         return SmokeOutcome(case.name, "drift", "missing or untrusted CAL provenance")
     return SmokeOutcome(case.name, "ok", "success")
+
+
+# All cases are fixed and sequential; one server subprocess enforces 25 actual
+# upstream attempts across the *entire* matrix. Never enumerate returned pages.
+DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
+    SmokeCase(
+        "conversion", "cal_convert_to_code", {"value": "ܫܠ"}, needs_provenance=False
+    ),
+    SmokeCase("lexicon_noun", "cal_lexicon_lookup", {"query": "br", "lemma_key": "br N"}, ("found",)),
+    SmokeCase(
+        "lexicon_verb", "cal_lexicon_lookup", {"query": "ktb", "lemma_key": "ktb V"}, ("found",)
+    ),
+    SmokeCase("gloss", "cal_gloss_search", {"query": "king"}),
+    SmokeCase("text_search", "cal_text_search", {"query": "Tel Dan"}),
+    SmokeCase("text_concordance", "cal_text_concordance", {"text_id": "13250"}),
+    SmokeCase("bibliography", "cal_bibliography_lemma", {"lemma_key": "cly V"}),
+    SmokeCase(
+        "dictionary", "cal_dictionary_collation", {"source": "jastrow", "page": "705"}
+    ),
+    SmokeCase("external_citations", "cal_external_citation_dialects", {}),
+    SmokeCase(
+        "targum", "cal_targum_parallel", {"book": "Gen", "chapter": 1, "verse": 1}, ("found",)
+    ),
+    SmokeCase(
+        "peshitta",
+        "cal_syriac_peshitta_parallel",
+        {"book": "Gen", "chapter": 1, "verse": 1},
+        ("found",),
+    ),
+)
+
+
+async def evaluate_smoke_cases(
+    client: Client,
+    cases: tuple[SmokeCase, ...] = DEFAULT_SMOKE_CASES,
+) -> tuple[SmokeOutcome, ...]:
+    """Run known operations in order, collecting sanitized failures without unbounded follow-up."""
+
+    listed = {tool.name: tool for tool in (await client.list_tools()).tools}
+    outcomes: list[SmokeOutcome] = []
+    for case in cases:
+        tool = listed.get(case.tool)
+        if tool is None:
+            outcomes.append(SmokeOutcome(case.name, "harness", "required public MCP tool missing"))
+            continue
+        try:
+            result = await client.call_tool(case.tool, arguments=case.arguments)
+        except Exception:
+            outcomes.append(SmokeOutcome(case.name, "harness", "MCP transport or schema error"))
+            continue
+        outcome = evaluate_tool_result(case, tool, result)
+        outcomes.append(outcome)
+        if outcome.category == "harness" and outcome.message == "unclassified MCP tool failure":
+            # This can include a smoke-only server-budget exhaustion; do not continue unknown
+            # calls if the bounded process has begun refusing them.
+            break
+    return tuple(outcomes)
+
+
+async def _run_live(executable: str) -> tuple[SmokeOutcome, ...]:
+    env = dict(os.environ)
+    env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = "25"
+    async with Client(StdioServerParameters(command=executable, env=env)) as client:
+        return await evaluate_smoke_cases(client)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Bounded installed CAL-MCP stdio live smoke")
+    parser.add_argument("--executable", help="exact installed cal-mcp executable on PATH")
+    arguments = parser.parse_args()
+    executable = arguments.executable or shutil.which("cal-mcp")
+    if not executable:
+        print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
+        raise SystemExit(1)
+
+    try:
+        outcomes = asyncio.run(_run_live(executable))
+    except Exception:
+        print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
+        raise SystemExit(1) from None
+
+    successful = all(item.category == "ok" for item in outcomes)
+    report = {
+        "status": "passed" if successful else "failed",
+        "max_cal_transport_attempts": 25,
+        "cases": [asdict(item) for item in outcomes],
+    }
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    if not successful:
+        raise SystemExit(1)
+
+
+if __name__ == "__main__":
+    main()
