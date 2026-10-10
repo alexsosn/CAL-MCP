@@ -240,3 +240,22 @@ async def test_public_mcp_reflex_followup_preserves_source_shape_without_recursi
             params=(("MT", "1751"), ("cal", "tyq#2 N")),
         )
     ]
+
+
+def test_boolean_style_html_attribute_does_not_escape_as_python_exception() -> None:
+    module = import_module("cal_mcp.targum_examples")
+    malformed = ONQELOS_BODY.replace('class="heb"', "class")
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        _parse(malformed)
+
+
+def test_malformed_source_port_is_reported_as_parser_drift() -> None:
+    module = import_module("cal_mcp.targum_examples")
+    unsafe = ONQELOS_URL.replace("cal.huc.edu", "cal.huc.edu:bad")
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        module.parse_targum_reflex_examples_page(
+            _response(url=unsafe),
+            targum="onqelos",
+            mt_lemma_id="1751",
+            lemma_key="tyq#2 N",
+        )
