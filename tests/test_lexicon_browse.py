@@ -83,11 +83,11 @@ def test_public_browse_parser_preserves_cal_order_and_next_continuation() -> Non
     assert _next(page) == "br"
 
 
-def test_existing_lookup_browse_parser_stays_navigation_agnostic() -> None:
+def test_lookup_browse_parser_now_exposes_validated_navigation_without_following() -> None:
     page = parse_browse_page(_response(_fixture("browse_br_unclosed_jump_2026_09_06.html")))
 
     assert [item.lemma_key for item in page.entries] == ["br N", "br#2 N"]
-    assert getattr(page, "next_continuation", None) is None
+    assert page.next_continuation == "br"
 
 
 @pytest.mark.parametrize(
