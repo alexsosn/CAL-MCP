@@ -113,7 +113,9 @@ class _ReflexExamplesParser(HTMLParser):
             if len(self.headings) == 2:
                 self._div_depth += 1
                 if self._div_depth != 1:
-                    raise TargumReflexExamplesParseError("nested CAL example wrapper is not supported")
+                    raise TargumReflexExamplesParseError(
+                        "nested CAL example wrapper is not supported"
+                    )
                 self._spans_in_div = 0
         elif tag == "span" and len(self.headings) == 2:
             if self._span_parts is not None:
