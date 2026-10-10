@@ -1,0 +1,97 @@
+# Strictly one 2-GET research probe of two exact, pre-validated CAL example links.
+name: One-time bounded Targum example-shape research (#109)
+on:
+  push:
+    branches: [research/issue-109-targum-example-pages]
+    paths: [.github/workflows/issue-109-targum-research-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: cal-mcp-targum-example-shape-once
+  cancel-in-progress: false
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Inspect just two exact example page formats (no retries or navigation)
+        shell: bash
+        run: |
+          python - <<'PY'
+          import html
+          import json
+          from collections import Counter
+          from html.parser import HTMLParser
+          from urllib.parse import urlsplit
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+          class RefuseRedirect(HTTPRedirectHandler):
+              def redirect_request(self, req, fp, code, msg, headers, newurl):
+                  return None
+
+          class Shape(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.counts = Counter()
+                  self.tags = []
+                  self.links = []
+                  self.text = []
+                  self.in_h = 0
+                  self.heading_buf = []
+                  self.headings = []
+              def handle_starttag(self, tag, attrs):
+                  self.counts[tag] += 1
+                  self.tags.append(tag)
+                  if tag in ("h1", "h2", "h3", "h4"):
+                      self.in_h += 1
+                      self.heading_buf = []
+                  if tag == "a" and len(self.links) < 8:
+                      url = dict(attrs).get("href", "")
+                      parsed = urlsplit(html.unescape(url))
+                      self.links.append({"path": parsed.path, "query_keys": sorted(
+                          part.partition("=")[0] for part in parsed.query.split("&") if part
+                      )})
+              def handle_endtag(self, tag):
+                  if tag in ("h1", "h2", "h3", "h4") and self.in_h:
+                      self.headings.append(" ".join(" ".join(self.heading_buf).split())[:160])
+                      self.in_h -= 1
+              def handle_data(self, data):
+                  if self.in_h:
+                      self.heading_buf.append(data)
+                  if len(self.text) < 35:
+                      normalized = " ".join(data.split())
+                      if normalized:
+                          self.text.append(normalized[:100])
+
+          cases = (
+              ("concordance", "https://cal.huc.edu/show1dialectKWIC.php?lemma=klb&pos=N&texts=51001%2051002%2051003%2051004%2051005&charset=H"),
+              ("reflex-onqelos", "https://cal.huc.edu/getOMT.php?MT=1751&cal=tyq%232+N"),
+          )
+          opener = build_opener(RefuseRedirect)
+          for case, url in cases:
+              req = Request(url, headers={"User-Agent": "CAL-MCP/0.1.0 (bounded issue-109 shape research)"})
+              try:
+                  with opener.open(req, timeout=12) as resp:
+                      status = resp.status
+                      final = resp.url
+                      media = resp.headers.get("content-type", "")
+                      raw = resp.read(262145)
+                  if len(raw) > 262144:
+                      print(json.dumps({"case": case, "status": status, "too_large": True}))
+                      continue
+                  parser = Shape()
+                  parser.feed(raw.decode("utf-8", errors="replace"))
+                  parser.close()
+                  print(json.dumps({
+                      "case": case, "status": status, "url": final, "media": media,
+                      "bytes": len(raw), "tag_counts": dict(parser.counts),
+                      "headings": parser.headings[:8], "links": parser.links[:8],
+                      "first_text_fragments": parser.text[:18]
+                  }, ensure_ascii=False))
+              except Exception as exc:
+                  print(json.dumps({"case": case, "error_class": type(exc).__name__}))
+                  raise SystemExit(1) from None
+          PY
