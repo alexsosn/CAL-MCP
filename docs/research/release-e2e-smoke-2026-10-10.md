@@ -161,3 +161,32 @@ fixes. B2–B4, M1 and M2 are upstream-shape changes. Under `AGENTS.md`, each ne
 with a reduced fixture, a `research.md` entry, and (for B2) a selector-contract decision. Consider
 adding one ש-initial Hebrew lookup and one Imperial-Aramaic KWIC case to the D-022 smoke matrix,
 within the 25-attempt budget, so these regressions show up in the weekly drift run.
+
+## Follow-up status (2026-10-10)
+
+Issues filed: #252 (B1), #253 (B2), #254 (B3), #255 (B4), #256 (M1), #257 (M2), #258 (M3),
+#259 (M4), #260 (m1), #266 (new, see below).
+
+The four blockers are fixed on branch `claude/gifted-albattani-xjhma3`: #252 (R-071), #255 (R-072),
+#254 (R-073), and #253 (R-074, D-023). A rebuilt wheel was re-run live over stdio against the
+previously failing calls (11 calls, sequential):
+
+| Call | Before | After |
+| --- | --- | --- |
+| `cal_lexicon_lookup("qqqqzz")` | `parser_drift` | `not_found` |
+| `cal_lexicon_lookup("שלמא")` | `parser_drift` | `found` (`$lm N`) |
+| `cal_lexicon_lookup("קקקא")` | — | `not_found` |
+| `cal_lexicon_browse("qqq")` | `parser_drift` | empty page |
+| `cal_text_concordance("62040")` | `parser_drift` | 1375 rows |
+| `cal_kwic_dialect("mlk N", "1")` | `parser_drift` | 92 hits |
+| `cal_text_search("Palmyr")` | `parser_drift` | OK |
+| `cal_kwic_full_context(11200, 11200206, "T", sub 2)` | n/a | `found` |
+| `cal_kwic_dialect("mlk N", "2")` | `parser_drift` | 357 hits |
+| `cal_kwic_full_context(23350, 23350AR201, "H", sub AR)` | n/a | `found` |
+| `cal_kwic_dialect("mlk N", "71")` | `parser_drift` (coordinates) | still `parser_drift`, now a different cause: #266 |
+
+The built-in bounded smoke still passes (13/25 attempts). The JBA failure is a different upstream
+shape: CAL prints an inline `error: line not found for 71600222x004133` notice for one hit it
+cannot render. Tracked as #266, because handling it needs an explicit, non-silent result field.
+Letter-bearing KWIC selectors are not yet accepted by `cal_text_page`, `cal_text_information`
+or `cal_token_analysis` (D-023 scope).
