@@ -7,6 +7,7 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | Fixture | CAL source | Purpose |
 | --- | --- | --- |
 | `browse_b.html` | `https://cal.huc.edu/browseSKEYheaders.php?first3=%22b%22` | direct headwords, homographs, alias-arrow resolution |
+| `entry_stem_headers_current.txt` | `GET https://cal.huc.edu/cal_entry_web.php` for `ktb V`, `)mr V` (2026-10-09) and `(hr V` (2026-10-08) (#237) | one verbatim `div.stem-header` element per line: unspaced stem label, name, gloss (including nested markup) and sense count |
 | `entry_lemma_headers_current.txt` | `GET https://cal.huc.edu/cal_entry_web.php` for `mlk N`, `)mr V`, `(hr A`, `tly N`, `$lh N`, `$yp#2 N` (2026-10-09; #224) | one verbatim `div.lemma-header` line per page: noun, verb, adjective, verbal noun, uncertain POS, and a header with no POS span |
 | `entry_br_n.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | numbered/nested senses, dialects, Unicode citation text, form/usage, derivative depth, notes |
 | `entry_br_nested.html` | `https://cal.huc.edu/cal_entry_web.php?lemma=br+N` | repeated parenthetical sense levels plus mixed linked/plain citations sharing rendered rows |
@@ -62,8 +63,6 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | `text_page_plain_cpa_55430_structural.html` | structural fixture from current `get_a_chapter.php?file=55430&cset=C&page=0` (rechecked 2026-09-28) | observed two-cell direct-CPA plain-row shape and current nested span styling; scholarly text is explicitly synthetic |
 | `text_page_cpa_55002_no_lines_current.html` | reduced current `get_a_chapter.php?file=55002&cset=C&page=0` (rechecked 2026-09-29) | exact current direct-CPA file identity, manuscript-variant toggle selectors/label, explicit `NO LINES FOR 55002 ARE CURRENTLY STORED` marker, and empty text-display shell |
 | `text_page_samaritan_raw_lt_current.html` | `https://cal.huc.edu/get_a_chapter.php?file=56000&sub=112&page=0` (2026-09-25) | rows Gen12:04–05; CAL renders the first token `<w)th` with a raw, unescaped `<` |
-| `token_analysis_multi_lexeme_verb_current.html` | `GET https://cal.huc.edu/getlex.php?coord=56000112010&word=0` (2026-10-09; #232) | two `<hr>`-separated lexemes of `w)mr`: `w_ c` conj. and verb `)mr V` with `<pos>vb. a/a</pos>`; outline cut after its first stem marker |
-| `token_analysis_linked_then_unlinked_current.html` | `GET https://cal.huc.edu/getlex.php?coord=56000112010&word=2` (2026-10-09; #232) | linked `l_ p` then an unlinked `)brM PN Personal name` segment |
 | `token_analysis_single.html` | `https://cal.huc.edu/getlex.php?coord=4400137054005&word=0` | one compact CAL analysis label paired with one linked lemma header |
 | `token_analysis_syriac_redirect_current.html` | reduced current `https://cal.huc.edu/getlex.php?coord=620570101&word=1` (rechecked 2026-09-27) | linked Syriac redirect `)syr N → )syr A`, current mis-nested `lexlink` header, and minimal post-table sense-outline boundary |
 | `token_analysis_targum_lexlink_current.html` | reduced current `https://cal.huc.edu/getlex.php?coord=5101801011&word=0` (rechecked 2026-09-27) | current non-redirect `lexlink` result table and minimal post-table sense-outline boundary |

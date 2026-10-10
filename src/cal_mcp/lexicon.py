@@ -139,6 +139,8 @@ class _Line:
     list_depth: int
     # True for the line rendered from CAL's current ``div.lemma-header`` block (R-064).
     lemma_header: bool = False
+    # The ordered (class, text) field spans of a current ``div.stem-header`` line (R-068).
+    stem_fields: tuple[tuple[str, str], ...] | None = None
 
 
 @dataclass(slots=True)
@@ -215,6 +217,13 @@ class _SemanticHTMLParser(HTMLParser):
         self._semantic_skip_tags: list[str] = []
         # Depth of nested <div>s inside CAL's current div.lemma-header block (0 = outside).
         self._lemma_header_depth = 0
+        # A current div.stem-header: its depth, collected field spans, and the open field.
+        self._stem_header_depth = 0
+        self._stem_fields: list[tuple[str, str]] = []
+        self._stem_field: str | None = None
+        self._stem_field_depth = 0
+        self._stem_field_tags: list[str] = []
+        self._stem_field_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag in _IGNORED_CONTENT_TAGS:
@@ -253,11 +262,31 @@ class _SemanticHTMLParser(HTMLParser):
         if tag in _BLOCK_TAGS:
             self._flush()
             self._line_depth = max(self._list_depth, 0)
+        if tag == "span" and "stem-tag" in classes:
+            # CAL's stem summary renders its stem tags without separators (R-068).
+            self._parts.append(" ")
         if tag == "div":
             if self._lemma_header_depth:
                 self._lemma_header_depth += 1
             elif "lemma-header" in classes:
                 self._lemma_header_depth = 1
+        if self._stem_header_depth and tag not in _HTML_VOID_TAGS:
+            if self._stem_field is not None:
+                self._stem_field_tags.append(tag)
+                self._stem_field_depth += 1
+            elif tag == "span" and len(classes) == 1:
+                self._stem_field = next(iter(classes))
+                self._stem_field_depth = 1
+                self._stem_field_tags = [tag]
+                self._stem_field_parts = []
+            else:
+                # Anything but a single-class field span directly in the header is unexpected.
+                self._stem_fields.append(("", tag))
+                if tag == "div":
+                    self._stem_header_depth += 1
+        elif tag == "div" and "stem-header" in classes:
+            self._stem_header_depth = 1
+            self._stem_fields = []
         if tag == "br":
             self._flush()
         if tag == "a" and self._open_link is None:
@@ -290,8 +319,20 @@ class _SemanticHTMLParser(HTMLParser):
             self._open_link.depth -= 1
             if self._open_link.depth == 0:
                 self._finish_open_link()
+        if self._stem_header_depth and tag not in _HTML_VOID_TAGS and self._stem_field is not None:
+            if not self._stem_field_tags or self._stem_field_tags[-1] != tag:
+                raise LexiconParseError("CAL lexicon stem header has mismatched nested tags")
+            self._stem_field_tags.pop()
+            self._stem_field_depth -= 1
+            if self._stem_field_depth == 0:
+                text = _clean_text("".join(self._stem_field_parts))
+                self._stem_fields.append((self._stem_field, text))
+                self._stem_field = None
+            return
         if tag in _BLOCK_TAGS or tag == "br":
             self._flush()
+        if tag == "div" and self._stem_header_depth:
+            self._stem_header_depth -= 1
         if tag == "div" and self._lemma_header_depth:
             self._lemma_header_depth -= 1
         if tag in {"ul", "ol"}:
@@ -302,6 +343,11 @@ class _SemanticHTMLParser(HTMLParser):
         if self._ignored_depth or self._semantic_skip_tags:
             return
         self._parts.append(data)
+        if self._stem_header_depth:
+            if self._stem_field is not None:
+                self._stem_field_parts.append(data)
+            elif data.strip():
+                self._stem_fields.append(("", "text"))
         if self._open_link is not None:
             self._open_link.parts.append(data)
             if self._open_link.in_pos:
@@ -317,6 +363,13 @@ class _SemanticHTMLParser(HTMLParser):
             raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")
         if self._semantic_skip_tags:
             raise LexiconParseError("CAL lexicon has an unclosed excluded citation subtree")
+        if (
+            self._stem_header_depth
+            or self._stem_field is not None
+            or self._stem_field_depth
+            or self._stem_field_tags
+        ):
+            raise LexiconParseError("CAL lexicon has an unclosed stem-header subtree")
         self._flush()
 
     def _finish_open_link(self) -> None:
@@ -354,6 +407,7 @@ class _SemanticHTMLParser(HTMLParser):
                     links=tuple(self._links),
                     list_depth=self._line_depth,
                     lemma_header=self._lemma_header_depth > 0,
+                    stem_fields=tuple(self._stem_fields) if self._stem_header_depth else None,
                 )
             )
         self._parts.clear()
@@ -563,14 +617,27 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
     derivatives: list[Derivative] = []
     notes: list[str] = []
     mode = "senses"
+    # The current-layout stem whose senses are being read (R-068): heading, declared and seen
+    # top-level sense counts.
+    stem_heading: str | None = None
+    stem_declared: int | None = None
+    stem_seen = 0
 
     def finish_current() -> None:
-        nonlocal current, previous_path
+        nonlocal current, previous_path, stem_seen
         if current is not None:
             frozen = current.freeze()
             senses.append(frozen)
             previous_path = frozen.label_path
             current = None
+            if stem_declared is not None and len(frozen.label_path) <= 1:
+                stem_seen += 1
+
+    def close_stem() -> None:
+        if stem_declared is not None and stem_seen != stem_declared:
+            raise LexiconParseError(
+                "CAL lexicon stem sense count does not match the rendered stem header"
+            )
 
     for line in lines[header_index + 1 :]:
         text = line.text
@@ -617,6 +684,14 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
             grammar.append(text)
             continue
 
+        if line.stem_fields is not None:
+            finish_current()
+            close_stem()
+            stem_heading, stem_declared = _stem_heading(line.stem_fields)
+            stem_seen = 0
+            previous_path = None
+            continue
+
         stem_match = _STEM_HEADING_RE.match(text)
         if stem_match:
             finish_current()
@@ -630,11 +705,11 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
             finish_current()
             value = int(label_match.group(1))
             path = (value,) if number_match else _subsense_path(previous_path, value)
-            current = _SenseBuilder(label_path=path)
+            current = _SenseBuilder(label_path=path, heading=stem_heading)
             continue
 
         if current is None:
-            current = _SenseBuilder(label_path=())
+            current = _SenseBuilder(label_path=(), heading=stem_heading)
 
         citation_marker = _CITATION_MARKER_RE.match(text)
         if citation_marker is not None:
@@ -653,6 +728,7 @@ def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntr
         current.definition = f"{current.definition} {text}"
 
     finish_current()
+    close_stem()
     if not senses:
         raise LexiconParseError("CAL lexicon entry contains no complete sense definitions")
 
@@ -989,6 +1065,32 @@ class _LemmaHeaderParser(HTMLParser):
             self._parts.append(data)
         elif data.strip():
             self.unexpected = True
+
+
+_STEM_COUNT_RE = re.compile(r"(?P<count>[1-9][0-9]*) senses?")
+_STEM_FIELDS = frozenset({"stem-label", "stem-name", "stem-gloss", "stem-count", "stem-chevron"})
+
+
+def _stem_heading(fields: tuple[tuple[str, str], ...]) -> tuple[str, int]:
+    """Return the heading and declared sense count of a current stem header (R-068)."""
+
+    names = [name for name, _ in fields]
+    values = dict(fields)
+    if (
+        any(name not in _STEM_FIELDS for name in names)
+        or len(names) != len(set(names))
+        or not values.get("stem-label")
+        or "stem-count" not in values
+        or values.get("stem-chevron", "▶") != "▶"
+    ):
+        raise LexiconParseError("CAL lexicon stem header has an unexpected field structure")
+    count = _STEM_COUNT_RE.fullmatch(values["stem-count"])
+    if count is None:
+        raise LexiconParseError("CAL lexicon stem header has an unrecognized sense count")
+    heading = " ".join(
+        values[name] for name in ("stem-label", "stem-name", "stem-gloss") if values.get(name)
+    )
+    return heading, int(count.group("count"))
 
 
 def _structural_lemma_header(response: CalResponse, *, lemma_key: str) -> LemmaRef:
