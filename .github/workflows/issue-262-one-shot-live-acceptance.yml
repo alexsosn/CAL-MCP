@@ -1,0 +1,54 @@
+# Issue 262: ONE live paced stdio acceptance, max 38 actual CAL attempts.
+# Remove this workflow trigger as soon as its run queues. Never rerun on failure.
+name: One-shot 37-token Peshitta CAL pacing acceptance
+on:
+  push:
+    branches: [dev/issue-262-rate-limits]
+    paths: [.github/workflows/issue-262-one-shot-live-acceptance.yml]
+permissions:
+  contents: read
+concurrency:
+  group: cal-mcp-live-smoke
+  cancel-in-progress: false
+jobs:
+  validate-runner:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Offline one-shot runner static validation, no CAL I/O
+        shell: bash
+        run: |
+          python -m pip install "ruff==0.16.6"
+          python -m py_compile scripts/issue262_live_acceptance_once.py
+          ruff check scripts/issue262_live_acceptance_once.py
+          ruff format --check scripts/issue262_live_acceptance_once.py
+  once:
+    needs: validate-runner
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build exactly one wheel
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check build
+          python -m build --wheel --outdir dist
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+      - name: Install wheel into an isolated environment
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/cal262wheel"
+          "$RUNNER_TEMP/cal262wheel/bin/python" -m pip install --disable-pip-version-check --no-cache-dir dist/*.whl
+          "$RUNNER_TEMP/cal262wheel/bin/python" -m pip check
+      - name: Exactly one hard-capped 38-attempt stdio CAL session
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal262wheel/bin/python" "$GITHUB_WORKSPACE/scripts/issue262_live_acceptance_once.py"
