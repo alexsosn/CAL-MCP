@@ -47,7 +47,7 @@ CAL endpoint names, DOM structure, and PHP form parameters are not part of the M
 For deterministic input a lookup uses the minimum bounded CAL flow needed by the current public lexicon interface:
 
 1. one lexicon-browser request using at most the first three normalized browser symbols;
-2. exact matching against CAL headwords and aliases returned by that bounded browser page;
+2. exact matching against CAL headwords and aliases returned by that bounded browser page. CAL shows a verb's root in uppercase on those rows (`KTB`, `ˁHR`), so a verb row (lemma key ending ` V`) whose headword is entirely uppercase also matches its lowercase form, and `ktb` finds both `ktb V` and `ktb N`. Matching is otherwise case-sensitive, and `matches` keep CAL's displayed headwords;
 3. when exactly one candidate is selected, one entry request for that CAL lemma key.
 
 Therefore:
