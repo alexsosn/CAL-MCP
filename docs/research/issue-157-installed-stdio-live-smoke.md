@@ -83,3 +83,20 @@ reviewed and committed **before implementation**. Keep the regular offline CI ne
 
 Other known dependencies: #237/#240 current verb coverage; the PyPI Trusted Publisher and
 immutable tag verification in #15. No tag or PyPI publication is part of #157.
+
+## Follow-up chain chosen from existing typed repository evidence
+
+2026-10-10 repository check, without additional CAL requests:
+`TextSearchResult.to_dict()` returns ordered `matches` with `file_id`,
+`subtext_id`, `category_id` and `follow_up_tool`. A directly readable hit has
+`follow_up_tool="cal_text_page"`; a collection hit instead names
+`cal_text_catalogue`. Existing deterministic tests for the current `Tel Dan`
+search include a direct readable `13250` hit. A smoke follow-up must read the
+**returned** file/subtext identifiers, not submit a guessed or hard-coded ID.
+The parent text-search call never prefetches the page. One chosen direct hit
+yields at most one explicit `cal_text_page` request.
+
+Do not silently choose a catalogue hit and pretend it is a readable text. A
+missing/invalid direct selector is a drift result; if the parent failed, record
+a dependency skip without making a new upstream request. Live acceptance of
+this selected chain has not yet been measured.
