@@ -61,4 +61,3 @@ def test_exact_verb_root_display_is_preserved_without_folding_other_pos() -> Non
     assert _query_matches("ˁhr", _lemma("(hr V", "ˁHR", "ˀHR"))
     assert not _query_matches("ˁhr", _lemma("(hr A", "ˁHR"))
     assert not _query_matches("tm", _lemma("Tm N", "Tm"))
-
