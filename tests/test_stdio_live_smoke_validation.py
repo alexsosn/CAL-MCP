@@ -20,8 +20,12 @@ def _tool() -> Tool:
             "properties": {
                 "status": {"type": "string"},
                 "provenance": {"type": "object"},
+                "error": {"type": "object"},
             },
-            "required": ["status", "provenance"],
+            "anyOf": [
+                {"required": ["status", "provenance"]},
+                {"required": ["error"]},
+            ],
         },
     )
 
