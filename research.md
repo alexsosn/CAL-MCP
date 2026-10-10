@@ -347,6 +347,19 @@ displayed source plus validated target lemma key without fetching or merging the
 `docs/research/issue-175-lexicon-browse-crossrefs.md`.
 
 
+## R-069 — CAL shows verb roots in uppercase on browse and gloss rows
+
+**Rechecked:** 2026-10-09; issue #240. One bounded GET (browse `ktb`), plus 1587 earlier browse and
+gloss rows.
+
+Every verb row (lemma key ending ` V`) has an all-uppercase headword (`KTB`, `ˁHR, ˀHR`, `ḤŠL`);
+no other row does, although some non-verb headwords contain a case-significant uppercase letter
+(`qmPy`). The exact entry shows the verb in lowercase. Lookup's case-sensitive matching therefore
+never offered verbs (`)mr` → nouns only).
+
+**Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
+keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
+
 ## R-067 — Current exact entries mark every header field in `div.lemma-header`
 
 **Rechecked:** 2026-10-09; issue #224. Six bounded GETs of `cal_entry_web.php` (`mlk N`, `)mr V`,
