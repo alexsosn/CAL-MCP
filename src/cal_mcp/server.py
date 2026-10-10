@@ -93,6 +93,7 @@ class CalMCPServer(MCPServer[AppContext]):
 @asynccontextmanager
 async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppContext]:
     smoke_budget = os.environ.get("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS")
+    budget: SmokeAttemptBudget | None = None
     if smoke_budget is None:
         client = CalHttpClient()
     else:
@@ -108,6 +109,11 @@ async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppConte
         yield AppContext(client=client)
     finally:
         await client.aclose()
+        if budget is not None:
+            print(
+                f"CAL-MCP smoke actual transport attempts: {budget.attempts}/25",
+                file=sys.stderr,
+            )
 
 
 mcp = CalMCPServer(
