@@ -124,7 +124,6 @@ async def test_new_tool_schema_is_explicit_and_has_no_arbitrary_url() -> None:
     assert set(schema["required"]) == {"targum", "mt_lemma_id", "lemma_key"}
 
 
-
 def test_neofiti_examples_use_distinct_route_and_same_observed_block_semantics() -> None:
     module = import_module("cal_mcp.targum_examples")
     url = "https://cal.huc.edu/getNMT.php?MT=1751&cal=gypwp+N"
