@@ -29,7 +29,11 @@ from cal_mcp.lexicon_citation_context import LexiconCitationContextService
 from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
 from cal_mcp.search import EnglishSearchService, GlossField
 from cal_mcp.smoke_budget import SmokeAttemptBudget
-from cal_mcp.syriac import SyriacService
+from cal_mcp.syriac import (
+    SyriacMissingWordCategory,
+    SyriacService,
+    syriac_missing_word_category_slugs,
+)
 from cal_mcp.targum import TargumService
 from cal_mcp.texts import TextService
 from cal_mcp.token_analysis import TokenAnalysisService
@@ -53,13 +57,17 @@ def _public_tool_error_result(error: PublicToolError) -> CallToolResult:
     )
 
 
-def _sdk_validation_message(error: ValidationError) -> str:
+def _sdk_validation_message(error: ValidationError, *, operation: str | None = None) -> str:
     fields = sorted(
         {".".join(str(part) for part in item["loc"]) for item in error.errors() if item.get("loc")}
     )
     if not fields:
         return "Invalid tool arguments"
-    return f"Invalid tool arguments: {', '.join(fields)}"
+    message = f"Invalid tool arguments: {', '.join(fields)}"
+    if operation == "cal_syriac_missing_words" and "category" in fields:
+        choices = ", ".join(syriac_missing_word_category_slugs())
+        message = f"{message}; allowed category values: {choices}"
+    return message
 
 
 class CalMCPServer(MCPServer[AppContext]):
@@ -87,7 +95,7 @@ class CalMCPServer(MCPServer[AppContext]):
                     operation=name,
                     upstream_reached=False,
                     retryable=False,
-                    message=_sdk_validation_message(cause),
+                    message=_sdk_validation_message(cause, operation=name),
                 )
             )
 
@@ -884,7 +892,7 @@ async def cal_syriac_group(
     structured_output=True,
 )
 async def cal_syriac_missing_words(
-    category: str,
+    category: SyriacMissingWordCategory,
     ctx: Context[AppContext],
 ) -> dict[str, object]:
     """Return one CAL-curated missing-from-A-Syriac-Lexicon category.
