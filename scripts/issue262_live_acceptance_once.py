@@ -21,7 +21,7 @@ import cal_mcp
 
 VERSES = ("620430101", "620430102", "620430103", "620430104")
 MAX_ATTEMPTS = 38
-WRAPPER = r'''
+WRAPPER = r"""
 import atexit
 import json
 import os
@@ -59,7 +59,7 @@ def metered_client(*, config=None, **kwargs):
 
 server.CalHttpClient = metered_client
 server.main([])
-'''
+"""
 
 
 def _trusted_source(value: object) -> bool:
@@ -166,13 +166,12 @@ def main() -> None:
                 meter = json.loads(report.read_text(encoding="utf-8"))
                 timestamps = meter["attempt_starts_monotonic"]
                 deltas = [b - a for a, b in zip(timestamps, timestamps[1:], strict=False)]
-                print(json.dumps({
-                    "meter": {
-                        "actual_cal_transport_attempts": meter["actual_cal_transport_attempts"],
-                        "max_cal_transport_attempts": meter["max_cal_transport_attempts"],
-                        "min_seconds_between_attempts": min(deltas) if deltas else None,
-                    }
-                }))
+                summary = {
+                    "actual_cal_transport_attempts": meter["actual_cal_transport_attempts"],
+                    "max_cal_transport_attempts": meter["max_cal_transport_attempts"],
+                    "min_seconds_between_attempts": min(deltas) if deltas else None,
+                }
+                print(json.dumps({"meter": summary}))
         assert meter["actual_cal_transport_attempts"] == MAX_ATTEMPTS
         assert meter["max_cal_transport_attempts"] == MAX_ATTEMPTS
         assert len(timestamps) == MAX_ATTEMPTS
