@@ -112,7 +112,8 @@ def parse_targum_concordance_examples_page(
     lines = _parse_lines(response)
     texts = [getattr(line, "text", "") for line in lines]
     expected_header = f"Looking for {canonical} in {' '.join(ids)}"
-    if texts.count(expected_header) != 1:
+    observed_headers = [line for line in texts if line.startswith("Looking for ")]
+    if observed_headers != [expected_header]:
         raise TargumConcordanceExamplesParseError(
             "CAL Targum example group heading contradicts requested selectors"
         )
@@ -123,8 +124,9 @@ def parse_targum_concordance_examples_page(
         + re.escape(" ".join(ids))
         + r"$"
     )
-    totals = [m for text in texts if (m := summary_re.fullmatch(text)) is not None]
-    if len(totals) != 1:
+    summary_lines = [line for line in texts if "examples found for" in line]
+    totals = [m for text in summary_lines if (m := summary_re.fullmatch(text)) is not None]
+    if len(totals) != 1 or len(summary_lines) != 1:
         raise TargumConcordanceExamplesParseError(
             "CAL Targum example page lacks its exact source-specific total"
         )
