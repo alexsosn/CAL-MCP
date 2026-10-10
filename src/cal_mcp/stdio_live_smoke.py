@@ -223,7 +223,8 @@ def _read_actual_attempts(report_path: Path) -> int:
     if (
         not isinstance(contents, dict)
         or set(contents) != {"actual_cal_transport_attempts", "max_cal_transport_attempts"}
-        or contents.get("max_cal_transport_attempts") != 25
+        or type(contents.get("max_cal_transport_attempts")) is not int
+        or contents["max_cal_transport_attempts"] != 25
         or type(contents.get("actual_cal_transport_attempts")) is not int
         or not 0 <= contents["actual_cal_transport_attempts"] <= 25
     ):
