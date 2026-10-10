@@ -360,6 +360,24 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-077 — CAL text search rejects or rewrites some query characters and echoes its real term
+
+**Rechecked:** 2026-10-10; issue #259.
+
+`POST newsearchtxts.php` drops characters it does not search on, then echoes the term it used:
+`Aḥiqar` → `CAL search for texts like: Aiqar.` (no files); `Tel-Dan` → `TelDan` (no files).
+`Tel Dan` echoes unchanged, so the echo preserves case and spaces. When nothing searchable
+remains (`מלכא`, `!!!`), CAL renders only `"" is not a valid search string`. Before this change,
+CAL-MCP reported that rejection as `parser_drift` and returned rewritten terms' (empty) results
+under the caller's original query. Evidence: 3 bounded POSTs (2026-10-10, project User-Agent)
+plus the E2E smoke's Hebrew query.
+
+**Implication:** the text-search parser requires CAL's heading echo (and the no-files echo, when
+present) to equal the submitted query. A differing echo or CAL's explicit rejection is a typed
+`invalid_input` error (`upstream_reached: true`) naming CAL's term. No local character-class rule is invented, because
+CAL's accepted set is undocumented. Reduced fixtures: `text_search_rejected_non_ascii_current.html`,
+`text_search_stripped_echo_current.html`.
+
 ## R-076 — Ginza Rabba subtext rows link the parent file's information
 
 **Rechecked:** 2026-10-10; issue #256.
