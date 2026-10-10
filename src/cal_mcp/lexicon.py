@@ -222,6 +222,7 @@ class _SemanticHTMLParser(HTMLParser):
         self._stem_fields: list[tuple[str, str]] = []
         self._stem_field: str | None = None
         self._stem_field_depth = 0
+        self._stem_field_tags: list[str] = []
         self._stem_field_parts: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
@@ -271,10 +272,12 @@ class _SemanticHTMLParser(HTMLParser):
                 self._lemma_header_depth = 1
         if self._stem_header_depth and tag not in _HTML_VOID_TAGS:
             if self._stem_field is not None:
+                self._stem_field_tags.append(tag)
                 self._stem_field_depth += 1
             elif tag == "span" and len(classes) == 1:
                 self._stem_field = next(iter(classes))
                 self._stem_field_depth = 1
+                self._stem_field_tags = [tag]
                 self._stem_field_parts = []
             else:
                 # Anything but a single-class field span directly in the header is unexpected.
@@ -317,6 +320,9 @@ class _SemanticHTMLParser(HTMLParser):
             if self._open_link.depth == 0:
                 self._finish_open_link()
         if self._stem_header_depth and tag not in _HTML_VOID_TAGS and self._stem_field is not None:
+            if not self._stem_field_tags or self._stem_field_tags[-1] != tag:
+                raise LexiconParseError("CAL lexicon stem header has mismatched nested tags")
+            self._stem_field_tags.pop()
             self._stem_field_depth -= 1
             if self._stem_field_depth == 0:
                 text = _clean_text("".join(self._stem_field_parts))
@@ -357,7 +363,12 @@ class _SemanticHTMLParser(HTMLParser):
             raise LexiconParseError("CAL lexicon has an unclosed ignored content subtree")
         if self._semantic_skip_tags:
             raise LexiconParseError("CAL lexicon has an unclosed excluded citation subtree")
-        if self._stem_header_depth or self._stem_field is not None or self._stem_field_depth:
+        if (
+            self._stem_header_depth
+            or self._stem_field is not None
+            or self._stem_field_depth
+            or self._stem_field_tags
+        ):
             raise LexiconParseError("CAL lexicon has an unclosed stem-header subtree")
         self._flush()
 
