@@ -176,7 +176,7 @@ python -m cal_mcp.stdio_live_smoke --executable /absolute/path/to/venv/bin/cal-m
 
 The `python` used above must belong to that installed-wheel environment.
 Importing the module or listing MCP tools does not make CAL requests; invoking
-the eleven representative cases does.
+the twelve representative cases does.
 
 The total ceiling is **25 actual CAL transport attempts per smoke invocation**,
 enforced inside the server immediately before each transport call. All tools
