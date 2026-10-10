@@ -103,6 +103,11 @@ def test_smoke_budget_rejects_invalid_limits(value: object) -> None:
         SmokeAttemptBudget(max_attempts=value)  # type: ignore[arg-type]
 
 
+def test_smoke_budget_counter_cannot_be_initialized_negative() -> None:
+    with pytest.raises(TypeError):
+        SmokeAttemptBudget(max_attempts=25, attempts=-1)
+
+
 @pytest.mark.anyio
 async def test_smoke_stdio_lifespan_caps_attempts_without_default_retries(
     monkeypatch: pytest.MonkeyPatch,
