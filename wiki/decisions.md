@@ -397,3 +397,35 @@ Consequences:
 - text catalogue/page/information and token-analysis identifiers keep D-016. Following a KWIC
   letter selector into those tools needs its own research and decision.
 
+## D-024 — Per-process CAL request pacing and fail-closed rate-limit handling
+
+**Status:** accepted for implementation — 2026-10-10 (#262).
+
+The installed-wheel Peshitta John 1:1–4 check sent 37 sequential requests at roughly eight
+attempts/second, eliciting six HTTP 429 responses. The old semaphore bounded parallelism but
+did not limit *sequential* request starts. CAL's own rejection is direct empirical evidence that
+this pace is too high.
+
+- The MCP server configures a **1-second minimum interval between actual CAL transport
+  attempt starts**, shared by all CAL-backed tools in that server process. A client-level
+  monotonic scheduler enforces that interval even for concurrent requests and retries. The
+  cached path, already-coalesced in-flight waiters and local input rejection do not wait.
+- `CalClientConfig` permits a finite, bounded nonnegative interval; the **server** selects
+  the conservative 1-second default. Programmatic callers and offline fake transports use the
+  explicit opt-out `0` default to preserve their current direct-client/test semantics; they
+  must select safe pacing when contacting CAL themselves. We do not imply a cross-process rate
+  guarantee.
+- A 429 is a typed `upstream_http` error, `retryable: true` to communicate *safe to retry
+  later*, never permission to hammer the endpoint. Preserve only the `Retry-After` response
+  header, not an arbitrary headers map. If an unambiguous small positive delta-seconds hint is
+  within the capped retry/deadline budget, **at most one** automatic 429 retry is permitted;
+  absent, malformed, too-large or unsafe hints fail with a typed 429 without retry.
+- The existing opt-in `SmokeAttemptBudget.before_attempt` hook continues to count **every
+  real transport** (including retries), immediately before sending, but never cache hits.
+  Scheduling cannot count a slot as an attempted CAL request.
+- Preserve existing 5xx-only bounded retries, redirect refusal, safe URL provenance and
+  parser-drift behavior. No automatic source traversal, batch fetch or corpus indexing.
+
+A 37-token live acceptance requires a separate bounded explicit decision after full offline
+tests and adversarial review: another burst before deploying pacing would itself violate
+the evidence in this decision. A hard server-side request cap still applies to smoke.
