@@ -185,3 +185,15 @@ async def test_new_mcp_tool_has_exact_public_selector_schema() -> None:
     schema = tools["cal_targum_concordance_examples"].input_schema
     assert set(schema["properties"]) == {"lemma_key", "text_ids"}
     assert set(schema["required"]) == {"lemma_key", "text_ids"}
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        "<div>Looking for ktb V in 51001 51002</div>",
+        "<div><b>99</b> examples found for klb N in dialect 51003</div>",
+    ],
+)
+def test_source_rejects_conflicting_extra_heading_or_summary(extra: str) -> None:
+    # A matching identity does not license quietly ignoring a contradictory one.
+    with pytest.raises(CalParseError):
+        parse(BODY.replace("</form>", extra + "</form>"))
