@@ -123,9 +123,7 @@ def test_release_verifier_rejects_non_regular_sdist_member(
 ) -> None:
     module = _load_verifier()
     _write_wheel(tmp_path)
-    _write_sdist(
-        tmp_path, extra_member_type=member_type, extra_member_target=link_target
-    )
+    _write_sdist(tmp_path, extra_member_type=member_type, extra_member_target=link_target)
 
     with pytest.raises(RuntimeError, match="unsupported.*sdist member|sdist member.*unsupported"):
         module._find_distributions(tmp_path)
