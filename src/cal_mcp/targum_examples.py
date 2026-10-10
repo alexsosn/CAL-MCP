@@ -1,7 +1,7 @@
 """Explicit, bounded examples for one selected CAL Targum Hebrew reflex.
 
-The CAL Onqelos and Neofiti pages expose the same MT / Targum paired
-`div > span.heb` and `div > div > span.heb` structure. Do not infer verse
+The observed CAL Onqelos and Neofiti pages pair successive sibling
+`div > span.heb` blocks, separated by horizontal rules. Do not infer verse
 IDs, deduplicate examples, or walk the returned lexical link.
 """
 
