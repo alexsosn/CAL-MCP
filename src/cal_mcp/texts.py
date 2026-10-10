@@ -195,6 +195,8 @@ class TextPage:
     previous_page: int | None
     next_page: int | None
     lines: tuple[TextLine, ...]
+    previous_subtext_id: str | None = None
+    next_subtext_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -968,12 +970,18 @@ def _parse_text_page(
         requested_file_id,
         requested_subtext_id,
     )
-    previous_page, next_page = _page_navigation(
+    previous_page, next_page, previous_subtext, next_subtext = _page_navigation(
         lines,
         requested_file_id=navigation_file_id,
         requested_subtext_id=navigation_subtext_id,
         mandaic_page_route=mandaic_page_route,
     )
+    if (previous_subtext is not None or next_subtext is not None) and (
+        requested_page != 1 or page_count is not None
+    ):
+        raise TextParseError(
+            "CAL Ginza cross-subtext navigation must be on a single unpaginated page"
+        )
     if requested_page is not None and page_number != requested_page:
         # CAL clamps an out-of-range page to its last page: the last "Page N of N" of a
         # paginated text, or the only page (no marker, no navigation) of a short text.
@@ -1060,6 +1068,8 @@ def _parse_text_page(
         previous_page=previous_page,
         next_page=next_page,
         lines=text_lines,
+        previous_subtext_id=previous_subtext,
+        next_subtext_id=next_subtext,
     )
 
 
@@ -1918,9 +1928,11 @@ def _page_navigation(
     requested_file_id: str,
     requested_subtext_id: str | None,
     mandaic_page_route: bool = False,
-) -> tuple[int | None, int | None]:
+) -> tuple[int | None, int | None, str | None, str | None]:
     previous: int | None = None
     next_page: int | None = None
+    previous_subtext: str | None = None
+    next_subtext: str | None = None
     for line in lines:
         for link in line.links:
             if not _is_path(link.href, "get_a_chapter.php"):
@@ -1942,10 +1954,61 @@ def _page_navigation(
                 if query.get("cset") != ["M"]:
                     raise TextParseError("CAL text page navigation cset differs from Mandaic route")
                 expected_sub = requested_subtext_id or ""
-                if query.get("sub") != [expected_sub]:
-                    raise TextParseError(
-                        "CAL text page navigation subtext differs from requested subtext"
-                    )
+                actual_sub = query.get("sub")
+                if actual_sub != [expected_sub]:
+                    # CAL's Ginza 74410 "next page" moves to the next
+                    # Petermann-page *subtext*, not page 2 within subtext 001.
+                    # Only this evidenced file may use that navigation.
+                    if requested_file_id != "74410" or requested_subtext_id is None:
+                        raise TextParseError(
+                            "CAL text page navigation subtext differs from requested subtext"
+                        )
+                    source_link = urlsplit(link.href)
+                    if (
+                        source_link.scheme
+                        or source_link.netloc
+                        or source_link.path != "get_a_chapter.php"
+                    ):
+                        raise TextParseError("CAL Ginza subtext navigation changed origin or path")
+                    if "clen" in query and query.get("clen") != ["5"]:
+                        raise TextParseError(
+                            "CAL Mandaic text navigation has an unexpected clen"
+                        )
+                    upstream_page = _single_query_value(query, "page", "page-navigation")
+                    if upstream_page != "0":
+                        raise TextParseError(
+                            "CAL Ginza cross-subtext navigation must target private page zero"
+                        )
+                    if (
+                        actual_sub is None
+                        or len(actual_sub) != 1
+                        or not actual_sub[0].isascii()
+                        or not actual_sub[0].isdecimal()
+                        or not requested_subtext_id.isascii()
+                        or not requested_subtext_id.isdecimal()
+                        or len(actual_sub[0]) != len(requested_subtext_id)
+                    ):
+                        raise TextParseError("CAL Ginza navigation target subtext is malformed")
+                    label_text = " ".join(link.text.split()).casefold()
+                    if label_text not in {"next page", "previous page"}:
+                        raise TextParseError("CAL Ginza navigation direction changed")
+                    current_number = int(requested_subtext_id)
+                    adjacent = current_number + (1 if label_text == "next page" else -1)
+                    if adjacent < 1 or int(actual_sub[0]) != adjacent:
+                        raise TextParseError("CAL Ginza navigation target subtext is not adjacent")
+                    if previous is not None or next_page is not None:
+                        raise TextParseError("CAL Ginza page mixes pagination and subtext links")
+                    if label_text == "next page":
+                        if next_subtext is not None:
+                            raise TextParseError("CAL Ginza has duplicate next-subtext links")
+                        next_subtext = actual_sub[0]
+                    else:
+                        if previous_subtext is not None:
+                            raise TextParseError("CAL Ginza has duplicate previous-subtext links")
+                        previous_subtext = actual_sub[0]
+                    continue
+                if previous_subtext is not None or next_subtext is not None:
+                    raise TextParseError("CAL Ginza page mixes pagination and subtext links")
                 if "clen" in query and query.get("clen") != ["5"]:
                     raise TextParseError("CAL Mandaic text navigation has an unexpected clen")
                 upstream_page = _single_query_value(query, "page", "page-navigation")
@@ -1992,7 +2055,7 @@ def _page_navigation(
                 previous = _same_or_unset(previous, public_page, "previous")
             if "next page" in label:
                 next_page = _same_or_unset(next_page, public_page, "next")
-    return previous, next_page
+    return previous, next_page, previous_subtext, next_subtext
 
 
 def _validate_page_navigation(
@@ -2588,6 +2651,8 @@ def _text_page_to_dict(page: TextPage) -> dict[str, object]:
         "total_lines": page.total_lines,
         "previous_page": page.previous_page,
         "next_page": page.next_page,
+        "previous_subtext_id": page.previous_subtext_id,
+        "next_subtext_id": page.next_subtext_id,
         "lines": [_line_to_dict(item) for item in page.lines],
     }
 
