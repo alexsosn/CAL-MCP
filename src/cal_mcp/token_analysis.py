@@ -117,6 +117,8 @@ class _CurrentSegment:
     unexpected_markup: bool = False
     # After the table: depth of elements opened there (the sense outline) and stray bare text.
     post_table_depth: int = 0
+    # Non-optional post-table nesting, to handle CAL's specific unclosed sup > dial.
+    post_table_tags: list[str] = field(default_factory=list)
     post_table_loose: bool = False
 
 
@@ -195,6 +197,7 @@ class _CurrentLinkedRedirectParser(HTMLParser):
                 segment.extra_table = True
             elif tag not in _HTML_VOID_TAGS and tag not in _OPTIONAL_END_TAGS:
                 segment.post_table_depth += 1
+                segment.post_table_tags.append(tag)
             return
         if tag == "table":
             segment.nested_table = True
@@ -235,7 +238,16 @@ class _CurrentLinkedRedirectParser(HTMLParser):
         segment = self.segments[-1]
         if segment.table_closed and segment.table_depth == 0:
             if segment.post_table_depth > 0 and tag not in _OPTIONAL_END_TAGS:
-                segment.post_table_depth -= 1
+                tags = segment.post_table_tags
+                if tag == "sup" and len(tags) >= 2 and tags[-2:] == ["sup", "dial"]:
+                    # CAL omits only </dial> before its enclosing </sup>.
+                    tags.pop()
+                    segment.post_table_depth -= 1
+                if tags and tags[-1] == tag:
+                    tags.pop()
+                    segment.post_table_depth -= 1
+                else:
+                    segment.post_table_loose = True
             return
         if not segment.table_started or segment.table_depth < 1:
             return

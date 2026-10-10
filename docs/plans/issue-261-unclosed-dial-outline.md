@@ -1,0 +1,8 @@
+# Issue #261 — research → plan → test-first RED → GREEN → adversarial review
+
+1. Source: `docs/research/issue-261-unclosed-dial-outline.md`, committed before new tests. Existing reduced `token_analysis_multi_lexeme_verb_current.html` is the starting fixture; synthesize the exact upstream `<sup><dial title="except for OA">-OA</sup>` fragment after the linked result table. Do not copy entire live CAL source.
+2. **RED:** prove the resulting Peshitta-like two-lexeme page fails with the current post-table counter. Assert preserving candidate identities, original order and marked parts of speech under the corrected parser. Mutation-based negative tests for unclosed `i` rather than `dial`, `dial` not directly below `sup`, and existing stray post-table text/extra table/`hr` inside outline; no broad tolerance.
+3. **GREEN:** add a narrow structural stack for post-table elements while preserving integer depth and singleflight/parser semantics; only `</sup>` may implicitly close a directly nested unclosed `dial`. Ignore known void and optional tags as before. Fail closed for other cross-tags. Do not change the actual linked lexeme parser, source routes or MCP schemas.
+4. Ruff lint/format, mypy, complete pytest in both frozen and latest-compatible matrices. Perform a new **logically independent skeptical** review of the exact code/data diff. Iterate review negative tests and CI until accepted; do not merge a failing case.
+5. **Real CAL:** no traffic in offline gates. Coordinate with issue #262's process-wide pacing and hard-metered one-time John 1:1–4 stdio MCP acceptance. Never run burst calls before pacing; never retry an already failed source probe just to get a green check.
+6. No release tag/PyPI publication; issue #15 remains separately gated.

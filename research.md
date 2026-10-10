@@ -1382,6 +1382,9 @@ Focused evidence and bounded request details are recorded in `docs/research/issu
 
 **Implication:** Syriac category parsing preserves three navigation kinds: direct `text`, grouped `group`, and shallow `catalogue`. Peshitta book rows use `catalogue` and compose explicitly through `cal_text_catalogue(category_id=<returned upstream_id>)`; CAL-MCP does not prefetch chapters or expose private selector/form controls.
 
+## R-081 — Current Peshitta token sense outlines omit closing dialect tags
+
+**Observed:** 2026-10-10, Peshitta John 1:1–4, `getlex.php?coord=620430101&word=1`; see release-blocking issue #261 and `docs/research/issue-261-unclosed-dial-outline.md`. CAL emits an unclosed inner `<dial title="except for OA">-OA</sup>` inside a `span.dial-tag > sup` sense outline after a valid linked `)yt V` token result table. A blind depth counter treated the legitimate following `<hr>` as still inside the outline, rejecting common verbs and particles as parser drift. The parser must implicitly close only the direct `sup > dial` mismatch when `sup` closes; other unbalanced markup, stray post-table text and in-outline `<hr>` stay parser drift. This is a bounded structural repair, not a new source model or tolerance for arbitrary malformed CAL HTML. A complete 37-token live acceptance also depends on request pacing issue #262 and is deliberately separate from offline fixture tests.
 
 ## R-080 — Sequential token analysis exceeds CAL's tolerated request rate
 
