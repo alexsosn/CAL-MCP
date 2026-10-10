@@ -1546,9 +1546,12 @@ def _query_matches(query: str, lemma: LemmaRef) -> bool:
     # CAL uses @ inside exact machine lemma identities for multiword keys.
     # Match only a returned link's exact complete key, never an inferred stem.
     machine_key, separator, _pos = lemma.lemma_key.rpartition(" ")
-    if separator and ("@" in machine_key or "@" in query):
-        if needle.replace("@", " ") == _comparison_surface(machine_key).replace("@", " "):
-            return True
+    if (
+        separator
+        and ("@" in machine_key or "@" in query)
+        and needle.replace("@", " ") == _comparison_surface(machine_key).replace("@", " ")
+    ):
+        return True
     candidates: tuple[str, ...] = (*lemma.headwords, *lemma.aliases)
     if lemma.lemma_key.endswith(" V"):
         # CAL shows a verb's root in uppercase on result rows (KTB, ˁHR); match its lowercase
