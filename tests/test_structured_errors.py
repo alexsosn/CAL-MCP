@@ -365,3 +365,48 @@ async def test_lexicon_citation_context_invalid_full_coordinate_is_typed_no_io(
         message="full_coordinate must be a positive ASCII-decimal CAL coordinate",
     )
     assert calls == 0
+
+
+@pytest.mark.anyio
+async def test_real_mcp_boundary_reports_429_cooldown_without_second_CAL_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One rate-limited token must not cascade into more CAL requests."""
+    attempts = 0
+
+    async def rate_limited(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal attempts
+        del config
+        attempts += 1
+        assert request.path == "getlex.php"
+        return CalResponse(
+            status_code=429,
+            url="https://cal.huc.edu/getlex.php?coord=620430101&word=0",
+            body=b"",
+            content_type="text/html",
+            retrieved_at=datetime(2026, 10, 10, tzinfo=UTC),
+        )
+
+    _install_transport(monkeypatch, rate_limited)
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        first = await client.call_tool(
+            "cal_token_analysis", {"coordinate": "620430101", "word_index": 0}
+        )
+        second = await client.call_tool(
+            "cal_token_analysis", {"coordinate": "620430101", "word_index": 1}
+        )
+
+    assert attempts == 1
+    assert first.is_error is True and second.is_error is True
+    first_error = first.structured_content["error"]
+    assert first_error["kind"] == "upstream_http"
+    assert first_error["status_code"] == 429
+    assert first_error["upstream_reached"] is True
+    second_error = second.structured_content["error"]
+    assert second_error["kind"] == "upstream_http"
+    assert second_error["operation"] == "cal_token_analysis"
+    assert second_error["status_code"] == 429
+    assert second_error["upstream_reached"] is False
+    assert second_error["retryable"] is True
+    assert second_error["source_url"] is None
+    assert "cooldown" in second_error["message"].lower()
