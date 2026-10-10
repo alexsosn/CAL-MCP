@@ -33,3 +33,24 @@ Do not implement the Neofiti parser branch until the bounded current
 
 No bulk CAL requests, auto-followup, arbitrary endpoint execution,
 background fetching, or import-time network IO.
+
+
+## Corrective RED/GREEN gate after real installed-wheel failure
+
+1. Recorded the exact two-GET live parser failure (run 38061551966) and
+   two-request tag-only diagnostic (run 38061662651) in research **before**
+   modifying tests or implementation.
+2. **RED:** replace invented nested examples in Onqelos/Neofiti synthetic
+   fixture builders with evidenced **sibling** `div/span.heb` blocks. Add a
+   test that malformed nesting, a third unseparated block, or missing
+   second half of a pair is rejected as parser drift. The unchanged original
+   parser (expecting depths 1 and 2) must reject valid sibling fixtures.
+3. **GREEN:** treat each div as exactly one span, pair two consecutive
+   sibling blocks, and require `hr` boundaries between complete pairs;
+   allow a redundant trailing `hr` as directly observed. Do not relax
+   source identity, heading, link, provenance, or unrelated content checks.
+4. Re-run Ruff/mypy/pytest in both offline CI matrices. Perform a new
+   independent skeptical exact-head review.
+5. Run one more installed-wheel *two-call* bounded live acceptance only
+   after a new explicit decision (no blind auto-retry). Keep prior failure
+   visible rather than claiming it was passing.
