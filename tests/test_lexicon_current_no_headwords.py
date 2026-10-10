@@ -30,8 +30,7 @@ def _empty(prefix: str) -> str:
 
 def _response(content: str, *, prefix: str = "qqq", url: str | None = None) -> CalResponse:
     source = url or (
-        "https://cal.huc.edu/browseSKEYheaders.php?"
-        + urlencode({"first3": f'"{prefix}"'})
+        "https://cal.huc.edu/browseSKEYheaders.php?" + urlencode({"first3": f'"{prefix}"'})
     )
     return CalResponse(
         status_code=200,
