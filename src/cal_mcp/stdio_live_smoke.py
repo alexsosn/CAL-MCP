@@ -18,6 +18,47 @@ from mcp.types import CallToolResult, Tool
 
 SmokeCategory = Literal["ok", "drift", "unavailable", "harness", "skipped_dependency"]
 
+_ERROR_ENVELOPE_SCHEMA: dict[str, object] = {
+    "type": "object",
+    "required": ["error"],
+    "additionalProperties": False,
+    "properties": {
+        "error": {
+            "type": "object",
+            "required": [
+                "kind",
+                "operation",
+                "upstream_reached",
+                "retryable",
+                "message",
+                "source_url",
+                "status_code",
+            ],
+            "additionalProperties": False,
+            "properties": {
+                "kind": {
+                    "enum": [
+                        "invalid_input",
+                        "network",
+                        "upstream_http",
+                        "response_too_large",
+                        "content",
+                        "parser_drift",
+                    ]
+                },
+                "operation": {"type": "string"},
+                "upstream_reached": {"type": ["boolean", "null"]},
+                "retryable": {"type": "boolean"},
+                "message": {"type": "string", "minLength": 1, "maxLength": 500},
+                "source_url": {"type": ["string", "null"]},
+                "status_code": {"type": ["integer", "null"], "minimum": 100, "maximum": 599},
+            },
+        }
+    },
+}
+_ERROR_ENVELOPE_VALIDATOR = Draft202012Validator(_ERROR_ENVELOPE_SCHEMA)
+
+
 
 @dataclass(frozen=True, slots=True)
 class SmokeCase:
@@ -73,16 +114,6 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
 
     if case.tool != tool.name:
         return SmokeOutcome(case.name, "harness", "wrong tool selected")
-    if result.is_error:
-        content = result.structured_content
-        error = content.get("error") if isinstance(content, dict) else None
-        kind = error.get("kind") if isinstance(error, dict) else None
-        if kind == "parser_drift":
-            return SmokeOutcome(case.name, "drift", "CAL parser drift")
-        if kind in {"network", "upstream_http", "content", "response_too_large"}:
-            return SmokeOutcome(case.name, "unavailable", "CAL upstream unavailable or unsafe")
-        return SmokeOutcome(case.name, "harness", "unclassified MCP tool failure")
-
     schema = tool.output_schema
     payload = result.structured_content
     if schema is None or not isinstance(payload, dict):
@@ -92,6 +123,22 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
         Draft202012Validator(schema).validate(payload)
     except (SchemaError, ValidationError):
         return SmokeOutcome(case.name, "harness", "MCP output schema mismatch")
+
+    if result.is_error:
+        if not _ERROR_ENVELOPE_VALIDATOR.is_valid(payload):
+            return SmokeOutcome(case.name, "harness", "malformed MCP structured error")
+        error = payload["error"]
+        if error["operation"] != case.tool or (
+            error["source_url"] is not None and not _valid_cal_origin(error["source_url"])
+        ):
+            return SmokeOutcome(case.name, "harness", "untrusted MCP error identity or source")
+        kind = error["kind"]
+        if kind == "parser_drift":
+            return SmokeOutcome(case.name, "drift", "CAL parser drift")
+        if kind in {"network", "upstream_http", "content", "response_too_large"}:
+            return SmokeOutcome(case.name, "unavailable", "CAL upstream unavailable or unsafe")
+        return SmokeOutcome(case.name, "harness", "unclassified MCP tool failure")
+
     if case.expected_statuses and payload.get("status") not in case.expected_statuses:
         return SmokeOutcome(case.name, "drift", "unexpected CAL success status")
     if case.needs_provenance and not _valid_provenance(payload):
