@@ -198,9 +198,15 @@ async def evaluate_smoke_cases(
             continue
         outcome = evaluate_tool_result(case, tool, result)
         outcomes.append(outcome)
-        if outcome.category == "harness" and outcome.message == "unclassified MCP tool failure":
-            # This can include a smoke-only server-budget exhaustion; do not continue unknown
-            # calls if the bounded process has begun refusing them.
+        if outcome.category == "harness" and outcome.message in {
+            "unclassified MCP tool failure",
+            "missing structured MCP output or schema",
+            "malformed MCP structured error",
+            "untrusted MCP error identity or source",
+        }:
+            # A failed or unrecognized error channel may mean that the bounded server
+            # has exhausted its budget. Stop rather than repeatedly calling a broken
+            # process; ordinary schema/provenance drift can still be aggregated.
             break
     return tuple(outcomes)
 
