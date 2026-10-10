@@ -86,7 +86,7 @@ It does not:
 
 The returned `LemmaRef` is sufficient for an explicit follow-up `cal_lexicon_lookup` when a caller wants a full lexicon entry. That follow-up is a separate user-initiated tool call.
 
-The shared CAL HTTP policy still applies its origin, redirect, timeout, concurrency, retry, cache, and maximum-response-byte limits.
+The shared CAL HTTP policy still applies its origin, redirect, timeout, concurrency, retry, cache, and maximum-response-byte limits. In the installed MCP server, it also enforces at least **one second between actual CAL transport attempts**, across tools and retries. An explicit uncached 37-token verse analysis therefore needs at least about 36 seconds of inter-request spacing; it is not one bulk request. CAL HTTP 429 is reported as typed retryable `upstream_http`; automatic retry is permitted only once for a short validated `Retry-After`, never as a tight retry loop.
 
 ### Shared cache, single-flight, and retry semantics
 
