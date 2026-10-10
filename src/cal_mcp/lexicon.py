@@ -954,6 +954,14 @@ class LexiconLookupService:
         if lemma_key is not None:
             selected = next((item for item in matches if item.lemma_key == lemma_key), None)
             if selected is None:
+                if browse_continuations:
+                    return LexiconLookupResult(
+                        status=LexiconLookupStatus.TRUNCATED,
+                        matches=matches,
+                        provenance=browse_provenance,
+                        browse_truncated=True,
+                        browse_continuations=tuple(browse_continuations),
+                    )
                 raise CalInputError("lemma_key must identify one of the matching CAL candidates")
         elif len(matches) > 1:
             return LexiconLookupResult(
