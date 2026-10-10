@@ -312,4 +312,4 @@ def test_release_surface_includes_context_tool() -> None:
     release_surface = importlib.import_module("cal_mcp.release_surface")
     assert "cal_lexicon_browse" in release_surface.V01_PUBLIC_TOOLS
     assert "cal_lexicon_citation_context" in release_surface.V01_PUBLIC_TOOLS
-    assert len(release_surface.V01_PUBLIC_TOOLS) == 35
+    assert len(release_surface.V01_PUBLIC_TOOLS) == 36

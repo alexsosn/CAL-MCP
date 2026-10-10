@@ -27,6 +27,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
         "cal_dictionary_collation",
         "cal_targum_parallel",
         "cal_targum_concordance",
+        "cal_targum_concordance_examples",
         "cal_targum_hebrew_lemmas",
         "cal_targum_hebrew_reflexes",
         "cal_targum_reflex_examples",

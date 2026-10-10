@@ -49,8 +49,8 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     assert CHANGELOG.exists()
     changelog = CHANGELOG.read_text(encoding="utf-8")
     assert "0.1.0" in changelog
-    assert "35 public tools" in changelog
-    assert "35-tool schema" in changelog
+    assert "36 public tools" in changelog
+    assert "36-tool schema" in changelog
     assert "cal_lexicon_browse" in changelog
     assert "cal_lexicon_citation_context" in changelog
     assert "cal_text_line_comments" in changelog
@@ -123,7 +123,7 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "V01_PUBLIC_TOOLS" in verifier
     assert "cal_lexicon_browse" in V01_PUBLIC_TOOLS
     assert "cal_lexicon_citation_context" in V01_PUBLIC_TOOLS
-    assert len(V01_PUBLIC_TOOLS) == 35
+    assert len(V01_PUBLIC_TOOLS) == 36
 
 
 def test_legacy_service_smoke_remains_offline_tested() -> None:

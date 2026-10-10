@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The current v0.1 candidate exposes 35 public tools: one deterministic local CAL-code conversion tool plus 34 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
+> **Status:** active pre-release development. The current v0.1 candidate exposes 36 public tools: one deterministic local CAL-code conversion tool plus 35 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -29,7 +29,7 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 ## v0.1 public surface
 
-The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 35-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, the typed KWIC full-context follow-up added by issue #113, the explicit text-line comments/translations follow-up added by issue #108, the explicit linked-lexicon-citation context follow-up added by issue #127, the bounded lexicon prefix browser added by issue #112, and the explicit MT/Targum reflex-example follow-up added by issue #247.
+The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 36-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, the typed KWIC full-context follow-up added by issue #113, the explicit text-line comments/translations follow-up added by issue #108, the explicit linked-lexicon-citation context follow-up added by issue #127, the bounded lexicon prefix browser added by issue #112, the explicit MT/Targum reflex-example follow-up added by issue #247, and the source-group Targum concordance example follow-up added by issue #246.
 
 | Area | Public tools |
 | --- | --- |
@@ -42,7 +42,7 @@ The executable tool schemas are the technical source of truth. The current v0.1 
 | Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` |
 | Dictionary collation | `cal_dictionary_collation` |
 | External citations | `cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations` |
-| Targum Studies | `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes` |
+| Targum Studies | `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes` |
 | Syriac Studies | `cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel` |
 
 See the [dated capability matrix](docs/index.md#public-capability-matrix) for which current CAL functions are implemented directly, intentionally composed from these tools, or explicitly deferred.

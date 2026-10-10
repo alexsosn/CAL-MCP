@@ -29,7 +29,7 @@ async def test_real_stdio_server_writes_zero_attempts_on_shutdown(tmp_path: Path
         )
     ) as client:
         tools = await client.list_tools()
-        assert len(tools.tools) == 35
+        assert len(tools.tools) == 36
         assert not report.exists()
 
     assert json.loads(report.read_text(encoding="utf-8")) == {
