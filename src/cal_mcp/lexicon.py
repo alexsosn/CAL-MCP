@@ -438,6 +438,14 @@ _NOT_FOUND_PHRASES = (
     "no matching entries were found",
     "no matches were found",
 )
+_NO_HEADWORDS_MARKER = re.compile(r"there are no headwords beginning with: \\S+", re.IGNORECASE)
+
+
+def _browse_has_explicit_no_match(lines: list[_Line]) -> bool:
+    page_text = " ".join(line.text.lower() for line in lines)
+    return any(phrase in page_text for phrase in _NOT_FOUND_PHRASES) or any(
+        _NO_HEADWORDS_MARKER.fullmatch(line.text) is not None for line in lines
+    )
 _DIALECT_EXACT = frozenset(
     {
         "BA",
@@ -565,8 +573,7 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
     if entries:
         return BrowsePage(entries=tuple(entries))
 
-    page_text = " ".join(line.text.lower() for line in lines)
-    if any(phrase in page_text for phrase in _NOT_FOUND_PHRASES):
+    if _browse_has_explicit_no_match(lines):
         return BrowsePage(entries=())
     raise LexiconParseError(
         "CAL lexicon browse page contains neither entries nor explicit no-match"
