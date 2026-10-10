@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -143,3 +145,24 @@ async def test_smoke_stdio_lifespan_rejects_attempts_cap_expansion(
     with pytest.raises(ValueError, match="reviewed 25-attempt cap"):
         async with app_lifespan(mcp):
             pytest.fail("invalid smoke cap must not start a CAL client")
+
+
+@pytest.mark.anyio
+async def test_smoke_lifespan_exports_measured_transport_attempts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # The parent smoke runner must receive the actual number of attempted CAL
+    # transports; reporting 25 as a cap alone cannot prove the suite stayed bounded.
+    report = tmp_path / "transport-attempts.json"
+    monkeypatch.setenv("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS", "25")
+    monkeypatch.setenv("CAL_MCP_LIVE_SMOKE_REPORT_PATH", str(report))
+    async with app_lifespan(mcp) as context:
+        guard = context.client._before_transport_attempt
+        assert guard is not None
+        guard()
+        guard()
+        assert not report.exists()
+    assert json.loads(report.read_text(encoding="utf-8")) == {
+        "actual_cal_transport_attempts": 2,
+        "max_cal_transport_attempts": 25,
+    }
