@@ -1,7 +1,12 @@
 from __future__ import annotations
 
+import pytest
+from jsonschema import Draft202012Validator
+from mcp import Client
 from mcp.types import CallToolResult, TextContent, Tool
 
+from cal_mcp.errors import PublicErrorKind, PublicToolError
+from cal_mcp.server import mcp
 from cal_mcp.stdio_live_smoke import SmokeCase, evaluate_tool_result
 
 
@@ -91,3 +96,37 @@ def test_stdio_unexpected_found_status_is_reported_as_drift() -> None:
         _case(), _tool(), _result({"status": "not_found", "provenance": _provenance()})
     )
     assert result.category == "drift"
+
+
+@pytest.mark.anyio
+async def test_real_mcp_error_schema_is_checked_before_drift_classification() -> None:
+    # The public SDK schema deliberately admits structured errors via extra fields,
+    # so the smoke runner also has to validate the typed error *contents*.
+    async with Client(mcp, raise_exceptions=True) as client:
+        tool = next(t for t in (await client.list_tools()).tools if t.name == "cal_lexicon_lookup")
+    assert tool.output_schema is not None
+
+    valid = PublicToolError(
+        kind=PublicErrorKind.PARSER_DRIFT,
+        operation="cal_lexicon_lookup",
+        upstream_reached=True,
+        retryable=False,
+        message="synthetic fixture drift",
+        source_url="https://cal.huc.edu/cal_entry_web.php",
+    ).to_dict()
+    assert Draft202012Validator(tool.output_schema).is_valid(valid)
+    assert evaluate_tool_result(_case(), tool, _result(valid, is_error=True)).category == "drift"
+
+    invalid_error_details = [
+        {"error": {**valid["error"], "retryable": "yes"}},
+        {"error": {key: value for key, value in valid["error"].items() if key != "operation"}},
+        {"error": {**valid["error"], "operation": "cal_text_page"}},
+        {"error": {**valid["error"], "kind": 123}},
+    ]
+    for malformed in invalid_error_details:
+        # Current public output schema is permissive for errors; adapter must
+        # reject malformed error envelopes before treating them as genuine drift.
+        assert Draft202012Validator(tool.output_schema).is_valid(malformed)
+        result = evaluate_tool_result(_case(), tool, _result(malformed, is_error=True))
+        assert result.category == "harness"
+        assert "untrusted upstream body" not in result.message
