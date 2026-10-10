@@ -14,8 +14,8 @@ from tempfile import TemporaryDirectory
 from typing import Literal
 from urllib.parse import urlsplit
 
-from jsonschema import Draft202012Validator
-from jsonschema.exceptions import SchemaError, ValidationError
+from jsonschema import Draft202012Validator  # type: ignore[import-untyped]
+from jsonschema.exceptions import SchemaError, ValidationError  # type: ignore[import-untyped]
 from mcp import Client, StdioServerParameters
 from mcp.types import CallToolResult, Tool
 
@@ -310,7 +310,7 @@ def _read_actual_attempts(report_path: Path) -> int:
         or not 0 <= contents["actual_cal_transport_attempts"] <= 25
     ):
         raise ValueError("installed smoke server reported an invalid transport attempt count")
-    return contents["actual_cal_transport_attempts"]
+    return int(contents["actual_cal_transport_attempts"])
 
 
 async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
