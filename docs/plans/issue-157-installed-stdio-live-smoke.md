@@ -69,3 +69,15 @@ new exact artifact/transport/schema/error/budget gate.
 
 Blocked for full live green by current verb issues #237/#240. The driver and its offline tests
 can be implemented independently once D-022 is accepted; publication stays under #15.
+
+## Fixed chained case
+
+After the fixed `text_search("Tel Dan")` case succeeds, the runner calls
+`cal_text_page` once using the first returned match that explicitly has
+`follow_up_tool="cal_text_page"`. Preserve the exact returned `file_id` and
+`subtext_id`; do not fetch any other rows, links, or catalogue pages.
+If the parent failed, classify the step as `skipped_dependency` without a CAL
+request. If a successful parent has no trustworthy direct hit, report `drift`
+without constructing a synthetic selector. Use deterministic fake-client tests
+before implementing. This adds one potential transport attempt within D-022's
+**total** 25-attempt limit, not an extra budget.
