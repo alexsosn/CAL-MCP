@@ -25,7 +25,7 @@
    This test is document-only and has no CAL dependency.
 2. **GREEN**: add concise troubleshooting text in `docs/installation.md` and
    `docs/integrations/standalone-mcp.md`. Use an explicit environment copied from
-   `os.environ` and allowlisted variable names (do not print secrets); show an
+   `os.environ` and document the relevant proxy/CA variables; show an
    MCP connection snippet. Preserve existing release pin and process contract.
 3. Validate the new contract and existing Markdown links offline, then full
    deterministic CI and latest-compatible CI when available.
