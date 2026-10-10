@@ -76,9 +76,14 @@ def test_stdio_source_url_cannot_escape_exact_cal_origin() -> None:
 
 def test_stdio_parser_drift_and_network_errors_are_not_confused() -> None:
     for kind, expected in (("parser_drift", "drift"), ("network", "unavailable")):
-        result = evaluate_tool_result(
-            _case(), _tool(), _result({"error": {"kind": kind}}, is_error=True)
-        )
+        typed_error = PublicToolError(
+            kind=PublicErrorKind(kind),
+            operation="cal_lexicon_lookup",
+            upstream_reached=True,
+            retryable=False,
+            message="synthetic error",
+        ).to_dict()
+        result = evaluate_tool_result(_case(), _tool(), _result(typed_error, is_error=True))
         assert result.category == expected
         assert "untrusted upstream body" not in result.message
 
