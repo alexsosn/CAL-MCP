@@ -1383,6 +1383,6 @@ Focused evidence and bounded request details are recorded in `docs/research/issu
 **Implication:** Syriac category parsing preserves three navigation kinds: direct `text`, grouped `group`, and shallow `catalogue`. Peshitta book rows use `catalogue` and compose explicitly through `cal_text_catalogue(category_id=<returned upstream_id>)`; CAL-MCP does not prefetch chapters or expose private selector/form controls.
 
 
-## R-027 — Sequential token analysis exceeds CAL's tolerated request rate
+## R-080 — Sequential token analysis exceeds CAL's tolerated request rate
 
 **Observed 2026-10-10; implemented policy decision D-024.** The installed-wheel Peshitta John 1:1–4 evaluation sent 37 sequential token analyses in approximately 4.6 seconds (~8 CAL requests/s), eliciting six HTTP 429 responses. This proves that limiting `max_concurrency` without pacing is not sufficient. The shared HTTP client previously discarded `Retry-After` and treated 429 as a terminal, non-retryable `upstream_http`. The rate-limit response is CAL's direct signal to reduce load. A one-second MCP process-wide transport-start interval plus typed 429 and bounded hint-aware retries is documented by issue #262, its dated research/plan, and D-024. A 37-token paced live acceptance is separately gated and must use strict outbound request counting; zero 429 cannot be presumed from offline tests alone.
