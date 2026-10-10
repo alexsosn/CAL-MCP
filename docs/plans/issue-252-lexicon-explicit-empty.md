@@ -1,0 +1,7 @@
+# Issue #252 — plan, test-first correction
+
+1. Research precedes tests: `docs/research/issue-252-lexicon-explicit-empty.md`.
+2. RED: small fixture with current `There are no headwords beginning with: qqq` and ordinary browse table markup. Verify `parse_browse_page` and `parse_lexicon_browse_page` return empty entries/rows and no continuation, and the lookup service for `qqqqzz` returns typed `not_found` and real CAL provenance with exactly one browse request. Simulate bare Hebrew `שלם` with first `$lm` prefix yielding a matching entry and second `&lm` yielding current no-headwords marker, preserve both requests and successfully choose the `$` candidate. Countertests: malformed text, unrelated page text, unrecognized marker, and missing no-match marker remain `parser_drift`.
+3. GREEN: add the **minimal verified phrase** to the shared lexicon no-match markers. Do not alter token conversion, request count, link parsing or matching. If a contradictory no-match plus entries test demonstrates a bug, guard that separately with a failing test.
+4. Run exact-head Ruff lint/format, mypy and complete pytest in pinned and latest-compatible CI, and an independent logically separate skeptical review grounded in changed source and fixture contracts; merge only after all gates.
+5. No additional CAL requests or v0.1 tag. Error semantics should remain fail-closed when the exact upstream no-headwords marker is absent.
