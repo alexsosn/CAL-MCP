@@ -116,7 +116,8 @@ def _has_representative_content(case_name: str, data: dict[str, object]) -> bool
     """Require the studied reference queries to contain recognizable scholarly rows."""
 
     field_by_case = {
-        "bibliography": ("records", "citation", 2),
+        # CAL cly V currently has one complete record; see the checked-in HTML fixture.
+        "bibliography": ("records", "citation", 1),
         "gloss": ("matches", "lemma_key", 1),
         "text_concordance": ("lemmas", "lemma_key", 1),
         "dictionary": ("entries", "display_lemma", 1),
