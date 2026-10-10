@@ -6,6 +6,7 @@ import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
 from cal_mcp.smoke_budget import SmokeAttemptBudget, SmokeBudgetExceeded
+from cal_mcp.server import app_lifespan, mcp
 
 
 def _response() -> CalResponse:
@@ -102,3 +103,40 @@ async def test_regular_client_has_no_implicit_smoke_budget() -> None:
 def test_smoke_budget_rejects_invalid_limits(value: object) -> None:
     with pytest.raises((TypeError, ValueError)):
         SmokeAttemptBudget(max_attempts=value)  # type: ignore[arg-type]
+
+
+@pytest.mark.anyio
+async def test_smoke_stdio_lifespan_caps_attempts_without_default_retries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS", "25")
+    async with app_lifespan(mcp) as context:
+        client = context.client
+        assert client.config.max_concurrency == 1
+        assert client.config.max_retries == 0
+        assert client.config.cache_enabled
+        guard = client._before_transport_attempt
+        assert guard is not None
+        for _ in range(25):
+            guard()
+        with pytest.raises(SmokeBudgetExceeded):
+            guard()
+
+
+@pytest.mark.anyio
+async def test_normal_stdio_lifespan_never_inherits_smoke_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS", raising=False)
+    async with app_lifespan(mcp) as context:
+        assert context.client._before_transport_attempt is None
+
+
+@pytest.mark.anyio
+async def test_smoke_stdio_lifespan_rejects_attempts_cap_expansion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS", "26")
+    with pytest.raises(ValueError, match="reviewed 25-attempt cap"):
+        async with app_lifespan(mcp):
+            pytest.fail("invalid smoke cap must not start a CAL client")
