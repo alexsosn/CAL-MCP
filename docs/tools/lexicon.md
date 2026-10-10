@@ -111,7 +111,9 @@ cal_lexicon_lookup(query="br", lemma_key="br N")
 
 ### `not_found`
 
-No exact CAL headword or alias on the bounded browser results matches any justified query candidate. `entry` is `null` and `matches` is empty. This includes CAL's explicit `There are no headwords beginning with: …` page for a candidate prefix, so a misspelled query, or the empty `&` prefix of a bare Hebrew `ש`, is not reported as drift.
+No exact CAL headword or alias on the bounded browser results matches any justified query candidate. `entry` is `null` and `matches` is empty.
+
+CAL's current explicit `There are no headwords beginning with: <prefix>` browse response is an empty prefix result, not parser drift. If a bare Hebrew `ש` expands to both `$` and `&`, an empty page for one prefix does not prevent a matching candidate from the other. CAL echoes a Hebrew or Syriac prefix in CAL code (`קקק` and `ܩܩܩ` both echo `qqq`), so that single deterministic CAL-code form is also accepted as naming the requested prefix. Missing/unknown result markers still fail closed.
 
 This is a normal structured result and is distinct from a network failure, CAL maintenance/error content, parser drift, or candidate-expansion limit.
 

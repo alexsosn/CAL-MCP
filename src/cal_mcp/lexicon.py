@@ -439,8 +439,58 @@ _NOT_FOUND_PHRASES = (
     "no matching entries were found",
     "no matches were found",
 )
-# Current CAL browse wording for an empty prefix (R-071), echoing the submitted first3 prefix.
-_NO_HEADWORDS_RE = re.compile(r"There are no headwords beginning with: (\S+)")
+_NO_HEADWORDS_MARKER = re.compile(
+    r"there are no headwords beginning with: (?P<prefix>\S+)", re.IGNORECASE
+)
+
+
+def _browse_has_explicit_no_match(lines: list[_Line], *, source_url: str) -> bool:
+    marker_prefixes = [
+        match.group("prefix")
+        for line in lines
+        if (match := _NO_HEADWORDS_MARKER.fullmatch(line.text)) is not None
+    ]
+    if marker_prefixes:
+        expected = parse_qs(urlsplit(source_url).query, keep_blank_values=True).get("first3")
+        if (
+            len(marker_prefixes) != 1
+            or expected is None
+            or len(expected) != 1
+            or marker_prefixes[0] not in _no_headwords_echoes(expected[0])
+        ):
+            raise LexiconParseError(
+                "CAL lexicon no-headwords marker does not match the requested prefix"
+            )
+        if any(_is_lemma_entry_href(link.href) for line in lines for link in line.links):
+            raise LexiconParseError(
+                "CAL lexicon no-headwords marker contradicts returned lemma entries"
+            )
+        return True
+    page_text = " ".join(line.text.lower() for line in lines)
+    return any(phrase in page_text for phrase in _NOT_FOUND_PHRASES)
+
+
+def _no_headwords_echoes(first3: str) -> frozenset[str]:
+    """Return the prefixes CAL may echo for one submitted ``first3`` value (R-071).
+
+    CAL echoes the submitted prefix, but a Hebrew or Syriac prefix comes back in CAL code
+    (``"קקק"`` and ``"ܩܩܩ"`` both echo ``qqq``), so its single deterministic CAL-code
+    conversion is accepted too. An ambiguous conversion (bare ``ש``) adds nothing.
+    """
+
+    if len(first3) < 2 or not (first3.startswith('"') and first3.endswith('"')):
+        return frozenset()
+    prefix = first3[1:-1]
+    echoes = {prefix}
+    try:
+        conversion = convert_to_cal_code(prefix)
+    except NormalizationError:
+        return frozenset(echoes)
+    if len(conversion.words) == 1 and len(conversion.words[0].candidates) == 1:
+        echoes.add(conversion.words[0].candidates[0])
+    return frozenset(echoes)
+
+
 _DIALECT_EXACT = frozenset(
     {
         "BA",
@@ -523,6 +573,7 @@ class _SenseBuilder:
 
 def parse_browse_page(response: CalResponse) -> BrowsePage:
     lines = _parse_lines(response)
+    explicit_no_match = _browse_has_explicit_no_match(lines, source_url=response.url)
     entries: list[LemmaRef] = []
 
     for index, line in enumerate(lines):
@@ -565,59 +616,14 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
                 )
             )
 
-    if _has_no_headwords_marker(lines, response.url, has_rows=bool(entries)):
-        return BrowsePage(entries=())
     if entries:
         return BrowsePage(entries=tuple(entries))
 
-    page_text = " ".join(line.text.lower() for line in lines)
-    if any(phrase in page_text for phrase in _NOT_FOUND_PHRASES):
+    if explicit_no_match:
         return BrowsePage(entries=())
     raise LexiconParseError(
         "CAL lexicon browse page contains neither entries nor explicit no-match"
     )
-
-
-def _has_no_headwords_marker(lines: list[_Line], source_url: str, *, has_rows: bool) -> bool:
-    """Return whether CAL explicitly reports no headwords for the requested prefix.
-
-    The marker must be the only text on its line, appear once, accompany no browse rows, and
-    echo exactly the ``first3`` prefix that was submitted; anything else is upstream drift.
-    """
-
-    markers = [
-        match.group(1)
-        for line in lines
-        if (match := _NO_HEADWORDS_RE.fullmatch(" ".join(line.text.split()))) is not None
-    ]
-    if not markers:
-        return False
-    if has_rows:
-        raise LexiconParseError("CAL lexicon browse page has rows beside a no-headwords marker")
-    requested = parse_qs(urlsplit(source_url).query).get("first3", [])
-    if len(markers) != 1 or len(requested) != 1:
-        raise LexiconParseError(
-            "CAL lexicon no-headwords marker does not name the requested prefix"
-        )
-    prefix = requested[0].removeprefix('"').removesuffix('"')
-    if markers[0] not in _no_headwords_echoes(prefix):
-        raise LexiconParseError(
-            "CAL lexicon no-headwords marker does not name the requested prefix"
-        )
-    return True
-
-
-def _no_headwords_echoes(prefix: str) -> frozenset[str]:
-    """CAL echoes a Hebrew/Syriac prefix in CAL code, so accept its one deterministic form."""
-
-    echoes = {prefix}
-    try:
-        conversion = convert_to_cal_code(prefix)
-    except NormalizationError:
-        return frozenset(echoes)
-    if len(conversion.words) == 1 and len(conversion.words[0].candidates) == 1:
-        echoes.add(conversion.words[0].candidates[0])
-    return frozenset(echoes)
 
 
 def parse_lexicon_entry(response: CalResponse, *, lemma_key: str) -> LexiconEntry:

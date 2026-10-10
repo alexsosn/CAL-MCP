@@ -438,6 +438,10 @@ most `&` prefixes are empty, every ש-initial Hebrew lookup used to fail as `par
 Five single browse GETs, made through `CalHttpClient` with the project User-Agent, established
 this (`qqq`, `&lm` twice, `קקק`, `ܩܩܩ`). Reduced fixtures: `browse_no_headwords_*_current.html`.
 
+The base recognition of the marker landed separately in #265 (`docs/research/issue-252-lexicon-explicit-empty.md`).
+That version required the echo to equal the submitted `first3` exactly, so Hebrew/Syriac prefixes
+still failed. This entry adds the CAL-code echo evidence.
+
 **Implication:** both lexicon browse parsers treat the marker as an explicit no-match only when it
 is the sole text of its line, appears once, accompanies no browse rows, and echoes the submitted
 prefix or that prefix's single deterministic CAL-code conversion. Any other shape remains
