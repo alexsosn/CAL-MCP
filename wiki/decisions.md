@@ -430,3 +430,5 @@ this pace is too high.
 A 37-token live acceptance requires a separate bounded explicit decision after full offline
 tests and adversarial review: another burst before deploying pacing would itself violate
 the evidence in this decision. A hard server-side request cap still applies to smoke.
+
+**D-024 amendment — independently observed live backpressure (2026-10-10).** A separate #261 installed-wheel acceptance issued 21 sequential token calls around 1.2 seconds apart and still saw **3 HTTP 429s** (issue #262 comment 6101570708). Therefore the initially selected one-second installed-MCP rate is **superseded by three seconds** per actual transport attempt as a conservative starting limit, not a claim of CAL's official allowance. Cache, single-flight, retry hook and per-process boundaries remain unchanged. Live 37-token acceptance is mandatory before treating this as release-ready; a 429 at the new pace must halt acceptance without automatic repeated probes.
