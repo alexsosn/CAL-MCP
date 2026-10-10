@@ -1777,10 +1777,33 @@ def _search_label_and_description(line: _Line, link: _Link) -> tuple[str, str | 
 
 
 def _partition_label_separator(text: str) -> tuple[str, str, str]:
-    match = _SEARCH_LABEL_SEPARATOR_RE.search(text)
-    if match is None:
+    # A ": " inside a parenthesized label (``JElet (Jacob of Edessa: Letter …)``) is part of
+    # the label (R-085). When the row's parentheses do not balance there is no trustworthy
+    # depth, so the first separator is used as before.
+    separators = list(_SEARCH_LABEL_SEPARATOR_RE.finditer(text))
+    depths = _parenthesis_depths(text)
+    if depths is not None:
+        separators = [match for match in separators if depths[match.start()] == 0]
+    if not separators:
         return text, "", ""
+    match = separators[0]
     return text[: match.start()], ":", text[match.end() :]
+
+
+def _parenthesis_depths(text: str) -> list[int] | None:
+    """Parenthesis depth before each character, or ``None`` if the text is unbalanced."""
+
+    depths: list[int] = []
+    depth = 0
+    for character in text:
+        depths.append(depth)
+        if character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+            if depth < 0:
+                return None
+    return depths if depth == 0 else None
 
 
 def _page_text_ref(
