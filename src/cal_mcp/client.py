@@ -277,7 +277,7 @@ class CalHttpClient:
         self.config = (
             config
             if config is not None
-            else CalClientConfig(min_request_interval_seconds=1.0 if transport is None else 0.0)
+            else CalClientConfig(min_request_interval_seconds=3.0 if transport is None else 0.0)
         )
         self._before_transport_attempt = before_transport_attempt
         self._clock = clock

@@ -12,7 +12,7 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Read timeout | 10 s | number (`int`/`float`, not boolean); finite, > 0 |
 | Total attempt timeout | 15 s | number (`int`/`float`, not boolean); finite, > 0 |
 | Maximum concurrency | 2 | integer; 1–8 |
-| Minimum CAL transport interval | 1 s for MCP server; 0 s for direct programmatic client | number (`int`/`float`, not boolean); finite, 0–5 s |
+| Minimum CAL transport interval | 3 s for MCP server; 0 s for direct programmatic client | number (`int`/`float`, not boolean); finite, 0–5 s |
 | Retry count | 1 | integer; 0–3 |
 | Initial retry backoff | 0.25 s | number (`int`/`float`, not boolean); finite, 0–1 s; exponential, capped at 1 second per retry sleep |
 | Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
@@ -23,7 +23,7 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 
 Timeout, TTL, retry-backoff, and minimum-interval settings accept ordinary numeric `int` or `float` values; booleans and non-numeric values are rejected at `CalClientConfig` construction rather than coerced or allowed to fail later inside transport operations. `cache_enabled` must be an actual boolean. User-Agent must be a non-empty string and may contain only printable ASCII characters (`0x20`–`0x7E`); non-string values, whitespace-empty values, non-ASCII Unicode, and control characters are rejected at `CalClientConfig` construction before HTTPX2 transport creation. These runtime checks complement Python type annotations, which do not validate constructor arguments by themselves.
 
-HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout. The installed MCP server configures **one second between CAL transport starts** across all of its tools and retries, even for strictly sequential requests. It enforces the interval at the actual transport boundary, after cache and single-flight checks. Plain `CalHttpClient()` with the real HTTP transport defaults to one-second pacing. An injected/offline fake transport and an explicit `CalClientConfig()` retain a configurable `0` default for existing fast tests/programmatic use; callers overriding the live client configuration must select safe pacing when contacting CAL. This is a per-process, not multi-process/global, limit.
+HTTPX2 also receives explicit connection/read timeouts and connection-pool limits. CAL-MCP additionally wraps each transport attempt in the total timeout. The installed MCP server configures **three seconds between CAL transport starts** across all of its tools and retries, even for strictly sequential requests. It enforces the interval at the actual transport boundary, after cache and single-flight checks. Plain `CalHttpClient()` with the real HTTP transport defaults to one-second pacing. An injected/offline fake transport and an explicit `CalClientConfig()` retain a configurable `0` default for existing fast tests/programmatic use; callers overriding the live client configuration must select safe pacing when contacting CAL. This is a per-process, not multi-process/global, limit.
 
 ## Response-size limit
 

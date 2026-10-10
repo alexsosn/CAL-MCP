@@ -406,12 +406,12 @@ attempts/second, eliciting six HTTP 429 responses. The old semaphore bounded par
 did not limit *sequential* request starts. CAL's own rejection is direct empirical evidence that
 this pace is too high.
 
-- The MCP server configures a **1-second minimum interval between actual CAL transport
+- The MCP server configures a **3-second minimum interval between actual CAL transport
   attempt starts**, shared by all CAL-backed tools in that server process. A client-level
   monotonic scheduler enforces that interval even for concurrent requests and retries. The
   cached path, already-coalesced in-flight waiters and local input rejection do not wait.
 - `CalClientConfig` permits a finite, bounded nonnegative interval; the **server** selects
-  the conservative 1-second default. A direct `CalHttpClient()` using the real HTTP
+  the conservative 3-second default. A direct `CalHttpClient()` using the real HTTP
   transport also selects 1 second. Injected/offline fake transports and an explicitly
   supplied `CalClientConfig()` preserve the configurable `0` default for test and
   programmatic use; callers overriding it must select safe pacing when contacting CAL. We do not imply a cross-process rate
