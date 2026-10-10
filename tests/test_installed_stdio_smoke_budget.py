@@ -29,9 +29,7 @@ async def test_smoke_budget_guards_real_attempts_and_cache_hits_are_free() -> No
         return _response()
 
     budget = SmokeAttemptBudget(max_attempts=2)
-    client = CalHttpClient(
-        transport=transport, before_transport_attempt=budget.before_attempt
-    )
+    client = CalHttpClient(transport=transport, before_transport_attempt=budget.before_attempt)
     try:
         one = CalRequest("GET", "entry.php", params=(("lemma", "br N"),))
         two = CalRequest("GET", "entry.php", params=(("lemma", "ktb V"),))
