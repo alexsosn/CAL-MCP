@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import shutil
 import sys
 from dataclasses import asdict, dataclass
@@ -69,6 +70,7 @@ class SmokeCase:
     arguments: dict[str, object]
     expected_statuses: tuple[str, ...] = ()
     needs_provenance: bool = True
+    from_case: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -162,6 +164,13 @@ DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
     ),
     SmokeCase("gloss", "cal_gloss_search", {"query": "king"}),
     SmokeCase("text_search", "cal_text_search", {"query": "Tel Dan"}),
+    SmokeCase(
+        "text_page_followup",
+        "cal_text_page",
+        {},
+        ("found",),
+        from_case="text_search",
+    ),
     SmokeCase("text_concordance", "cal_text_concordance", {"text_id": "13250"}),
     SmokeCase("bibliography", "cal_bibliography_lemma", {"lemma_key": "cly V"}),
     SmokeCase(
@@ -180,6 +189,34 @@ DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
 )
 
 
+def _select_one_direct_text_page(parent: dict[str, object]) -> dict[str, object] | None:
+    """Choose at most one CAL-declared page target, preserving its exact selectors."""
+
+    matches = parent.get("matches")
+    if not isinstance(matches, list):
+        return None
+    for match in matches:
+        if not isinstance(match, dict) or match.get("follow_up_tool") != "cal_text_page":
+            continue
+        file_id = match.get("file_id")
+        subtext_id = match.get("subtext_id")
+        if (
+            match.get("category_id") is not None
+            or type(file_id) is not str
+            or re.fullmatch(r"[0-9]+", file_id) is None
+            or (
+                subtext_id is not None
+                and (
+                    type(subtext_id) is not str
+                    or re.fullmatch(r"[0-9]+[a-z]?", subtext_id) is None
+                )
+            )
+        ):
+            return None
+        return {"file_id": file_id, "subtext_id": subtext_id, "page": 1}
+    return None
+
+
 async def evaluate_smoke_cases(
     client: Client,
     cases: tuple[SmokeCase, ...] = DEFAULT_SMOKE_CASES,
@@ -188,18 +225,35 @@ async def evaluate_smoke_cases(
 
     listed = {tool.name: tool for tool in (await client.list_tools()).tools}
     outcomes: list[SmokeOutcome] = []
+    successful: dict[str, dict[str, object]] = {}
     for case in cases:
         tool = listed.get(case.tool)
         if tool is None:
             outcomes.append(SmokeOutcome(case.name, "harness", "required public MCP tool missing"))
             continue
+        arguments = case.arguments
+        if case.from_case is not None:
+            parent = successful.get(case.from_case)
+            if parent is None:
+                outcomes.append(SmokeOutcome(case.name, "skipped_dependency", "parent case did not pass"))
+                continue
+            if case.tool != "cal_text_page":
+                outcomes.append(SmokeOutcome(case.name, "harness", "unsupported smoke follow-up"))
+                continue
+            selected = _select_one_direct_text_page(parent)
+            if selected is None:
+                outcomes.append(SmokeOutcome(case.name, "drift", "no trusted direct text selector"))
+                continue
+            arguments = selected
         try:
-            result = await client.call_tool(case.tool, arguments=case.arguments)
+            result = await client.call_tool(case.tool, arguments=arguments)
         except Exception:
             outcomes.append(SmokeOutcome(case.name, "harness", "MCP transport or schema error"))
             continue
         outcome = evaluate_tool_result(case, tool, result)
         outcomes.append(outcome)
+        if outcome.category == "ok" and isinstance(result.structured_content, dict):
+            successful[case.name] = result.structured_content
         if outcome.category == "harness" and outcome.message in {
             "unclassified MCP tool failure",
             "missing structured MCP output or schema",
