@@ -18,6 +18,8 @@ def test_release_smoke_installs_exact_uploaded_wheel_not_source() -> None:
     workflow = RELEASE.read_text(encoding="utf-8")
     job = _release_smoke_job()
     assert "needs: build-and-test" in job
+    assert "group: cal-mcp-live-smoke" in job
+    assert "cancel-in-progress: false" in job
     assert "actions/download-artifact@v5" in job
     assert "name: python-distributions" in job
     assert "dist/*.whl" in job
@@ -36,6 +38,7 @@ def test_release_smoke_installs_exact_uploaded_wheel_not_source() -> None:
 def test_scheduled_smoke_uses_one_installed_wheel_suite_without_source_shadowing() -> None:
     workflow = WEEKLY.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
+    assert "group: cal-mcp-live-smoke" in workflow
     assert "schedule:" in workflow
     assert "python -m build --wheel" in workflow
     assert "dist/*.whl" in workflow
