@@ -109,7 +109,8 @@ async def test_complete_browse_no_match_remains_actual_not_found() -> None:
     async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
         del config
         requests.append(request)
-        return response(PAGE.split('<a href="browseSKEYheaders.php?direction=1')[0] + "</body></html>")
+        html = PAGE.split('<a href="browseSKEYheaders.php?direction=1')[0]
+        return response(html + "</body></html>")
 
     result = await LexiconLookupService(CalHttpClient(transport=transport)).lookup("byt mlkw")
     payload = result.to_dict()
