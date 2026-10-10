@@ -62,6 +62,9 @@ jobs:
   live-smoke:
     needs: build-and-test
     runs-on: ubuntu-latest
+    concurrency:
+      group: cal-mcp-live-smoke
+      cancel-in-progress: false
     timeout-minutes: 10
     permissions:
       contents: read
