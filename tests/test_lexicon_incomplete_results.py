@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
+from cal_mcp.errors import CalInputError
 from cal_mcp.lexicon import (
     LemmaRef,
     LexiconLookupService,
@@ -141,3 +142,34 @@ def test_machine_multiword_lemma_is_exact_match_for_cal_or_split_word_input() ->
     )
     assert _query_matches("byt mlkw", palace)
     assert not _query_matches("byt mlk", palace)
+
+@pytest.mark.anyio
+async def test_explicit_off_page_lemma_selection_is_truncated_not_invalid() -> None:
+    requests: list[CalRequest] = []
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        return response()
+
+    service = LexiconLookupService(CalHttpClient(transport=transport))
+    result = await service.lookup("byt", lemma_key="byt@mlkw N")
+    data = result.to_dict()
+    assert data["status"] == "truncated"
+    assert data["entry"] is None
+    assert [item["lemma_key"] for item in data["matches"]] == ["byt N"]
+    assert data["browse_continuations"] == [{"prefix": "byt", "continuation": CURSOR}]
+    assert len(requests) == 1
+
+
+@pytest.mark.anyio
+async def test_explicit_unknown_lemma_selection_on_complete_page_is_invalid() -> None:
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del request, config
+        return response(
+            PAGE.split('<a href="browseSKEYheaders.php?direction=1')[0] + "</body></html>"
+        )
+
+    service = LexiconLookupService(CalHttpClient(transport=transport))
+    with pytest.raises(CalInputError):
+        await service.lookup("byt", lemma_key="byt@mlkw N")
