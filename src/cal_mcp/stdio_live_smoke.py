@@ -136,11 +136,9 @@ def _has_representative_content(case_name: str, data: dict[str, object]) -> bool
         for row in rows
     ):
         return False
-    if case_name == "text_concordance" and not any(
+    return case_name != "text_concordance" or any(
         row.get("cal_reports_no_data") is False for row in rows
-    ):
-        return False
-    return True
+    )
 
 
 def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) -> SmokeOutcome:
