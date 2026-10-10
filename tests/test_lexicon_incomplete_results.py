@@ -143,6 +143,7 @@ def test_machine_multiword_lemma_is_exact_match_for_cal_or_split_word_input() ->
     assert _query_matches("byt mlkw", palace)
     assert not _query_matches("byt mlk", palace)
 
+
 @pytest.mark.anyio
 async def test_explicit_off_page_lemma_selection_is_truncated_not_invalid() -> None:
     requests: list[CalRequest] = []
@@ -173,6 +174,7 @@ async def test_explicit_unknown_lemma_selection_on_complete_page_is_invalid() ->
     service = LexiconLookupService(CalHttpClient(transport=transport))
     with pytest.raises(CalInputError):
         await service.lookup("byt", lemma_key="byt@mlkw N")
+
 
 @pytest.mark.anyio
 async def test_real_current_cal_xd_multiword_browse_row_is_selected_for_entry() -> None:
