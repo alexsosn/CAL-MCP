@@ -233,9 +233,7 @@ class _Httpx2Transport:
                     content_type=response.headers.get("content-type"),
                     retrieved_at=datetime.now(UTC),
                     retry_after=(
-                        response.headers.get("retry-after")
-                        if response.status_code == 429
-                        else None
+                        response.headers.get("retry-after") if response.status_code == 429 else None
                     ),
                 )
 
