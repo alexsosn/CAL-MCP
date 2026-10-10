@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import math
+import time
+from email.utils import parsedate_to_datetime
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -27,6 +29,8 @@ _MAX_RETRY_BACKOFF_SECONDS = 1.0
 _DEFAULT_MAX_RESPONSE_BYTES = 2 * 1024 * 1024
 _MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 _MAX_STREAM_CHUNK_BYTES = 64 * 1024
+_MAX_REQUEST_INTERVAL_SECONDS = 5.0
+_MAX_RATE_LIMIT_RETRY_SECONDS = 2
 
 
 class CalClientError(RuntimeError):
@@ -44,9 +48,12 @@ class CalNetworkError(CalClientError):
 class CalUpstreamError(CalClientError):
     """Raised for non-successful CAL HTTP responses."""
 
-    def __init__(self, status_code: int, url: str) -> None:
+    def __init__(
+        self, status_code: int, url: str, *, retry_after_seconds: int | None = None
+    ) -> None:
         self.status_code = status_code
         self.url = url
+        self.retry_after_seconds = retry_after_seconds
         super().__init__(f"CAL returned HTTP {status_code} for {url}")
 
 
@@ -87,6 +94,7 @@ class CalResponse:
     body: bytes
     content_type: str | None
     retrieved_at: datetime
+    retry_after: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +114,7 @@ class CalClientConfig:
     max_concurrency: int = 2
     max_retries: int = 1
     retry_backoff_seconds: float = 0.25
+    min_request_interval_seconds: float = 0.0
     max_response_bytes: int = _DEFAULT_MAX_RESPONSE_BYTES
     cache_enabled: bool = True
     cache_max_entries: int = 128
@@ -139,6 +148,17 @@ class CalClientConfig:
             raise ValueError(
                 "retry_backoff_seconds must be finite and between 0 and "
                 f"{_MAX_RETRY_BACKOFF_SECONDS:g}"
+            )
+        interval = self.min_request_interval_seconds
+        if (
+            isinstance(interval, bool)
+            or not isinstance(interval, (int, float))
+            or not math.isfinite(interval)
+            or not 0 <= interval <= _MAX_REQUEST_INTERVAL_SECONDS
+        ):
+            raise ValueError(
+                f"min_request_interval_seconds must be finite and between 0 and "
+                f"{_MAX_REQUEST_INTERVAL_SECONDS:g}"
             )
         if not isinstance(self.cache_enabled, bool):
             raise ValueError("cache_enabled must be a boolean")
@@ -212,6 +232,11 @@ class _Httpx2Transport:
                     body=b"",
                     content_type=response.headers.get("content-type"),
                     retrieved_at=datetime.now(UTC),
+                    retry_after=(
+                        response.headers.get("retry-after")
+                        if response.status_code == 429
+                        else None
+                    ),
                 )
 
             body = bytearray()
@@ -246,9 +271,15 @@ class CalHttpClient:
         config: CalClientConfig | None = None,
         transport: Transport | None = None,
         before_transport_attempt: Callable[[], None] | None = None,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
         self.config = config or CalClientConfig()
         self._before_transport_attempt = before_transport_attempt
+        self._clock = clock
+        self._sleep = sleep
+        self._pace_lock = asyncio.Lock()
+        self._next_attempt_at = 0.0
         self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
         cache_entries = self.config.cache_max_entries if self.config.cache_enabled else 0
         self._cache: MemoryResponseCache[Any] = MemoryResponseCache(
@@ -444,6 +475,8 @@ class CalHttpClient:
         return repr((namespace, request.method, request.path, request.params, request.data))
 
     async def _request_with_retries(self, request: CalRequest) -> CalResponse:
+        started_at = self._clock()
+        rate_limit_retry_used = False
         for attempt in range(self.config.max_retries + 1):
             try:
                 response = await self._request_once(request)
@@ -457,6 +490,21 @@ class CalHttpClient:
             except (httpx2.HTTPError, OSError) as exc:
                 raise CalNetworkError("CAL non-retryable transport request failed") from exc
 
+            if response.status_code == 429:
+                hint = self._retry_after_seconds(response)
+                if (
+                    hint is not None
+                    and hint <= _MAX_RATE_LIMIT_RETRY_SECONDS
+                    and not rate_limit_retry_used
+                    and attempt < self.config.max_retries
+                    and self._clock() + hint < started_at + self.config.total_timeout_seconds
+                ):
+                    rate_limit_retry_used = True
+                    await self._sleep(hint)
+                    continue
+                raise CalUpstreamError(
+                    429, response.url, retry_after_seconds=hint
+                )
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
                     await self._backoff(attempt)
@@ -468,9 +516,39 @@ class CalHttpClient:
 
         raise AssertionError("bounded retry loop exhausted unexpectedly")
 
+    @staticmethod
+    def _retry_after_seconds(response: CalResponse) -> int | None:
+        value = response.retry_after
+        if type(value) is not str or not value or len(value) > 64 or not value.isascii():
+            return None
+        if value.isdecimal():
+            if len(value) > 5:
+                return None
+            seconds = int(value)
+            return seconds if 1 <= seconds <= 86400 else None
+        try:
+            when = parsedate_to_datetime(value)
+            if when.tzinfo is None:
+                return None
+            seconds = math.ceil((when - response.retrieved_at).total_seconds())
+            return seconds if 1 <= seconds <= 86400 else None
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+    async def _reserve_attempt(self) -> None:
+        interval = self.config.min_request_interval_seconds
+        if interval <= 0:
+            return
+        async with self._pace_lock:
+            delay = max(0.0, self._next_attempt_at - self._clock())
+            if delay > 0:
+                await self._sleep(delay)
+            self._next_attempt_at = self._clock() + interval
+
     async def _request_once(self, request: CalRequest) -> CalResponse:
         async with self._semaphore:
             async with asyncio.timeout(self.config.total_timeout_seconds):
+                await self._reserve_attempt()
                 if self._before_transport_attempt is not None:
                     # The hook is opt-in and runs at the actual transport boundary,
                     # including every retry and excluding cache hits.
