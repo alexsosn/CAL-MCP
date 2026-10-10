@@ -1,0 +1,97 @@
+# Exactly one second read-only GET for current five-year source semantics.
+name: Issue 39 one-time recent bibliography year semantics
+on:
+  push:
+    branches: [research/issue-39-recent-bib-source]
+    paths: [.github/workflows/issue-39-recent-bib-years-once.yml]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Exactly one GET, summarize year distributions and navigation shape
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import re
+          from collections import Counter
+          from html.parser import HTMLParser
+          from urllib.request import HTTPRedirectHandler, Request, build_opener
+          from urllib.parse import urlsplit
+
+          class NoRedirect(HTTPRedirectHandler):
+              def redirect_request(self,req,fp,code,msg,headers,newurl):
+                  return None
+
+          class Shape(HTMLParser):
+              def __init__(self):
+                  super().__init__(convert_charrefs=True)
+                  self.in_p=0
+                  self.parts=[]
+                  self.paras=[]
+                  self.anchor_paths=Counter()
+                  self.form_actions=[]
+                  self.n_forms=0
+                  self.titles=Counter()
+              def handle_starttag(self,tag,attrs):
+                  a=dict(attrs)
+                  if tag=="p":
+                      if not self.in_p:
+                          self.parts=[]
+                      self.in_p+=1
+                  if tag=="a":
+                      self.anchor_paths[urlsplit(a.get("href") or "").path]+=1
+                  if tag=="form":
+                      self.n_forms+=1
+                      self.form_actions.append(a.get("action",""))
+                  if tag in ("title_monographic","title_analytic"):
+                      self.titles[tag]+=1
+              def handle_endtag(self,tag):
+                  if tag=="p" and self.in_p:
+                      self.in_p-=1
+                      if not self.in_p:
+                          self.paras.append(" ".join(" ".join(self.parts).split()))
+              def handle_data(self,s):
+                  if self.in_p:
+                      self.parts.append(s)
+
+          URL="https://cal.huc.edu/getrecentbib.php"
+          req=Request(URL,headers={"User-Agent":"CAL-MCP/0.1.0 (issue-39 second bounded source audit)"})
+          with build_opener(NoRedirect).open(req,timeout=15) as resp:
+              status=resp.status
+              final=resp.url
+              body=resp.read(262145)
+          if len(body)>262144:
+              print(json.dumps({"requests":1,"status":status,"too_large":True}))
+              raise SystemExit(0)
+          p=Shape()
+          p.feed(body.decode("utf-8",errors="replace"))
+          p.close()
+          pat=re.compile(r"(?<!\d)(?:19|20)\d{2}(?!\d)")
+          year_per_paragraph=[
+              [int(y) for y in pat.findall(text) if 1990<=int(y)<=2030]
+              for text in p.paras
+          ]
+          dominant=[Counter(ys).most_common(1)[0][0] if ys else None
+                    for ys in year_per_paragraph]
+          year_hist=Counter(y for y in dominant if y is not None)
+          all_years=Counter(y for ys in year_per_paragraph for y in set(ys))
+          print(json.dumps({
+              "requests":1,"status":status,"exact_url":final==URL,
+              "bytes":len(body),"paragraphs":len(p.paras),
+              "paragraphs_with_year":sum(x is not None for x in dominant),
+              "dominant_paragraph_years":dict(sorted(year_hist.items())),
+              "all_paragraph_year_coverage":dict(sorted(all_years.items())),
+              "first_8_dominant_years":dominant[:8],
+              "last_8_dominant_years":dominant[-8:],
+              "form_count":p.n_forms,"form_action_paths":p.form_actions[:3],
+              "linked_routes":p.anchor_paths.most_common(8),
+              "title_tag_counts":dict(p.titles)
+          }))
+          PY
