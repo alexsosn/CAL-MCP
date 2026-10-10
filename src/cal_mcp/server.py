@@ -308,6 +308,10 @@ async def cal_gloss_search(
     """Search CAL English glosses without reranking or expanding the query.
 
     Set ``all_glosses`` to include subsidiary CAL glosses as well as primary glosses.
+    For English-to-lemma lookup prefer ``all_glosses=true``: CAL's primary index can omit a
+    lemma whose displayed gloss starts with the word (``word#`` misses ``mlh N``, "word,
+    speech; thing"). Rows are in CAL's order, not by relevance, so the wanted lemma can sit
+    deep in a long list.
 
     CAL may list a lemma again behind a redirect row; such a match keeps CAL's redirecting
     key in ``cross_reference_from`` (``null`` for ordinary rows) and is not deduplicated.

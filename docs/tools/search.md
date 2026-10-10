@@ -19,6 +19,18 @@ Search CAL's English lexical glosses.
 - `query` — the English search string submitted to CAL. CAL's current interface requires at least three letters. CAL's documented trailing `#` convention for a complete-word search is preserved and passed upstream rather than reinterpreted locally.
 - `all_glosses` — when `false` (default), search CAL's primary glosses; when `true`, include subsidiary glosses as CAL's current form does.
 
+#### Choosing a mode for English-to-lemma lookup
+
+Prefer `all_glosses=true` when going from an English word to the CAL lemma. CAL's primary-gloss index can omit a lemma even when the lemma's displayed gloss starts with the query word. Rechecked 2026-10-10:
+
+| Query | Lemma (CAL gloss) | `all_glosses=false` | `all_glosses=true` |
+|---|---|---|---|
+| `word#` | `mlh N` ("word, speech; thing") | missing (10 rows) | row 20 of 41 |
+| `hand#` | `yd N` ("hand, arm; side; power") | missing (14 rows) | row 12 of 32 |
+| `without#` | `bl(d p` ("without, except for") | missing (7 rows) | row 3 of 13 |
+
+CAL-MCP returns exactly the rows CAL returns; this is CAL's index behaviour, not an adapter filter. Rows are in CAL's order (Aramaic alphabetical order of lemma keys), not ranked by relevance, so the expected lemma can sit deep in a long list (`with#` returns `lwt p` as row 70 of 167). Neither mode is exhaustive: `also#` misses `)p c` ("also, even") in both modes, while `even#` finds it, so try a synonym when an expected lemma is absent. CAL-MCP does not change the default, rerank, or send a second request on your behalf.
+
 CAL-MCP trims surrounding ASCII spaces and collapses repeated internal ASCII spaces. It otherwise preserves the submitted search text and records both the original and submitted forms in provenance.
 
 ### Result

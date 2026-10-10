@@ -22,6 +22,8 @@ Use `cal_gloss_search` when English describes the lexical meaning you are lookin
 cal_gloss_search(query="camel#")
 ```
 
+To find the lemma for an English word, prefer `cal_gloss_search(query="word#", all_glosses=true)`. CAL's default primary-gloss index can miss core lemmas (for `word#` it omits `mlh N`), and results are in CAL's Aramaic alphabetical order of lemma keys rather than ranked. See [Choosing a mode](../tools/search.md#choosing-a-mode-for-english-to-lemma-lookup).
+
 Use `cal_citation_text_search` instead when you need English words occurring in the translations/text of CAL lexical citations.
 
 A search result is discovery metadata, not an automatically expanded lexicon entry. Pass a selected returned `lemma_key` to `cal_lexicon_lookup` in a second explicit call when full lexical detail is needed.
