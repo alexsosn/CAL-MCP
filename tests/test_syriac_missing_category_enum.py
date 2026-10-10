@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, ValidationError
@@ -104,3 +106,37 @@ def test_enum_and_route_mapping_remain_exhaustively_synchronized() -> None:
     assert enum is not None
     assert tuple(value.value for value in enum) == EXPECTED
     assert tuple(syriac_module._MISSING_WORD_PATHS) == tuple(enum)
+
+
+@pytest.mark.anyio
+async def test_valid_mcp_category_uses_one_exact_cal_route_and_string_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Valid enum decoding must not alter source URLs or the public result shape."""
+
+    requests: list[CalRequest] = []
+    fixture = Path(__file__).parent / "fixtures" / "cal" / "syriac_missing_verbs.html"
+
+    async def fixture_transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        return CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/display_missing_verbs.php",
+            body=fixture.read_bytes(),
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 9, 5, tzinfo=UTC),
+        )
+
+    def make_client() -> CalHttpClient:
+        return CalHttpClient(transport=fixture_transport)
+
+    monkeypatch.setattr(server_module, "CalHttpClient", make_client)
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool("cal_syriac_missing_words", {"category": "verbs"})
+
+    assert result.is_error is False
+    assert result.structured_content is not None
+    assert result.structured_content["category"] == "verbs"
+    assert len(result.structured_content["items"]) == 3
+    assert requests == [CalRequest(method="GET", path="display_missing_verbs.php")]
