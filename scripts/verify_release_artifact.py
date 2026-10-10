@@ -77,9 +77,7 @@ def _sdist_version(sdist: Path, expected_version: str) -> str:
             # hardlink target safe, and special tar members are never needed.
             for member in members:
                 if not member.isfile() and not member.isdir():
-                    raise RuntimeError(
-                        f"unsupported sdist member type for {member.name!r}"
-                    )
+                    raise RuntimeError(f"unsupported sdist member type for {member.name!r}")
 
             metadata_file = archive.extractfile(pkg_info_members[0])
             if metadata_file is None:
