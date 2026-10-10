@@ -154,25 +154,53 @@ At least one test should launch the actual stdio entry point once packaging exis
 
 ## 9. Live smoke tests
 
-Live tests detect upstream drift; they do not validate CAL scholarship. They remain separate from normal required CI so ordinary pull-request correctness never depends on CAL availability.
+Live tests detect upstream drift; they do not establish CAL scholarship. Normal pull-request
+CI stays offline. The installed-stdio smoke (issue #157, D-022) is intentionally opt-in:
+the release-tag job runs it *before* PyPI publication, and
+`.github/workflows/live-smoke.yml` runs it only on explicit dispatch or its weekly schedule.
 
-The permanent v0.1 workflow is `.github/workflows/live-smoke.yml`. It supports explicit `workflow_dispatch` and a weekly scheduled run. A developer who intentionally wants the same networked smoke locally can run:
+Both workflows execute one `cal_mcp.stdio_live_smoke` suite from an installed wheel,
+not the old direct-Python-service smoke in `cal_mcp.live_smoke`. The release job
+downloads the exact wheel built and tested by `build-and-test` instead of
+reinstalling the checkout. The weekly job builds the current checked-out wheel.
+The smoke interpreter runs outside the checkout so it cannot import source files
+in place of the installed wheel.
+
+To run the same explicitly networked check yourself, first install a trusted,
+locally built wheel into an isolated environment, change to a directory **outside**
+the repository, and run:
 
 ```bash
-python -m cal_mcp.live_smoke
+python -m cal_mcp.stdio_live_smoke --executable /absolute/path/to/venv/bin/cal-mcp
 ```
 
-That command is an opt-in CAL network operation. Do not add it to normal offline CI.
+The `python` used above must belong to that installed-wheel environment.
+Importing the module or listing MCP tools does not make CAL requests; invoking
+the eleven representative cases does.
 
-The v0.1 smoke contract is frozen at a maximum of **9 CAL requests** across eight representative cases: lexicon lookup, text search, one-text concordance, bibliography, dictionary collation, external-citation discovery, Targum comparison, and Syriac/Peshitta comparison. The lexicon case may consume two requests; the remaining cases consume one each. The runner is sequential and does not enumerate result pages, lemma lists, text catalogues, or corpora.
+The total ceiling is **25 actual CAL transport attempts per smoke invocation**,
+enforced inside the server immediately before each transport call. All tools
+share one process with **concurrency 1**, **retries 0**, and the normal bounded
+in-memory successful-response **cache enabled** (cache hits cost zero). The
+client performs sequential tool calls and never enumerates result pages,
+subcorpora, lexemes, links, or pagination. No regular `cal-mcp` launch inherits
+the opt-in smoke limit.
 
-The smoke client deliberately uses **concurrency 1**, **retries 0**, and **cache disabled** so the request count is explicit and an upstream failure cannot multiply load. The ninth request is a hard ceiling: attempting another request fails before transport.
+The smoke driver checks `is_error`, every advertised `outputSchema`, the
+strict structured-error envelope, and the CAL source URL and timestamp on
+successful CAL-backed results. It classifies each attempted case as `ok`,
+`drift`, `unavailable`, or `harness`; it does not copy upstream HTML into
+diagnostics. The JSON report contains per-case outcomes,
+`actual_cal_transport_attempts`, and `max_cal_transport_attempts`.
+A missing or malformed server attempt report is a failing harness error, never
+an assumed zero. Any non-OK result fails the workflow and blocks publication.
 
-Smoke failures are classified diagnostically as `drift`, `upstream`, `content`, or `harness`. Parser/semantic-shape failures belong to `drift`; network failures and upstream HTTP failures belong to `upstream`; other CAL content-policy failures remain distinct from harness/programming failures. A failed live smoke must not be reinterpreted as a valid empty CAL result.
-
-On success, the CLI writes one JSON report to stdout containing the completed cases, consumed `request_count`, and `max_cal_requests`. An expected classified `LiveSmokeFailure` writes one JSON object to stderr with `status: "failed"`, the failed case, category, cause text, consumed request count, and maximum request count, then exits with status 1 without a Python traceback. Unrelated harness/programming exceptions are not converted into that normal failure record; they continue to propagate so the smoke harness itself cannot fail silently.
-
-Representative queries are chosen for structural stability rather than exhaustive scholarly coverage. The workflow does not crawl, prefetch continuation pages, poll CAL, or expand links beyond the explicit service operation being checked.
+**Release readiness gate:** the fixed current 11-case matrix must still be
+measured once against live CAL from the installed wheel and accepted within the
+25-attempt cap; offline CI alone is insufficient. Do not run the old nine-call
+service smoke alongside the new suite or automatically retry failed live smoke.
+The retained `cal_mcp.live_smoke` module has legacy offline regression tests,
+but is no longer a scheduled or release operation.
 
 ## 10. Dependency resolution policy
 
