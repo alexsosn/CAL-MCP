@@ -9,7 +9,7 @@ import pytest
 from mcp import Client
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.errors import CalInputError
+from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.targum import parse_targum_concordance_page
 
 SOURCE = (
@@ -82,8 +82,7 @@ def test_quoted_cal_text_group_has_two_ordered_hits_and_targets() -> None:
     ],
 )
 def test_bad_result_origin_and_group_are_parser_drift(bad_source: str) -> None:
-    mod = import_module("cal_mcp.targum_concordance_examples")
-    with pytest.raises(mod.TargumConcordanceExamplesParseError):
+    with pytest.raises(CalParseError):
         parse(source=bad_source)
 
 
@@ -94,13 +93,14 @@ def test_bad_result_origin_and_group_are_parser_drift(bad_source: str) -> None:
         BODY.replace("2</b> examples found", "3</b> examples found"),
         BODY.replace("in dialect 51001 51002", "in dialect 51001 51003"),
         BODY.replace("get_a_kwicchapter.php", "oneentry.php"),
-        BODY.replace('class="red">target one', 'class="red">'),
+        BODY.replace('class="red">target one', 'class="red">')
+        .replace('class="red">target two', 'class="red">'),
         BODY.replace("examples found for", "matches found for"),
     ],
 )
 def test_bad_page_identity_totals_or_targets_are_drift(bad_html: str) -> None:
     mod = import_module("cal_mcp.targum_concordance_examples")
-    with pytest.raises(mod.TargumConcordanceExamplesParseError):
+    with pytest.raises(CalParseError):
         parse(bad_html)
 
 
