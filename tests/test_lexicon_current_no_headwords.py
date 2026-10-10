@@ -149,3 +149,21 @@ async def test_bare_hebrew_shin_ignores_empty_sin_prefix_and_keeps_shin_candidat
         "browseSKEYheaders.php",
         "cal_entry_web.php",
     ]
+
+
+def test_current_no_headwords_marker_must_echo_the_requested_prefix() -> None:
+    # A CAL page for a different prefix must never be reported as a genuine miss.
+    for parser in (parse_browse_page, parse_lexicon_browse_page):
+        with pytest.raises(LexiconParseError):
+            parser(_response(_empty("zzz"), prefix="qqq"))
+
+
+def test_current_no_headwords_marker_cannot_coexist_with_lemma_rows() -> None:
+    contradictory = (
+        '<div><a href="/oneentry.php?cits=all&amp;lemma=br+N">br n.m.</a></div>'
+        '<div>son</div>'
+        + _empty("qqq")
+    )
+    for parser in (parse_browse_page, parse_lexicon_browse_page):
+        with pytest.raises(LexiconParseError):
+            parser(_response(contradictory))
