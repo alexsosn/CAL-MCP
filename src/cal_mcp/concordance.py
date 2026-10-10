@@ -46,7 +46,7 @@ _DIALECT_GRAND_TOTAL_RE = re.compile(
     re.IGNORECASE,
 )
 _DIALECT_SUMMARY_HINT_RE = re.compile(r"\bfound for\b|^grand total\b", re.IGNORECASE)
-_FULL_CONTEXT_NOT_FOUND_RE = re.compile(r"^Target coordinate ([0-9]+) not found\.$")
+_FULL_CONTEXT_NOT_FOUND_RE = re.compile(r"^Target coordinate ([0-9]+[0-9A-Za-z]*) not found\.$")
 
 _TEXT_SCRIPTS = {"transliteration": "R", "semitic": "S"}
 _KWIC_SCRIPTS = {"roman": "R", "hebrew": "H", "syriac": "S"}

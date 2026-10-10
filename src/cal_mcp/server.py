@@ -642,8 +642,10 @@ async def cal_kwic_full_context(
     """Follow one returned CAL KWIC hit into its bounded full-context page.
 
     Pass the hit's ``file_id``, ``target_coordinate``, ``charset``, and optional
-    ``subtext_id``. The subtext value accepts CAL's current digits-plus-optional-single-
-    lowercase-suffix grammar and is preserved exactly. Arbitrary URLs are not accepted and no
+    ``subtext_id`` exactly as returned. CAL's KWIC selectors can contain ASCII letters (subtext
+    ``AR`` with target ``23350AR201``); they are opaque and preserved exactly, and a
+    letter-bearing target must start with the file id plus subtext id. Charset is one of
+    ``R``, ``H``, ``S``, ``T`` or ``U``. Arbitrary URLs are not accepted and no
     returned links are followed. One explicit call submits at most one new logical CAL request;
     a completed cache hit performs no new upstream I/O.
     """

@@ -380,6 +380,10 @@ info link (as in R-047). Rows around the target can belong to other line groups 
 file (`2235201A1` beside target `2235212A1`), so they share only the file-id prefix with it.
 Evidence came from the 2026-10-10 E2E smoke plus those two requests (project User-Agent).
 
+An independent review of the change made one more bounded GET: for a missing letter-bearing target, CAL prints its usual
+not-found paragraph, `Target coordinate <b>23350AR999</b> not found.`, so the not-found marker
+accepts the same opaque coordinate shape.
+
 **Implication:** see D-023. Reduced fixtures: `kwic_dialect_mlk_2_alphanumeric_current.html`,
 `kwic_full_context_22352_12_alphanumeric_current.html`, `kwic_full_context_23350_ar_letter_subtext_current.html`.
 

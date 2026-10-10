@@ -190,3 +190,82 @@ async def test_full_context_service_rejects_unbound_letter_targets_before_transp
     finally:
         await client.aclose()
     assert transport.requests == []
+
+
+MISSING = FIXTURES / "kwic_full_context_23350_ar_not_found_current.html"
+
+
+def test_missing_letter_bearing_target_is_typed_not_found() -> None:
+    page = parse_kwic_full_context_page(
+        _response(_full_context_url("23350", "AR", "23350AR999"), MISSING.read_bytes()),
+        requested_file_id="23350",
+        requested_subtext_id="AR",
+        requested_target_coordinate="23350AR999",
+        requested_charset="H",
+    )
+
+    assert page.status.value == "not_found"
+    assert page.lines == ()
+
+
+def test_not_found_marker_naming_another_letter_target_is_drift() -> None:
+    with pytest.raises(ConcordanceParseError, match="not-found target differs"):
+        parse_kwic_full_context_page(
+            _response(_full_context_url("23350", "AR", "23350AR998"), MISSING.read_bytes()),
+            requested_file_id="23350",
+            requested_subtext_id="AR",
+            requested_target_coordinate="23350AR998",
+            requested_charset="H",
+        )
+
+
+def test_full_context_lexical_coordinate_from_another_file_is_drift() -> None:
+    # The JAR rows carry no comment links, so only the lexical-coordinate check can catch this.
+    body = JAR.read_bytes().replace(b"getlex.php?coord=2235213A1", b"getlex.php?coord=9999913A1")
+
+    with pytest.raises(ConcordanceParseError, match="unsupported coordinate"):
+        parse_kwic_full_context_page(
+            _response(_full_context_url("22352", "12", "2235212A1"), body),
+            requested_file_id="22352",
+            requested_subtext_id="12",
+            requested_target_coordinate="2235212A1",
+            requested_charset="H",
+        )
+
+
+@pytest.mark.anyio
+async def test_nine_character_subtext_with_a_consistent_target_is_drift() -> None:
+    body = IMPERIAL.read_bytes().replace(
+        b"sub=C01&cset=H&target=27351C01R101", b"sub=C01C01C01&cset=H&target=27351C01C01C01R1"
+    )
+
+    with pytest.raises(ConcordanceParseError, match="subtext_id"):
+        await _imperial(body)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("target", "subtext_id"),
+    [
+        # Exactly the file + subtext prefix, with no coordinate tail.
+        ("23350AR", "AR"),
+        # Longer than the 32-character coordinate ceiling.
+        ("23350AR" + "1" * 26, "AR"),
+        ("2" * 33, None),
+    ],
+)
+async def test_full_context_service_rejects_bare_prefix_and_overlong_targets(
+    target: str, subtext_id: str | None
+) -> None:
+    transport = _Transport(
+        _response(_full_context_url("23350", "AR", "23350AR201"), CUSTOMS.read_bytes())
+    )
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(CalInputError):
+            await ConcordanceService(client).kwic_full_context(
+                "23350" if subtext_id else "2222", target, "H", subtext_id=subtext_id
+            )
+    finally:
+        await client.aclose()
+    assert transport.requests == []

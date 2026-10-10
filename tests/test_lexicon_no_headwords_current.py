@@ -203,3 +203,25 @@ async def test_public_browse_service_returns_empty_page_for_no_headwords() -> No
 
     assert result.rows == ()
     assert result.next_continuation is None
+
+
+@pytest.mark.parametrize("parser", _PARSERS)
+def test_repeated_no_headwords_marker_is_drift(parser: object) -> None:
+    body = (FIXTURES / _FIXTURE_BY_PREFIX["qqq"]).read_text(encoding="utf-8")
+    body = body.replace("</body>", "<div>There are no headwords beginning with: qqq</div></body>")
+
+    with pytest.raises(LexiconParseError, match="requested prefix"):
+        parser(_no_headwords_response("qqq", body=body))  # type: ignore[operator]
+
+
+@pytest.mark.parametrize("parser", _PARSERS)
+@pytest.mark.parametrize("echo", ["$", "&"])
+def test_ambiguous_script_prefix_does_not_accept_one_of_its_candidates(
+    parser: object, echo: str
+) -> None:
+    # Bare Hebrew shin has two CAL-code readings; neither is "the" deterministic echo.
+    body = (FIXTURES / _FIXTURE_BY_PREFIX["qqq"]).read_text(encoding="utf-8")
+    body = body.replace("beginning with: qqq", f"beginning with: {echo}")
+
+    with pytest.raises(LexiconParseError, match="requested prefix"):
+        parser(_no_headwords_response("ש", body=body))  # type: ignore[operator]
