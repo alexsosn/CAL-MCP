@@ -1,0 +1,9 @@
+# Issue #252 — research: CAL's current explicit no-headwords marker
+
+Date: 2026-10-10. Source: current user-facing installed-wheel CAL-MCP E2E report in issue #252, independently checked against actual main source `src/cal_mcp/lexicon.py` and `src/cal_mcp/lexicon_browse.py`. The upstream query `browseSKEYheaders.php?first3="qqq"` returned HTTP 200 with browse results table containing **`There are no headwords beginning with: qqq`**. The page is a normal valid negative result, not a generic error or maintenance page. Current `_NOT_FOUND_PHRASES` omits that explicit CAL wording, causing the lookup parser and the public browse parser (both share the list) to report `parser_drift`.
+
+User-visible impact: the lexicon lookup for Hebrew bare `ש` normalizes into the two CAL prefixes `$` and `&`, and must tolerate an empty `&` page if the `$` page contains a candidate. This is directly supported by `tests/test_cal_code_conversion.py` (bare `שלם` yields `$lm`, `&lm`). Main lookup already loops over all prefixes and returns `not_found` if no candidates; no changes to candidate matching are necessary. Main browse already returns an empty result when its shared no-match phrase is detected and rejects a NEXT PAGE link on an empty result; retain both behaviors.
+
+Risk/semantics: accept only an **explicit standalone current CAL phrase**, not any substring `no headwords` or incidental page text. Unknown/missing result indicators remain `parser_drift`. A no-headwords marker coexisting with an actual lexicon row is a contradiction and must not silently mask the row.
+
+No new upstream CAL probe is necessary: existing same-day source observation is sufficient, and CAL has reported 429 for overly frequent automated calls in issue #262. All implementation and regression tests are offline with synthetic short HTML structural fixtures (not full CAL content). No request count, public MCP API or release manifest change.
