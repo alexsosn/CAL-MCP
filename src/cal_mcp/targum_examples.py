@@ -71,11 +71,7 @@ class TargumReflexExamplesResult:
 
 def _visible_lines(text: str) -> str:
     """Preserve actual CAL line breaks while folding incidental HTML whitespace."""
-    return "\n".join(
-        " ".join(line.split())
-        for line in text.split("\n")
-        if line.strip()
-    )
+    return "\n".join(" ".join(line.split()) for line in text.split("\n") if line.strip())
 
 
 class _ReflexExamplesParser(HTMLParser):
@@ -119,7 +115,7 @@ class _ReflexExamplesParser(HTMLParser):
         elif tag == "span" and len(self.headings) == 2:
             if self._span_parts is not None:
                 raise TargumReflexExamplesParseError("nested reflex-example text spans")
-            classes = dict(attrs).get("class", "").split()
+            classes = (dict(attrs).get("class") or "").split()
             if classes != ["heb"] or self._div_depth not in (1, 2):
                 raise TargumReflexExamplesParseError("unexpected reflex-example text span")
             self._span_parts = []
@@ -169,12 +165,16 @@ class _ReflexExamplesParser(HTMLParser):
 def _check_origin_and_selectors(
     source_url: str, *, targum: str, mt_lemma_id: str, lemma_key: str
 ) -> None:
-    url = urlsplit(source_url)
+    try:
+        url = urlsplit(source_url)
+        port = url.port
+    except ValueError as error:
+        raise TargumReflexExamplesParseError("invalid CAL example source URL") from error
     query = parse_qs(url.query, keep_blank_values=True)
     if (
         url.scheme != "https"
         or url.hostname != "cal.huc.edu"
-        or url.port is not None
+        or port is not None
         or url.username is not None
         or url.password is not None
         or url.fragment
@@ -183,7 +183,9 @@ def _check_origin_and_selectors(
         or query["MT"] != [mt_lemma_id]
         or query["cal"] != [lemma_key]
     ):
-        raise TargumReflexExamplesParseError("CAL reflex example source selectors contradict request")
+        raise TargumReflexExamplesParseError(
+            "CAL reflex example source selectors contradict request"
+        )
 
 
 def _check_lexicon_link(href: str | None, label: str, lemma_key: str) -> None:
@@ -238,7 +240,9 @@ def parse_targum_reflex_examples_page(
         or parser._div_depth
         or parser._heading_parts is not None
     ):
-        raise TargumReflexExamplesParseError("CAL reflex example lacks complete ordered MT/Aramaic pairs")
+        raise TargumReflexExamplesParseError(
+            "CAL reflex example lacks complete ordered MT/Aramaic pairs"
+        )
     examples: list[TargumReflexExample] = []
     for i in range(0, len(parser.spans), 2):
         mt_depth, mt_text = parser.spans[i]
