@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+from pathlib import Path
+
 import pytest
 from mcp.types import CallToolResult, TextContent, Tool
 
+from cal_mcp.bibliography import parse_bibliography_page
+from cal_mcp.client import CalResponse
 from cal_mcp.stdio_live_smoke import SmokeCase, evaluate_tool_result
 
 
@@ -55,8 +60,7 @@ def test_schema_valid_empty_representative_results_are_drift(name: str, field: s
 def test_representative_results_require_minimum_rows(
     name: str, field: str, items: list[object]
 ) -> None:
-    expected = "drift" if name == "bibliography" else "ok"
-    assert _evaluate(name, field, items) == expected
+    assert _evaluate(name, field, items) == "ok"
 
 
 @pytest.mark.parametrize(
@@ -84,3 +88,24 @@ def test_two_bibliography_records_with_citations_are_accepted() -> None:
 
 def test_unrelated_smoke_cases_remain_generic_and_schema_checked() -> None:
     assert _evaluate("custom", "records", []) == "ok"
+
+
+def test_real_cly_v_bibliography_fixture_is_a_valid_one_record_smoke_sample() -> None:
+    """RED: fixture for the *selected* query contains one, not two, CAL works."""
+
+    fixture = Path(__file__).parent / "fixtures" / "cal" / "bibliography_lemma_cly_v.html"
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/getbiblemma.php?myauthor=cly+V",
+        body=fixture.read_bytes(),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 9, 5, tzinfo=UTC),
+    )
+    page = parse_bibliography_page(response)
+    assert len(page.records) == 1
+    assert "Cognates Can Be Deceptive" in page.records[0].citation
+    assert _evaluate(
+        "bibliography",
+        "records",
+        [{"citation": record.citation} for record in page.records],
+    ) == "ok"
