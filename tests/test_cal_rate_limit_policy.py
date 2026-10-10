@@ -267,3 +267,18 @@ async def test_429_retry_does_not_start_after_queued_pacing_slot_exceeds_deadlin
     assert attempts == 1
     assert counted == 1
     assert clock() < 115
+
+
+@pytest.mark.anyio
+async def test_standard_live_smoke_budget_retains_release_safe_three_second_pace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The standard 25-attempt live-smoke path must not bypass the pace."""
+    import cal_mcp.server as server
+
+    monkeypatch.setenv("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS", "25")
+    monkeypatch.delenv("CAL_MCP_LIVE_SMOKE_REPORT_PATH", raising=False)
+
+    async with server.app_lifespan(server.mcp) as context:
+        assert context.client.config.max_retries == 0
+        assert context.client.config.min_request_interval_seconds >= 3.0
