@@ -12,10 +12,7 @@ from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalRespon
 from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.targum import parse_targum_concordance_page
 
-SOURCE = (
-    "https://cal.huc.edu/show1dialectKWIC.php"
-    "?lemma=klb&pos=N&texts=51001+51002&charset=H"
-)
+SOURCE = "https://cal.huc.edu/show1dialectKWIC.php?lemma=klb&pos=N&texts=51001+51002&charset=H"
 STAMP = datetime(2026, 10, 10, 17, 30, tzinfo=UTC)
 
 # Synthetic scholar text, structural markup derived from bounded CAL observation
