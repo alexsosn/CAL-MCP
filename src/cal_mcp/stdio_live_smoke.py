@@ -105,7 +105,9 @@ DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
     SmokeCase(
         "conversion", "cal_convert_to_code", {"value": "ܫܠ"}, needs_provenance=False
     ),
-    SmokeCase("lexicon_noun", "cal_lexicon_lookup", {"query": "br", "lemma_key": "br N"}, ("found",)),
+    SmokeCase(
+        "lexicon_noun", "cal_lexicon_lookup", {"query": "br", "lemma_key": "br N"}, ("found",)
+    ),
     SmokeCase(
         "lexicon_verb", "cal_lexicon_lookup", {"query": "ktb", "lemma_key": "ktb V"}, ("found",)
     ),
