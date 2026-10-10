@@ -41,6 +41,14 @@ def _error(kind: PublicErrorKind) -> dict[str, object]:
     ).to_dict()
 
 
+def _unknown_error() -> dict[str, object]:
+    payload = _error(PublicErrorKind.PARSER_DRIFT)
+    error = payload["error"]
+    assert isinstance(error, dict)
+    error["kind"] = "unrecognized_budget_error"
+    return payload
+
+
 @dataclass
 class FakeClient:
     results: list[CallToolResult]
@@ -78,7 +86,7 @@ async def test_stdio_cases_execute_sequentially_and_aggregate_independent_failur
 async def test_stdio_unknown_tool_error_stops_before_exhausting_server_budget() -> None:
     client = FakeClient(
         results=[
-            _result({"error": {**_error(PublicErrorKind.PARSER_DRIFT)["error"], "kind": "unrecognized_budget_error"}}, is_error=True),
+            _result(_unknown_error(), is_error=True),
             _result({"status": "found"}),
         ],
         calls=[],
