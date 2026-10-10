@@ -179,6 +179,7 @@ async def test_unusable_retry_after_never_triggers_early_retry(hint: str | None)
     assert attempts == 1
     assert clock.waits == []
 
+
 @pytest.mark.anyio
 async def test_production_client_defaults_paced_and_injected_offline_transport_stays_fast() -> None:
     async def fake(req: CalRequest, config: CalClientConfig) -> CalResponse:
