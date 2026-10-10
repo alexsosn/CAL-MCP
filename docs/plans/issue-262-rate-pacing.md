@@ -13,3 +13,7 @@ Research: `docs/research/issue-262-rate-pacing.md`.
 7. Tag/PyPI release remains blocked until #15 trust registration is verified; issue #262 is release-blocking independently.
 
 No other CAL surfaces are fetched automatically, and no third-party server is used as a pace oracle.
+
+## Post-live adversarial branch of plan (2026-10-10)
+
+The authorized measured run at 3-second spacing failed on HTTP 429 at attempt 10/38, so the full 37-token acceptance gate is **not met**. **No further real CAL calls** under this ticket without a new independent source-supported decision. Instead implement a fail-closed cooldown as a separate protective slice: (a) RED fake-clock tests for first 429, second distinct operation blocked locally with exact `upstream_reached=false` typed result and **0** additional attempts; (b) cached success unaffected, and after 60-second clock advancement one guarded new attempt permitted; (c) valid long Retry-After delays the circuit, missing/invalid header defaults to 60 sec; (d) short permitted retry and 5xx-only behavior remain unchanged; (e) queued concurrent requests inspect cooldown immediately before transport, including after waiting; (f) cancel/local suppression never spends the live attempt budget. GREEN requires both full CI matrices and logically independent skeptical review of final exact head. If staged protective code is merged, leave #262 and v0.1 release blocked on separate CAL rate-policy calibration, and never claim 37-token acceptance. A one-shot 38-request runner must not ship in the final diff.
