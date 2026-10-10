@@ -37,10 +37,15 @@ source IDs, invalid lemma keys, duplicate links and cross-origin URLs.
   a unique-verse set or deduplicate by scripture reference.
 - Both probes were fixed, no redirects, with hard response-size cap;
   action triggers removed. No archive/corpus content was checked into Git.
-- A one-request Neofiti `getNMT.php?MT=1751&cal=gypwp+N` structure
-  audit was queued as run
-  [38059821947](https://github.com/alexsosn/CAL-MCP/actions/runs/38059821947).
-  **DO NOT assert its output or common DOM semantics until the run completes.**
+- The one-request Neofiti `getNMT.php?MT=1751&cal=gypwp+N` structure
+  audit [run 38059821947](https://github.com/alexsosn/CAL-MCP/actions/runs/38059821947)
+  completed **HTTP 200** / 2973 bytes. It also displays two `h3`
+  headings (Neofiti MT lemma, selected CAL reflex link) and one paired
+  outer `div` containing Hebrew MT `span.heb` and a nested Aramaic
+  `div/span.heb`. It showed one concrete Deut 22:8 example.
+  The structural shape is shared across the two verified sources; their
+  route identities and source-label semantics remain distinct.
+  Its temporary workflow was removed; it did not fetch link targets.
 
 ## Proposed faithful contract
 
