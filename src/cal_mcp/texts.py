@@ -1569,10 +1569,11 @@ def _parse_mandaic_subtext_catalogue_page(
                 raise TextParseError(
                     "CAL Mandaic subtext information link has unexpected selectors"
                 )
-            if (
-                _single_query_value(info_query, "coord", "Mandaic subtext information")
-                != requested_file_id + subtext_id
-            ):
+            # Rows normally name file + subtext; Ginza (74410) rows name the parent file (R-076).
+            if _single_query_value(info_query, "coord", "Mandaic subtext information") not in {
+                requested_file_id + subtext_id,
+                requested_file_id,
+            }:
                 raise TextParseError(
                     "CAL Mandaic subtext information coordinate names another text"
                 )
