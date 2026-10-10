@@ -123,4 +123,3 @@ def test_unclosed_stem_header_fails_closed() -> None:
     )
     with pytest.raises(LexiconParseError):
         _parse_lines(response)
-
