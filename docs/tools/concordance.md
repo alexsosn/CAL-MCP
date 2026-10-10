@@ -137,7 +137,7 @@ cal_kwic_full_context(
 )
 ```
 
-This operation consumes the typed selectors already returned on a `KwicHit`. It does not accept `full_context_url` or any other arbitrary URL. `file_id`, `target_coordinate`, and a non-null `subtext_id` must be decimal CAL identifiers. `charset` is the exact CAL hit charset and must be one of `R`, `H`, `S`, or `U` (CAL's current Unicode Syriac rendering, returned by one-dialect KWIC hits such as Syriac `cset=U` links).
+This operation consumes the typed selectors already returned on a `KwicHit`. It does not accept `full_context_url` or any other arbitrary URL. `file_id`, `target_coordinate`, and a non-null `subtext_id` must be decimal CAL identifiers. `charset` is the exact CAL hit charset and must be one of `R`, `H`, `S`, `T`, or `U`. `U` is CAL's current Unicode Syriac rendering, returned by one-dialect KWIC hits such as Syriac `cset=U` links. `T` is CAL's current Unicode transliteration (for example `mrʾ`, `ḥ`, `ṭ`), returned by Old Aramaic and other epigraphic hits such as `cset=T` links on Tell Fakhariyeh.
 
 A cache miss submits exactly one logical request to CAL's target-centered context route. Returned navigation or lexical links are validated as metadata but are not followed. The response has:
 

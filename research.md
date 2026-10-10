@@ -360,6 +360,26 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-073 — CAL uses charset `T` (Unicode transliteration) on KWIC and text-search links
+
+**Rechecked:** 2026-10-10; issue #254.
+
+Current CAL emits a fifth charset selector, `T`, alongside `R`, `H`, `S` and `U`. On
+`show1dialectKWIC.php?lemma=mlk&pos=N&texts=1` (Old Aramaic), all 92 hit links carry `cset=T`
+(for example `get_a_kwicchapter.php?file=11200&sub=2&cset=T&target=11200206`). The Palmyrene
+text-search results (`newsearchtxts.php`, search `Palmyr`) link `showsubtexts.php?subtext=41201&cset=T`.
+One full-context GET with `cset=T` returned HTTP 200 with ordinary file-info, comment and
+`getlex.php` token rows, rendered in Unicode transliteration (`mrʾ`, `hdysʿy`, `ḥ`, `ṭ`). The
+page offers "View in Cal Code" (`R`), Syriac and Hebrew alternatives, so `T` is a distinct
+rendering, not an alias. Evidence came from the 2026-10-10 E2E smoke plus that one bounded
+full-context request (project User-Agent).
+
+**Implication:** `T` joins the accepted KWIC hit, full-context and non-Mandaic text-search
+`cset` values and is preserved exactly. It is never mapped to `R`. Other unknown letters
+still fail closed. Reduced fixtures: `kwic_dialect_mlk_1_charset_t_current.html`,
+`kwic_full_context_fakh_11200_2_charset_t_current.html`, `text_search_palmyr_charset_t_current.html`.
+Old Aramaic dialect KWIC also needs alphanumeric target coordinates (#253).
+
 ## R-072 — Peshitta Matthew's concordance links a key with capital `C`
 
 **Rechecked:** 2026-10-10; issue #255.

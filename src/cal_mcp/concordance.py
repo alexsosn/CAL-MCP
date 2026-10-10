@@ -44,7 +44,7 @@ _FULL_CONTEXT_NOT_FOUND_RE = re.compile(r"^Target coordinate ([0-9]+) not found\
 
 _TEXT_SCRIPTS = {"transliteration": "R", "semitic": "S"}
 _KWIC_SCRIPTS = {"roman": "R", "hebrew": "H", "syriac": "S"}
-_KWIC_CHARSETS = frozenset({"R", "H", "S", "U"})
+_KWIC_CHARSETS = frozenset({"R", "H", "S", "U", "T"})
 _MAX_TEXT_IDS = 8
 
 
@@ -831,7 +831,7 @@ class ConcordanceService:
         normalized_file = _validate_decimal_id(file_id, "file_id")
         normalized_target = _validate_decimal_id(target_coordinate, "target_coordinate")
         if not isinstance(charset, str) or charset not in _KWIC_CHARSETS:
-            raise CalInputError("charset must be one of: H, R, S, U")
+            raise CalInputError("charset must be one of: H, R, S, T, U")
         normalized_sub = None if subtext_id is None else _validate_subtext_id(subtext_id)
 
         def parse_requested(response: CalResponse) -> KwicFullContextPage:
