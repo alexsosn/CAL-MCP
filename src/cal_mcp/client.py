@@ -535,9 +535,7 @@ class CalHttpClient:
                     self._set_rate_limit_cooldown(hint)
                     await self._sleep(hint)
                     continue
-                self._set_rate_limit_cooldown(
-                    max(_RATE_LIMIT_COOLDOWN_SECONDS, hint or 0)
-                )
+                self._set_rate_limit_cooldown(max(_RATE_LIMIT_COOLDOWN_SECONDS, hint or 0))
                 raise CalUpstreamError(429, response.url, retry_after_seconds=hint)
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
