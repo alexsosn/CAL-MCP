@@ -65,8 +65,8 @@ def test_lookup_parser_rejects_unsafe_continuation_links(bad: str) -> None:
 
 def test_lookup_parser_rejects_duplicate_browse_next_links() -> None:
     duplicated = PAGE.replace(
-        "</body>", '<a href="browseSKEYheaders.php?direction=1&amp;sortkey=br">'
-        "NEXT PAGE</a></body>",
+        "</body>",
+        '<a href="browseSKEYheaders.php?direction=1&amp;sortkey=br">NEXT PAGE</a></body>',
     )
     with pytest.raises(LexiconParseError):
         parse_browse_page(response(duplicated))
@@ -88,9 +88,7 @@ async def test_missing_lemma_on_page_with_next_is_truncated_without_extra_get() 
     assert payload["matches"] == []
     assert payload["entry"] is None
     assert payload["browse_truncated"] is True
-    assert payload["browse_continuations"] == [
-        {"prefix": "byt", "continuation": CURSOR}
-    ]
+    assert payload["browse_continuations"] == [{"prefix": "byt", "continuation": CURSOR}]
     assert payload["provenance"]["source"] == "CAL"
     assert requests == [
         CalRequest(
