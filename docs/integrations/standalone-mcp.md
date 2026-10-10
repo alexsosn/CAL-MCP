@@ -47,6 +47,53 @@ transport: stdio
 
 The client should launch the command in an environment where the CAL-MCP package and its dependencies are installed. A downstream integration should treat the successful publication of `cal-mcp==0.1.0` as the availability check rather than inferring publication from the repository version alone.
 
+## Proxy and certificate environments
+
+The server's HTTP client honors supported proxy and certificate environment
+variables inherited by the child process, including `HTTPS_PROXY`,
+`HTTP_PROXY`, `NO_PROXY`, `SSL_CERT_FILE` and `SSL_CERT_DIR`. The
+`StdioServerParameters` default environment provided by some Python MCP SDK
+versions/launchers may omit `HTTPS_PROXY` even if it exists in the calling
+shell. Explicitly pass `env=` where your network requires a proxy or custom CA
+certificates. Other MCP clients have their own child-process environment settings.
+
+The following Python MCP SDK example starts the installed server and lists its
+tools **without making any CAL request**:
+
+```python
+import asyncio
+import os
+
+from mcp import Client, StdioServerParameters
+
+
+async def main() -> None:
+    parameters = StdioServerParameters(
+        command="cal-mcp",
+        env=os.environ.copy(),
+    )
+    async with Client(parameters) as client:
+        tools = await client.list_tools()
+        print(len(tools.tools))
+
+
+asyncio.run(main())
+```
+
+Use this full-environment forwarding only for a trusted local executable and
+review the inherited variables if they include secrets. A tightly restricted
+launcher can instead supply the required proxy/CA variables together with
+whatever basic environment (`PATH`, for example) the subprocess needs.
+Do not print proxy URLs with embedded credentials.
+
+If a required proxy is absent, CAL-backed calls can fail with
+`upstream_http` / `CAL returned HTTP 403`; a 2026-09-24 egress-gateway
+reproduction returned `Host not in allowlist`. **Not every 403 comes from
+a proxy**: CAL may legitimately return a 403, and proxy or TLS failures can
+present differently. Check the actual child environment and your network
+administrator's policy before attributing the response to CAL.
+See [Installation](../installation.md#proxy-and-ca-troubleshooting-for-mcp-clients).
+
 ## Network/data boundary
 
 The MCP transport is local stdio, but CAL-MCP's data source is remote CAL. Tool calls that need CAL therefore require outbound HTTPS access to `cal.huc.edu`.
