@@ -14,11 +14,11 @@ from cal_mcp.concordance import (
     _apply_kwic_target_structure,
     _hit_to_dict,
     _parse_kwic_hit_lines,
+    _validate_lemma_key,
 )
 from cal_mcp.errors import CalInputError, CalParseError
 from cal_mcp.lexicon import _parse_lines
 from cal_mcp.targum import TargumProvenance, _make_provenance, _provenance_to_dict
-from cal_mcp.concordance import _validate_lemma_key
 
 _MAX_TARGUM_GROUP_SIZE = 32
 _MAX_TEXT_SELECTORS_BYTES = 256
@@ -117,8 +117,11 @@ def parse_targum_concordance_examples_page(
             "CAL Targum example group heading contradicts requested selectors"
         )
     summary_re = re.compile(
-        r"^([0-9]+) examples found for " + re.escape(canonical)
-        + r" in dialect " + re.escape(" ".join(ids)) + r"$"
+        r"^([0-9]+) examples found for "
+        + re.escape(canonical)
+        + r" in dialect "
+        + re.escape(" ".join(ids))
+        + r"$"
     )
     totals = [m for text in texts if (m := summary_re.fullmatch(text)) is not None]
     if len(totals) != 1:
