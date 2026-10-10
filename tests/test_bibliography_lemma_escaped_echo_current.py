@@ -94,3 +94,27 @@ async def test_other_echo_differences_still_fail_closed(
 
     with pytest.raises(BibliographyParseError):
         await _lemma(key, body.replace(old, new))
+
+
+@pytest.mark.anyio
+async def test_escaped_echo_is_accepted_only_for_lemma_queries() -> None:
+    # R-075 evidence covers getbiblemma.php only; the author route keeps the exact echo.
+    body = SHIN_EMPTY.read_bytes()
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        assert request.path == "getbibauthor.php"
+        return CalResponse(
+            status_code=200,
+            url="https://cal.huc.edu/getbibauthor.php?myauthor=%24lm+N",
+            body=body,
+            content_type="text/html; charset=UTF-8",
+            retrieved_at=datetime(2026, 10, 10, tzinfo=UTC),
+        )
+
+    client = CalHttpClient(transport=transport)
+    try:
+        with pytest.raises(BibliographyParseError, match="heading does not match"):
+            await BibliographyService(client).author("$lm N")
+    finally:
+        await client.aclose()
