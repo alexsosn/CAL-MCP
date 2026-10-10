@@ -261,7 +261,6 @@ def test_malformed_source_port_is_reported_as_parser_drift() -> None:
         )
 
 
-
 def test_nested_mt_and_aramaic_blocks_are_not_current_cal_pairing() -> None:
     """RED: reject the old invented nested fixture even if its words look plausible."""
     module = import_module("cal_mcp.targum_examples")
@@ -289,7 +288,8 @@ def test_unseparated_consecutive_pairs_are_parser_drift() -> None:
 def test_missing_second_sibling_block_is_parser_drift() -> None:
     module = import_module("cal_mcp.targum_examples")
     only_mt = ONQELOS_BODY.replace(
-        '<div><span class="heb">Targum line A</span></div>', "",
+        '<div><span class="heb">Targum line A</span></div>',
+        "",
     )
     with pytest.raises(module.TargumReflexExamplesParseError):
         _parse(only_mt)
