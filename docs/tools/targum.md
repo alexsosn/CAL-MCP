@@ -94,7 +94,10 @@ cal_targum_concordance_examples(
 ```
 
 Choose one parent row's exact ordered `text_ids`, keeping the same canonical
-`lemma_key`. The adapter constructs one fixed GET to CAL
+`lemma_key`. This stateless follow-up validates selector shape and CAL response
+identity, but does **not** prove that caller-supplied IDs previously appeared
+in a parent row; verifying that by refetching would add an unwanted CAL request.
+The adapter constructs one fixed GET to CAL
 `show1dialectKWIC.php` with `charset=H`. No arbitrary URL parameter, other
 group merging, prefetch or traversal is supported. Up to 32 distinct ASCII
 decimal text identifiers are allowed, with an additional bounded query length.
