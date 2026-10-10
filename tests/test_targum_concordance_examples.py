@@ -184,6 +184,7 @@ async def test_new_mcp_tool_has_exact_public_selector_schema() -> None:
     assert set(schema["properties"]) == {"lemma_key", "text_ids"}
     assert set(schema["required"]) == {"lemma_key", "text_ids"}
 
+
 @pytest.mark.parametrize(
     "extra",
     [
@@ -195,6 +196,7 @@ def test_source_rejects_conflicting_extra_heading_or_summary(extra: str) -> None
     # A matching identity does not license quietly ignoring a contradictory one.
     with pytest.raises(CalParseError):
         parse(BODY.replace("</form>", extra + "</form>"))
+
 
 @pytest.mark.anyio
 @pytest.mark.parametrize("bad", [None, 7, {"51001": "untrusted"}])
