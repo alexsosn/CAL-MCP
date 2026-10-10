@@ -322,3 +322,46 @@ async def test_all_public_output_schemas_admit_shared_structured_error_payload()
         assert not schema.get("required"), tool.name
         additional = schema.get("additionalProperties", True)
         assert additional is True or additional == {}, tool.name
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "invalid",
+    [
+        "https://cal.huc.edu/x",
+        "0",
+        "-1",
+        "31a00424",
+        "٣١٠٠٠٤٢٤",
+        "",
+    ],
+)
+async def test_lexicon_citation_context_invalid_full_coordinate_is_typed_no_io(
+    monkeypatch: pytest.MonkeyPatch,
+    invalid: str,
+) -> None:
+    """Regression from actual installed-wheel MCP error: bare ValueError leaked."""
+    calls = 0
+
+    async def rejecting_transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal calls
+        del request, config
+        calls += 1
+        raise AssertionError("invalid citation selector reached CAL")
+
+    _install_transport(monkeypatch, rejecting_transport)
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "cal_lexicon_citation_context",
+            {"full_coordinate": invalid},
+        )
+
+    _assert_structured_error(
+        result,
+        kind="invalid_input",
+        operation="cal_lexicon_citation_context",
+        upstream_reached=False,
+        retryable=False,
+        message="full_coordinate must be a positive ASCII-decimal CAL coordinate",
+    )
+    assert calls == 0
