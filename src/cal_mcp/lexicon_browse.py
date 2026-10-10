@@ -8,9 +8,9 @@ from urllib.parse import parse_qs, urljoin, urlsplit
 from cal_mcp.client import CalHttpClient, CalRequest, CalResponse
 from cal_mcp.errors import CalInputError
 from cal_mcp.lexicon import (
-    _browse_has_explicit_no_match,
     LemmaRef,
     LexiconParseError,
+    _browse_has_explicit_no_match,
     _is_lemma_entry_href,
     _lemma_key_from_href,
     _lemma_to_dict,
@@ -188,11 +188,10 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
         rows.append(LexiconBrowseRow(kind=LexiconBrowseRowKind.ENTRY, lemma=lemma))
         entries.append(lemma)
 
-    if not rows:
-        if not _browse_has_explicit_no_match(lines):
-            raise LexiconParseError(
-                "CAL lexicon browse page contains neither rows nor explicit no-match"
-            )
+    if not rows and not _browse_has_explicit_no_match(lines):
+        raise LexiconParseError(
+            "CAL lexicon browse page contains neither rows nor explicit no-match"
+        )
 
     next_links = [
         link
