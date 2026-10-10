@@ -48,6 +48,8 @@ def _write_sdist(
     metadata_version: str = "0.1.0",
     name: str = "cal-mcp",
     duplicate_pkg_info_symlink: bool = False,
+    extra_member_type: bytes | None = None,
+    extra_member_target: str = "",
 ) -> Path:
     sdist = dist_dir / f"cal_mcp-{filename_version}.tar.gz"
     root = f"cal_mcp-{filename_version}"
@@ -64,6 +66,14 @@ def _write_sdist(
             duplicate.linkname = "elsewhere"
             archive.addfile(duplicate)
         _add_tar_file(archive, f"{root}/pyproject.toml", pyproject)
+        directory = tarfile.TarInfo(f"{root}/src")
+        directory.type = tarfile.DIRTYPE
+        archive.addfile(directory)
+        if extra_member_type is not None:
+            extra = tarfile.TarInfo(f"{root}/src/safe_looking_entry")
+            extra.type = extra_member_type
+            extra.linkname = extra_member_target
+            archive.addfile(extra)
     return sdist
 
 
@@ -98,6 +108,38 @@ def test_distribution_discovery_rejects_duplicate_sdist_pkg_info_path(tmp_path: 
 
     with pytest.raises(RuntimeError, match="one root sdist PKG-INFO"):
         module._find_distributions(tmp_path)
+
+
+@pytest.mark.parametrize(
+    ("member_type", "link_target"),
+    [
+        (tarfile.SYMTYPE, "/etc/passwd"),
+        (tarfile.LNKTYPE, "../../outside-the-archive"),
+        (tarfile.FIFOTYPE, ""),
+    ],
+)
+def test_release_verifier_rejects_non_regular_sdist_member(
+    tmp_path: Path, member_type: bytes, link_target: str
+) -> None:
+    module = _load_verifier()
+    _write_wheel(tmp_path)
+    _write_sdist(
+        tmp_path, extra_member_type=member_type, extra_member_target=link_target
+    )
+
+    with pytest.raises(RuntimeError, match="unsupported.*sdist member|sdist member.*unsupported"):
+        module._find_distributions(tmp_path)
+
+
+def test_release_verifier_accepts_sdist_directories_and_regular_files(tmp_path: Path) -> None:
+    module = _load_verifier()
+    _write_wheel(tmp_path)
+    _write_sdist(tmp_path)
+
+    wheel, sdist, version = module._find_distributions(tmp_path)
+    assert wheel.name.endswith(".whl")
+    assert sdist.name == "cal_mcp-0.1.0.tar.gz"
+    assert version == "0.1.0"
 
 
 def test_release_verifier_installs_wheel_and_sdist_independently(
