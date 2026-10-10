@@ -351,13 +351,13 @@ Consequences:
 
 ## D-022 — Installed-stdio release smoke has one hard total CAL transport budget
 
-**Status:** proposed — 2026-10-10 (issue #157; research `docs/research/issue-157-installed-stdio-live-smoke.md`)
+**Status:** accepted — 2026-10-10 after independent design review (issue #157; research `docs/research/issue-157-installed-stdio-live-smoke.md`)
 
 The release/scheduled live drift smoke should exercise representative MCP tools through a
 freshly installed `cal-mcp` stdio process, validate advertised output schemas and provenance,
 and report each case as success, drift, unavailable, or harness failure.
 
-**Proposed CAL load contract (requires independent review before implementation):**
+**Accepted CAL load contract (implementation still requires independent review):**
 
 - **25 total CAL transport attempts maximum per scheduled/release invocation**, not 25 calls
   *in addition* to the existing direct-service nine-request suite;
@@ -371,6 +371,5 @@ and report each case as success, drift, unavailable, or harness failure.
 - publish only if the exact installed-wheel stdio E2E suite passes; regular CI remains offline.
 
 Do not enable this expanded smoke until the hard budget has deterministic RED/GREEN tests,
-representative CAL calls have been trialed below the cap, and this decision is accepted through
-an independent review. A failed smoke must not trigger automatic retry loops.
+representative CAL calls have been trialed below the cap, and the implementation independently passes review. A failed smoke must not trigger automatic retry loops.
 
