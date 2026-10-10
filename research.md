@@ -360,6 +360,21 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-076 — Ginza Rabba subtext rows link the parent file's information
+
+**Rechecked:** 2026-10-10; issue #256.
+
+`showsubtexts.php?subtext=74410` (Ginza Rabba, Right Side) renders one group with 395 rows,
+`page 1`…`page 395`, each routed `get_a_chapter.php?file=74410&sub=NNN&cset=J`. Every row's
+info link, and the group header's, is `get_file_info.php?coord=74410&return=…`, naming the
+parent file. The subdivided controls `74401`, `74421` and `74430` use per-row coordinates
+(`7440111`, `74421103`, `744301`). The info link is validated metadata and is not part of
+`TextRef`. Evidence: the page captured once during the 2026-10-10 E2E smoke.
+
+**Implication:** a Mandaic subtext row's info coordinate may be `file_id + subtext_id` or exactly
+`file_id`. Anything else still fails closed. Reduced fixture:
+`text_catalogue_mandaic_74410_parent_info_current.html`.
+
 ## R-075 — Bibliography-by-lemma echoes `$` and `(` backslash-escaped
 
 **Rechecked:** 2026-10-10; issue #257.
