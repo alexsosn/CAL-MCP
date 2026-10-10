@@ -5,8 +5,10 @@ from __future__ import annotations
 import asyncio
 from datetime import UTC, datetime
 
+import httpx2
 import pytest
 
+import cal_mcp.client as client_module
 from cal_mcp.client import (
     CalClientConfig,
     CalHttpClient,
@@ -176,3 +178,53 @@ async def test_unusable_retry_after_never_triggers_early_retry(hint: str | None)
     assert exc.value.status_code == 429
     assert attempts == 1
     assert clock.waits == []
+
+@pytest.mark.anyio
+async def test_production_client_defaults_paced_and_injected_offline_transport_stays_fast() -> None:
+    async def fake(req: CalRequest, config: CalClientConfig) -> CalResponse:
+        del req, config
+        return reply()
+
+    production = CalHttpClient()
+    try:
+        assert production.config.min_request_interval_seconds == 1.0
+    finally:
+        await production.aclose()
+
+    injected = CalHttpClient(transport=fake)
+    assert injected.config.min_request_interval_seconds == 0.0
+
+
+@pytest.mark.anyio
+async def test_production_httpx2_retains_only_429_retry_after_without_reading_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = httpx2.AsyncClient
+    received: list[str] = []
+
+    async def handler(req: httpx2.Request) -> httpx2.Response:
+        received.append(str(req.url))
+        return httpx2.Response(
+            429,
+            headers={"Retry-After": "2", "Content-Type": "text/plain"},
+            content=b"error-body-must-not-be-consumed",
+            request=req,
+        )
+
+    mock = httpx2.MockTransport(handler)
+
+    def factory(**kwargs: object) -> httpx2.AsyncClient:
+        return original(transport=mock, **kwargs)
+
+    monkeypatch.setattr(client_module.httpx2, "AsyncClient", factory)
+    config = CalClientConfig()
+    transport = client_module._Httpx2Transport(config)
+    try:
+        result = await transport(request(1), config)
+    finally:
+        await transport.aclose()
+
+    assert len(received) == 1
+    assert result.status_code == 429
+    assert result.retry_after == "2"
+    assert result.body == b""
