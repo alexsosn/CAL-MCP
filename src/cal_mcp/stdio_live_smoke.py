@@ -62,7 +62,6 @@ _ERROR_ENVELOPE_SCHEMA: dict[str, object] = {
 _ERROR_ENVELOPE_VALIDATOR = Draft202012Validator(_ERROR_ENVELOPE_SCHEMA)
 
 
-
 @dataclass(frozen=True, slots=True)
 class SmokeCase:
     name: str
