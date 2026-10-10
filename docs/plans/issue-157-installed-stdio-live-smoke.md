@@ -81,3 +81,26 @@ request. If a successful parent has no trustworthy direct hit, report `drift`
 without constructing a synthetic selector. Use deterministic fake-client tests
 before implementing. This adds one potential transport attempt within D-022's
 **total** 25-attempt limit, not an extra budget.
+
+
+## Follow-up TDD: calibrate cly V bibliography invariant from live failure
+
+The single bounded acceptance `38050083896` already supplied 13/25 actual
+attempts and 11/12 successful case outcomes. The bibliography-only failure
+occurred at a hard-coded two-record threshold even though the repo's
+`bibliography_lemma_cly_v.html` fixture has exactly **one** valid record.
+
+1. Research fixture and current parser tests before changing the invariant
+   (see dated research addendum above).
+2. **RED:** add a fixture-grounded smoke regression that runs the real
+   `parse_bibliography_page` against `cly V` and validates its single
+   structured record through the public smoke evaluator, failing under the
+   old threshold. Preserve tests that reject zero records and blank citations.
+3. **GREEN:** set the `bibliography` cardinality expectation to one for this
+   specific case; leave structured schema, trusted provenance, citation
+   validity, and other surface checks intact.
+4. Run both offline CI matrices, then perform new logically independent
+   adversarial exact-head review.
+5. The original live run is **not** retroactively green. The release remains
+   blocked until a separately authorized bounded installed-wheel live
+   acceptance reports a full 12-case pass; no automatic rerun.
