@@ -161,8 +161,7 @@ def test_current_no_headwords_marker_must_echo_the_requested_prefix() -> None:
 def test_current_no_headwords_marker_cannot_coexist_with_lemma_rows() -> None:
     contradictory = (
         '<div><a href="/oneentry.php?cits=all&amp;lemma=br+N">br n.m.</a></div>'
-        '<div>son</div>'
-        + _empty("qqq")
+        "<div>son</div>" + _empty("qqq")
     )
     for parser in (parse_browse_page, parse_lexicon_browse_page):
         with pytest.raises(LexiconParseError):
