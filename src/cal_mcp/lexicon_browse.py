@@ -11,6 +11,7 @@ from cal_mcp.lexicon import (
     _NOT_FOUND_PHRASES,
     LemmaRef,
     LexiconParseError,
+    _has_no_headwords_marker,
     _is_lemma_entry_href,
     _lemma_key_from_href,
     _lemma_to_dict,
@@ -188,7 +189,8 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
         rows.append(LexiconBrowseRow(kind=LexiconBrowseRowKind.ENTRY, lemma=lemma))
         entries.append(lemma)
 
-    if not rows:
+    no_headwords = _has_no_headwords_marker(lines, response.url, has_rows=bool(rows))
+    if not rows and not no_headwords:
         page_text = " ".join(line.text.lower() for line in lines)
         if not any(phrase in page_text for phrase in _NOT_FOUND_PHRASES):
             raise LexiconParseError(

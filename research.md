@@ -360,6 +360,27 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-071 — Current lexicon browse reports an empty prefix as "There are no headwords beginning with"
+
+**Rechecked:** 2026-10-10; issue #252.
+
+For a `first3` prefix with no headwords, `browseSKEYheaders.php` now answers HTTP 200 with its
+normal JUMP TO chrome and a results table whose only text is `There are no headwords beginning
+with: <prefix>`. None of the older no-match phrases appears. The echo is CAL code even when the
+submitted prefix was Hebrew or Syriac: `first3="קקק"` and `first3="ܩܩܩ"` both echo `qqq`, and
+`first3="&lm"` echoes the raw `&lm`. Because bare Hebrew `ש` expands to both `$` and `&`, and
+most `&` prefixes are empty, every ש-initial Hebrew lookup used to fail as `parser_drift`
+(found by the 2026-10-10 E2E smoke, `docs/research/release-e2e-smoke-2026-10-10.md`).
+
+Five single browse GETs, made through `CalHttpClient` with the project User-Agent, established
+this (`qqq`, `&lm` twice, `קקק`, `ܩܩܩ`). Reduced fixtures: `browse_no_headwords_*_current.html`.
+
+**Implication:** both lexicon browse parsers treat the marker as an explicit no-match only when it
+is the sole text of its line, appears once, accompanies no browse rows, and echoes the submitted
+prefix or that prefix's single deterministic CAL-code conversion. Any other shape remains
+`parser_drift`. Lookup then returns `not_found` (or resolves via another candidate prefix), and
+`cal_lexicon_browse` returns an empty page with no continuation. Request counts are unchanged.
+
 ## R-070 — Release smoke must validate stdio MCP and enforce actual transport attempts
 
 **Rechecked:** 2026-10-10; issue #157.
