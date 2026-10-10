@@ -100,3 +100,37 @@ Do not silently choose a catalogue hit and pretend it is a readable text. A
 missing/invalid direct selector is a drift result; if the parent failed, record
 a dependency skip without making a new upstream request. Live acceptance of
 this selected chain has not yet been measured.
+
+
+## 2026-10-10 live acceptance, bibliography minimum-cardinality review
+
+One one-time installed-wheel stdio run, GitHub Actions `38050083896`,
+from candidate `84c1139b`, **completed with a failure**. Its machine-readable
+summary reports 13 actual CAL transport attempts out of 25, and 11/12 cases
+`ok`: noun/verb lexicon, gloss, text search, the returned-selector page
+follow-up, concordance, dictionary, external citations, Targum, Peshitta,
+and local conversion. The **only** `drift` classification is
+`bibliography: missing representative CAL result rows`. All 13 live HTTP
+requests returned 200; this particular error came from the smoke's
+`_has_representative_content` cardinality/identity check, *not* from the
+bibliography parser or the public schema.
+
+The smoke request was exactly `cal_bibliography_lemma(lemma_key="cly V")`
+(`getbiblemma.php?myauthor=cly+V`). Pre-existing CAL snapshot
+`tests/fixtures/cal/bibliography_lemma_cly_v.html` contains **exactly one**
+record (Millard, *Cognates Can Be Deceptive*) and three related lemma links.
+The existing parser regression `test_lemma_bibliography_preserves_linked_lemma_keys`
+asserts `len(page.records) == 1` for this exact source. Requiring at least
+**two** records is therefore demonstrably inconsistent with our selected
+representative fixture, and cannot establish current upstream drift. The
+sanitized live report did not disclose the returned records, so the live
+failure **cannot alone prove** whether CAL currently returned zero or one.
+
+Correction strategy: keep the same exact one-request CAL lemma and accept
+**one or more nonblank citation records**, rejecting zero/empty placeholders.
+Do not weaken the identity or schema checks. If multi-record coverage is
+needed in the future, create a separately researched *different* fixture-
+backed query known to return multiple records, rather than imposing a
+fabricated cardinality on `cly V`. Do not perform another live CAL run
+without a distinct explicit acceptance decision; the existing 13-attempt
+trace remains evidence of all other functioning surfaces.
