@@ -188,7 +188,7 @@ async def test_production_client_defaults_paced_and_injected_offline_transport_s
 
     production = CalHttpClient()
     try:
-        assert production.config.min_request_interval_seconds == 1.0
+        assert production.config.min_request_interval_seconds == 3.0
     finally:
         await production.aclose()
 
