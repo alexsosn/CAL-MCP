@@ -5,8 +5,8 @@ from datetime import UTC, datetime
 import pytest
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.smoke_budget import SmokeAttemptBudget, SmokeBudgetExceeded
 from cal_mcp.server import app_lifespan, mcp
+from cal_mcp.smoke_budget import SmokeAttemptBudget, SmokeBudgetExceeded
 
 
 def _response() -> CalResponse:
