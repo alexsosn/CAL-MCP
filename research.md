@@ -360,6 +360,25 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-080 — Token-analysis sense outlines leave `<dial>` unclosed inside `<sup>`
+
+**Rechecked:** 2026-10-10; issue #261.
+
+After the lexlink result table, current `getlex.php` pages render CAL's sense outline. Its
+dialect-exclusion tag is `<sup><dial title="except for OA">-OA</sup>`, with no `</dial>`.
+`getlex.php?coord=620430101&word=1` (`)yt V`), `…&word=2` (`hwy V`) and `…&word=8` (`lwt p`)
+each have 2–3 such tags. They all failed as `parser_drift`, because the post-table depth counter
+never returned to zero before the `<hr>`. The page also ends the outline with a stray `</small>`.
+Under the old counter, that stray tag cancelled exactly one unclosed `dial`, so pages with a
+single exclusion tag happened to pass. The full entries of those lemmas
+(`cal_entry_web.php`) parse unchanged. Evidence: 3 GETs plus 3 entry lookups (2026-10-10,
+project User-Agent).
+
+**Implication:** the post-table region tracks open elements as a stack. Only `</sup>` that
+directly encloses an open `dial` closes it implicitly. Stray end tags no longer cancel unrelated
+open elements, and any other unclosed element still fails closed at the segment `<hr>`. Reduced
+fixture: `token_analysis_unclosed_dial_current.html`.
+
 ## R-079 — Numeral pronunciations carry gender labels inside the parentheses
 
 **Rechecked:** 2026-10-10; issue #267.

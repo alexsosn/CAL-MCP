@@ -115,9 +115,13 @@ class _CurrentSegment:
     unclosed_link: bool = False
     # Markup other than <br> in the label/summary text (a link, span, div …) is not a plain summary.
     unexpected_markup: bool = False
-    # After the table: depth of elements opened there (the sense outline) and stray bare text.
-    post_table_depth: int = 0
+    # After the table: elements still open there (the sense outline) and stray bare text.
+    post_table_open: list[str] = field(default_factory=list)
     post_table_loose: bool = False
+
+    @property
+    def post_table_depth(self) -> int:
+        return len(self.post_table_open)
 
 
 class _CurrentLinkedRedirectParser(HTMLParser):
@@ -194,7 +198,7 @@ class _CurrentLinkedRedirectParser(HTMLParser):
                 # A second result table without an <hr> between: not the current contract.
                 segment.extra_table = True
             elif tag not in _HTML_VOID_TAGS and tag not in _OPTIONAL_END_TAGS:
-                segment.post_table_depth += 1
+                segment.post_table_open.append(tag)
             return
         if tag == "table":
             segment.nested_table = True
@@ -234,8 +238,8 @@ class _CurrentLinkedRedirectParser(HTMLParser):
             return
         segment = self.segments[-1]
         if segment.table_closed and segment.table_depth == 0:
-            if segment.post_table_depth > 0 and tag not in _OPTIONAL_END_TAGS:
-                segment.post_table_depth -= 1
+            if tag not in _OPTIONAL_END_TAGS:
+                _close_post_table_element(segment, tag)
             return
         if not segment.table_started or segment.table_depth < 1:
             return
@@ -286,6 +290,23 @@ class _CurrentLinkedRedirectParser(HTMLParser):
                     self._open_link.pos_parts.append(data)
             else:
                 segment.table_loose_parts.append(data)
+
+
+def _close_post_table_element(segment: _CurrentSegment, tag: str) -> None:
+    """Close one sense-outline element, tolerating only CAL's unclosed ``<dial>`` (R-080).
+
+    CAL renders a dialect-exclusion tag as ``<sup><dial …>-OA</sup>`` without ``</dial>``.
+    Only a ``</sup>`` directly enclosing such an open ``dial`` closes it implicitly. Any other
+    mismatch keeps the element open, so the segment's ``<hr>`` still fails closed.
+    """
+
+    open_elements = segment.post_table_open
+    if not open_elements:
+        return
+    if open_elements[-1] == tag:
+        open_elements.pop()
+    elif tag == "sup" and open_elements[-2:] == ["sup", "dial"]:
+        del open_elements[-2:]
 
 
 def _current_linked_page(response: CalResponse) -> TokenAnalysisPage | None:
