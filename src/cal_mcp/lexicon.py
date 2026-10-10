@@ -455,11 +455,7 @@ def _browse_has_explicit_no_match(lines: list[_Line], *, source_url: str) -> boo
             raise LexiconParseError(
                 "CAL lexicon no-headwords marker does not match the requested prefix"
             )
-        if any(
-            _is_lemma_entry_href(link.href)
-            for line in lines
-            for link in line.links
-        ):
+        if any(_is_lemma_entry_href(link.href) for line in lines for link in line.links):
             raise LexiconParseError(
                 "CAL lexicon no-headwords marker contradicts returned lemma entries"
             )
