@@ -245,8 +245,10 @@ class CalHttpClient:
         *,
         config: CalClientConfig | None = None,
         transport: Transport | None = None,
+        before_transport_attempt: Callable[[], None] | None = None,
     ) -> None:
         self.config = config or CalClientConfig()
+        self._before_transport_attempt = before_transport_attempt
         self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
         cache_entries = self.config.cache_max_entries if self.config.cache_enabled else 0
         self._cache: MemoryResponseCache[Any] = MemoryResponseCache(
@@ -469,6 +471,10 @@ class CalHttpClient:
     async def _request_once(self, request: CalRequest) -> CalResponse:
         async with self._semaphore:
             async with asyncio.timeout(self.config.total_timeout_seconds):
+                if self._before_transport_attempt is not None:
+                    # The hook is opt-in and runs at the actual transport boundary,
+                    # including every retry and excluding cache hits.
+                    self._before_transport_attempt()
                 return await self._transport(request, self.config)
 
     async def _backoff(self, attempt: int) -> None:
