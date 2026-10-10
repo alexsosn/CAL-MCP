@@ -81,3 +81,46 @@ manifest. Update the explicit tool-count and release artifact assertions
 if implemented, but do not silently change or weaken any existing tools.
 One selected operation performs one GET, no sibling-reflex prefetch,
 no chapter walk, no extra citation requests, no content mirror.
+
+
+## 2026-10-10 live-acceptance discrepancy: sibling blocks, not nested blocks
+
+One-time installed-wheel acceptance [38061551966](https://github.com/alexsosn/CAL-MCP/actions/runs/38061551966)
+performed **exactly two actual CAL transports** (no retries), one Onqelos and
+one Neofiti. Both real tool results returned typed `parser_drift`,
+`CAL reflex examples have wrong pairing structure`; the driver blocked
+release. Earlier simplified DOM-path instrumentation *appeared* to show
+nested divs because the diagnostic's own pseudo-stack did not handle
+HTML void `br` tags accurately. The reduced tests consequently embedded
+the wrong nesting. This is a **fixture defect**, not evidence of live CAL
+drift.
+
+An additional **explicitly authorized** two-GET tag-only diagnostic
+[38061662651](https://github.com/alexsosn/CAL-MCP/actions/runs/38061662651)
+observed actual start/end tags and text *lengths only* (no verse content),
+with redirects disabled and 256-KiB response caps; both HTTP 200.
+The structural facts are:
+
+- Onqelos: first example `<div><span class="heb">MT…</span></div>`,
+  `<br>`, then **sibling** `<div><span class="heb">Aramaic…</span></div>`,
+  `<hr>`; the exact pair repeats once, then a trailing `<hr>`.
+  Each span has div depth **1**, not depths 1/2. Four blocks,
+  two complete pairs, separators after blocks 2 and 4.
+- Neofiti: the same sibling structure for one MT/Aramaic pair, with a
+  terminating `<hr>` and one trailing `<hr>`. Two blocks at depth 1.
+- No nested verse div appears on either sampled source. Hence
+  rejecting unexpected depth-2 nesting is *required* in the observed
+  current contract; simply accepting either depth is insufficiently strict.
+- The selected reflex identity headings and exact returned `oneentry.php`
+  link remain independently checked. The script must reject incomplete
+  pairs, additional visible content, and mismatched CAL source selectors.
+- Correct implementation models a sequence of **sibling one-span blocks**
+  grouped **two per example**, with `<hr>` separation after each pair.
+  A trailing redundant separator may occur. Preserve exact CAL example
+  order and repetitions. Do not invent passage IDs or deduplicate text.
+
+The diagnostic trigger was removed after enqueue. The earlier 2-call live
+acceptance remains **FAILED**, not retroactively passing. Before any new
+one-off live acceptance, first add sibling-fixture RED regression, repair
+parser and verify both offline CI configurations; then make and document a
+separate bounded decision.
