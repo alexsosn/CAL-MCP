@@ -66,15 +66,29 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-          cache: pip
-      - name: Install tagged CAL-MCP source
-        run: python -m pip install .
-      - name: Run fixed nine-request CAL live_smoke
-        run: python -m cal_mcp.live_smoke
+      - name: Download exact wheel from the tested build
+        uses: actions/download-artifact@v5
+        with:
+          name: python-distributions
+          path: dist
+      - name: Install exact built wheel in a fresh virtual environment
+        shell: bash
+        run: |
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          test "${#wheels[@]}" -eq 1
+          python -m venv "$RUNNER_TEMP/cal-mcp-smoke-venv"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir "${wheels[0]}"
+      - name: Validate installed-wheel MCP tools and actual CAL transport count
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m cal_mcp.stdio_live_smoke \
+            --executable "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/cal-mcp"
 
   publish-pypi:
     needs:
