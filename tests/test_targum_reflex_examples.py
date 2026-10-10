@@ -22,11 +22,11 @@ ONQELOS_BODY = (
     "tyq#2 N</a></h3>"
     "Click the Aramaic lemma to see the full entry<br>"
     '<div><span class="heb">MT line A Deut 22:8<br>'
-    "MT line B Deut 22:8</span><br>"
-    '<div><span class="heb">Targum line A</span></div></div><hr>'
+    "MT line B Deut 22:8</span></div><br>"
+    '<div><span class="heb">Targum line A</span></div><hr>'
     '<div><span class="heb">MT line A Deut 22:8<br>'
-    "MT line B Deut 22:8</span><br>"
-    '<div><span class="heb">Targum line A</span></div></div>'
+    "MT line B Deut 22:8</span></div><br>"
+    '<div><span class="heb">Targum line A</span></div><hr><hr>'
     "</center></body></html>"
 )
 
@@ -133,8 +133,8 @@ def test_neofiti_examples_use_distinct_route_and_same_observed_block_semantics()
         '<h3>is rendered by Aramaic <a href="/oneentry.php?lemma=gypwp+N&amp;cits=all">'
         "gypwp N</a></h3>"
         "Click the Aramaic lemma to see the full entry<br>"
-        '<div><span class="heb">MT line A Deut 22:8</span><br>'
-        '<div><span class="heb">Neofiti Aramaic verse</span></div></div>'
+        '<div><span class="heb">MT line A Deut 22:8</span></div><br>'
+        '<div><span class="heb">Neofiti Aramaic verse</span></div><hr><hr>'
         "</center></body></html>"
     )
     page = module.parse_targum_reflex_examples_page(
@@ -259,3 +259,37 @@ def test_malformed_source_port_is_reported_as_parser_drift() -> None:
             mt_lemma_id="1751",
             lemma_key="tyq#2 N",
         )
+
+
+
+def test_nested_mt_and_aramaic_blocks_are_not_current_cal_pairing() -> None:
+    """RED: reject the old invented nested fixture even if its words look plausible."""
+    module = import_module("cal_mcp.targum_examples")
+    nested = ONQELOS_BODY.replace(
+        "</span></div><br><div><span",
+        "</span><br><div><span",
+    ).replace(
+        "Targum line A</span></div><hr>",
+        "Targum line A</span></div></div><hr>",
+    )
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        _parse(nested)
+
+
+def test_unseparated_consecutive_pairs_are_parser_drift() -> None:
+    module = import_module("cal_mcp.targum_examples")
+    no_separator = ONQELOS_BODY.replace(
+        "Targum line A</span></div><hr><div>",
+        "Targum line A</span></div><div>",
+    )
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        _parse(no_separator)
+
+
+def test_missing_second_sibling_block_is_parser_drift() -> None:
+    module = import_module("cal_mcp.targum_examples")
+    only_mt = ONQELOS_BODY.replace(
+        '<div><span class="heb">Targum line A</span></div>', "",
+    )
+    with pytest.raises(module.TargumReflexExamplesParseError):
+        _parse(only_mt)
