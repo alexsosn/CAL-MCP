@@ -438,14 +438,34 @@ _NOT_FOUND_PHRASES = (
     "no matching entries were found",
     "no matches were found",
 )
-_NO_HEADWORDS_MARKER = re.compile(r"there are no headwords beginning with: \S+", re.IGNORECASE)
+_NO_HEADWORDS_MARKER = re.compile(
+    r"there are no headwords beginning with: (?P<prefix>\S+)", re.IGNORECASE
+)
 
 
-def _browse_has_explicit_no_match(lines: list[_Line]) -> bool:
+def _browse_has_explicit_no_match(lines: list[_Line], *, source_url: str) -> bool:
+    marker_prefixes = [
+        match.group("prefix")
+        for line in lines
+        if (match := _NO_HEADWORDS_MARKER.fullmatch(line.text)) is not None
+    ]
+    if marker_prefixes:
+        expected = parse_qs(urlsplit(source_url).query, keep_blank_values=True).get("first3")
+        if len(marker_prefixes) != 1 or expected != [f'"{marker_prefixes[0]}"']:
+            raise LexiconParseError(
+                "CAL lexicon no-headwords marker does not match the requested prefix"
+            )
+        if any(
+            _is_lemma_entry_href(link.href)
+            for line in lines
+            for link in line.links
+        ):
+            raise LexiconParseError(
+                "CAL lexicon no-headwords marker contradicts returned lemma entries"
+            )
+        return True
     page_text = " ".join(line.text.lower() for line in lines)
-    return any(phrase in page_text for phrase in _NOT_FOUND_PHRASES) or any(
-        _NO_HEADWORDS_MARKER.fullmatch(line.text) is not None for line in lines
-    )
+    return any(phrase in page_text for phrase in _NOT_FOUND_PHRASES)
 
 
 _DIALECT_EXACT = frozenset(
@@ -530,6 +550,7 @@ class _SenseBuilder:
 
 def parse_browse_page(response: CalResponse) -> BrowsePage:
     lines = _parse_lines(response)
+    explicit_no_match = _browse_has_explicit_no_match(lines, source_url=response.url)
     entries: list[LemmaRef] = []
 
     for index, line in enumerate(lines):
@@ -575,7 +596,7 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
     if entries:
         return BrowsePage(entries=tuple(entries))
 
-    if _browse_has_explicit_no_match(lines):
+    if explicit_no_match:
         return BrowsePage(entries=())
     raise LexiconParseError(
         "CAL lexicon browse page contains neither entries nor explicit no-match"
