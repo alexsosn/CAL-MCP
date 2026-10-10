@@ -28,7 +28,9 @@ async def test_smoke_budget_guards_real_attempts_and_cache_hits_are_free() -> No
         return _response()
 
     budget = SmokeAttemptBudget(max_attempts=2)
-    client = CalHttpClient(transport=transport, before_transport_attempt=budget.before_attempt)
+    client = CalHttpClient(
+        transport=transport, before_transport_attempt=budget.before_attempt
+    )
     try:
         one = CalRequest("GET", "entry.php", params=(("lemma", "br N"),))
         two = CalRequest("GET", "entry.php", params=(("lemma", "ktb V"),))
@@ -99,4 +101,4 @@ async def test_regular_client_has_no_implicit_smoke_budget() -> None:
 @pytest.mark.parametrize("value", [0, -1, True, 1.5, "25"])
 def test_smoke_budget_rejects_invalid_limits(value: object) -> None:
     with pytest.raises((TypeError, ValueError)):
-        SmokeAttemptBudget(max_attempts=value)
+        SmokeAttemptBudget(max_attempts=value)  # type: ignore[arg-type]
