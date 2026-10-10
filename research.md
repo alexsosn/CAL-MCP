@@ -374,6 +374,21 @@ semantics. Rows follow the Aramaic alphabetical order of lemma keys (`)`, `b`, `
 
 **Implication:** documentation only. Recommend `all_glosses=true` for English-to-lemma lookup and
 say results are unranked. Keep the default, add no reranking and no automatic second request.
+## R-085 — A text-search label can contain ": " inside parentheses
+
+**Rechecked:** 2026-10-10; issue #284.
+
+The `John` text search renders file `64550` as `JElet (Jacob of Edessa: Letter to John the
+Stylite of Litarab): Text as per Karl-Erik Rignell, …`. The label/description separator is the
+first `": "` outside parentheses; the one inside the parenthesised title belongs to the label.
+Across every text-search fixture and the captured live pages (John, Hebrew, Palmyrene and
+probes), this is the only row whose split changes. Evidence: the 2026-10-10 `John` search
+captured for R-083 (no new request).
+
+**Implication:** split at the first `": "` at parenthesis depth zero. If the row's parentheses
+do not balance, in count or in order, keep the first-`": "` split rather than guess. Reduced
+fixture: `text_search_john_parenthesized_label_current.html`.
+
 ## R-083 — Text search returns CPA catalogue nodes with `cset=C` and letter-suffixed ids
 
 **Rechecked:** 2026-10-10; issue #263.
