@@ -1,0 +1,11 @@
+# Issue #272: Ginza Rabba navigation across Petermann page subtexts
+
+Date: 2026-10-11. Based on issue #272's bounded 2026-10-10 upstream GET and the *actual* checked-in source-reduced response `tests/fixtures/cal/text_page_ginza_right_001_current.html` (captured 2026-09-25); no new CAL requests. Current service `TextService.page("74410", subtext_id="001")` uses the Mandaic cset=M GET route and `_parse_text_page(... mandaic_page_route=True)`.
+
+CAL page `get_a_chapter.php?cset=M&file=74410&sub=001` renders a valid token table and a single **`next page`** navigation link to `get_a_chapter.php?file=74410&sub=002&cset=M&clen=5&page=0`. The `74410` subtext `001` identifies a Petermann page, so this link switches from `001` to `002`, private page 0. Current Mandaic pagination validation refuses the different `sub` as parser drift, even though CAL's page content is valid. By contrast `74401/12` navigates *within* the same subtext using private `page=1,2`; this contract must remain unchanged.
+
+Design: add optional `next_subtext_id` and `previous_subtext_id` on `TextPage`, retaining `next_page` and `previous_page` for **in-subtext** pagination only. For file `74410` alone, a different `sub` may be accepted as a cross-subtext link **only** when `file=74410`, `cset=M`, optional `clen=5`, `page=0` (never page 1+), and its same-width strictly numeric subtext differs by exactly one in the direction named by CAL's link. The target ID is taken from the link; numeric adjacency is used *only to validate*, not to synthesize a missing link. Reject foreign files/origins, route selector drift, duplicate navigation links, non-adjacent subtexts, simultaneous contradictory link labels and mixed private pagination/cross-subtext navigation. Do not automatically fetch `002`.
+
+The page has no `Page N of M` marker: `page_count` and `total_lines` must remain null. The returned page remains public page 1, and cross-subtext navigation is not reinterpreted as public page 2. Avoid weakening other Mandaic files' strict same-subtext navigation or direct-CAL page guarantees.
+
+Risk: upstream link may use unescaped `&` in HTML attributes, already parsed by the existing semantic HTML parser; tests must use the captured page before adding any synthetic mutations. CAL rate limiting in #262 prohibits unnecessary repeated probes.
