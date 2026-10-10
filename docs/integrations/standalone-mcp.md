@@ -122,6 +122,6 @@ When the MCP session ends, the client should close or terminate the stdio server
 
 ## Release pin and Agora status
 
-The v0.1 downstream coordinates are `cal-mcp==0.1.0`, `command: cal-mcp`, no arguments, and stdio transport. The tagged release workflow performs the clean-artifact, live-smoke, and publication gates; repository merge alone is not evidence that PyPI publication completed.
+The v0.1 downstream coordinates are `cal-mcp==0.1.0`, `command: cal-mcp`, no arguments, and stdio transport. The tagged release workflow verifies the clean wheel and sdist, then downloads the exact built wheel into a fresh environment and tests representative live CAL operations through its installed stdio MCP server (at most 25 actual transport attempts). It checks MCP output schemas, structured errors, provenance and measured request counts before allowing publication. The new smoke gate must pass live acceptance for issue #157 before v0.1 can be published; repository merge alone is not evidence that PyPI publication completed.
 
 Agora registration is a separate downstream task in issue #16. CAL-MCP does not import Agora and does not require it to operate. After publication, Agora should remain discovery/install/launch metadata around the same standalone server rather than a second CAL implementation.

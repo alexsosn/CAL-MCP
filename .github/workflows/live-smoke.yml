@@ -22,7 +22,22 @@ jobs:
         with:
           python-version: "3.11"
           cache: pip
-      - name: Install CAL-MCP
-        run: python -m pip install .
-      - name: Run fixed nine-request smoke
-        run: python -m cal_mcp.live_smoke
+      - name: Install wheel build tooling
+        run: python -m pip install --disable-pip-version-check build
+      - name: Build this revision's wheel
+        run: python -m build --wheel --outdir dist
+      - name: Install one built wheel in a fresh virtual environment
+        shell: bash
+        run: |
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          test "${#wheels[@]}" -eq 1
+          python -m venv "$RUNNER_TEMP/cal-mcp-smoke-venv"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir "${wheels[0]}"
+      - name: Run one bounded installed-stdio CAL drift smoke
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m cal_mcp.stdio_live_smoke \
+            --executable "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/cal-mcp"

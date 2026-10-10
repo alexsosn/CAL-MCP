@@ -79,11 +79,12 @@ def test_live_smoke_operator_documentation_freezes_invocation_and_budget() -> No
     testing = TESTING_GUIDE.read_text(encoding="utf-8")
 
     assert ".github/workflows/live-smoke.yml" in testing
-    assert "python -m cal_mcp.live_smoke" in testing
-    assert "9" in testing
+    assert "cal_mcp.stdio_live_smoke" in testing
+    assert "25 actual CAL transport attempts" in testing
     assert "concurrency" in testing.lower()
     assert "retries" in testing.lower()
     assert "cache" in testing.lower()
+    assert "actual_cal_transport_attempts" in testing
 
 
 def test_live_smoke_workflow_is_separate_and_bounded() -> None:
@@ -125,7 +126,7 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert len(V01_PUBLIC_TOOLS) == 34
 
 
-def test_live_smoke_constants_and_default_cases_are_frozen() -> None:
+def test_legacy_service_smoke_remains_offline_tested() -> None:
     module = _live_smoke_module()
 
     assert module.MAX_CAL_REQUESTS == 9
@@ -140,6 +141,27 @@ def test_live_smoke_constants_and_default_cases_are_frozen() -> None:
         "targum",
         "syriac",
     ]
+
+
+def test_current_installed_stdio_smoke_matrix_is_fixed_and_release_bounded() -> None:
+    from cal_mcp.stdio_live_smoke import DEFAULT_SMOKE_CASES
+
+    assert [case.name for case in DEFAULT_SMOKE_CASES] == [
+        "conversion",
+        "lexicon_noun",
+        "lexicon_verb",
+        "gloss",
+        "text_search",
+        "text_page_followup",
+        "text_concordance",
+        "bibliography",
+        "dictionary",
+        "external_citations",
+        "targum",
+        "peshitta",
+    ]
+    assert DEFAULT_SMOKE_CASES[0].needs_provenance is False
+    assert all(case.needs_provenance for case in DEFAULT_SMOKE_CASES[1:])
 
 
 def test_live_smoke_failure_classification_is_diagnostic() -> None:
