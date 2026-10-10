@@ -185,9 +185,7 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
 # All cases are fixed and sequential; one server subprocess enforces 25 actual
 # upstream attempts across the *entire* matrix. Never enumerate returned pages.
 DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
-    SmokeCase(
-        "conversion", "cal_convert_to_code", {"value": "ܫܠ"}, needs_provenance=False
-    ),
+    SmokeCase("conversion", "cal_convert_to_code", {"value": "ܫܠ"}, needs_provenance=False),
     SmokeCase(
         "lexicon_noun", "cal_lexicon_lookup", {"query": "br", "lemma_key": "br N"}, ("found",)
     ),
@@ -205,9 +203,7 @@ DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
     ),
     SmokeCase("text_concordance", "cal_text_concordance", {"text_id": "13250"}),
     SmokeCase("bibliography", "cal_bibliography_lemma", {"lemma_key": "cly V"}),
-    SmokeCase(
-        "dictionary", "cal_dictionary_collation", {"source": "jastrow", "page": "705"}
-    ),
+    SmokeCase("dictionary", "cal_dictionary_collation", {"source": "jastrow", "page": "705"}),
     SmokeCase("external_citations", "cal_external_citation_dialects", {}),
     SmokeCase(
         "targum", "cal_targum_parallel", {"book": "Gen", "chapter": 1, "verse": 1}, ("found",)
@@ -239,8 +235,7 @@ def _select_one_direct_text_page(parent: dict[str, object]) -> dict[str, object]
             or (
                 subtext_id is not None
                 and (
-                    type(subtext_id) is not str
-                    or re.fullmatch(r"[0-9]+[a-z]?", subtext_id) is None
+                    type(subtext_id) is not str or re.fullmatch(r"[0-9]+[a-z]?", subtext_id) is None
                 )
             )
         ):
