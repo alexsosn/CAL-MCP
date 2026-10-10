@@ -35,6 +35,7 @@ from cal_mcp.syriac import (
     syriac_missing_word_category_slugs,
 )
 from cal_mcp.targum import TargumService
+from cal_mcp.targum_examples import TargumReflexExamplesService
 from cal_mcp.texts import TextService
 from cal_mcp.token_analysis import TokenAnalysisService
 
@@ -838,6 +839,30 @@ async def cal_targum_hebrew_reflexes(
 
     client = ctx.request_context.lifespan_context.client
     result = await TargumService(client).hebrew_reflexes(targum, mt_lemma_id)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_reflex_examples",
+    title="Read one selected Onqelos or Neofiti Hebrew-reflex example page",
+    structured_output=True,
+)
+async def cal_targum_reflex_examples(
+    targum: str,
+    mt_lemma_id: str,
+    lemma_key: str,
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Follow a returned reflex using exact CAL selectors, never an arbitrary URL.
+
+    Use ``targum`` and ``mt_lemma_id`` from ``cal_targum_hebrew_reflexes`` and
+    the chosen row's canonical ``lemma_key``. Exactly one GET is fetched on a
+    cache miss; no other reflexes, chapter links or lexical entries are followed.
+    Ordered MT/Targum text blocks are preserved, including repetitions.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumReflexExamplesService(client).examples(targum, mt_lemma_id, lemma_key)
     return result.to_dict()
 
 
