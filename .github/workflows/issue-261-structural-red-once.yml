@@ -1,0 +1,25 @@
+# One-time test-only source RED witness, no CAL network; delete immediately after enqueue.
+name: Issue 261 unclosed sup dial behavioral RED witness
+on:
+  push:
+    branches: [research/issue-261-test-red]
+    paths: [.github/workflows/issue-261-structural-red-once.yml]
+permissions:
+  contents: read
+jobs:
+  red:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install offline developer dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Ruff correctness precondition
+        run: |
+          ruff check tests/test_token_analysis_unclosed_dial_outline.py
+          ruff format --check tests/test_token_analysis_unclosed_dial_outline.py
+      - name: Expected parser failure on actual CAL nested malformed tag
+        run: pytest -q tests/test_token_analysis_unclosed_dial_outline.py
