@@ -1315,7 +1315,15 @@ def _browse_prefix(value: str) -> str:
 
 def _query_matches(query: str, lemma: LemmaRef) -> bool:
     needle = _comparison_surface(query)
-    candidates = (*lemma.headwords, *lemma.aliases)
+    candidates: tuple[str, ...] = (*lemma.headwords, *lemma.aliases)
+    if lemma.lemma_key.endswith(" V"):
+        # CAL shows a verb's root in uppercase on result rows (KTB, ˁHR); match its lowercase
+        # form too. Other headwords keep their case-significant comparison (R-069).
+        candidates += tuple(
+            headword.lower()
+            for headword in lemma.headwords
+            if headword == headword.upper() and headword != headword.lower()
+        )
     return any(_comparison_surface(candidate) == needle for candidate in candidates)
 
 
