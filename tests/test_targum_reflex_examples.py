@@ -122,3 +122,57 @@ async def test_new_tool_schema_is_explicit_and_has_no_arbitrary_url() -> None:
     schema = tools["cal_targum_reflex_examples"].input_schema
     assert set(schema["properties"]) == {"targum", "mt_lemma_id", "lemma_key"}
     assert set(schema["required"]) == {"targum", "mt_lemma_id", "lemma_key"}
+
+
+
+def test_neofiti_examples_use_distinct_route_and_same_observed_block_semantics() -> None:
+    module = import_module("cal_mcp.targum_examples")
+    url = "https://cal.huc.edu/getNMT.php?MT=1751&cal=gypwp+N"
+    body = (
+        "<html><body><center>"
+        "<h3>Neofiti verses where MT מַעֲקֶה</h3>"
+        '<h3>is rendered by Aramaic <a href="/oneentry.php?lemma=gypwp+N&amp;cits=all">'
+        "gypwp N</a></h3>"
+        "Click the Aramaic lemma to see the full entry<br>"
+        '<div><span class="heb">MT line A Deut 22:8</span><br>'
+        '<div><span class="heb">Neofiti Aramaic verse</span></div></div>'
+        "</center></body></html>"
+    )
+    page = module.parse_targum_reflex_examples_page(
+        _response(body, url),
+        targum="neofiti",
+        mt_lemma_id="1751",
+        lemma_key="gypwp N",
+    )
+    assert page.source_label == "Neofiti"
+    assert len(page.examples) == 1
+    assert page.examples[0].targum_text == "Neofiti Aramaic verse"
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("targum", "mt_lemma_id", "lemma_key"),
+    [
+        ("nonsense", "1751", "tyq#2 N"),
+        ("onqelos", "wrong", "tyq#2 N"),
+        ("onqelos", "1751", "not a canonical key"),
+        ("neofiti", "1751", "tyq%232 N"),
+    ],
+)
+async def test_invalid_selector_is_rejected_before_cal_transport(
+    targum: str,
+    mt_lemma_id: str,
+    lemma_key: str,
+) -> None:
+    module = import_module("cal_mcp.targum_examples")
+    requests: list[CalRequest] = []
+
+    async def rejecting_transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        raise AssertionError("invalid input reached CAL")
+
+    service = module.TargumReflexExamplesService(CalHttpClient(transport=rejecting_transport))
+    with pytest.raises(ValueError):
+        await service.examples(targum, mt_lemma_id, lemma_key)
+    assert requests == []
