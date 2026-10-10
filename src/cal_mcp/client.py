@@ -3,10 +3,10 @@ from __future__ import annotations
 import asyncio
 import math
 import time
-from email.utils import parsedate_to_datetime
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 from typing import Any, Generic, TypeVar, cast
 from urllib.parse import urlencode, urljoin, urlsplit
 
@@ -502,9 +502,7 @@ class CalHttpClient:
                     rate_limit_retry_used = True
                     await self._sleep(hint)
                     continue
-                raise CalUpstreamError(
-                    429, response.url, retry_after_seconds=hint
-                )
+                raise CalUpstreamError(429, response.url, retry_after_seconds=hint)
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
                     await self._backoff(attempt)
