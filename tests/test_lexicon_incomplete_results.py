@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
@@ -172,3 +173,29 @@ async def test_explicit_unknown_lemma_selection_on_complete_page_is_invalid() ->
     service = LexiconLookupService(CalHttpClient(transport=transport))
     with pytest.raises(CalInputError):
         await service.lookup("byt", lemma_key="byt@mlkw N")
+
+@pytest.mark.anyio
+async def test_real_current_cal_xd_multiword_browse_row_is_selected_for_entry() -> None:
+    """Use the actual reduced 2026-10-10 source fixture, not an invented lemma row."""
+    fixture = (
+        Path(__file__).parent / "fixtures" / "cal" / "browse_xd_numeral_current.html"
+    ).read_text(encoding="utf-8")
+    requests: list[CalRequest] = []
+
+    class EntrySelected(Exception):
+        pass
+
+    async def transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        if request.path == "browseSKEYheaders.php":
+            return response(fixture, prefix="xd")
+        raise EntrySelected
+
+    client = CalHttpClient(transport=transport)
+    with pytest.raises(EntrySelected):
+        await LexiconLookupService(client).lookup("xd@(sr")
+    assert requests == [
+        CalRequest(method="GET", path="browseSKEYheaders.php", params=(("first3", '"xd"'),)),
+        CalRequest(method="GET", path="cal_entry_web.php", params=(("lemma", "xd@(sr b"),)),
+    ]
