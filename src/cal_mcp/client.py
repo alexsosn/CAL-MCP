@@ -274,7 +274,13 @@ class CalHttpClient:
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
-        self.config = config or CalClientConfig()
+        # Live CAL traffic is paced by default. Injected/offline fake transports
+        # retain their fast direct-client behavior unless pacing is requested.
+        self.config = (
+            config
+            if config is not None
+            else CalClientConfig(min_request_interval_seconds=1.0 if transport is None else 0.0)
+        )
         self._before_transport_attempt = before_transport_attempt
         self._clock = clock
         self._sleep = sleep
