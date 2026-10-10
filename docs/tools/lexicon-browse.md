@@ -24,3 +24,5 @@ Returned NEXT PAGE links are treated as untrusted upstream navigation. CAL-MCP a
 The parser also fails closed when CAL's browse structure contradicts itself—for example, when a no-results page exposes a continuation or navigation no longer matches the researched route contract. CAL endpoint/form details remain private implementation details rather than MCP arguments.
 
 `cal_lexicon_browse` is intended for explicit lexicographic exploration. It does not perform fuzzy search, semantic ranking, bulk extraction, hidden pagination, automatic homograph selection, entry expansion, or construction of a local lexicon index.
+
+CAL's explicit `There are no headwords beginning with: <prefix>` message represents a valid empty browse page: `rows` and `entries` are empty and `next_continuation` is `null`. Unrecognized/maintenance markup remains `parser_drift` rather than a fabricated empty page.
