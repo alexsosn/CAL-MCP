@@ -1,0 +1,108 @@
+# One-time explicitly decided 2-tool-call / max 25-transport smoke. Delete immediately after enqueue.
+name: One-time installed-wheel Targum reflex acceptance (#247)
+on:
+  push:
+    branches: [dev/issue-247-reflex-example-followups]
+    paths: [.github/workflows/issue-247-stdio-live-acceptance-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: cal-mcp-live-smoke
+  cancel-in-progress: false
+jobs:
+  acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build exactly one wheel
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check build
+          python -m build --wheel --outdir dist
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+      - name: Install wheel in private environment
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/cal-mcp-reflex-acceptance"
+          "$RUNNER_TEMP/cal-mcp-reflex-acceptance/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir dist/*.whl
+      - name: Exactly two installed-stdio MCP CAL calls, no traversal
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-reflex-acceptance/bin/python" - <<'PY'
+          import asyncio
+          import json
+          import os
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from urllib.parse import urlsplit
+
+          from jsonschema import Draft202012Validator
+          from mcp import Client, StdioServerParameters
+
+          ROOT = Path(os.environ["RUNNER_TEMP"]) / "cal-mcp-reflex-acceptance"
+          COMMAND = str(ROOT / "bin" / "cal-mcp")
+          CASES = (
+              ("onqelos", "1751", "tyq#2 N", "getOMT.php", "Onqelos"),
+              ("neofiti", "1751", "gypwp N", "getNMT.php", "Neofiti"),
+          )
+
+          async def smoke(report: Path):
+              env = dict(os.environ)
+              env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = "25"
+              env["CAL_MCP_LIVE_SMOKE_REPORT_PATH"] = str(report)
+              result_rows = []
+              async with Client(StdioServerParameters(command=COMMAND, env=env)) as client:
+                  tools = {tool.name: tool for tool in (await client.list_tools()).tools}
+                  assert len(tools) == 35, f"unexpected tool count: {len(tools)}"
+                  tool = tools["cal_targum_reflex_examples"]
+                  for targum, mt_id, lemma, path, label in CASES:
+                      args = {"targum": targum, "mt_lemma_id": mt_id, "lemma_key": lemma}
+                      result = await client.call_tool("cal_targum_reflex_examples", args)
+                      if result.is_error:
+                          err = result.structured_content
+                          safe = (err or {}).get("error", {})
+                          result_rows.append({"targum": targum, "outcome": "error",
+                                              "kind": safe.get("kind"),
+                                              "message": str(safe.get("message", ""))[:160]})
+                          continue
+                      data = result.structured_content
+                      assert isinstance(data, dict), "missing structured MCP result"
+                      Draft202012Validator(tool.output_schema).validate(data)
+                      assert data.get("targum") == targum
+                      assert data.get("mt_lemma_id") == mt_id
+                      assert data.get("lemma_key") == lemma
+                      assert data.get("source_label") == label
+                      assert isinstance(data.get("mt_hebrew_lemma"), str) and data["mt_hebrew_lemma"].strip()
+                      provenance = data.get("provenance")
+                      assert isinstance(provenance, dict)
+                      assert provenance.get("source") == "CAL"
+                      assert provenance.get("operation") == "targum_reflex_examples"
+                      assert provenance.get("targum") == targum
+                      assert provenance.get("mt_lemma_id") == mt_id
+                      assert provenance.get("lemma_key") == lemma
+                      u = urlsplit(provenance["source_url"])
+                      assert (u.scheme, u.netloc, u.path) == ("https", "cal.huc.edu", "/" + path)
+                      rows = data.get("examples")
+                      assert isinstance(rows, list) and len(rows) >= 1
+                      assert all(isinstance(r.get("mt_text"),str) and r["mt_text"].strip()
+                                 and isinstance(r.get("targum_text"),str) and r["targum_text"].strip()
+                                 for r in rows if isinstance(r, dict))
+                      assert all(isinstance(r, dict) for r in rows)
+                      result_rows.append({"targum": targum, "outcome": "ok", "examples": len(rows)})
+              return result_rows
+
+          with TemporaryDirectory(prefix="cal-reflex-") as d:
+              report = Path(d) / "attempts.json"
+              rows = asyncio.run(smoke(report))
+              meter = json.loads(report.read_text(encoding="utf-8"))
+              assert meter == {"actual_cal_transport_attempts": 2, "max_cal_transport_attempts": 25}, meter
+              print(json.dumps({"status": "passed" if all(x["outcome"]=="ok" for x in rows) else "failed",
+                                "results":rows,"meter":meter},ensure_ascii=False))
+              assert len(rows) == 2 and all(x["outcome"]=="ok" for x in rows)
+          PY
