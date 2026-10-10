@@ -133,9 +133,7 @@ def test_mismatched_nested_stem_markup_fails_closed() -> None:
     response = CalResponse(
         status_code=200,
         url="https://cal.huc.edu/cal_entry_web.php?lemma=ktb+V",
-        body=(
-            f"<html><body>{d.replace('</i></small>', '</small></i>')}</body></html>"
-        ).encode(),
+        body=(f"<html><body>{d.replace('</i></small>', '</small></i>')}</body></html>").encode(),
         content_type="text/html; charset=UTF-8",
         retrieved_at=datetime(2026, 10, 9, tzinfo=UTC),
     )
