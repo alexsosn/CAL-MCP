@@ -97,6 +97,7 @@ class LexiconBrowseResult:
 
 def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
     lines = _parse_lines(response)
+    explicit_no_match = _browse_has_explicit_no_match(lines, source_url=response.url)
     rows: list[LexiconBrowseRow] = []
     entries: list[LemmaRef] = []
 
@@ -188,7 +189,7 @@ def parse_lexicon_browse_page(response: CalResponse) -> LexiconBrowsePage:
         rows.append(LexiconBrowseRow(kind=LexiconBrowseRowKind.ENTRY, lemma=lemma))
         entries.append(lemma)
 
-    if not rows and not _browse_has_explicit_no_match(lines):
+    if not rows and not explicit_no_match:
         raise LexiconParseError(
             "CAL lexicon browse page contains neither rows nor explicit no-match"
         )
