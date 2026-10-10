@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 class SmokeBudgetExceeded(RuntimeError):
@@ -12,7 +12,7 @@ class SmokeAttemptBudget:
     """Hard per-process cap counted just before an outbound CAL transport call."""
 
     max_attempts: int
-    attempts: int = 0
+    attempts: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         if type(self.max_attempts) is not int:
