@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The current v0.1 candidate exposes 34 public tools: one deterministic local CAL-code conversion tool plus 33 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
+> **Status:** active pre-release development. The current v0.1 candidate exposes 35 public tools: one deterministic local CAL-code conversion tool plus 34 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -29,7 +29,7 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 ## v0.1 public surface
 
-The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 34-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, the typed KWIC full-context follow-up added by issue #113, the explicit text-line comments/translations follow-up added by issue #108, the explicit linked-lexicon-citation context follow-up added by issue #127, and the bounded lexicon prefix browser added by issue #112.
+The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 35-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, the typed KWIC full-context follow-up added by issue #113, the explicit text-line comments/translations follow-up added by issue #108, the explicit linked-lexicon-citation context follow-up added by issue #127, the bounded lexicon prefix browser added by issue #112, and the explicit MT/Targum reflex-example follow-up added by issue #247.
 
 | Area | Public tools |
 | --- | --- |
