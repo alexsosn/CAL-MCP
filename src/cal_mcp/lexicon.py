@@ -32,6 +32,7 @@ class LexiconLookupStatus(StrEnum):
     FOUND = "found"
     AMBIGUOUS = "ambiguous"
     NOT_FOUND = "not_found"
+    TRUNCATED = "truncated"
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +101,7 @@ class Provenance:
 @dataclass(frozen=True, slots=True)
 class BrowsePage:
     entries: tuple[LemmaRef, ...]
+    next_continuation: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,10 +110,17 @@ class LexiconLookupResult:
     matches: tuple[LemmaRef, ...] = ()
     entry: LexiconEntry | None = None
     provenance: Provenance | None = None
+    browse_truncated: bool = False
+    browse_continuations: tuple[tuple[str, str], ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
             "status": self.status.value,
+            "browse_truncated": self.browse_truncated,
+            "browse_continuations": [
+                {"prefix": prefix, "continuation": continuation}
+                for prefix, continuation in self.browse_continuations
+            ],
             "matches": [_lemma_to_dict(item) for item in self.matches],
             "entry": _entry_to_dict(self.entry) if self.entry is not None else None,
             "provenance": (
@@ -616,8 +625,27 @@ def parse_browse_page(response: CalResponse) -> BrowsePage:
                 )
             )
 
+    # Reuse the already-audited public browser cursor validator verbatim.
+    # The import is local to avoid the startup cycle: the public browse module
+    # imports the shared lemma parser from this module.
+    next_links = [
+        link
+        for line in lines
+        for link in line.links
+        if " ".join(link.text.split()).casefold() == "next page"
+    ]
+    if len(next_links) > 1:
+        raise LexiconParseError("CAL lexicon browse page exposes multiple NEXT PAGE links")
+    next_continuation: str | None = None
+    if next_links:
+        from cal_mcp.lexicon_browse import _continuation_from_link
+
+        next_continuation = _continuation_from_link(response.url, next_links[0].href)
+        if explicit_no_match:
+            raise LexiconParseError("CAL lexicon no-match page unexpectedly exposes NEXT PAGE")
+
     if entries:
-        return BrowsePage(entries=tuple(entries))
+        return BrowsePage(entries=tuple(entries), next_continuation=next_continuation)
 
     if explicit_no_match:
         return BrowsePage(entries=())
@@ -862,6 +890,7 @@ class LexiconLookupService:
             match_surfaces = query_candidates
 
         browse_entries: list[LemmaRef] = []
+        browse_continuations: list[tuple[str, str]] = []
         first_source_url: str | None = None
         first_retrieved_at: datetime | None = None
         for prefix in browse_prefixes:
@@ -878,6 +907,8 @@ class LexiconLookupService:
                 first_source_url = browse_result.source_url
                 first_retrieved_at = browse_result.retrieved_at
             browse_entries.extend(browse_result.value.entries)
+            if browse_result.value.next_continuation is not None:
+                browse_continuations.append((prefix, browse_result.value.next_continuation))
 
         if first_source_url is None or first_retrieved_at is None:
             raise AssertionError("CAL lexicon lookup produced no browse request")
@@ -910,8 +941,14 @@ class LexiconLookupService:
 
         if not matches:
             return LexiconLookupResult(
-                status=LexiconLookupStatus.NOT_FOUND,
+                status=(
+                    LexiconLookupStatus.TRUNCATED
+                    if browse_continuations
+                    else LexiconLookupStatus.NOT_FOUND
+                ),
                 provenance=browse_provenance,
+                browse_truncated=bool(browse_continuations),
+                browse_continuations=tuple(browse_continuations),
             )
 
         if lemma_key is not None:
@@ -923,6 +960,8 @@ class LexiconLookupService:
                 status=LexiconLookupStatus.AMBIGUOUS,
                 matches=matches,
                 provenance=browse_provenance,
+                browse_truncated=bool(browse_continuations),
+                browse_continuations=tuple(browse_continuations),
             )
         else:
             selected = matches[0]
@@ -954,6 +993,8 @@ class LexiconLookupService:
             status=LexiconLookupStatus.FOUND,
             matches=(selected,),
             entry=entry_result.value,
+            browse_truncated=bool(browse_continuations),
+            browse_continuations=tuple(browse_continuations),
             provenance=_make_provenance(
                 normalized,
                 source_url=entry_result.source_url,
@@ -1477,6 +1518,8 @@ def _browse_prefix(value: str) -> str:
     result: list[str] = []
     base_characters = 0
     for char in value:
+        if char in {"@", " "}:
+            break
         if unicodedata.category(char).startswith("M"):
             if result:
                 result.append(char)
@@ -1492,6 +1535,12 @@ def _browse_prefix(value: str) -> str:
 
 def _query_matches(query: str, lemma: LemmaRef) -> bool:
     needle = _comparison_surface(query)
+    # CAL uses @ inside exact machine lemma identities for multiword keys.
+    # Match only a returned link's exact complete key, never an inferred stem.
+    machine_key, separator, _pos = lemma.lemma_key.rpartition(" ")
+    if separator and ("@" in machine_key or "@" in query):
+        if needle.replace("@", " ") == _comparison_surface(machine_key).replace("@", " "):
+            return True
     candidates: tuple[str, ...] = (*lemma.headwords, *lemma.aliases)
     if lemma.lemma_key.endswith(" V"):
         # CAL shows a verb's root in uppercase on result rows (KTB, ˁHR); match its lowercase
