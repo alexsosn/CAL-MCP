@@ -194,3 +194,21 @@ def test_source_rejects_conflicting_extra_heading_or_summary(extra: str) -> None
     # A matching identity does not license quietly ignoring a contradictory one.
     with pytest.raises(CalParseError):
         parse(BODY.replace("</form>", extra + "</form>"))
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("bad", [None, 7, {"51001": "untrusted"}])
+async def test_direct_service_bad_group_type_is_input_error_before_io(bad: object) -> None:
+    module = import_module("cal_mcp.targum_concordance_examples")
+    requests: list[CalRequest] = []
+
+    async def rejecting(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        raise AssertionError("invalid input reached the CAL transport")
+
+    service = module.TargumConcordanceExamplesService(
+        CalHttpClient(transport=rejecting)
+    )
+    with pytest.raises(CalInputError):
+        await service.examples("klb N", bad)
+    assert requests == []
