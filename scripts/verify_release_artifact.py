@@ -72,6 +72,15 @@ def _sdist_version(sdist: Path, expected_version: str) -> str:
             if not pyproject_members[0].isfile():
                 raise RuntimeError("root sdist pyproject.toml is not a regular file")
 
+            # All entries in our software-only sdist must be regular files or
+            # directories. A safe member *name* does not make a symlink or
+            # hardlink target safe, and special tar members are never needed.
+            for member in members:
+                if not member.isfile() and not member.isdir():
+                    raise RuntimeError(
+                        f"unsupported sdist member type for {member.name!r}"
+                    )
+
             metadata_file = archive.extractfile(pkg_info_members[0])
             if metadata_file is None:
                 raise RuntimeError("could not read root sdist PKG-INFO")
