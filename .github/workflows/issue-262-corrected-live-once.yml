@@ -1,0 +1,78 @@
+# ONE corrected calibration: preceding run 38082822617 made 0 actual CAL calls.
+name: One-shot corrected paced Peshitta 38-attempt acceptance (#262)
+on:
+  push:
+    branches: [dev/issue-262-rate-limits]
+    paths: [.github/workflows/issue-262-corrected-live-once.yml]
+permissions:
+  contents: read
+concurrency:
+  group: cal-mcp-live-smoke
+  cancel-in-progress: false
+jobs:
+  validate:
+    name: offline-real-MCP-lifespan-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install offline development validation
+        run: python -m pip install -e ".[dev]"
+      - name: Static gate and actual wrapped server startup, no CAL request
+        shell: bash
+        run: |
+          ruff check scripts/issue262_live_acceptance_once.py
+          ruff format --check scripts/issue262_live_acceptance_once.py
+          python -m py_compile scripts/issue262_live_acceptance_once.py
+          python - <<'PY'
+          import asyncio
+          import cal_mcp.server as server
+          from scripts.issue262_live_acceptance_once import WRAPPER, MAX_ATTEMPTS
+
+          assert MAX_ATTEMPTS == 38
+          assert "LIMIT = 38" in WRAPPER
+          assert "min_request_interval_seconds < 3" in WRAPPER
+          code = WRAPPER.replace("atexit.register(report)", "pass").replace(
+              "server.main([])", "pass"
+          )
+          original = server.CalHttpClient
+          try:
+              exec(code, {})
+              async def validate():
+                  async with server.app_lifespan(server.mcp) as ctx:
+                      assert ctx.client.config.min_request_interval_seconds >= 3.0
+                      assert ctx.client.config.max_retries == 1
+              asyncio.run(validate())
+          finally:
+              server.CalHttpClient = original
+          print("offline wrapper lifespan succeeds; zero CAL requests")
+          PY
+  once:
+    name: exactly-one-real-CAL-MCP-session
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build exactly one wheel
+        shell: bash
+        run: |
+          python -m pip install --disable-pip-version-check build
+          python -m build --wheel --outdir dist
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" -eq 1
+      - name: Install wheel in a clean venv outside checkout
+        shell: bash
+        run: |
+          python -m venv "$RUNNER_TEMP/issue262-venv"
+          "$RUNNER_TEMP/issue262-venv/bin/python" -m pip install --no-cache-dir dist/*.whl
+      - name: Exactly one 38-hard-cap paced 37-token CAL stdio MCP acceptance
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/issue262-venv/bin/python" "$GITHUB_WORKSPACE/scripts/issue262_live_acceptance_once.py"
