@@ -51,11 +51,12 @@ def report():
 atexit.register(report)
 
 def metered_client(*, config=None, **kwargs):
-    if config is None or config.min_request_interval_seconds < 3:
-        raise RuntimeError("one-time live acceptance requires MCP's paced client")
     if kwargs:
         raise RuntimeError("unexpected MCP client constructor arguments")
-    return original(config=config, before_transport_attempt=before_transport_attempt)
+    client = original(config=config, before_transport_attempt=before_transport_attempt)
+    if client.config.min_request_interval_seconds < 3:
+        raise RuntimeError("one-time live acceptance requires MCP's paced client")
+    return client
 
 server.CalHttpClient = metered_client
 server.main([])
