@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
@@ -15,7 +16,7 @@ from pydantic import ValidationError
 
 from cal_mcp import __version__
 from cal_mcp.bibliography import BibliographyService
-from cal_mcp.client import CalHttpClient
+from cal_mcp.client import CalClientConfig, CalHttpClient
 from cal_mcp.concordance import ConcordanceService
 from cal_mcp.dictionary_collation import DictionaryCollationService, DictionarySource
 from cal_mcp.errors import PublicErrorKind, PublicToolError, classify_public_tool_error
@@ -25,6 +26,7 @@ from cal_mcp.lexicon_browse import LexiconBrowseService
 from cal_mcp.lexicon_citation_context import LexiconCitationContextService
 from cal_mcp.normalization import InputRepresentation, convert_to_cal_code
 from cal_mcp.search import EnglishSearchService, GlossField
+from cal_mcp.smoke_budget import SmokeAttemptBudget
 from cal_mcp.syriac import SyriacService
 from cal_mcp.targum import TargumService
 from cal_mcp.texts import TextService
@@ -90,7 +92,18 @@ class CalMCPServer(MCPServer[AppContext]):
 
 @asynccontextmanager
 async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppContext]:
-    client = CalHttpClient()
+    smoke_budget = os.environ.get("CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS")
+    if smoke_budget is None:
+        client = CalHttpClient()
+    else:
+        # Never silently accept an expanded cap or apply this policy to ordinary users.
+        if smoke_budget != "25":
+            raise ValueError("CAL live smoke requires the reviewed 25-attempt cap")
+        budget = SmokeAttemptBudget(max_attempts=25)
+        client = CalHttpClient(
+            config=CalClientConfig(max_concurrency=1, max_retries=0, cache_enabled=True),
+            before_transport_attempt=budget.before_attempt,
+        )
     try:
         yield AppContext(client=client)
     finally:
