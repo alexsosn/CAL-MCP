@@ -360,6 +360,18 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-078 — CAL's biblical book selector still lists the same 36 labels
+
+**Rechecked:** 2026-10-10; issue #260.
+
+One GET of `searching/peshsearch.html` found 36 `bookname` options. Their labels and two-digit
+values equal `_BOOK_IDS` exactly, in CAL's order (`Gen`, `Exod`, `Levit`, `Numb`, `Deut`, …,
+`Esther`), and they are the same labels `cal_targum_parallel` uses (R-044). The E2E smoke showed
+that callers guess full names (`Genesis`) or New Testament books (`Matthew`).
+
+**Implication:** both parallel tools publish the labels as a JSON-schema `enum` generated from the
+same table. The local error lists every accepted label. Runtime validation is unchanged.
+
 ## R-077 — CAL text search rejects or rewrites some query characters and echoes its real term
 
 **Rechecked:** 2026-10-10; issue #259.

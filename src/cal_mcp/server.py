@@ -8,15 +8,16 @@ from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver import Context
 from mcp.server.mcpserver.exceptions import ToolError, UnexpectedToolError
 from mcp.types import CallToolResult, InputRequiredResult, TextContent
-from pydantic import ValidationError
+from pydantic import Field, ValidationError
 
 from cal_mcp import __version__
+from cal_mcp.biblical import BIBLICAL_BOOK_LABELS
 from cal_mcp.bibliography import BibliographyService
 from cal_mcp.client import CalClientConfig, CalHttpClient
 from cal_mcp.concordance import ConcordanceService
@@ -44,6 +45,10 @@ from cal_mcp.token_analysis import TokenAnalysisService
 @dataclass(frozen=True, slots=True)
 class AppContext:
     client: CalHttpClient
+
+
+# Runtime validation stays in cal_biblical_book_id; the schema enum makes the labels discoverable.
+BiblicalBookLabel = Annotated[str, Field(json_schema_extra={"enum": list(BIBLICAL_BOOK_LABELS)})]
 
 
 def _public_tool_error_result(error: PublicToolError) -> CallToolResult:
@@ -758,7 +763,7 @@ async def cal_bibliography_lemma(
     structured_output=True,
 )
 async def cal_targum_parallel(
-    book: str,
+    book: BiblicalBookLabel,
     chapter: int,
     verse: int,
     ctx: Context[AppContext],
@@ -767,8 +772,10 @@ async def cal_targum_parallel(
 ) -> dict[str, object]:
     """Return CAL's ordered MT/Targum readings for one explicit biblical verse.
 
-    ``book`` is one exact CAL Targum book label. Peshitta and Samaritan are optional
-    upstream comparison sources and are never fabricated when CAL has no reading.
+    ``book`` is one of CAL's 36 selector labels listed in the input schema (CAL's own
+    abbreviations, e.g. ``Gen``, ``1 Sam``, ``Psalms``; not ``Genesis``). Peshitta and
+    Samaritan are optional upstream comparison sources and are never fabricated when CAL has
+    no reading.
 
     One explicit call submits at most one new logical CAL request. A completed cache hit
     performs no new upstream I/O.
@@ -971,12 +978,15 @@ async def cal_syriac_missing_words(
     structured_output=True,
 )
 async def cal_syriac_peshitta_parallel(
-    book: str,
+    book: BiblicalBookLabel,
     chapter: int,
     verse: int,
     ctx: Context[AppContext],
 ) -> dict[str, object]:
     """Return CAL's MT/Peshitta comparison for one explicit biblical verse.
+
+    ``book`` is one of CAL's 36 Hebrew Bible selector labels listed in the input schema (e.g.
+    ``Gen``, ``Isaiah``); New Testament books are not part of this CAL comparison.
 
     The result preserves CAL Hebrew/Syriac text and the Peshitta source link. Invalid
     coordinates are a typed not-found state; previous/next verse links are never followed.

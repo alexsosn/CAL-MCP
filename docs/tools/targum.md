@@ -40,7 +40,7 @@ This operation returns CAL's rendered comparison for one explicit biblical verse
 - optional same-origin CAL chapter URLs where CAL supplies them;
 - CAL provenance and retrieval time.
 
-The accepted book labels are CAL's current selector labels:
+The accepted book labels are CAL's current selector labels. The MCP input schema publishes them as a JSON-schema `enum` in CAL's selector order, and an invalid `book` (for example `Genesis`) fails locally, with no CAL request, as `invalid_input` listing every accepted label:
 
 ```text
 Gen, Exod, Levit, Numb, Deut, Joshua, Judges,

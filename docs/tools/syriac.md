@@ -168,7 +168,7 @@ The tool submits one explicit verse to CAL's current MT/Peshitta comparison endp
 - CAL's same-origin Peshitta chapter URL when found;
 - provenance.
 
-The accepted book labels are CAL's current selector labels:
+The accepted book labels are CAL's current selector labels, covering the 36 Hebrew Bible books CAL compares (New Testament books such as `Matthew` are not part of this comparison). The MCP input schema publishes them as a JSON-schema `enum` in CAL's selector order, and an invalid `book` fails locally, with no CAL request, as `invalid_input` listing every accepted label:
 
 ```text
 Gen, Exod, Levit, Numb, Deut, Joshua, Judges,

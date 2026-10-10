@@ -93,11 +93,18 @@ _ANY_COORDINATE_RE = re.compile(r"[0-9]+\s*:\s*[0-9]+")
 MT_LINE_BREAK = "\u2029"
 
 
+# CAL's selector labels in its own selector order (rechecked 2026-10-10; R-078).
+BIBLICAL_BOOK_LABELS: tuple[str, ...] = tuple(_BOOK_IDS)
+
+
 def cal_biblical_book_id(book: str) -> str:
     """Return CAL's current selector ID for one exact biblical book label."""
 
     if not isinstance(book, str) or book not in _BOOK_IDS:
-        raise CalInputError("book must be one exact current CAL biblical book label")
+        raise CalInputError(
+            "book must be one exact CAL selector label (for example 'Gen', not 'Genesis'): "
+            + ", ".join(repr(label) for label in BIBLICAL_BOOK_LABELS)
+        )
     return _BOOK_IDS[book]
 
 
