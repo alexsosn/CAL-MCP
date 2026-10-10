@@ -481,9 +481,12 @@ class CalHttpClient:
     async def _request_with_retries(self, request: CalRequest) -> CalResponse:
         started_at = self._clock()
         rate_limit_retry_used = False
+        rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None
         for attempt in range(self.config.max_retries + 1):
             try:
-                response = await self._request_once(request)
+                response = await self._request_once(
+                    request, rate_limit_retry_guard=rate_limit_retry_guard
+                )
             except _RETRYABLE_TRANSPORT_EXCEPTIONS as exc:
                 if attempt >= self.config.max_retries:
                     if isinstance(exc, (TimeoutError, httpx2.TimeoutException)):
@@ -504,6 +507,10 @@ class CalHttpClient:
                     and self._clock() + hint < started_at + self.config.total_timeout_seconds
                 ):
                     rate_limit_retry_used = True
+                    rate_limit_retry_guard = (
+                        started_at + self.config.total_timeout_seconds,
+                        CalUpstreamError(429, response.url, retry_after_seconds=hint),
+                    )
                     await self._sleep(hint)
                     continue
                 raise CalUpstreamError(429, response.url, retry_after_seconds=hint)
@@ -537,20 +544,40 @@ class CalHttpClient:
         except (TypeError, ValueError, OverflowError):
             return None
 
-    async def _reserve_attempt(self) -> None:
+    async def _reserve_attempt(
+        self, *, rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None
+    ) -> None:
         interval = self.config.min_request_interval_seconds
         if interval <= 0:
+            if rate_limit_retry_guard is not None:
+                deadline, original_429 = rate_limit_retry_guard
+                if self._clock() >= deadline:
+                    raise original_429
             return
         async with self._pace_lock:
-            delay = max(0.0, self._next_attempt_at - self._clock())
+            now = self._clock()
+            delay = max(0.0, self._next_attempt_at - now)
+            if rate_limit_retry_guard is not None:
+                deadline, original_429 = rate_limit_retry_guard
+                if now + delay >= deadline:
+                    # A short Retry-After hint does not justify dispatching
+                    # a retry after other callers have filled the pacing queue.
+                    raise original_429
             if delay > 0:
                 await self._sleep(delay)
+            if rate_limit_retry_guard is not None and self._clock() >= deadline:
+                raise original_429
             self._next_attempt_at = self._clock() + interval
 
-    async def _request_once(self, request: CalRequest) -> CalResponse:
+    async def _request_once(
+        self,
+        request: CalRequest,
+        *,
+        rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None,
+    ) -> CalResponse:
         async with self._semaphore:
             async with asyncio.timeout(self.config.total_timeout_seconds):
-                await self._reserve_attempt()
+                await self._reserve_attempt(rate_limit_retry_guard=rate_limit_retry_guard)
                 if self._before_transport_attempt is not None:
                     # The hook is opt-in and runs at the actual transport boundary,
                     # including every retry and excluding cache hits.
