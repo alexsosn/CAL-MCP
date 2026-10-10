@@ -108,9 +108,7 @@ async def test_429_cooldown_does_not_suppress_previous_successful_cached_data() 
         clock=clock,
         sleep=clock.sleep,
     )
-    initial = await client.fetch(
-        request(2), parser=lambda x: x.body, cache_namespace="lexicon"
-    )
+    initial = await client.fetch(request(2), parser=lambda x: x.body, cache_namespace="lexicon")
     with pytest.raises(CalUpstreamError):
         await client.fetch(request(8), parser=lambda x: x.body, cache_namespace="lexicon")
 
