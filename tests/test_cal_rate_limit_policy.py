@@ -229,3 +229,41 @@ async def test_production_httpx2_retains_only_429_retry_after_without_reading_bo
     assert result.status_code == 429
     assert result.retry_after == "2"
     assert result.body == b""
+
+
+@pytest.mark.anyio
+async def test_429_retry_does_not_start_after_queued_pacing_slot_exceeds_deadline() -> None:
+    """The hint alone fits 15s, but the next CAL slot does not."""
+    clock = FakeClock()
+    attempts = 0
+    counted = 0
+
+    async def transport(req: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal attempts
+        del req, config
+        attempts += 1
+        if attempts == 1:
+            # Model another CAL call reserving a far-later slot in this client.
+            client._next_attempt_at = clock() + 30
+            return reply(429, retry_after="1")
+        return reply()
+
+    def count_attempt() -> None:
+        nonlocal counted
+        counted += 1
+
+    client = CalHttpClient(
+        config=CalClientConfig(
+            min_request_interval_seconds=1.0, total_timeout_seconds=15, max_retries=3
+        ),
+        transport=transport,
+        clock=clock,
+        sleep=clock.sleep,
+        before_transport_attempt=count_attempt,
+    )
+    with pytest.raises(CalUpstreamError) as exc:
+        await client.fetch(request(1), parser=lambda value: value.body, cache_namespace="limit")
+    assert exc.value.status_code == 429
+    assert attempts == 1
+    assert counted == 1
+    assert clock() < 115
