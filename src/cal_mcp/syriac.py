@@ -439,17 +439,34 @@ def syriac_text_category_slugs() -> tuple[str, ...]:
     return tuple(_TEXT_CATEGORIES)
 
 
+class SyriacMissingWordCategory(StrEnum):
+    ADJECTIVES = "adjectives"
+    ADVERBS = "adverbs"
+    MISCELLANEOUS = "miscellaneous"
+    NOMINA_AGENTIS = "nomina-agentis"
+    ABSTRACTS = "abstracts"
+    VERBAL_NOUNS = "verbal-nouns"
+    VERBS = "verbs"
+    MASCULINE_NOUNS = "masculine-nouns"
+    FEMININE_NOUNS = "feminine-nouns"
+
+
 _MISSING_WORD_PATHS = {
-    "adjectives": "display_missing_adj.php",
-    "adverbs": "display_missingSL.php",
-    "miscellaneous": "display_missing_misc.php",
-    "nomina-agentis": "display_missing_nomag.php",
-    "abstracts": "display_missingU.php",
-    "verbal-nouns": "display_missing_vn.php",
-    "verbs": "display_missing_verbs.php",
-    "masculine-nouns": "display_missing.mascnouns.php",
-    "feminine-nouns": "display_missing.femnouns.php",
+    SyriacMissingWordCategory.ADJECTIVES: "display_missing_adj.php",
+    SyriacMissingWordCategory.ADVERBS: "display_missingSL.php",
+    SyriacMissingWordCategory.MISCELLANEOUS: "display_missing_misc.php",
+    SyriacMissingWordCategory.NOMINA_AGENTIS: "display_missing_nomag.php",
+    SyriacMissingWordCategory.ABSTRACTS: "display_missingU.php",
+    SyriacMissingWordCategory.VERBAL_NOUNS: "display_missing_vn.php",
+    SyriacMissingWordCategory.VERBS: "display_missing_verbs.php",
+    SyriacMissingWordCategory.MASCULINE_NOUNS: "display_missing.mascnouns.php",
+    SyriacMissingWordCategory.FEMININE_NOUNS: "display_missing.femnouns.php",
 }
+
+
+def syriac_missing_word_category_slugs() -> tuple[str, ...]:
+    """Public selectors in the exact route-map declaration order."""
+    return tuple(category.value for category in _MISSING_WORD_PATHS)
 
 _PESHITTA_HEADING_PREFIX = "MT and Peshitta for "
 _COORDINATE_ERROR_RE = re.compile(r"\berror\s+in\s+coord(?:inate)?\b", re.I)
@@ -1159,12 +1176,12 @@ def _validate_group_id(value: object) -> str:
 
 
 def _missing_word_path(category: str) -> str:
-    if not isinstance(category, str):
-        raise CalInputError("category must be a current CAL-MCP Syriac missing-word category slug")
-    path = _MISSING_WORD_PATHS.get(category)
-    if path is None:
-        raise CalInputError("category must be a current CAL-MCP Syriac missing-word category slug")
-    return path
+    try:
+        selected = SyriacMissingWordCategory(category)
+    except (ValueError, TypeError):
+        choices = ", ".join(syriac_missing_word_category_slugs())
+        raise CalInputError(f"category must be one of: {choices}") from None
+    return _MISSING_WORD_PATHS[selected]
 
 
 def _validate_book(book: str) -> str:
