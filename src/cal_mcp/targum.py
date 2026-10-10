@@ -1163,6 +1163,7 @@ def _concordance_row_to_dict(row: TargumConcordanceRow) -> dict[str, object]:
         "label": row.label,
         "count": row.count,
         "example_url": row.example_url,
+        "text_ids": parse_qs(urlsplit(row.example_url).query)["texts"][0].split(" "),
     }
 
 

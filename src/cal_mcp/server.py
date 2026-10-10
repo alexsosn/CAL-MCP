@@ -35,6 +35,7 @@ from cal_mcp.syriac import (
     syriac_missing_word_category_slugs,
 )
 from cal_mcp.targum import TargumService
+from cal_mcp.targum_concordance_examples import TargumConcordanceExamplesService
 from cal_mcp.targum_examples import TargumReflexExamplesService
 from cal_mcp.texts import TextService
 from cal_mcp.token_analysis import TokenAnalysisService
@@ -173,7 +174,9 @@ mcp = CalMCPServer(
         "CAL lemma key. Use cal_dictionary_collation for CAL's stored lemma correspondences "
         "for one explicit dictionary page reference. Use cal_targum_parallel for one biblical "
         "verse across current CAL Targum readings, cal_targum_concordance for Targum-specific "
-        "lemma counts, cal_targum_hebrew_lemmas to discover one MT Hebrew lemma, "
+        "lemma counts; follow one returned row with cal_targum_concordance_examples using its "
+        "text_ids and the same lemma_key (not its example_url). Use "
+        "cal_targum_hebrew_lemmas to discover one MT Hebrew lemma, "
         "and cal_targum_hebrew_reflexes to retrieve its ordered CAL reflexes. Follow "
         "one chosen reflex with cal_targum_reflex_examples using the returned targum, "
         "mt_lemma_id and lemma_key, not its example_url. Use cal_syriac_texts for one "
@@ -800,6 +803,28 @@ async def cal_targum_concordance(
 
     client = ctx.request_context.lifespan_context.client
     result = await TargumService(client).concordance(lemma_key)
+    return result.to_dict()
+
+
+@mcp.tool(
+    name="cal_targum_concordance_examples",
+    title="Read one selected CAL Targum concordance KWIC text group",
+    structured_output=True,
+)
+async def cal_targum_concordance_examples(
+    lemma_key: str,
+    text_ids: list[str],
+    ctx: Context[AppContext],
+) -> dict[str, object]:
+    """Follow one Targum concordance row using its explicit ordered text_ids.
+
+    Use ``lemma_key`` and a row's ``text_ids`` from
+    ``cal_targum_concordance``. Never supply arbitrary CAL URLs or combine
+    separate returned text groups. Exactly one GET on a cache miss.
+    """
+
+    client = ctx.request_context.lifespan_context.client
+    result = await TargumConcordanceExamplesService(client).examples(lemma_key, text_ids)
     return result.to_dict()
 
 

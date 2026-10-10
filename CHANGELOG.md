@@ -6,7 +6,7 @@ First standalone release of CAL-MCP, a read-only MCP adapter over the Comprehens
 
 ### Public MCP surface
 
-v0.1.0 freezes **35 public tools** across these research families:
+v0.1.0 freezes **36 public tools** across these research families:
 
 - deterministic conversion from supported Aramaic-script/Unicode inputs to CAL code (a rejected Hebrew mark or sign is named by code point, and pointed words get an unpointed suggestion);
 - lexicon exact/root/full-form lookup (verbs, whose roots CAL shows in uppercase on browse rows, are matched by their lowercase form), bounded prefix browsing via `cal_lexicon_browse` (ordered typed rows distinguish genuine entries from CAL arrow cross-references; `entries` contains only genuine entries; cross-reference source text and target lemma keys are preserved without fetching the target), and explicit linked-citation full context via `cal_lexicon_citation_context` (exact-entry headers are read from CAL's marked `lemma-header` fields; current verb stem headings and the stem summary are read from their own markup, so every sense keeps its stem `heading` and multi-stem verbs such as `)mr V` and `ktb V` parse; with `part_of_speech: null` where CAL gives none and no fallback to later prose; including preservation of CAL's literal uncertain POS marker such as `n.f.?`, and Babylonian Talmud texts whose tokens use CAL's `bablex.php` family);
@@ -46,7 +46,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 ### Release and drift validation
 
 - Structured `parser_drift` and `content` errors name the CAL page that failed in `source_url` (CAL origin only). Citation-context drift is reported as `parser_drift` rather than as unsafe content.
-- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 35-tool schema without contacting CAL.
+- The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 36-tool schema without contacting CAL.
 - Deterministic CI and release validation use committed Python 3.11 target/build constraints with exact-environment verification; a separate latest-compatible job checks the broad dependency ranges declared for downstream users.
 - Those deterministic constraints are validation inputs only; downstream package metadata retains the reviewed broad runtime dependency ranges.
 - A separate live drift smoke is opt-in/scheduled and capped at **9 CAL requests**, concurrency 1, retries 0, cache disabled.

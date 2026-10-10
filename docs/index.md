@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** pre-release. The current public contract contains 35 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
+> **Status:** pre-release. The current public contract contains 36 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 

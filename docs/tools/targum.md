@@ -1,8 +1,8 @@
 # CAL Targum Studies
 
-CAL-MCP exposes five bounded task-level operations over CAL's current Targum Studies interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, automatically fetch examples, or build a local Targum corpus.
+CAL-MCP exposes six bounded task-level operations over CAL's current Targum Studies interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Moving from a returned source, concordance row, or Hebrew lemma selector to a second CAL view always requires another explicit caller action; CAL-MCP does not walk biblical verses, enumerate sources, automatically fetch examples, or build a local Targum corpus.
 
-Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`, and `cal_targum_reflex_examples`.
+Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`, and `cal_targum_reflex_examples`.
 
 ## Which tool to use
 
@@ -10,6 +10,7 @@ Public tools: `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebre
 | --- | --- |
 | Compare one biblical verse across MT and CAL's available Targum readings | `cal_targum_parallel(book, chapter, verse, include_peshitta=False, include_samaritan=False)` |
 | Count one CAL lemma across CAL's Targum source groups | `cal_targum_concordance(lemma_key)` |
+| Read one returned Targum concordance group's KWIC examples | `cal_targum_concordance_examples(lemma_key, text_ids)` |
 | Discover CAL's MT Hebrew lemma choices for Onqelos or Neofiti reflex study | `cal_targum_hebrew_lemmas(initial, targum)` |
 | Retrieve the CAL Aramaic lemma reflexes for one selected MT Hebrew lemma | `cal_targum_hebrew_reflexes(targum, mt_lemma_id)` |
 | Read one explicit MT/Aramaic reflex example page | `cal_targum_reflex_examples(targum, mt_lemma_id, lemma_key)` |
@@ -74,13 +75,38 @@ The result preserves:
 - CAL's section structure separately from individual source labels. On CAL's earlier layout, explicit section headers (`<th colspan>`) group the rows after them, and those rows carry `section`. On CAL's current layout (2026-09-24) the page renders a single label row (`Torah`) followed by every Targum, including Former and Writing Prophets, Psalms and Chronicles, so it is not a grouping. Rows then carry `section: null`, and the result's additive `section_labels` lists each label row as `{label, row_index}`, where `row_index` is the index in `rows` of the first row after it (it equals the number of rows when no row follows, and consecutive labels share an index). CAL-MCP does not attribute rows to a label;
 - exact source labels;
 - occurrence counts;
+- each row's additive ordered `text_ids`, identifying one exact source-group followup;
 - absolute same-origin CAL example URLs;
 - CAL's reported total;
 - provenance.
 
 A complete CAL table in which every row is zero and `total examples: 0` is a valid successful empty concordance. It is not treated as parser drift. Conversely, missing table/heading/total semantics, nonnumeric counts, malformed links, or a total that disagrees with the sum of parsed source counts fail closed.
 
-Returned example URLs are navigation metadata only. CAL-MCP does not automatically follow them or fetch detailed KWIC examples.
+Returned example URLs are navigation metadata only. CAL-MCP does not automatically follow them.
+
+### Explicit concordance example follow-up
+
+```text
+cal_targum_concordance_examples(
+    lemma_key: string,
+    text_ids: array[string],
+)
+```
+
+Choose one parent row's exact ordered `text_ids`, keeping the same canonical
+`lemma_key`. This stateless follow-up validates selector shape and CAL response
+identity, but does **not** prove that caller-supplied IDs previously appeared
+in a parent row; verifying that by refetching would add an unwanted CAL request.
+The adapter constructs one fixed GET to CAL
+`show1dialectKWIC.php` with `charset=H`. No arbitrary URL parameter, other
+group merging, prefetch or traversal is supported. Up to 32 distinct ASCII
+decimal text identifiers are allowed, with an additional bounded query length.
+
+The result preserves CAL's ordered `hits`, including file/subtext,
+coordinate, rendered context, highlighted target and source-validated
+`full_context_url`. Reuse `cal_kwic_full_context` for a *separate*
+explicit action on one returned hit's coordinate. Heading/total/source
+mismatches are parser drift, not invented empty results.
 
 ## Hebrew lemma discovery and reflexes
 
@@ -180,6 +206,7 @@ Each valid explicit operation submits at most one new logical CAL request to the
 
 - one verse-comparison request;
 - one Targum concordance request;
+- one explicit Targum KWIC text-group example GET;
 - one source/initial MT-lemma chooser request;
 - one selected MT-lemma reflex request;
 - one explicitly selected Onqelos/Neofiti reflex-example request.
@@ -231,4 +258,4 @@ The normal test suite is offline. Reduced semantic fixtures were captured/rechec
 
 Issue #101 adds a separate reduced text-catalogue contract for discovering the Onkelos/Jonathan collection as category `51`; it does not add a fifth Targum-specific operation.
 
-These fixtures are reduced parser contracts, not archived CAL pages. The live research used 15 bounded CAL requests total and did not traverse books, verses, sources, lemma alphabets, KWIC examples, chapters, or corpora automatically.
+These fixtures are reduced parser contracts, not archived CAL pages. Live research was bounded to explicit scholarly examples and did not crawl or prefetch other returned CAL pages.
