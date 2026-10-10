@@ -200,3 +200,43 @@ def test_source_query_must_match_all_three_caller_selectors() -> None:
             mt_lemma_id="1751",
             lemma_key="tyq#2 N",
         )
+
+
+@pytest.mark.anyio
+async def test_public_mcp_reflex_followup_preserves_source_shape_without_recursive_fetch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from cal_mcp import server as server_module
+
+    requests: list[CalRequest] = []
+
+    async def fixture_transport(request: CalRequest, config: CalClientConfig) -> CalResponse:
+        del config
+        requests.append(request)
+        return _response()
+
+    def make_client() -> CalHttpClient:
+        return CalHttpClient(transport=fixture_transport)
+
+    monkeypatch.setattr(server_module, "CalHttpClient", make_client)
+    async with Client(server_module.mcp, raise_exceptions=True) as client:
+        result = await client.call_tool(
+            "cal_targum_reflex_examples",
+            {"targum": "onqelos", "mt_lemma_id": "1751", "lemma_key": "tyq#2 N"},
+        )
+
+    assert result.is_error is False
+    content = result.structured_content
+    assert content is not None
+    assert content["source_label"] == "Onqelos"
+    assert content["mt_hebrew_lemma"] == "מַעֲקֶה"
+    assert len(content["examples"]) == 2
+    assert content["examples"][0] == content["examples"][1]
+    assert content["provenance"]["source_url"] == ONQELOS_URL
+    assert requests == [
+        CalRequest(
+            method="GET",
+            path="getOMT.php",
+            params=(("MT", "1751"), ("cal", "tyq#2 N")),
+        )
+    ]
