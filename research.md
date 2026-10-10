@@ -360,6 +360,20 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-084 — CAL's primary-gloss index omits lemmas whose displayed gloss starts with the word
+
+**Rechecked:** 2026-10-10; issue #268.
+
+`newsearchmngs.php` for `word#` returns 10 rows on the primary index, none of them `mlh N`
+("word, speech; thing"); with all glosses it returns 41 rows, `mlh N` at row 20. The
+reverse-gloss smoke for Peshitta John 1:1–4 found the same for `hand#` (`yd N`), `without#`
+(`bl(d p`), `all#` (`kl N`) and `with#` (`lwt p`, row 70 of 167). `also#` misses `)p c` in both
+modes; `even#` finds it. The adapter output matched CAL's raw pages, so this is CAL's index
+semantics. Rows follow the Aramaic alphabetical order of lemma keys (`)`, `b`, `d`, `x`, `+`, `y`, …), not a ranking. Evidence: 2 POSTs on 2026-10-10
+(project User-Agent) plus the earlier smoke run.
+
+**Implication:** documentation only. Recommend `all_glosses=true` for English-to-lemma lookup and
+say results are unranked. Keep the default, add no reranking and no automatic second request.
 ## R-083 — Text search returns CPA catalogue nodes with `cset=C` and letter-suffixed ids
 
 **Rechecked:** 2026-10-10; issue #263.
