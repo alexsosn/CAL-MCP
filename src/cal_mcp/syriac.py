@@ -468,6 +468,7 @@ def syriac_missing_word_category_slugs() -> tuple[str, ...]:
     """Public selectors in the exact route-map declaration order."""
     return tuple(category.value for category in _MISSING_WORD_PATHS)
 
+
 _PESHITTA_HEADING_PREFIX = "MT and Peshitta for "
 _COORDINATE_ERROR_RE = re.compile(r"\berror\s+in\s+coord(?:inate)?\b", re.I)
 _MISSING_DICTIONARY_LABEL = "A Syriac Lexicon"
