@@ -360,6 +360,24 @@ never offered verbs (`)mr` → nouns only).
 **Implication:** for verb rows only, also match the lowercase form of an all-uppercase headword;
 keep CAL's display form in output. Detailed evidence: `docs/research/issue-240-verb-lookup-case.md`.
 
+## R-079 — Numeral pronunciations carry gender labels inside the parentheses
+
+**Rechecked:** 2026-10-10; issue #267.
+
+CAL renders numerals' pronunciation with gender labels: `ḥd ˁsr (m. ḥəḏaˁsar, f. ḥəḏaˁesrē)
+<pos>num.</pos>` ("eleven", `xd@(sr b`) and `try ˁsr, trty ˁsry (m. təre(n)ˁsar, f. tartaˁesrē)
+<pos>num.</pos>` ("twelve", `try@(sr b`, with a nested `(n)`). The header grammar took the first
+POS-shaped token, `f.` inside the parentheses, as the part of speech, so the marked `num.`
+contradicted it. Every page listing such a row failed: `cal_gloss_search("even#",
+all_glosses=true)`, and `cal_lexicon_browse("xd")` together with every lookup that browses `xd`.
+Evidence: 5 GETs/POSTs (2026-10-10, project User-Agent).
+
+**Implication:** a POS token may not start inside a parenthesized group. The pronunciation splits
+off as before and is kept verbatim (`m. ḥəḏaˁsar, f. ḥəḏaˁesrē`), with no gendered fields.
+Tokens that merely contain a group (`n.m.(f.)`, R-062) are unaffected. An unclosed group yields
+no POS, and a header POS contradicting CAL's `<pos>` still fails closed. Reduced fixtures:
+`search_gloss_even_numeral_current.html`, `browse_xd_numeral_current.html`.
+
 ## R-078 — CAL's biblical book selector still lists the same 36 labels
 
 **Rechecked:** 2026-10-10; issue #260.
