@@ -11,10 +11,7 @@ from cal_mcp.client import CalResponse
 from cal_mcp.token_analysis import TokenAnalysisParseError, parse_token_analysis_page
 
 FIXTURE = (
-    Path(__file__).parent
-    / "fixtures"
-    / "cal"
-    / "token_analysis_multi_lexeme_verb_current.html"
+    Path(__file__).parent / "fixtures" / "cal" / "token_analysis_multi_lexeme_verb_current.html"
 )
 _NEEDLE = '<p><span class="bin">G</span>'
 _CAL_DIALECT = '<span class="dial-tag"><sup><dial title="except for OA">-OA</sup></span>'
