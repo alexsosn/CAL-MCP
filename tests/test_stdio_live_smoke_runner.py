@@ -1,13 +1,20 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from mcp.types import CallToolResult, TextContent, Tool
 
 from cal_mcp.errors import PublicErrorKind, PublicToolError
-from cal_mcp.stdio_live_smoke import SmokeCase, evaluate_smoke_cases
+from cal_mcp.stdio_live_smoke import (
+    SmokeCase,
+    SmokeOutcome,
+    _read_actual_attempts,
+    evaluate_smoke_cases,
+)
 
 
 def _tool() -> Tool:
@@ -98,3 +105,58 @@ async def test_stdio_unknown_tool_error_stops_before_exhausting_server_budget() 
     outcomes = await evaluate_smoke_cases(client, cases)  # type: ignore[arg-type]
     assert [x.category for x in outcomes] == ["harness"]
     assert client.calls == ["cal_lexicon_lookup"]
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"actual_cal_transport_attempts": -1, "max_cal_transport_attempts": 25},
+        {"actual_cal_transport_attempts": 26, "max_cal_transport_attempts": 25},
+        {"actual_cal_transport_attempts": True, "max_cal_transport_attempts": 25},
+        {"actual_cal_transport_attempts": "2", "max_cal_transport_attempts": 25},
+        {"actual_cal_transport_attempts": 2, "max_cal_transport_attempts": 26},
+        {"actual_cal_transport_attempts": 2, "max_cal_transport_attempts": 25.0},
+        {"max_cal_transport_attempts": 25},
+        {"actual_cal_transport_attempts": 2, "max_cal_transport_attempts": 25, "x": 1},
+    ],
+)
+def test_measured_attempt_report_rejects_invalid_counts(
+    tmp_path: Path, payload: dict[str, object]
+) -> None:
+    report = tmp_path / "count.json"
+    report.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(ValueError, match="invalid transport attempt count"):
+        _read_actual_attempts(report)
+
+
+def test_measured_attempt_report_rejects_missing_file(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="did not report actual attempts"):
+        _read_actual_attempts(tmp_path / "missing.json")
+
+
+@pytest.mark.parametrize("attempts", [0, 2, 25])
+def test_measured_attempt_report_accepts_actual_count(tmp_path: Path, attempts: int) -> None:
+    report = tmp_path / "count.json"
+    report.write_text(
+        json.dumps({"actual_cal_transport_attempts": attempts, "max_cal_transport_attempts": 25}),
+        encoding="utf-8",
+    )
+    assert _read_actual_attempts(report) == attempts
+
+
+def test_stdio_cli_reports_actual_attempts(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import cal_mcp.stdio_live_smoke as smoke
+
+    async def fake_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
+        assert executable == "/fixed/cal-mcp"
+        return (SmokeOutcome("synthetic", "ok", "success"),), 2
+
+    monkeypatch.setattr(smoke, "_run_live", fake_live)
+    monkeypatch.setattr("sys.argv", ["stdio-live-smoke", "--executable", "/fixed/cal-mcp"])
+    smoke.main()
+    report = json.loads(capsys.readouterr().out)
+    assert report["status"] == "passed"
+    assert report["actual_cal_transport_attempts"] == 2
+    assert report["max_cal_transport_attempts"] == 25
