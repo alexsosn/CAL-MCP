@@ -91,8 +91,9 @@ def test_bad_result_origin_and_group_are_parser_drift(bad_source: str) -> None:
         BODY.replace("in dialect 51001 51002", "in dialect 51001 51003"),
         BODY.replace("get_a_kwicchapter.php", "oneentry.php"),
         (
-            BODY.replace('class="red">target one', 'class="red">')
-            .replace('class="red">target two', 'class="red">')
+            BODY.replace('class="red">target one', 'class="red">').replace(
+                'class="red">target two', 'class="red">'
+            )
         ),
         BODY.replace("examples found for", "matches found for"),
     ],
