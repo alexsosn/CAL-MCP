@@ -104,8 +104,11 @@ def test_real_cly_v_bibliography_fixture_is_a_valid_one_record_smoke_sample() ->
     page = parse_bibliography_page(response)
     assert len(page.records) == 1
     assert "Cognates Can Be Deceptive" in page.records[0].citation
-    assert _evaluate(
-        "bibliography",
-        "records",
-        [{"citation": record.citation} for record in page.records],
-    ) == "ok"
+    assert (
+        _evaluate(
+            "bibliography",
+            "records",
+            [{"citation": record.citation} for record in page.records],
+        )
+        == "ok"
+    )
