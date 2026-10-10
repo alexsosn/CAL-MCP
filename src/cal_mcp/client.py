@@ -31,6 +31,7 @@ _MAX_RESPONSE_BYTES = 16 * 1024 * 1024
 _MAX_STREAM_CHUNK_BYTES = 64 * 1024
 _MAX_REQUEST_INTERVAL_SECONDS = 5.0
 _MAX_RATE_LIMIT_RETRY_SECONDS = 2
+_RATE_LIMIT_COOLDOWN_SECONDS = 60
 
 
 class CalClientError(RuntimeError):
@@ -43,6 +44,16 @@ class CalRequestValidationError(CalClientError):
 
 class CalNetworkError(CalClientError):
     """Raised when a CAL transport operation cannot complete safely."""
+
+
+class CalRateLimitCooldownError(CalClientError):
+    """A prior CAL HTTP 429 suppresses this new request before transport."""
+
+    def __init__(self, remaining_seconds: int) -> None:
+        self.remaining_seconds = remaining_seconds
+        super().__init__(
+            f"CAL rate-limit cooldown active; retry after at least {remaining_seconds} seconds"
+        )
 
 
 class CalUpstreamError(CalClientError):
@@ -284,6 +295,7 @@ class CalHttpClient:
         self._sleep = sleep
         self._pace_lock = asyncio.Lock()
         self._next_attempt_at = 0.0
+        self._rate_limited_until = 0.0
         self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
         cache_entries = self.config.cache_max_entries if self.config.cache_enabled else 0
         self._cache: MemoryResponseCache[Any] = MemoryResponseCache(
@@ -496,6 +508,14 @@ class CalHttpClient:
                 continue
             except (httpx2.HTTPError, OSError) as exc:
                 raise CalNetworkError("CAL non-retryable transport request failed") from exc
+            except CalUpstreamError as exc:
+                # A 429 retry can be canceled by its deadline while queued.
+                # That rejection is terminal and must also protect later calls.
+                if exc.status_code == 429:
+                    self._set_rate_limit_cooldown(
+                        max(_RATE_LIMIT_COOLDOWN_SECONDS, exc.retry_after_seconds or 0)
+                    )
+                raise
 
             if response.status_code == 429:
                 hint = self._retry_after_seconds(response)
@@ -511,8 +531,13 @@ class CalHttpClient:
                         started_at + self.config.total_timeout_seconds,
                         CalUpstreamError(429, response.url, retry_after_seconds=hint),
                     )
+                    # Other operations must respect this CAL Retry-After too.
+                    self._set_rate_limit_cooldown(hint)
                     await self._sleep(hint)
                     continue
+                self._set_rate_limit_cooldown(
+                    max(_RATE_LIMIT_COOLDOWN_SECONDS, hint or 0)
+                )
                 raise CalUpstreamError(429, response.url, retry_after_seconds=hint)
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
@@ -544,9 +569,18 @@ class CalHttpClient:
         except (TypeError, ValueError, OverflowError):
             return None
 
+    def _set_rate_limit_cooldown(self, seconds: int) -> None:
+        self._rate_limited_until = max(self._rate_limited_until, self._clock() + seconds)
+
+    def _reject_during_cooldown(self) -> None:
+        remaining = self._rate_limited_until - self._clock()
+        if remaining > 0:
+            raise CalRateLimitCooldownError(math.ceil(remaining))
+
     async def _reserve_attempt(
         self, *, rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None
     ) -> None:
+        self._reject_during_cooldown()
         interval = self.config.min_request_interval_seconds
         if interval <= 0:
             if rate_limit_retry_guard is not None:
@@ -555,6 +589,7 @@ class CalHttpClient:
                     raise original_429
             return
         async with self._pace_lock:
+            self._reject_during_cooldown()
             now = self._clock()
             delay = max(0.0, self._next_attempt_at - now)
             if rate_limit_retry_guard is not None:
@@ -565,6 +600,7 @@ class CalHttpClient:
                     raise original_429
             if delay > 0:
                 await self._sleep(delay)
+            self._reject_during_cooldown()
             if rate_limit_retry_guard is not None and self._clock() >= deadline:
                 raise original_429
             self._next_attempt_at = self._clock() + interval
