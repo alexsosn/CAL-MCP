@@ -97,9 +97,11 @@ async def test_concurrent_distinct_calls_reserve_distinct_transport_starts() -> 
         clock=clock,
         sleep=clock.sleep,
     )
-    await asyncio.gather(
-        *(client.fetch(request(n), parser=lambda x: x.body, cache_namespace="parallel") for n in range(4))
-    )
+    calls = [
+        client.fetch(request(n), parser=lambda x: x.body, cache_namespace="parallel")
+        for n in range(4)
+    ]
+    await asyncio.gather(*calls)
     assert starts == pytest.approx([100.0, 101.0, 102.0, 103.0])
 
 
