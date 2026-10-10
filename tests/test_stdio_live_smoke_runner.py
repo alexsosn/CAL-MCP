@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import pytest
 from mcp.types import CallToolResult, TextContent, Tool
 
+from cal_mcp.errors import PublicErrorKind, PublicToolError
 from cal_mcp.stdio_live_smoke import SmokeCase, evaluate_smoke_cases
 
 
@@ -29,6 +30,16 @@ def _result(data: dict[str, object], *, is_error: bool = False) -> CallToolResul
         is_error=is_error,
     )
 
+def _error(kind: PublicErrorKind) -> dict[str, object]:
+    return PublicToolError(
+        kind=kind,
+        operation="cal_lexicon_lookup",
+        upstream_reached=True,
+        retryable=False,
+        message="synthetic CAL error",
+        source_url="https://cal.huc.edu/cal_entry_web.php",
+    ).to_dict()
+
 
 @dataclass
 class FakeClient:
@@ -48,7 +59,7 @@ class FakeClient:
 async def test_stdio_cases_execute_sequentially_and_aggregate_independent_failures() -> None:
     client = FakeClient(
         results=[
-            _result({"error": {"kind": "parser_drift"}}, is_error=True),
+            _result(_error(PublicErrorKind.PARSER_DRIFT), is_error=True),
             _result({"status": "found"}),
         ],
         calls=[],
@@ -67,7 +78,7 @@ async def test_stdio_cases_execute_sequentially_and_aggregate_independent_failur
 async def test_stdio_unknown_tool_error_stops_before_exhausting_server_budget() -> None:
     client = FakeClient(
         results=[
-            _result({"error": {"kind": "unrecognized_budget_error"}}, is_error=True),
+            _result({"error": {**_error(PublicErrorKind.PARSER_DRIFT)["error"], "kind": "unrecognized_budget_error"}}, is_error=True),
             _result({"status": "found"}),
         ],
         calls=[],
