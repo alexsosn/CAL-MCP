@@ -8,7 +8,6 @@ import pytest
 
 from cal_mcp.client import CalClientConfig
 
-
 _SCALAR_CONFIG_FIELDS = (
     "connect_timeout_seconds",
     "read_timeout_seconds",
