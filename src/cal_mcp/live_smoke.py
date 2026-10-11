@@ -94,7 +94,7 @@ class LiveSmokeReport:
 
 
 class BudgetCalHttpClient(CalHttpClient):
-    """CAL client with the stricter fixed release-smoke request policy."""
+    """Paced, transport-metered client for optional manual legacy smoke."""
 
     def __init__(
         self,
