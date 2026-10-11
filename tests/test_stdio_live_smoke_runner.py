@@ -157,7 +157,7 @@ def test_stdio_cli_reports_actual_attempts(
         assert executable == "/fixed/cal-mcp"
         return (
             tuple(SmokeOutcome(case.name, "ok", "success") for case in smoke.DEFAULT_SMOKE_CASES),
-            2,
+            11,
         )
 
     monkeypatch.setattr(smoke, "_run_live", fake_live)
@@ -165,5 +165,5 @@ def test_stdio_cli_reports_actual_attempts(
     smoke.main()
     report = json.loads(capsys.readouterr().out)
     assert report["status"] == "passed"
-    assert report["actual_cal_transport_attempts"] == 2
+    assert report["actual_cal_transport_attempts"] == 11
     assert report["max_cal_transport_attempts"] == 25

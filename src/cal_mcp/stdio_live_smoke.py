@@ -471,10 +471,15 @@ def _complete_release_smoke_matrix(
         or sum(case.tool != "cal_convert_to_code" for case in required) < 11
     ):
         return False
+    # Every reviewed CAL-backed case needs a distinct first transport start in
+    # the fresh installed server. Do not accept all-ok results with less I/O.
+    min_cal_starts = sum(
+        identity[1] != "cal_convert_to_code" for identity in _REVIEWED_V01_SMOKE_IDENTITIES
+    )
     return (
         tuple(outcome.case for outcome in outcomes) == expected
         and type(actual_attempts) is int
-        and 0 < actual_attempts <= 25
+        and min_cal_starts <= actual_attempts <= 25
     )
 
 

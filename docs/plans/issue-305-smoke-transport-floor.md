@@ -1,0 +1,8 @@
+# Issue #305 — gated implementation
+
+1. **Research gate:** record actual fixed 12-case suite and separate immutable reviewed case identities from source. Identify existing two-attempt positive test as an invalid control, plus missing 1–10 negative controls. Finish research commit before this plan/tests.
+2. **RED:** create offline parameterized CLI tests with exactly twelve `ok` outcomes and measured attempt counts 1, 2, 8, 10. The existing code must fail to reject them. Pin honest `actual_cal_transport_attempts` reporting, `category=harness`, `reason=incomplete_smoke_acceptance`, process exit 1; test lower boundary 11, upper 25 and existing 429-prefix failure.
+3. **GREEN:** minimal change in `_complete_release_smoke_matrix`: calculate the expected CAL-backed count from `_REVIEWED_V01_SMOKE_IDENTITIES` and require `expected_count <= attempts <= 25`. Preserve `type(attempts) is int` guard and avoid the mutable case tuple as source of the floor. Fix prior mocked full-matrix two-attempt positive to 11, preserving count truth. Document the acceptance floor.
+4. **Review:** run deterministic and latest-compatible CI, then logically independent adversarial review directly on PR against real code (including guard off-by-one at 11/25, errored-prefix classification, forged counts, cache/single-flight rationale, suite mutation), fix bugs with tests first, review fresh final exact SHA; squash merge only when both CI jobs green. Verify merged-main CI and outstanding issues #262/#15/#16 remain open.
+
+No additional CAL GETs or workflow dispatch is necessary to prove this offline acceptance invariant.
