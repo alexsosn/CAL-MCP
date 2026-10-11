@@ -186,7 +186,7 @@ async def test_local_rate_limit_is_typed_unavailable_and_stops_without_retries()
     assert [(o.case, o.category) for o in outcomes] == [("local-throttle", "unavailable")]
     assert client.calls == [("cal_gloss_search", 100)]
     assert clock.waits == []
-    assert "CAL-MCP local transport budget exhausted" not in outcomes[0].message
+    assert outcomes[0].message == "CAL-MCP local admission budget exhausted"
 
 
 @pytest.mark.anyio
@@ -233,3 +233,36 @@ async def test_live_installed_runner_enables_fixed_spacing_without_network(
     assert outcomes == ()
     assert attempts == 0
     assert options == [60.0]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("upstream_reached", [True, False])
+async def test_observed_or_locally_suppressed_429_halts_smoke_without_reprobe(
+    upstream_reached: bool,
+) -> None:
+    clock = Clock()
+    error = PublicToolError(
+        kind=PublicErrorKind.UPSTREAM_HTTP,
+        operation="cal_gloss_search",
+        upstream_reached=upstream_reached,
+        retryable=True,
+        message="untrusted returned HTTP 429 reason must not leak",
+        source_url="https://cal.huc.edu/getlex.php?word=8" if upstream_reached else None,
+        status_code=429,
+    ).to_dict()
+    client = FakeClient(
+        clock,
+        [result(error, error=True), result({"status": "ok"})],
+        available=("cal_gloss_search",),
+    )
+    outcomes = await evaluate_smoke_cases(
+        client,
+        (smoke_case("rate-limited"), smoke_case("must-not-call")),
+        min_cal_case_spacing_seconds=60.0,
+        clock=clock,
+        sleep=clock.sleep,
+    )
+    assert [(o.case, o.category) for o in outcomes] == [("rate-limited", "unavailable")]
+    assert client.calls == [("cal_gloss_search", 100)]
+    assert clock.waits == []
+    assert "untrusted" not in outcomes[0].message
