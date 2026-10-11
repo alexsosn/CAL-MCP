@@ -200,10 +200,12 @@ cases appear **exactly once and in their declared order**, that their
 tool names, fixed selectors, expected statuses, and provenance/dependency
 settings match a **separately pinned v0.1 smoke identity contract**, that the fixed
 matrix still contains eleven CAL-backed calls and one local converter, and that
-the fresh server reported **at least eleven real CAL transport starts** (one per
-distinct CAL-backed case) within the separate hard 25-attempt budget. A full
-all-successful matrix with only 1–10 measured starts is internally inconsistent
-and therefore fails closed, not a valid low-load smoke pass. An empty or
+the fresh server reported **at least eleven aggregate CAL transport starts**
+within the separate hard 25-attempt budget. A full all-successful matrix with only
+1–10 measured starts is internally inconsistent and therefore fails closed,
+not a valid low-load smoke pass. This count is a **necessary plausibility floor**:
+one case might issue multiple requests, so the total alone does not prove that
+each of the eleven CAL-backed cases generated an individual transport start. An empty or
 all-successful prefix, duplicated/reordered case, truncated required matrix or
 zero-attempt full result is a **failing harness condition**, not a passing smoke.
 The report retains actual case outcomes and measured attempt count; no synthetic
