@@ -33,7 +33,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 An **Implemented** capability above means the named research task is supported; it does not mean every follow-up link rendered by CAL is MCP-followable. The route-level audit keeps the remaining gaps explicit rather than treating a preserved URL as a supported operation:
 
 - [#109](https://github.com/alexsosn/CAL-MCP/issues/109) — Targum concordance/reflex **supporting examples** are returned as validated links but are not yet MCP-followable.
-- [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — the bibliography **recent five-years snapshot** is still missing; its implementation is intentionally blocked until the standalone v0.1 release in [#15](https://github.com/alexsosn/CAL-MCP/issues/15) is published or the frozen public-contract decision changes.
+- [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — the bibliography **recent five-years snapshot** is still missing; its focused research/TDD work is now eligible after [v0.1.0 publication](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0), but remains a separate post-release capability and is not part of the immutable v0.1.0 tool contract.
 
 CAL's text-browser **show all** presentation is deliberately **not exposed** as a separate MCP operation because it removes the page bound. Use bounded `cal_text_page(..., page=...)` calls and explicit returned page navigation instead.
 
