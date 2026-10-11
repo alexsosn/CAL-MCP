@@ -156,10 +156,7 @@ def test_stdio_cli_reports_actual_attempts(
     async def fake_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         assert executable == "/fixed/cal-mcp"
         return (
-            tuple(
-                SmokeOutcome(case.name, "ok", "success")
-                for case in smoke.DEFAULT_SMOKE_CASES
-            ),
+            tuple(SmokeOutcome(case.name, "ok", "success") for case in smoke.DEFAULT_SMOKE_CASES),
             2,
         )
 
