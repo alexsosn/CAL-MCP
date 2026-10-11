@@ -375,6 +375,28 @@ async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         return outcomes, _read_actual_attempts(count_file)
 
 
+def _complete_release_smoke_matrix(
+    outcomes: tuple[SmokeOutcome, ...], actual_attempts: int
+) -> bool:
+    """Require complete fixed-case coverage, not a vacuous or truncated all-ok prefix."""
+    required = DEFAULT_SMOKE_CASES
+    expected = tuple(case.name for case in required)
+    # Prevent an accidentally deleted, duplicated, or local-only smoke matrix
+    # from passing even when both expected and observed are equally truncated.
+    if (
+        len(required) < 12
+        or len(set(expected)) != len(expected)
+        or sum(case.tool == "cal_convert_to_code" for case in required) != 1
+        or sum(case.tool != "cal_convert_to_code" for case in required) < 11
+    ):
+        return False
+    return (
+        tuple(outcome.case for outcome in outcomes) == expected
+        and type(actual_attempts) is int
+        and 0 < actual_attempts <= 25
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bounded installed CAL-MCP stdio live smoke")
     parser.add_argument("--executable", help="exact installed cal-mcp executable on PATH")
@@ -390,13 +412,20 @@ def main() -> None:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
 
-    successful = all(item.category == "ok" for item in outcomes)
+    all_ok = all(item.category == "ok" for item in outcomes)
+    complete = _complete_release_smoke_matrix(outcomes, actual_attempts)
+    successful = all_ok and complete
     report = {
         "status": "passed" if successful else "failed",
         "max_cal_transport_attempts": 25,
         "actual_cal_transport_attempts": actual_attempts,
         "cases": [asdict(item) for item in outcomes],
     }
+    if all_ok and not complete:
+        # Preserve individual upstream failure classifications when present.
+        # A successful-looking but incomplete matrix is a harness failure.
+        report["category"] = "harness"
+        report["reason"] = "incomplete_smoke_acceptance"
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     if not successful:
         raise SystemExit(1)
