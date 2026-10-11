@@ -29,13 +29,14 @@ def request(n: int) -> CalRequest:
     return CalRequest(method="GET", path="getlex.php", params=(("word", str(n)),))
 
 
-def response(status: int = 200) -> CalResponse:
+def response(status: int = 200, *, retry_after: str | None = None) -> CalResponse:
     return CalResponse(
         status_code=status,
         url="https://cal.huc.edu/getlex.php?word=0",
         body=b"<html>fixture</html>",
         content_type="text/html",
         retrieved_at=datetime(2026, 10, 11, tzinfo=UTC),
+        retry_after=retry_after,
     )
 
 
@@ -207,6 +208,48 @@ async def test_retries_count_as_separate_cal_transport_starts() -> None:
     assert type(exc.value).__name__ == "CalLocalRequestBudgetError"
     assert starts == 1
     assert statuses == [200]
+    public = classify_public_tool_error("cal_token_analysis", exc.value)
+    assert public is not None
+    assert public.to_dict()["error"]["upstream_reached"] is True
+    assert public.to_dict()["error"]["status_code"] is None
+
+
+@pytest.mark.anyio
+async def test_local_budget_blocked_429_retry_reports_original_429_and_real_cooldown() -> None:
+    clock = FakeClock()
+    starts = 0
+
+    async def transport(req: CalRequest, config: CalClientConfig) -> CalResponse:
+        nonlocal starts
+        del req, config
+        starts += 1
+        return response(429, retry_after="1")
+
+    client = CalHttpClient(
+        config=CalClientConfig(
+            max_cal_attempts_per_60s=1,
+            max_retries=1,
+            min_request_interval_seconds=0,
+        ),
+        transport=transport,
+        clock=clock,
+        sleep=clock.sleep,
+    )
+    with pytest.raises(Exception) as exc:
+        await client.fetch(request(1), parser=lambda r: r.body, cache_namespace="429-window")
+    assert type(exc.value).__name__ == "CalUpstreamError"
+    assert starts == 1
+    public = classify_public_tool_error("cal_token_analysis", exc.value)
+    assert public is not None
+    envelope = public.to_dict()["error"]
+    assert envelope["upstream_reached"] is True
+    assert envelope["kind"] == "upstream_http"
+    assert envelope["status_code"] == 429
+    assert "local cooldown at least 60 seconds" in str(envelope["message"])
+    with pytest.raises(Exception) as follow_up:
+        await client.fetch(request(2), parser=lambda r: r.body, cache_namespace="429-window")
+    assert type(follow_up.value).__name__ == "CalRateLimitCooldownError"
+    assert starts == 1
 
 
 @pytest.mark.anyio
