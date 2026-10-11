@@ -7,7 +7,14 @@ from datetime import UTC, datetime
 
 import pytest
 
-from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse, CalUpstreamError
+from cal_mcp.client import (
+    CalClientConfig,
+    CalHttpClient,
+    CalRateLimitCooldownError,
+    CalRequest,
+    CalResponse,
+    CalUpstreamError,
+)
 from cal_mcp.errors import classify_public_tool_error
 
 URL = "https://cal.huc.edu/getlex.php?coord=620430101&word=8"
@@ -85,7 +92,7 @@ async def test_terminal_429_discloses_real_local_cooldown_before_client_retries(
     else:
         assert "Retry-After" not in error["message"]
     assert attempts == 1
-    with pytest.raises(Exception):
+    with pytest.raises(CalRateLimitCooldownError):
         await client.fetch(
             CalRequest(method="GET", path="getlex.php", params=(("word", "9"),)),
             parser=lambda page: page.body,
