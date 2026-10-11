@@ -177,7 +177,9 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
         if kind == "parser_drift":
             return SmokeOutcome(case.name, "drift", "CAL parser drift")
         if kind == "local_rate_limit":
-            return SmokeOutcome(case.name, "unavailable", "CAL-MCP local admission budget exhausted")
+            return SmokeOutcome(
+                case.name, "unavailable", "CAL-MCP local admission budget exhausted"
+            )
         if kind in {"network", "upstream_http", "content", "response_too_large"}:
             return SmokeOutcome(case.name, "unavailable", "CAL upstream unavailable or unsafe")
         return SmokeOutcome(case.name, "harness", "unclassified MCP tool failure")
