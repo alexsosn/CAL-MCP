@@ -109,7 +109,10 @@ async def test_failed_and_missing_cases_never_reset_live_cal_spacing() -> None:
         [result({"status": "not_found"}), result({"status": "ok"})],
     )
     cases = (
-        smoke_case("failed"),
+        SmokeCase(
+            "failed", "cal_gloss_search", {"query": "fixed"},
+            expected_statuses=("found",), needs_provenance=False,
+        ),
         SmokeCase(
             "skipped",
             "cal_gloss_search",
@@ -124,7 +127,7 @@ async def test_failed_and_missing_cases_never_reset_live_cal_spacing() -> None:
         client, cases, min_cal_case_spacing_seconds=60.0, clock=clock, sleep=clock.sleep
     )
     assert [o.category for o in outcomes] == [
-        "ok",
+        "drift",
         "skipped_dependency",
         "harness",
         "ok",
