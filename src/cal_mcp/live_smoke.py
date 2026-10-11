@@ -35,7 +35,7 @@ from cal_mcp.texts import TextParseError, TextService
 from cal_mcp.token_analysis import TokenAnalysisParseError
 
 MAX_CAL_REQUESTS = 9
-SmokeFailureCategory = Literal["drift", "upstream", "content", "harness"]
+SmokeFailureCategory = Literal["drift", "upstream", "local_rate_limit", "content", "harness"]
 SmokeOperation = Callable[["BudgetCalHttpClient"], Awaitable[None]]
 
 
@@ -148,10 +148,9 @@ def classify_smoke_exception(exc: BaseException) -> SmokeFailureCategory:
 
     if isinstance(exc, _PARSER_ERRORS):
         return "drift"
-    if isinstance(
-        exc,
-        (CalLocalRequestBudgetError, CalNetworkError, CalRateLimitCooldownError, CalUpstreamError),
-    ):
+    if isinstance(exc, (CalLocalRequestBudgetError, CalRateLimitCooldownError)):
+        return "local_rate_limit"
+    if isinstance(exc, (CalNetworkError, CalUpstreamError)):
         return "upstream"
     if isinstance(exc, CalContentError):
         return "content"
