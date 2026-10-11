@@ -14,6 +14,7 @@ from cal_mcp.client import (
     CalRateLimitCooldownError,
     CalRequest,
     CalResponse,
+    CalResponseTooLargeError,
     CalUpstreamError,
 )
 from cal_mcp.errors import classify_public_tool_error
@@ -36,7 +37,7 @@ def request(word: int) -> CalRequest:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("failed_retry", ["http503", "redirect302", "timeout", "oserror"])
+@pytest.mark.parametrize("failed_retry", ["http503", "redirect302", "timeout", "oserror", "too_large"])
 async def test_terminal_failure_after_short_hint_429_keeps_protective_cooldown(
     failed_retry: str,
 ) -> None:
@@ -52,6 +53,8 @@ async def test_terminal_failure_after_short_hint_429_keeps_protective_cooldown(
                 raise TimeoutError("synthetic timeout")
             if failed_retry == "oserror":
                 raise OSError("synthetic network failure")
+            if failed_retry == "too_large":
+                raise CalResponseTooLargeError("https://cal.huc.edu/getlex.php?word=8", 128)
         status = 429 if attempts == 1 else 200
         if attempts == 2 and failed_retry == "http503":
             status = 503
@@ -80,6 +83,15 @@ async def test_terminal_failure_after_short_hint_429_keeps_protective_cooldown(
         classified = classify_public_tool_error("cal_token_analysis", original.value)
         assert classified is not None
         assert classified.to_dict()["error"]["status_code"] == original.value.status_code
+    elif failed_retry == "too_large":
+        with pytest.raises(CalResponseTooLargeError) as oversized:
+            await client.fetch(request(8), parser=lambda page: page.body, cache_namespace="token")
+        classified = classify_public_tool_error("cal_token_analysis", oversized.value)
+        assert classified is not None
+        details = classified.to_dict()["error"]
+        assert details["kind"] == "response_too_large"
+        assert details["source_url"] == "https://cal.huc.edu/getlex.php?word=8"
+        assert details["upstream_reached"] is True
     else:
         with pytest.raises(CalNetworkError):
             await client.fetch(request(8), parser=lambda page: page.body, cache_namespace="token")
