@@ -375,6 +375,109 @@ async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         return outcomes, _read_actual_attempts(count_file)
 
 
+# Deliberately independent from DEFAULT_SMOKE_CASES: changing the executor's
+# cases must not quietly redefine which scholarly operations gate publication.
+# Each tuple is (name, tool, sorted fixed arguments, expected statuses,
+# requires provenance, dependent case). A changed fixture needs explicit review.
+_REVIEWED_V01_SMOKE_IDENTITIES = (
+    ("conversion", "cal_convert_to_code", (("value", "ܫܠ"),), (), False, None),
+    (
+        "lexicon_noun",
+        "cal_lexicon_lookup",
+        (("lemma_key", "br N"), ("query", "br")),
+        ("found",),
+        True,
+        None,
+    ),
+    (
+        "lexicon_verb",
+        "cal_lexicon_lookup",
+        (("lemma_key", "ktb V"), ("query", "ktb")),
+        ("found",),
+        True,
+        None,
+    ),
+    ("gloss", "cal_gloss_search", (("query", "king"),), (), True, None),
+    ("text_search", "cal_text_search", (("query", "Tel Dan"),), (), True, None),
+    ("text_page_followup", "cal_text_page", (), ("found",), True, "text_search"),
+    (
+        "text_concordance",
+        "cal_text_concordance",
+        (("text_id", "13250"),),
+        (),
+        True,
+        None,
+    ),
+    (
+        "bibliography",
+        "cal_bibliography_lemma",
+        (("lemma_key", "cly V"),),
+        (),
+        True,
+        None,
+    ),
+    (
+        "dictionary",
+        "cal_dictionary_collation",
+        (("page", "705"), ("source", "jastrow")),
+        (),
+        True,
+        None,
+    ),
+    ("external_citations", "cal_external_citation_dialects", (), (), True, None),
+    (
+        "targum",
+        "cal_targum_parallel",
+        (("book", "Gen"), ("chapter", 1), ("verse", 1)),
+        ("found",),
+        True,
+        None,
+    ),
+    (
+        "peshitta",
+        "cal_syriac_peshitta_parallel",
+        (("book", "Gen"), ("chapter", 1), ("verse", 1)),
+        ("found",),
+        True,
+        None,
+    ),
+)
+
+
+def _smoke_case_identity(case: SmokeCase) -> tuple[object, ...]:
+    return (
+        case.name,
+        case.tool,
+        tuple(sorted(case.arguments.items())),
+        case.expected_statuses,
+        case.needs_provenance,
+        case.from_case,
+    )
+
+
+def _complete_release_smoke_matrix(
+    outcomes: tuple[SmokeOutcome, ...], actual_attempts: int
+) -> bool:
+    """Require complete fixed-case coverage, not a vacuous or truncated all-ok prefix."""
+    required = DEFAULT_SMOKE_CASES
+    expected = tuple(case.name for case in required)
+    # Prevent an accidentally deleted, duplicated, or local-only smoke matrix
+    # from passing even when both expected and observed are equally truncated.
+    if (
+        tuple(_smoke_case_identity(case) for case in required) != _REVIEWED_V01_SMOKE_IDENTITIES
+        or len(required) < 12
+        or len(set(expected)) != len(expected)
+        or sum(case.tool == "cal_convert_to_code" for case in required) != 1
+        or sum(case.tool != "cal_convert_to_code" for case in required) < 11
+    ):
+        return False
+    return (
+        tuple(outcome.case for outcome in outcomes) == expected
+        and type(actual_attempts) is int
+        and 0 < actual_attempts <= 25
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bounded installed CAL-MCP stdio live smoke")
     parser.add_argument("--executable", help="exact installed cal-mcp executable on PATH")
@@ -390,13 +493,20 @@ def main() -> None:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
 
-    successful = all(item.category == "ok" for item in outcomes)
+    all_ok = all(item.category == "ok" for item in outcomes)
+    complete = _complete_release_smoke_matrix(outcomes, actual_attempts)
+    successful = all_ok and complete
     report = {
         "status": "passed" if successful else "failed",
         "max_cal_transport_attempts": 25,
         "actual_cal_transport_attempts": actual_attempts,
         "cases": [asdict(item) for item in outcomes],
     }
+    if all_ok and not complete:
+        # Preserve individual upstream failure classifications when present.
+        # A successful-looking but incomplete matrix is a harness failure.
+        report["category"] = "harness"
+        report["reason"] = "incomplete_smoke_acceptance"
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     if not successful:
         raise SystemExit(1)
