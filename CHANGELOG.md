@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — 2026-09-24
+## 0.1.0 — Unreleased
 
 First standalone release of CAL-MCP, a read-only MCP adapter over the Comprehensive Aramaic Lexicon (CAL).
 
@@ -31,7 +31,7 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 - `cal_lexicon_citation_context` accepts only the typed positive-decimal `full_coordinate` exposed for canonical linked lexicon citations; it does not accept arbitrary URLs or locally decode the opaque coordinate.
 - `cal_text_line_comments` distinguishes `found` from CAL's explicit `no_citations` state; `no_citations` does not claim that the requested coordinate exists as a text line.
 - Line-comment parsing excludes non-rendered script/style content from semantic markers, rejects nested semantic result cards, and fails closed on truncated records or unfinished semantic containers instead of returning partial success.
-- The shared client enforces finite timeouts, low concurrency, bounded transient-only retries, redirect/origin boundaries, response-size limits, single-flight suppression, and a bounded process-local cache.
+- The shared client enforces finite timeouts, low concurrency, bounded retries for selected transient failures, redirect/origin boundaries, response-size limits, single-flight suppression, and a bounded process-local cache. The normal live client spaces transport starts by at least three seconds and admits at most eight starts per rolling 60 seconds. These are adapter precautions, not a published CAL quota. A terminal CAL HTTP 429 starts a local cooldown of at least 60 seconds; only a validated positive Retry-After of at most two seconds permits one guarded automatic retry within the retry budget.
 - Parsers fail closed on material upstream drift rather than returning plausible partial results.
 
 ### Standalone runtime
@@ -49,8 +49,8 @@ The executable MCP schemas remain the technical source of truth. CAL endpoint na
 - The release pipeline builds wheel and sdist once, validates both distributions in fresh virtual environments, launches each installed `cal-mcp` entry point over stdio, and checks version + the frozen 36-tool schema without contacting CAL.
 - Deterministic CI and release validation use committed Python 3.11 target/build constraints with exact-environment verification; a separate latest-compatible job checks the broad dependency ranges declared for downstream users.
 - Those deterministic constraints are validation inputs only; downstream package metadata retains the reviewed broad runtime dependency ranges.
-- A separate live drift smoke is opt-in/scheduled and capped at **9 CAL requests**, concurrency 1, retries 0, cache disabled.
-- The live smoke covers eight representative parser/service families and distinguishes parser drift from network/upstream and other content/policy failures.
+- The standalone live drift smoke is manual-only. It has **12 fixed cases**, including **11 CAL-backed cases**, and a hard cap of **25 actual CAL transport attempts**, concurrency 1, retries 0, and bounded caching enabled. It waits at least 60 seconds after each completed CAL-backed case before starting the next; scheduling is disabled.
+- The release-tag pipeline separately gates publication on this installed-wheel smoke. Both runners stop on the first rate-limit or harness failure; every nonpassing outcome blocks publication. They distinguish parser drift from network/upstream and other content/policy failures.
 
 ### Known limitations
 
