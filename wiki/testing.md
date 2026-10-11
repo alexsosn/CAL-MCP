@@ -189,9 +189,11 @@ the opt-in smoke limit.
 The server additionally enforces an **8-start rolling 60-second local budget**. The installed-wheel smoke runner now enforces a **60-second pause between completion of one CAL-backed tool case and starting the next** (not between arbitrary SDK introspection, local conversion, missing tools, or skipped dependent cases). This allows earlier transport starts to age out of the server's rolling window without observing any private CAL state or auto-retrying a refused tool. A case performing more than eight transports inside one tool call can still fail locally; a real CAL HTTP 429 may still occur. A typed `local_rate_limit` is recognized as a nonpassing local-admission failure with sanitized diagnostics, and **both a real CAL HTTP 429 and a locally suppressed 429 halt the entire smoke** rather than causing additional CAL tool calls after the wait. The absolute hard cap of 25 actual CAL attempts remains unchanged, as does the three-second per-attempt server pace. There are at most ten 60-second inter-case waits in the fixed 12-case suite; they are cancellable. Both installed-wheel smoke workflow jobs have a 30-minute outer limit for bounded waits and tool timeouts. **No real CAL requests were made by #299; this is not the still-unmet 37-token zero-429 acceptance.**
 
 Before any representative call, the smoke driver preflights the whole
-fixed case list against the MCP tool registry. If a required tool is missing,
-it reports the first missing case as a sanitized harness failure and makes
-**zero** CAL calls. After a call begins, every harness-category failure is
+fixed case list against the MCP tool registry, including each required
+tool's declared output JSON Schema. If a required tool is missing or advertises
+a missing/malformed output schema, it reports the first defective case as a
+sanitized harness failure and makes **zero** CAL calls. After a call begins,
+every harness-category failure is
 terminal to later CAL requests regardless of the wording of its diagnostic;
 only schema-valid CAL content drift may be aggregated.
 
