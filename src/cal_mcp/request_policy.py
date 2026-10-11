@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-
 from collections import OrderedDict
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -56,9 +55,15 @@ class MemoryResponseCache(Generic[T]):
         if (
             isinstance(ttl_seconds, bool)
             or not isinstance(ttl_seconds, (int, float))
-            or not math.isfinite(ttl_seconds)
             or ttl_seconds <= 0
         ):
+            raise ValueError("ttl_seconds must be a finite positive number")
+        try:
+            finite_ttl = math.isfinite(ttl_seconds)
+        except OverflowError:
+            # Python cannot represent a huge integer TTL as finite monotonic time.
+            finite_ttl = False
+        if not finite_ttl:
             raise ValueError("ttl_seconds must be a finite positive number")
         self._max_entries = max_entries
         self._ttl_seconds = ttl_seconds
