@@ -479,6 +479,16 @@ class CalHttpClient:
             raise CalRequestValidationError("CAL request method must be a string")
         if type(request.path) is not str:
             raise CalRequestValidationError("CAL request path must be a string")
+        # urlsplit strips leading spaces and C0 whitespace; empty ? or #
+        # delimiters also disappear. Reject URL-normalized endpoint aliases.
+        if (
+            any(char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
+            or "\\" in request.path
+            or "%" in request.path
+        ):
+            raise CalRequestValidationError(
+                "CAL request path must use unambiguous literal endpoint components"
+            )
 
         method = request.method.upper().strip()
         if method not in {"GET", "POST"}:
@@ -486,16 +496,33 @@ class CalHttpClient:
         if not request.path.strip():
             raise CalRequestValidationError("CAL request path must not be empty")
 
-        parsed = urlsplit(request.path)
+        try:
+            parsed = urlsplit(request.path)
+        except ValueError:
+            # A malformed authority (e.g. an unclosed IPv6 bracket) must be
+            # classified as rejected caller input, not an unexpected MCP error.
+            raise CalRequestValidationError(
+                "CAL request path must be a valid relative CAL endpoint"
+            ) from None
         if parsed.scheme or parsed.netloc:
             raise CalRequestValidationError("CAL request path must be relative to cal.huc.edu")
         if parsed.query or parsed.fragment:
             raise CalRequestValidationError(
                 "query parameters must be supplied via CalRequest.params"
             )
+        if "?" in request.path or "#" in request.path:
+            # Even empty query/fragment delimiters are normalized away by
+            # urlsplit/urljoin, but keep the existing nonempty-query error.
+            raise CalRequestValidationError(
+                "CAL request path must not include empty query or fragment delimiters"
+            )
 
+        # Exactly one optional leading slash is harmless, but multiple
+        # leading slashes and empty/dot segments can alias another URL path.
+        if request.path.startswith("//"):
+            raise CalRequestValidationError("CAL request path must stay within the CAL site")
         path = parsed.path.lstrip("/")
-        if not path or path == ".." or path.startswith("../") or "/../" in path:
+        if not path or any(segment in {"", ".", ".."} for segment in path.split("/")):
             raise CalRequestValidationError("CAL request path must stay within the CAL site")
 
         params = self._validate_request_pairs("params", request.params)
