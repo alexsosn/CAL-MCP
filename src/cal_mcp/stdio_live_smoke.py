@@ -335,6 +335,7 @@ async def evaluate_smoke_cases(
         if outcome.category == "harness" and outcome.message in {
             "unclassified MCP tool failure",
             "missing structured MCP output or schema",
+            "MCP output schema mismatch",
             "malformed MCP structured error",
             "untrusted MCP error identity or source",
         }:
