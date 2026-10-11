@@ -54,6 +54,9 @@ def html_response() -> CalResponse:
         "foo/\u00a0entry.php",
         "///entry.php",
         "foo/a//b",
+        "//[",  # urllib.parse raises ValueError for a malformed authority
+        "http://[",
+        "//：",  # NFKC-invalid authority must still be a typed input error
     ],
 )
 async def test_ambiguous_endpoint_path_is_rejected_before_any_transport_or_hook(
