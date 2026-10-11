@@ -1459,6 +1459,6 @@ Focused evidence and bounded request details are recorded in `docs/research/issu
 
 **R-080 follow-up observed 2026-10-10.** One measured installed-wheel MCP trial with exactly 3.002219291-second minimum spacing encountered HTTP 429 on the 10th request after nine 200 responses, and stopped at 10/38 capped attempts (run 38083038703). The upstream rate/window is unknown, so fixed minimum spacing is not sufficient evidence for safe 37-token completion. A shared terminal-429 cooldown is now required as a protective behavior, pending independent verification and a separate future calibration decision.
 
-## R-081 — Dialect KWIC reports unrenderable examples separately from rendered hits
+## R-086 — Dialect KWIC reports unrenderable examples separately from rendered hits
 
 **Observed 2026-10-10, issue #266.** JBA `mlk N` dialect `71` responded with 271 reported examples and a literal `error: line not found for 71600222x004133` between rendered KWIC target paragraphs. This is a CAL-generated unrenderable hit, not a malformed form summary or a text-bearing target. Reconciliation must use rendered hits **plus** explicitly recognized unrenderable notices for each following form count; the notice preserves its opaque coordinate and original message, with no invented target URL or context. Source-backed support is restricted to dialect-scoped BR-line form pages; unknown messages and text-scoped notices fail closed. No further CAL requests were made for this parser correction while upstream 429 behavior remains unresolved.
