@@ -479,12 +479,14 @@ class CalHttpClient:
             raise CalRequestValidationError("CAL request method must be a string")
         if type(request.path) is not str:
             raise CalRequestValidationError("CAL request path must be a string")
-        # urlsplit strips leading spaces and C0 whitespace. URL resolution
-        # can also normalize backslashes and encoded delimiters downstream.
+        # urlsplit strips leading spaces and C0 whitespace; empty ? or #
+        # delimiters also disappear. Reject URL-normalized endpoint aliases.
         if (
             any(char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
             or "\\" in request.path
             or "%" in request.path
+            or "?" in request.path
+            or "#" in request.path
         ):
             raise CalRequestValidationError(
                 "CAL request path must use unambiguous literal endpoint components"
