@@ -195,7 +195,16 @@ successful CAL-backed results. It classifies each attempted case as `ok`,
 diagnostics. The JSON report contains per-case outcomes,
 `actual_cal_transport_attempts`, and `max_cal_transport_attempts`.
 A missing or malformed server attempt report is a failing harness error, never
-an assumed zero. Any non-OK result fails the workflow and blocks publication.
+an assumed zero. The release runner also checks that all twelve fixed representative
+cases appear **exactly once and in their declared order**, that the fixed matrix
+still contains at least eleven CAL-backed calls and one local converter, and that
+the fresh server observed at least one actual CAL transport start. An empty or
+all-successful prefix, duplicated/reordered case, truncated required matrix or
+zero-attempt full result is a **failing harness condition**, not a passing smoke.
+The report retains actual case outcomes and measured attempt count; no synthetic
+CAL success, missing case, or network observation is invented. A genuine 429 or
+local refusal still stops further tool calls and remains a failing upstream/local
+error rather than being retried. Any non-OK result fails the workflow and blocks publication.
 
 **Release readiness gate:** the fixed current 12-case matrix (11 CAL-backed cases plus one local-only converter) must still be
 measured once against live CAL from the installed wheel and accepted within the
