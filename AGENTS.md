@@ -34,6 +34,12 @@ If the issue depends on a CAL page or behavior, re-check the relevant live upstr
 - Agora integration is optional downstream discovery/install/launch metadata. CAL-specific behavior, documentation, skills, parsers, and tests belong here, not in Agora.
 - Keep unrelated cleanup out of implementation PRs.
 
+## Blocked issue references in PRs and merges
+
+GitHub closing-keyword references require deliberate review. Write `Fixes #N` (or `Closes #N` / `Resolves #N`) **only when issue N is fully completed**, its acceptance criteria were checked, and closing it is intended. Do not use closing keywords adjacent to a blocked or only partially addressed issue reference, **even in negated statements** such as “this does not close #N”. Wording can be interpreted as a closure directive regardless of intended negation.
+
+For a blocked prerequisite use the neutral form `Issue #N remains open`, followed by the specific unmet gate. Ordinary issue links without closing directives remain welcome. Review the PR description, final review text, and squash/merge-commit message before merging. Explicitly verify blocked issue states after merge; if an issue was closed contrary to its unmet acceptance criteria, reopen it immediately and record evidence. A partial protective stage must not close a release blocker.
+
 ## Request-policy rules
 
 Until superseded by an explicit, documented CAL policy decision:
