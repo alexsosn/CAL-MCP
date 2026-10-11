@@ -176,13 +176,9 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
         kind = error["kind"]
         if kind == "parser_drift":
             return SmokeOutcome(case.name, "drift", "CAL parser drift")
-        if kind in {
-            "network",
-            "upstream_http",
-            "local_rate_limit",
-            "content",
-            "response_too_large",
-        }:
+        if kind == "local_rate_limit":
+            return SmokeOutcome(case.name, "unavailable", "CAL-MCP local admission budget exhausted")
+        if kind in {"network", "upstream_http", "content", "response_too_large"}:
             return SmokeOutcome(case.name, "unavailable", "CAL upstream unavailable or unsafe")
         return SmokeOutcome(case.name, "harness", "unclassified MCP tool failure")
 
@@ -321,10 +317,16 @@ async def evaluate_smoke_cases(
             result.is_error
             and isinstance(result.structured_content, dict)
             and isinstance(result.structured_content.get("error"), dict)
-            and result.structured_content["error"].get("kind") == "local_rate_limit"
+            and (
+                result.structured_content["error"].get("kind") == "local_rate_limit"
+                or (
+                    result.structured_content["error"].get("kind") == "upstream_http"
+                    and result.structured_content["error"].get("status_code") == 429
+                )
+            )
         ):
-            # The rolling admission guard refused the call. Repeating other
-            # cases cannot establish upstream compatibility or release safety.
+            # Both local admission exhaustion and a real CAL 429 are terminal
+            # backpressure. Do not probe other tools in the same smoke run.
             break
         if outcome.category == "harness" and outcome.message in {
             "unclassified MCP tool failure",
