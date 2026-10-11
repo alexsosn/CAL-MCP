@@ -88,8 +88,6 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
     assert suppressed.value.remaining_seconds >= 58
 
     clock.advance(58.5)
-    resumed = await client.fetch(
-        request(9), parser=lambda page: page.body, cache_namespace="token"
-    )
+    resumed = await client.fetch(request(9), parser=lambda page: page.body, cache_namespace="token")
     assert resumed.value == b"<html>synthetic</html>"
     assert calls == [8, 9]
