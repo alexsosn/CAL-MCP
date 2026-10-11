@@ -110,8 +110,11 @@ async def test_failed_and_missing_cases_never_reset_live_cal_spacing() -> None:
     )
     cases = (
         SmokeCase(
-            "failed", "cal_gloss_search", {"query": "fixed"},
-            expected_statuses=("found",), needs_provenance=False,
+            "failed",
+            "cal_gloss_search",
+            {"query": "fixed"},
+            expected_statuses=("found",),
+            needs_provenance=False,
         ),
         SmokeCase(
             "skipped",
