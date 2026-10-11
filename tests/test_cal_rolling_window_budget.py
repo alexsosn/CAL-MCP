@@ -77,7 +77,7 @@ async def test_eight_rolling_starts_and_honest_ninth_local_rejection_then_expiry
         "operation": "cal_token_analysis",
         "upstream_reached": False,
         "retryable": True,
-        "message": "CAL-MCP local transport budget exhausted; retry after at least 36 seconds",
+        "message": "CAL-MCP local transport budget exhausted; retry after at least 39 seconds",
         "source_url": None,
         "status_code": None,
     }
