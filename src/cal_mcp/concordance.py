@@ -46,6 +46,7 @@ _DIALECT_GRAND_TOTAL_RE = re.compile(
     re.IGNORECASE,
 )
 _DIALECT_SUMMARY_HINT_RE = re.compile(r"\bfound for\b|^grand total\b", re.IGNORECASE)
+_DIALECT_UNRENDERED_RE = re.compile(r"^error: line not found for ([0-9]+[0-9A-Za-z]*)$")
 _FULL_CONTEXT_NOT_FOUND_RE = re.compile(r"^Target coordinate ([0-9]+[0-9A-Za-z]*) not found\.$")
 
 _TEXT_SCRIPTS = {"transliteration": "R", "semitic": "S"}
@@ -108,11 +109,19 @@ class KwicForm:
 
 
 @dataclass(frozen=True, slots=True)
+class KwicUnrenderedHit:
+    coordinate: str
+    message: str
+    form_lemma_key: str
+
+
+@dataclass(frozen=True, slots=True)
 class KwicPage:
     total: int
     hits: tuple[KwicHit, ...]
     empty_scope_ids: tuple[str, ...]
     forms: tuple[KwicForm, ...] = ()
+    unrendered_hits: tuple[KwicUnrenderedHit, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -167,6 +176,7 @@ class KwicResult:
     empty_scope_ids: tuple[str, ...]
     provenance: ConcordanceProvenance
     forms: tuple[KwicForm, ...] = ()
+    unrendered_hits: tuple[KwicUnrenderedHit, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -177,6 +187,14 @@ class KwicResult:
             "hits": [_hit_to_dict(item) for item in self.hits],
             "empty_scope_ids": list(self.empty_scope_ids),
             "forms": [_form_to_dict(item) for item in self.forms],
+            "unrendered_hits": [
+                {
+                    "coordinate": item.coordinate,
+                    "message": item.message,
+                    "form_lemma_key": item.form_lemma_key,
+                }
+                for item in self.unrendered_hits
+            ],
             "requested_form_listed": self.requested_form_listed,
             "provenance": _provenance_to_dict(self.provenance),
         }
@@ -631,6 +649,7 @@ def parse_kwic_result(
     if scope_kind is KwicScopeKind.DIALECT:
         if len(scope_ids) != 1:
             raise ConcordanceParseError("CAL dialect KWIC must have exactly one requested dialect")
+        positioned_unrendered = _parse_unrendered_dialect_lines(lines)
         summaries = _parse_dialect_form_summaries(
             lines,
             requested_key=canonical_key,
@@ -641,7 +660,9 @@ def parse_kwic_result(
                 raise ConcordanceParseError("CAL dialect KWIC mixes form summaries and a total")
             if _parse_empty_scopes(lines, scope_ids):
                 raise ConcordanceParseError("CAL dialect KWIC mixes form and scope markers")
-            assigned = _assign_dialect_forms(summaries, positioned_hits, table_hits)
+            assigned, unrendered = _assign_dialect_forms(
+                summaries, positioned_hits, table_hits, positioned_unrendered
+            )
             form_total = sum(summary.total for summary in summaries)
             return KwicPage(
                 total=form_total,
@@ -651,6 +672,7 @@ def parse_kwic_result(
                     KwicForm(lemma_key=summary.lemma_key, total=summary.total)
                     for summary in summaries
                 ),
+                unrendered_hits=unrendered,
             )
     elif any(_DIALECT_SUMMARY_HINT_RE.search(getattr(line, "text", "")) for line in lines):
         raise ConcordanceParseError("CAL text-scoped KWIC contains dialect form summaries")
@@ -1469,6 +1491,26 @@ class _DialectFormSummary:
     total: int
 
 
+def _parse_unrendered_dialect_lines(
+    lines: Sequence[object],
+) -> tuple[tuple[int, str, str], ...]:
+    """Preserve only CAL's exact bare unrenderable-hit diagnostic; no forged links."""
+
+    found: list[tuple[int, str, str]] = []
+    for index, line in enumerate(lines):
+        message = getattr(line, "text", "")
+        match = _DIALECT_UNRENDERED_RE.fullmatch(message)
+        if match is None:
+            continue
+        coordinate = match.group(1)
+        if len(coordinate) > _MAX_COORDINATE_LENGTH:
+            raise ConcordanceParseError("CAL KWIC unrendered coordinate is too long")
+        if getattr(line, "links", ()):
+            raise ConcordanceParseError("CAL KWIC unrendered notice unexpectedly contains links")
+        found.append((index, coordinate, message))
+    return tuple(found)
+
+
 def _parse_dialect_form_summaries(
     lines: Sequence[object],
     *,
@@ -1487,6 +1529,8 @@ def _parse_dialect_form_summaries(
             count, key, dialect = 0, none.group(1), none.group(2)
         elif (grand := _DIALECT_GRAND_TOTAL_RE.fullmatch(text)) is not None:
             grand_totals.append(int(grand.group(1)))
+            continue
+        elif _DIALECT_UNRENDERED_RE.fullmatch(text) is not None:
             continue
         elif _DIALECT_SUMMARY_HINT_RE.search(text) is not None:
             raise ConcordanceParseError("CAL dialect KWIC has an unrecognized form summary")
@@ -1527,27 +1571,44 @@ def _assign_dialect_forms(
     summaries: tuple[_DialectFormSummary, ...],
     positioned_hits: tuple[tuple[int, KwicHit], ...] | None,
     table_hits: tuple[KwicHit, ...],
-) -> tuple[KwicHit, ...]:
-    """Attach each hit to the CAL form summary that follows it; counts must agree."""
+    positioned_unrendered: tuple[tuple[int, str, str], ...] = (),
+) -> tuple[tuple[KwicHit, ...], tuple[KwicUnrenderedHit, ...]]:
+    """Assign both rendered hits and CAL's unrendered diagnostics to their source forms."""
 
     if positioned_hits is None:
-        # Earlier table layout: only a single form summary is representable (since #176 it
-        # may name a form other than the requested one; requested_form_listed reports that).
-        if len(summaries) != 1 or summaries[0].total != len(table_hits):
+        # Old table pages have no source-line target positions to attribute diagnostics.
+        if positioned_unrendered or len(summaries) != 1 or summaries[0].total != len(table_hits):
             raise ConcordanceParseError("CAL KWIC total does not match parsed target hits")
-        return tuple(replace(hit, form_lemma_key=summaries[0].lemma_key) for hit in table_hits)
+        return (
+            tuple(replace(hit, form_lemma_key=summaries[0].lemma_key) for hit in table_hits),
+            (),
+        )
 
     assigned: list[KwicHit] = []
+    unrendered: list[KwicUnrenderedHit] = []
     previous = -1
     for summary in summaries:
         owned = [hit for index, hit in positioned_hits if previous < index < summary.line_index]
-        if len(owned) != summary.total:
-            raise ConcordanceParseError("CAL KWIC total does not match parsed target hits")
+        missing = [
+            (coordinate, message)
+            for index, coordinate, message in positioned_unrendered
+            if previous < index < summary.line_index
+        ]
+        if len(owned) + len(missing) != summary.total:
+            raise ConcordanceParseError("CAL KWIC total does not match rendered and unrendered hits")
         assigned.extend(replace(hit, form_lemma_key=summary.lemma_key) for hit in owned)
+        unrendered.extend(
+            KwicUnrenderedHit(
+                coordinate=coordinate, message=message, form_lemma_key=summary.lemma_key
+            )
+            for coordinate, message in missing
+        )
         previous = summary.line_index
-    if any(index > previous for index, _ in positioned_hits):
+    if any(index > previous for index, _ in positioned_hits) or any(
+        index > previous for index, _, _ in positioned_unrendered
+    ):
         raise ConcordanceParseError("CAL dialect KWIC hit follows the last form summary")
-    return tuple(assigned)
+    return tuple(assigned), tuple(unrendered)
 
 
 def _parse_kwic_total(lines: Sequence[object], scope_kind: KwicScopeKind) -> int:
@@ -1844,6 +1905,7 @@ def _kwic_result(
         empty_scope_ids=page.empty_scope_ids,
         provenance=provenance,
         forms=page.forms,
+        unrendered_hits=page.unrendered_hits,
     )
 
 
@@ -1926,6 +1988,7 @@ __all__ = [
     "KwicHit",
     "KwicPage",
     "KwicResult",
+    "KwicUnrenderedHit",
     "KwicScopeKind",
     "TextConcordancePage",
     "TextConcordanceResult",
