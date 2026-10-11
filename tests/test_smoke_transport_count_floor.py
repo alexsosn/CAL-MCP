@@ -65,9 +65,7 @@ def test_full_report_with_at_least_eleven_measured_starts_remains_eligible(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    report = _run_stubbed_cli(
-        monkeypatch, capsys, _full_success(), attempts, expect_exit=False
-    )
+    report = _run_stubbed_cli(monkeypatch, capsys, _full_success(), attempts, expect_exit=False)
     assert report["status"] == "passed"
     assert report["actual_cal_transport_attempts"] == attempts
     assert len(report["cases"]) == 12
