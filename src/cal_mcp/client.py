@@ -505,12 +505,23 @@ class CalHttpClient:
                 response = await self._request_once(
                     request, rate_limit_retry_guard=rate_limit_retry_guard
                 )
+            except asyncio.CancelledError:
+                if rate_limit_retry_used:
+                    # A previous CAL 429 must stay protective even if the
+                    # queued/retrying caller cancels before any 200 response.
+                    self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                raise
             except _RETRYABLE_TRANSPORT_EXCEPTIONS as exc:
                 if attempt >= self.config.max_retries:
                     if isinstance(exc, (TimeoutError, httpx2.TimeoutException)):
                         raise CalNetworkError("CAL request timeout") from exc
                     raise CalNetworkError("CAL network request failed") from exc
-                await self._backoff(attempt)
+                try:
+                    await self._backoff(attempt)
+                except asyncio.CancelledError:
+                    if rate_limit_retry_used:
+                        self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                    raise
                 continue
             except (httpx2.HTTPError, OSError) as exc:
                 raise CalNetworkError("CAL non-retryable transport request failed") from exc
@@ -539,7 +550,12 @@ class CalHttpClient:
                     )
                     # Other operations must respect this CAL Retry-After too.
                     self._set_rate_limit_cooldown(hint)
-                    await self._sleep(hint)
+                    try:
+                        await self._sleep(hint)
+                    except asyncio.CancelledError:
+                        # No successful retry followed the observed 429.
+                        self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                        raise
                     continue
                 cooldown = max(_RATE_LIMIT_COOLDOWN_SECONDS, hint or 0)
                 self._set_rate_limit_cooldown(cooldown)
@@ -551,7 +567,12 @@ class CalHttpClient:
                 )
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
-                    await self._backoff(attempt)
+                    try:
+                        await self._backoff(attempt)
+                    except asyncio.CancelledError:
+                        if rate_limit_retry_used:
+                            self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                        raise
                     continue
                 raise CalUpstreamError(response.status_code, response.url)
             if response.status_code >= 300:
