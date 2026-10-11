@@ -106,10 +106,34 @@ async def test_stdio_followup_uses_returned_direct_text_selectors_exactly_once()
 
 
 @pytest.mark.anyio
-async def test_stdio_failed_parent_skips_followup_without_transport() -> None:
+async def test_stdio_schema_invalid_parent_stops_before_followup_without_transport() -> None:
+    # This violates cal_text_search's advertised output schema (missing matches).
+    # The harness cannot trust the MCP channel and must stop immediately.
     client = FakeClient([_result({"status": "unrecognized"})])
     outcomes = await evaluate_smoke_cases(client, CASES)  # type: ignore[arg-type]
-    assert [x.category for x in outcomes] == ["harness", "skipped_dependency"]
+    assert [(x.category, x.message) for x in outcomes] == [
+        ("harness", "MCP output schema mismatch")
+    ]
+    assert len(client.calls) == 1
+
+
+@pytest.mark.anyio
+async def test_stdio_schema_valid_failed_parent_skips_followup_without_transport() -> None:
+    # A valid MCP envelope may still fail this case's scholarly status invariant.
+    # Such CAL drift remains aggregatable and safely skips its dependent follow-up.
+    drift_cases = (
+        SmokeCase(
+            "search",
+            "cal_text_search",
+            {"query": "Tel Dan"},
+            expected_statuses=("found",),
+            needs_provenance=False,
+        ),
+        CASES[1],
+    )
+    client = FakeClient([_result({"matches": []})])
+    outcomes = await evaluate_smoke_cases(client, drift_cases)  # type: ignore[arg-type]
+    assert [x.category for x in outcomes] == ["drift", "skipped_dependency"]
     assert len(client.calls) == 1
 
 
