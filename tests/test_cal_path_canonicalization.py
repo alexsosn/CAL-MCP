@@ -67,7 +67,9 @@ async def test_ambiguous_endpoint_path_is_rejected_before_any_transport_or_hook(
     )
     for _ in range(2):
         with pytest.raises(CalRequestValidationError, match="CAL request path"):
-            await client.fetch(CalRequest("GET", path), parser=lambda r: r.body, cache_namespace="path")
+            await client.fetch(
+                CalRequest("GET", path), parser=lambda r: r.body, cache_namespace="path"
+            )
     assert calls == []
     assert hooks == []
 
@@ -92,11 +94,7 @@ async def test_legitimate_relative_endpoints_and_encoded_parameter_values_surviv
             parser=lambda r: r.body,
             cache_namespace="endpoints",
         )
-    assert [item.path for item in requests] == [
-        "entry.php",
-        "entry.php",
-        "cgi-bin/getlex.php",
-    ] or [item.path for item in requests] == ["entry.php", "cgi-bin/getlex.php"]
+    assert [item.path for item in requests] == ["entry.php", "cgi-bin/getlex.php"]
     assert requests[0].params == (
         ("lemma", "br N"),
         ("pattern", "../%2f שלום"),
