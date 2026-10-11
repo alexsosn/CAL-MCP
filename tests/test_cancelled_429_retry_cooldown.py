@@ -106,8 +106,9 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
 
 
 @pytest.mark.anyio
-async def test_429_then_503_cancellation_during_backoff_still_preserves_429_cooldown(
-    monkeypatch: pytest.MonkeyPatch,
+@pytest.mark.parametrize("failure_mode", ["http_503", "transport_timeout"])
+async def test_429_then_transient_failure_cancelled_backoff_preserves_429_cooldown(
+    monkeypatch: pytest.MonkeyPatch, failure_mode: str
 ) -> None:
     clock = FakeClock()
     backoff_started = asyncio.Event()
@@ -121,6 +122,8 @@ async def test_429_then_503_cancellation_during_backoff_still_preserves_429_cool
     async def transport(req: CalRequest, config: CalClientConfig) -> CalResponse:
         del req, config
         attempts.append(len(attempts) + 1)
+        if len(attempts) == 2 and failure_mode == "transport_timeout":
+            raise TimeoutError("synthetic upstream timeout")
         code = (429, 503, 200)[len(attempts) - 1]
         return CalResponse(
             status_code=code,
