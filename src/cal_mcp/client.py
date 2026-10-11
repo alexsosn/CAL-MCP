@@ -516,7 +516,12 @@ class CalHttpClient:
                     if isinstance(exc, (TimeoutError, httpx2.TimeoutException)):
                         raise CalNetworkError("CAL request timeout") from exc
                     raise CalNetworkError("CAL network request failed") from exc
-                await self._backoff(attempt)
+                try:
+                    await self._backoff(attempt)
+                except asyncio.CancelledError:
+                    if rate_limit_retry_used:
+                        self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                    raise
                 continue
             except (httpx2.HTTPError, OSError) as exc:
                 raise CalNetworkError("CAL non-retryable transport request failed") from exc
@@ -562,7 +567,12 @@ class CalHttpClient:
                 )
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
-                    await self._backoff(attempt)
+                    try:
+                        await self._backoff(attempt)
+                    except asyncio.CancelledError:
+                        if rate_limit_retry_used:
+                            self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                        raise
                     continue
                 raise CalUpstreamError(response.status_code, response.url)
             if response.status_code >= 300:
