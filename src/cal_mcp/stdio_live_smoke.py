@@ -278,6 +278,24 @@ async def evaluate_smoke_cases(
     first_missing = next((case for case in cases if case.tool not in listed), None)
     if first_missing is not None:
         return (SmokeOutcome(first_missing.name, "harness", "required public MCP tool missing"),)
+    # The registry also declares each output contract before any CAL request.
+    # A late unusable schema must not waste earlier CAL transport attempts.
+    for case in cases:
+        schema = listed[case.tool].output_schema
+        if not isinstance(schema, dict):
+            return (
+                SmokeOutcome(
+                    case.name, "harness", "required public MCP output schema missing or invalid"
+                ),
+            )
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError:
+            return (
+                SmokeOutcome(
+                    case.name, "harness", "required public MCP output schema missing or invalid"
+                ),
+            )
     outcomes: list[SmokeOutcome] = []
     successful: dict[str, dict[str, object]] = {}
     last_cal_case_finished_at: float | None = None
