@@ -137,3 +137,20 @@ async def test_queued_429_retry_deadline_reports_terminal_cooldown_without_new_i
     assert "CAL Retry-After 1 seconds" in message
     assert "local cooldown at least 60 seconds" in message
     assert attempts == 1
+
+
+def test_long_trusted_cal_url_cannot_truncate_the_effective_cooldown_message() -> None:
+    long_url = "https://cal.huc.edu/getlex.php?q=" + "a" * 600
+    upstream = CalUpstreamError(
+        429,
+        long_url,
+        retry_after_seconds=1,
+        cooldown_seconds=60,
+    )
+    public = classify_public_tool_error("cal_token_analysis", upstream)
+    assert public is not None
+    detail = public.to_dict()["error"]
+    assert detail["source_url"] == long_url
+    assert len(detail["message"]) <= 500
+    assert "CAL Retry-After 1 seconds" in detail["message"]
+    assert "local cooldown at least 60 seconds" in detail["message"]
