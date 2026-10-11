@@ -496,7 +496,14 @@ class CalHttpClient:
         if not request.path.strip():
             raise CalRequestValidationError("CAL request path must not be empty")
 
-        parsed = urlsplit(request.path)
+        try:
+            parsed = urlsplit(request.path)
+        except ValueError:
+            # A malformed authority (e.g. an unclosed IPv6 bracket) must be
+            # classified as rejected caller input, not an unexpected MCP error.
+            raise CalRequestValidationError(
+                "CAL request path must be a valid relative CAL endpoint"
+            ) from None
         if parsed.scheme or parsed.netloc:
             raise CalRequestValidationError("CAL request path must be relative to cal.huc.edu")
         if parsed.query or parsed.fragment:
