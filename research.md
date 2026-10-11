@@ -830,6 +830,17 @@ file-evidenced rather than inferred from catalogue membership: current evidence 
 `col` extension is accepted only for known Mandaic subdivided files; ordinary/CPA subtext grammar
 is unchanged.
 
+**Additional current-Ginza evidence (2026-10-10, #272):** the selected file
+`74410` subtext `001` is itself a Petermann page and its CAL `next page`
+link explicitly targets **`sub=002` with private `page=0`**, not another
+private page of `001`. This is distinct from `74401/12`. The adapter exposes
+this exact adjacent, same-file and cset=M target under `next_subtext_id`,
+not `next_page`, and still never automatically follows it. Foreign,
+nonadjacent or wrong-private-page links fail closed. All other Mandaic
+same-subtext paging rules are unchanged. Grounding:
+`tests/fixtures/cal/text_page_ginza_right_001_current.html`
+and `docs/research/issue-272-ginza-cross-subtext-page-links.md`.
+
 ## R-055 — Syriac group pages use CAL's card layout
 
 **Rechecked:** 2026-09-30, with two bounded GETs; issue #172.

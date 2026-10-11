@@ -59,7 +59,7 @@ Therefore:
 
 For finite encoding ambiguity, all complete CAL-code candidates are derived **before** network access. They are grouped by browser prefix. At most eight unique browser-prefix requests are permitted per public lookup; exceeding that cap raises before the first CAL request. Ambiguity occurring after the three-symbol browser prefix therefore adds no request. After browser aggregation the adapter fetches at most one selected entry, so the absolute ambiguity-aware bound is eight browser requests plus one entry request.
 
-For CAL multiword browser input, the documented `@`/space convention is preserved when the bounded prefix is constructed. Combining marks do not consume an additional browser-symbol slot.
+For CAL multiword browser input, lookup stops its initial browser prefix at CAL's `@` separator or a word boundary rather than sending that separator as an extra consonant. When CAL itself returns a machine lemma key containing `@`, an exact complete-key comparison can match either the literal `@` or a space-separated query. This matches **only an actual returned CAL key**; the local converter still does not invent `@` when given spaces. Combining marks do not consume an additional browser-symbol slot.
 
 ## Result states
 
@@ -109,9 +109,15 @@ To select the first candidate, call:
 cal_lexicon_lookup(query="br", lemma_key="br N")
 ```
 
+### `truncated`
+
+The first CAL browse page has no exact matching candidate **but CAL exposes a validated NEXT PAGE link**. This is **not** evidence that the headword is absent from CAL, so lookup returns `status: "truncated"` rather than `not_found`. It supplies `browse_truncated: true` and one or more ordered `browse_continuations` values of the form `{"prefix":"byt","continuation":"..."}`. To continue the search, **explicitly** call `cal_lexicon_browse(prefix=<returned prefix>, continuation=<returned continuation>)`. The lookup tool never automatically follows the cursor.
+
+For `found` and `ambiguous` responses, `browse_truncated: true` likewise warns that **additional matches** may exist beyond the examined page. This does not invalidate a candidate's source identity, but the result must not be mistaken for an exhaustive list. The additive `browse_continuations` array is empty when all examined prefixes returned complete pages.
+
 ### `not_found`
 
-No exact CAL headword or alias on the bounded browser results matches any justified query candidate. `entry` is `null` and `matches` is empty.
+No matching candidate is present on the bounded CAL browse results **and no returned page exposes a NEXT PAGE continuation**. `entry` is `null`, `matches` is empty, `browse_truncated` is false, and `browse_continuations` is empty. This is a result about the examined CAL query/prefixes, **not a global assertion about all CAL lexicon spellings**.
 
 CAL's current explicit `There are no headwords beginning with: <prefix>` browse response is an empty prefix result, not parser drift. If a bare Hebrew `ש` expands to both `$` and `&`, an empty page for one prefix does not prevent a matching candidate from the other. CAL echoes a Hebrew or Syriac prefix in CAL code (`קקק` and `ܩܩܩ` both echo `qqq`), so that single deterministic CAL-code form is also accepted as naming the requested prefix. Missing/unknown result markers still fail closed.
 

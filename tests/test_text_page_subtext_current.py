@@ -117,9 +117,12 @@ async def test_mandaic_file_info_coord_with_another_subtext_fails_closed() -> No
 
 
 @pytest.mark.anyio
-async def test_legacy_cross_sub_link_is_not_treated_as_page_navigation() -> None:
-    with pytest.raises(TextParseError, match="navigation subtext"):
-        await _page(GINZA.read_bytes(), "74410", "001")
+async def test_current_ginza_cross_sub_link_is_subtext_navigation_not_page_navigation() -> None:
+    result = await _page(GINZA.read_bytes(), "74410", "001")
+    assert result.page is not None
+    assert result.page.next_page is None
+    assert result.page.next_subtext_id == "002"
+    assert result.page.previous_subtext_id is None
 
 
 def test_public_parser_treats_the_requested_subtext_as_the_submitted_sub() -> None:
