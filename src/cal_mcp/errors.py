@@ -7,8 +7,8 @@ from urllib.parse import urlsplit
 from cal_mcp.client import (
     _RETRYABLE_TRANSPORT_EXCEPTIONS,
     CalContentError,
-    CalNetworkError,
     CalLocalRequestBudgetError,
+    CalNetworkError,
     CalRateLimitCooldownError,
     CalRequestValidationError,
     CalResponseTooLargeError,
