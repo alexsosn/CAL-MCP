@@ -192,7 +192,11 @@ The smoke driver checks `is_error`, every advertised `outputSchema`, the
 strict structured-error envelope, and the CAL source URL and timestamp on
 successful CAL-backed results. It classifies each attempted case as `ok`,
 `drift`, `unavailable`, or `harness`; it does not copy upstream HTML into
-diagnostics. The JSON report contains per-case outcomes,
+diagnostics. If a stdio MCP tool call raises a transport/schema exception, the
+runner records one sanitized `harness` failure and **stops immediately**; it
+never tries later CAL-backed operations on a possibly broken channel. Ordinary
+schema-valid CAL result drift can still be aggregated across different cases.
+The JSON report contains per-case outcomes,
 `actual_cal_transport_attempts`, and `max_cal_transport_attempts`.
 A missing or malformed server attempt report is a failing harness error, never
 an assumed zero. The release runner also checks that all twelve fixed representative
