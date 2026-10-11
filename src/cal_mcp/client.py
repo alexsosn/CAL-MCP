@@ -513,6 +513,7 @@ class CalHttpClient:
                 raise
             except _RETRYABLE_TRANSPORT_EXCEPTIONS as exc:
                 if attempt >= self.config.max_retries:
+                    self._protect_failed_429_retry(rate_limit_retry_used)
                     if isinstance(exc, (TimeoutError, httpx2.TimeoutException)):
                         raise CalNetworkError("CAL request timeout") from exc
                     raise CalNetworkError("CAL network request failed") from exc
@@ -524,6 +525,7 @@ class CalHttpClient:
                     raise
                 continue
             except (httpx2.HTTPError, OSError) as exc:
+                self._protect_failed_429_retry(rate_limit_retry_used)
                 raise CalNetworkError("CAL non-retryable transport request failed") from exc
             except CalUpstreamError as exc:
                 # A 429 retry can be canceled by its deadline while queued.
@@ -532,6 +534,13 @@ class CalHttpClient:
                     cooldown = max(_RATE_LIMIT_COOLDOWN_SECONDS, exc.retry_after_seconds or 0)
                     self._set_rate_limit_cooldown(cooldown)
                     exc.cooldown_seconds = cooldown
+                else:
+                    self._protect_failed_429_retry(rate_limit_retry_used)
+                raise
+            except CalClientError:
+                # The transport can reject a response before returning one,
+                # e.g. when a streamed CAL page exceeds the byte limit.
+                self._protect_failed_429_retry(rate_limit_retry_used)
                 raise
 
             if response.status_code == 429:
@@ -574,8 +583,10 @@ class CalHttpClient:
                             self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
                         raise
                     continue
+                self._protect_failed_429_retry(rate_limit_retry_used)
                 raise CalUpstreamError(response.status_code, response.url)
             if response.status_code >= 300:
+                self._protect_failed_429_retry(rate_limit_retry_used)
                 raise CalUpstreamError(response.status_code, response.url)
             return response
 
@@ -602,6 +613,11 @@ class CalHttpClient:
 
     def _set_rate_limit_cooldown(self, seconds: int) -> None:
         self._rate_limited_until = max(self._rate_limited_until, self._clock() + seconds)
+
+    def _protect_failed_429_retry(self, retry_used: bool) -> None:
+        # A later network/HTTP error must not erase the earlier CAL 429.
+        if retry_used:
+            self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
 
     def _reject_during_cooldown(self) -> None:
         remaining = self._rate_limited_until - self._clock()
