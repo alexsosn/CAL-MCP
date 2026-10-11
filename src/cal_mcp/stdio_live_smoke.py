@@ -375,6 +375,86 @@ async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         return outcomes, _read_actual_attempts(count_file)
 
 
+# Deliberately independent from DEFAULT_SMOKE_CASES: changing the executor's
+# cases must not quietly redefine which scholarly operations gate publication.
+# Each tuple is (name, tool, sorted fixed arguments, expected statuses,
+# requires provenance, dependent case). A changed fixture needs explicit review.
+_REVIEWED_V01_SMOKE_IDENTITIES = (
+    ("conversion", "cal_convert_to_code", (("value", "ܫܠ"),), (), False, None),
+    (
+        "lexicon_noun",
+        "cal_lexicon_lookup",
+        (("lemma_key", "br N"), ("query", "br")),
+        ("found",),
+        True,
+        None,
+    ),
+    (
+        "lexicon_verb",
+        "cal_lexicon_lookup",
+        (("lemma_key", "ktb V"), ("query", "ktb")),
+        ("found",),
+        True,
+        None,
+    ),
+    ("gloss", "cal_gloss_search", (("query", "king"),), (), True, None),
+    ("text_search", "cal_text_search", (("query", "Tel Dan"),), (), True, None),
+    ("text_page_followup", "cal_text_page", (), ("found",), True, "text_search"),
+    (
+        "text_concordance",
+        "cal_text_concordance",
+        (("text_id", "13250"),),
+        (),
+        True,
+        None,
+    ),
+    (
+        "bibliography",
+        "cal_bibliography_lemma",
+        (("lemma_key", "cly V"),),
+        (),
+        True,
+        None,
+    ),
+    (
+        "dictionary",
+        "cal_dictionary_collation",
+        (("page", "705"), ("source", "jastrow")),
+        (),
+        True,
+        None,
+    ),
+    ("external_citations", "cal_external_citation_dialects", (), (), True, None),
+    (
+        "targum",
+        "cal_targum_parallel",
+        (("book", "Gen"), ("chapter", 1), ("verse", 1)),
+        ("found",),
+        True,
+        None,
+    ),
+    (
+        "peshitta",
+        "cal_syriac_peshitta_parallel",
+        (("book", "Gen"), ("chapter", 1), ("verse", 1)),
+        ("found",),
+        True,
+        None,
+    ),
+)
+
+
+def _smoke_case_identity(case: SmokeCase) -> tuple[object, ...]:
+    return (
+        case.name,
+        case.tool,
+        tuple(sorted(case.arguments.items())),
+        case.expected_statuses,
+        case.needs_provenance,
+        case.from_case,
+    )
+
+
 def _complete_release_smoke_matrix(
     outcomes: tuple[SmokeOutcome, ...], actual_attempts: int
 ) -> bool:
@@ -384,7 +464,8 @@ def _complete_release_smoke_matrix(
     # Prevent an accidentally deleted, duplicated, or local-only smoke matrix
     # from passing even when both expected and observed are equally truncated.
     if (
-        len(required) < 12
+        tuple(_smoke_case_identity(case) for case in required) != _REVIEWED_V01_SMOKE_IDENTITIES
+        or len(required) < 12
         or len(set(expected)) != len(expected)
         or sum(case.tool == "cal_convert_to_code" for case in required) != 1
         or sum(case.tool != "cal_convert_to_code" for case in required) < 11
