@@ -3,7 +3,7 @@
 Source-grounded research (2026-10-11 UTC). No CAL HTTP requests in this ticket.
 
 ## Verified upstream release
-- Annotated signed-by-GitHub tag `v0.1.0` targets commit `d8aa7fe269198ee37b4da8d71f5ed2f7eb5fe1fb` (not current `main`).
+- Annotated tag `v0.1.0` targets commit `d8aa7fe269198ee37b4da8d71f5ed2f7eb5fe1fb` (not current `main`).
 - GitHub [release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) published 2026-10-11T22:07:07 UTC, with `cal_mcp-0.1.0-py3-none-any.whl` and `cal_mcp-0.1.0.tar.gz`.
 - [Release workflow run 38178217487](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487) completed SUCCESS: build-and-test, tagged wheel/sdist clean installation and 36-tool stdio checks, real fixed 12-case installed-wheel/25-attempt CAL smoke, PyPI trusted publication, GitHub release creation. Thus registry can pin `cal-mcp==0.1.0`; do not call it a prerelease.
 - Release `pyproject.toml`: Python >=3.11, MIT software license, package `cal-mcp`, executable `cal-mcp` mapped to `cal_mcp.server:main`; `mcp>=2,<3`, `httpx2>=2.12,<3`, `jsonschema>=4.26,<5`. Stdout/stdin transport `stdio` with no args.
