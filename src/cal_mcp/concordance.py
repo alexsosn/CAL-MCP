@@ -1596,7 +1596,7 @@ def _assign_dialect_forms(
         ]
         if len(owned) + len(missing) != summary.total:
             raise ConcordanceParseError(
-                "CAL KWIC total does not match rendered and unrendered hits"
+                "CAL KWIC total does not match parsed target hits or CAL unrendered notices"
             )
         assigned.extend(replace(hit, form_lemma_key=summary.lemma_key) for hit in owned)
         unrendered.extend(
