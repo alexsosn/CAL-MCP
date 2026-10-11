@@ -59,7 +59,7 @@ def test_no_old_and_new_live_suites_are_stacked_in_one_workflow() -> None:
 def test_both_smoke_workflow_jobs_allow_bounded_inter_case_wait() -> None:
     assert "timeout-minutes: 30" in _release_smoke_job()
     weekly = WEEKLY.read_text(encoding="utf-8")
-    job = weekly.split("\\n  live-smoke:\\n", 1)[1]
+    job = weekly.split("  live-smoke:", 1)[1]
     assert "timeout-minutes: 30" in job
     # No automatic live CAL probing while the observed 429 release gate is open.
     assert "workflow_dispatch:" in weekly
