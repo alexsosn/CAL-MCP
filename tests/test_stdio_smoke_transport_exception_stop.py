@@ -132,3 +132,27 @@ async def test_regular_cal_result_drift_still_aggregates_later_cases() -> None:
     assert [o.category for o in outcomes] == ["drift", "ok", "drift"]
     assert client.calls == ["cal_gloss_search"] * 3
     assert clock.waits == [60.0, 60.0]
+
+
+@pytest.mark.anyio
+async def test_returned_mcp_output_schema_mismatch_stops_further_cal_probes() -> None:
+    clock = FakeClock()
+    malformed = CallToolResult(
+        content=[TextContent(type="text", text="untrusted upstream body")],
+        structured_content={"status": ["wrong structured type"]},
+        is_error=False,
+    )
+    client = FlakyStdioClient([malformed, _result("found")])
+    outcomes = await evaluate_smoke_cases(
+        client,
+        _cases(),
+        min_cal_case_spacing_seconds=60.0,
+        clock=clock,
+        sleep=clock.sleep,
+    )
+    assert [(o.case, o.category, o.message) for o in outcomes] == [
+        ("cal-0", "harness", "MCP output schema mismatch")
+    ]
+    assert client.calls == ["cal_gloss_search"]
+    assert clock.waits == []
+    assert "untrusted" not in outcomes[0].message
