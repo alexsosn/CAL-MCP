@@ -479,10 +479,10 @@ class CalHttpClient:
             raise CalRequestValidationError("CAL request method must be a string")
         if type(request.path) is not str:
             raise CalRequestValidationError("CAL request path must be a string")
-        # urlsplit strips tabs/newlines, while URL resolution can normalize
-        # backslashes and encoded delimiters differently downstream.
+        # urlsplit strips leading spaces and C0 whitespace. URL resolution
+        # can also normalize backslashes and encoded delimiters downstream.
         if (
-            any(ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
+            any(char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
             or "\\" in request.path
             or "%" in request.path
         ):
