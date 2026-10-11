@@ -71,12 +71,16 @@ async def test_direct_live_smoke_paces_and_rejects_ninth_start_inside_rolling_wi
     assert client.config.max_retries == 0
     assert client.config.max_concurrency == 1
     for n in range(8):
-        await client.fetch(request(n), parser=lambda response: response.body, cache_namespace="probe")
+        await client.fetch(
+            request(n), parser=lambda response: response.body, cache_namespace="probe"
+        )
     assert starts == pytest.approx([100 + 3 * n for n in range(8)])
     assert client.request_count == 8
 
     with pytest.raises(CalLocalRequestBudgetError):
-        await client.fetch(request(8), parser=lambda response: response.body, cache_namespace="probe")
+        await client.fetch(
+            request(8), parser=lambda response: response.body, cache_namespace="probe"
+        )
     assert client.request_count == 8
     assert len(starts) == 8
 
@@ -87,7 +91,9 @@ async def test_direct_live_smoke_paces_and_rejects_ninth_start_inside_rolling_wi
 
     clock.advance(60)
     with pytest.raises(LiveSmokeBudgetExceeded):
-        await client.fetch(request(9), parser=lambda response: response.body, cache_namespace="probe")
+        await client.fetch(
+            request(9), parser=lambda response: response.body, cache_namespace="probe"
+        )
     assert client.request_count == 9
     assert len(starts) == 9
 
