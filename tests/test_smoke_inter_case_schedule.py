@@ -180,9 +180,7 @@ async def test_local_rate_limit_is_typed_unavailable_and_stops_without_retries()
         clock=clock,
         sleep=clock.sleep,
     )
-    assert [(o.case, o.category) for o in outcomes] == [
-        ("local-throttle", "unavailable")
-    ]
+    assert [(o.case, o.category) for o in outcomes] == [("local-throttle", "unavailable")]
     assert client.calls == [("cal_gloss_search", 100)]
     assert clock.waits == []
     assert "CAL-MCP local transport budget exhausted" not in outcomes[0].message
@@ -211,8 +209,7 @@ async def test_live_installed_runner_enables_fixed_spacing_without_network(
             assert environment["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] == "25"
             path = Path(environment["CAL_MCP_LIVE_SMOKE_REPORT_PATH"])
             path.write_text(
-                json.dumps({"actual_cal_transport_attempts": 0,
-                            "max_cal_transport_attempts": 25}),
+                json.dumps({"actual_cal_transport_attempts": 0, "max_cal_transport_attempts": 25}),
                 encoding="utf-8",
             )
 
