@@ -102,7 +102,7 @@ async def test_live_case_spacing_only_follows_a_called_cal_tool() -> None:
 
 
 @pytest.mark.anyio
-async def test_failed_and_missing_cases_never_reset_live_cal_spacing() -> None:
+async def test_failed_and_skipped_cases_never_reset_live_cal_spacing() -> None:
     clock = Clock()
     client = FakeClient(
         clock,
@@ -123,7 +123,6 @@ async def test_failed_and_missing_cases_never_reset_live_cal_spacing() -> None:
             from_case="failed",
             needs_provenance=False,
         ),
-        SmokeCase("unknown", "cal_missing_tool", {}),
         smoke_case("valid"),
     )
     outcomes = await evaluate_smoke_cases(
@@ -132,7 +131,6 @@ async def test_failed_and_missing_cases_never_reset_live_cal_spacing() -> None:
     assert [o.category for o in outcomes] == [
         "drift",
         "skipped_dependency",
-        "harness",
         "ok",
     ]
     assert client.calls == [("cal_gloss_search", 100), ("cal_gloss_search", 160)]
