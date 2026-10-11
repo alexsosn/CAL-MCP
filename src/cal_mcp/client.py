@@ -485,8 +485,6 @@ class CalHttpClient:
             any(char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
             or "\\" in request.path
             or "%" in request.path
-            or "?" in request.path
-            or "#" in request.path
         ):
             raise CalRequestValidationError(
                 "CAL request path must use unambiguous literal endpoint components"
@@ -511,6 +509,12 @@ class CalHttpClient:
         if parsed.query or parsed.fragment:
             raise CalRequestValidationError(
                 "query parameters must be supplied via CalRequest.params"
+            )
+        if "?" in request.path or "#" in request.path:
+            # Even empty query/fragment delimiters are normalized away by
+            # urlsplit/urljoin, but keep the existing nonempty-query error.
+            raise CalRequestValidationError(
+                "CAL request path must not include empty query or fragment delimiters"
             )
 
         # Exactly one optional leading slash is harmless, but multiple
