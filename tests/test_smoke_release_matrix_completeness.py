@@ -28,9 +28,7 @@ def _invoke_cli(
         return outcomes, attempts
 
     monkeypatch.setattr(smoke, "_run_live", stub_runner)
-    monkeypatch.setattr(
-        "sys.argv", ["stdio-live-smoke", "--executable", "/offline/bin/cal-mcp"]
-    )
+    monkeypatch.setattr("sys.argv", ["stdio-live-smoke", "--executable", "/offline/bin/cal-mcp"])
     with pytest.raises(SystemExit) as exit_info:
         smoke.main()
     assert exit_info.value.code == 1
@@ -69,8 +67,7 @@ def test_incomplete_or_forged_smoke_matrix_fails_release_closed(
     assert report["reason"] == "incomplete_smoke_acceptance"
     assert report["actual_cal_transport_attempts"] == attempts
     assert report["cases"] == [
-        {"case": o.case, "category": o.category, "message": o.message}
-        for o in outcomes
+        {"case": o.case, "category": o.category, "message": o.message} for o in outcomes
     ]
 
 
@@ -109,9 +106,7 @@ def test_full_ordered_twelve_case_positive_count_can_pass(
         return outcomes, 11
 
     monkeypatch.setattr(smoke, "_run_live", stub_runner)
-    monkeypatch.setattr(
-        "sys.argv", ["stdio-live-smoke", "--executable", "/offline/bin/cal-mcp"]
-    )
+    monkeypatch.setattr("sys.argv", ["stdio-live-smoke", "--executable", "/offline/bin/cal-mcp"])
     smoke.main()
     report = json.loads(capsys.readouterr().out)
     assert report["status"] == "passed"
