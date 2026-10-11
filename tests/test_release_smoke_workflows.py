@@ -39,7 +39,7 @@ def test_scheduled_smoke_uses_one_installed_wheel_suite_without_source_shadowing
     workflow = WEEKLY.read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
     assert "group: cal-mcp-live-smoke" in workflow
-    assert "schedule:" in workflow
+    assert "schedule:" not in workflow
     assert "python -m build --wheel" in workflow
     assert "dist/*.whl" in workflow
     assert 'cd "$RUNNER_TEMP"' in workflow
@@ -54,3 +54,13 @@ def test_no_old_and_new_live_suites_are_stacked_in_one_workflow() -> None:
         workflow = path.read_text(encoding="utf-8")
         assert workflow.count("cal_mcp.stdio_live_smoke") == 1, path
         assert "cal_mcp.live_smoke" not in workflow, path
+
+
+def test_both_smoke_workflow_jobs_allow_bounded_inter_case_wait() -> None:
+    assert "timeout-minutes: 30" in _release_smoke_job()
+    weekly = WEEKLY.read_text(encoding="utf-8")
+    job = weekly.split("\\n  live-smoke:\\n", 1)[1]
+    assert "timeout-minutes: 30" in job
+    # No automatic live CAL probing while the observed 429 release gate is open.
+    assert "workflow_dispatch:" in weekly
+    assert "schedule:" not in weekly
