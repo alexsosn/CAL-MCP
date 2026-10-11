@@ -482,10 +482,7 @@ class CalHttpClient:
         # urlsplit strips leading spaces and C0 whitespace. URL resolution
         # can also normalize backslashes and encoded delimiters downstream.
         if (
-            any(
-                char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F
-                for char in request.path
-            )
+            any(char.isspace() or ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
             or "\\" in request.path
             or "%" in request.path
         ):
