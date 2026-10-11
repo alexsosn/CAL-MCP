@@ -48,6 +48,12 @@ def html_response() -> CalResponse:
         "entry.php\x00",
         "\tentry.php",
         "entry.php\n",
+        " entry.php",
+        "  foo/entry.php",
+        "foo bar/entry.php",
+        "foo/\u00a0entry.php",
+        "///entry.php",
+        "foo/a//b",
     ],
 )
 async def test_ambiguous_endpoint_path_is_rejected_before_any_transport_or_hook(
