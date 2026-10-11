@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import math
 import time
+from collections import deque
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -32,6 +33,9 @@ _MAX_STREAM_CHUNK_BYTES = 64 * 1024
 _MAX_REQUEST_INTERVAL_SECONDS = 5.0
 _MAX_RATE_LIMIT_RETRY_SECONDS = 2
 _RATE_LIMIT_COOLDOWN_SECONDS = 60
+_ROLLING_WINDOW_SECONDS = 60.0
+_DEFAULT_ROLLING_WINDOW_ATTEMPTS = 8
+_MAX_ROLLING_WINDOW_ATTEMPTS = 25
 
 
 class CalClientError(RuntimeError):
@@ -53,6 +57,18 @@ class CalRateLimitCooldownError(CalClientError):
         self.remaining_seconds = remaining_seconds
         super().__init__(
             f"CAL rate-limit cooldown active; retry after at least {remaining_seconds} seconds"
+        )
+
+
+class CalLocalRequestBudgetError(CalClientError):
+    """An adapter-side rolling quota rejected a request without CAL I/O."""
+
+    def __init__(self, remaining_seconds: int) -> None:
+        self.remaining_seconds = remaining_seconds
+        self.upstream_reached = False
+        super().__init__(
+            "CAL-MCP local transport budget exhausted; "
+            f"retry after at least {remaining_seconds} seconds"
         )
 
 
@@ -137,6 +153,7 @@ class CalClientConfig:
     cache_ttl_seconds: float = 900.0
     user_agent: str = f"CAL-MCP/{__version__} (+https://github.com/alexsosn/CAL-MCP)"
     min_request_interval_seconds: float = 0.0
+    max_cal_attempts_per_60s: int | None = None
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -177,6 +194,11 @@ class CalClientConfig:
                 f"min_request_interval_seconds must be finite and between 0 and "
                 f"{_MAX_REQUEST_INTERVAL_SECONDS:g}"
             )
+        max_attempts = self.max_cal_attempts_per_60s
+        if max_attempts is not None and (
+            type(max_attempts) is not int or not 1 <= max_attempts <= _MAX_ROLLING_WINDOW_ATTEMPTS
+        ):
+            raise ValueError("max_cal_attempts_per_60s must be None or an integer between 1 and 25")
         if not isinstance(self.cache_enabled, bool):
             raise ValueError("cache_enabled must be a boolean")
         for name, value in (
@@ -294,7 +316,12 @@ class CalHttpClient:
         self.config = (
             config
             if config is not None
-            else CalClientConfig(min_request_interval_seconds=3.0 if transport is None else 0.0)
+            else CalClientConfig(
+                min_request_interval_seconds=3.0 if transport is None else 0.0,
+                max_cal_attempts_per_60s=(
+                    _DEFAULT_ROLLING_WINDOW_ATTEMPTS if transport is None else None
+                ),
+            )
         )
         self._before_transport_attempt = before_transport_attempt
         self._clock = clock
@@ -302,6 +329,7 @@ class CalHttpClient:
         self._pace_lock = asyncio.Lock()
         self._next_attempt_at = 0.0
         self._rate_limited_until = 0.0
+        self._recent_transport_starts: deque[float] = deque()
         self._semaphore = asyncio.Semaphore(self.config.max_concurrency)
         cache_entries = self.config.cache_max_entries if self.config.cache_enabled else 0
         self._cache: MemoryResponseCache[Any] = MemoryResponseCache(
@@ -499,12 +527,14 @@ class CalHttpClient:
     async def _request_with_retries(self, request: CalRequest) -> CalResponse:
         started_at = self._clock()
         rate_limit_retry_used = False
+        prior_http_response = False
         rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None
         for attempt in range(self.config.max_retries + 1):
             try:
                 response = await self._request_once(
                     request, rate_limit_retry_guard=rate_limit_retry_guard
                 )
+                prior_http_response = True
             except asyncio.CancelledError:
                 if rate_limit_retry_used:
                     # A previous CAL 429 must stay protective even if the
@@ -536,6 +566,16 @@ class CalHttpClient:
                     exc.cooldown_seconds = cooldown
                 else:
                     self._protect_failed_429_retry(rate_limit_retry_used)
+                raise
+            except CalLocalRequestBudgetError as exc:
+                if rate_limit_retry_used and rate_limit_retry_guard is not None:
+                    # A real CAL 429 was already observed in this operation.
+                    # Never advise retrying before the 60-second circuit breaker.
+                    self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                    original_429 = rate_limit_retry_guard[1]
+                    original_429.cooldown_seconds = _RATE_LIMIT_COOLDOWN_SECONDS
+                    raise original_429 from exc
+                exc.upstream_reached = prior_http_response
                 raise
             except CalClientError:
                 # The transport can reject a response before returning one,
@@ -624,21 +664,40 @@ class CalHttpClient:
         if remaining > 0:
             raise CalRateLimitCooldownError(math.ceil(remaining))
 
+    def _check_rolling_window(self, now: float) -> None:
+        limit = self.config.max_cal_attempts_per_60s
+        if limit is None:
+            return
+        cutoff = now - _ROLLING_WINDOW_SECONDS
+        while self._recent_transport_starts and self._recent_transport_starts[0] <= cutoff:
+            self._recent_transport_starts.popleft()
+        if len(self._recent_transport_starts) >= limit:
+            remaining = self._recent_transport_starts[0] + _ROLLING_WINDOW_SECONDS - now
+            raise CalLocalRequestBudgetError(max(1, math.ceil(remaining)))
+
+    def _record_transport_start(self, now: float) -> None:
+        if self.config.max_cal_attempts_per_60s is not None:
+            self._recent_transport_starts.append(now)
+
     async def _reserve_attempt(
         self, *, rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None
     ) -> None:
         self._reject_during_cooldown()
         interval = self.config.min_request_interval_seconds
-        if interval <= 0:
+        if interval <= 0 and self.config.max_cal_attempts_per_60s is None:
             if rate_limit_retry_guard is not None:
                 deadline, original_429 = rate_limit_retry_guard
                 if self._clock() >= deadline:
                     raise original_429
+            if self._before_transport_attempt is not None:
+                self._before_transport_attempt()
             return
         async with self._pace_lock:
             self._reject_during_cooldown()
             now = self._clock()
-            delay = max(0.0, self._next_attempt_at - now)
+            # Evaluate before sleeping so exhausted callers fail fast locally.
+            self._check_rolling_window(now)
+            delay = max(0.0, self._next_attempt_at - now) if interval > 0 else 0.0
             if rate_limit_retry_guard is not None:
                 deadline, original_429 = rate_limit_retry_guard
                 if now + delay >= deadline:
@@ -648,9 +707,16 @@ class CalHttpClient:
             if delay > 0:
                 await self._sleep(delay)
             self._reject_during_cooldown()
-            if rate_limit_retry_guard is not None and self._clock() >= deadline:
+            now = self._clock()
+            if rate_limit_retry_guard is not None and now >= deadline:
                 raise original_429
-            self._next_attempt_at = self._clock() + interval
+            self._check_rolling_window(now)
+            if self._before_transport_attempt is not None:
+                self._before_transport_attempt()
+            # No await lies between admission and the actual transport call.
+            self._record_transport_start(now)
+            if interval > 0:
+                self._next_attempt_at = now + interval
 
     async def _request_once(
         self,
@@ -661,10 +727,6 @@ class CalHttpClient:
         async with self._semaphore:
             async with asyncio.timeout(self.config.total_timeout_seconds):
                 await self._reserve_attempt(rate_limit_retry_guard=rate_limit_retry_guard)
-                if self._before_transport_attempt is not None:
-                    # The hook is opt-in and runs at the actual transport boundary,
-                    # including every retry and excluding cache hits.
-                    self._before_transport_attempt()
                 return await self._transport(request, self.config)
 
     async def _backoff(self, attempt: int) -> None:

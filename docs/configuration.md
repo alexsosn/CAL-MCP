@@ -13,6 +13,7 @@ The current MCP server creates one `CalHttpClient` with these defaults for its r
 | Total attempt timeout | 15 s | number (`int`/`float`, not boolean); finite, > 0 |
 | Maximum concurrency | 2 | integer; 1–8 |
 | Minimum CAL transport interval | 3 s for plain `CalHttpClient()` and the MCP server; 0 s for explicitly supplied `CalClientConfig()` or injected fake transport | number (`int`/`float`, not boolean); finite, 0–5 s |
+| Local rolling CAL start ceiling | 8 starts per rolling 60 s for plain real-transport client, MCP server and explicit live-smoke client; disabled for explicit `CalClientConfig()` and injected fake by default | `max_cal_attempts_per_60s`: `None` or actual integer 1–25 |
 | Retry count | 1 | integer; 0–3 |
 | Initial retry backoff | 0.25 s | number (`int`/`float`, not boolean); finite, 0–1 s; exponential, capped at 1 second per retry sleep |
 | Maximum response body | 2 MiB | integer; 1 byte–16 MiB; enforced while streaming decoded response bytes |
@@ -137,6 +138,7 @@ config = CalClientConfig(
     max_concurrency=1,
     max_retries=0,
     min_request_interval_seconds=3.0,
+    max_cal_attempts_per_60s=8,
     max_response_bytes=1024 * 1024,
     cache_enabled=False,
 )
@@ -154,3 +156,15 @@ After one terminal CAL HTTP 429, the client suppresses subsequent uncached calls
 If an allowed short `Retry-After` triggers a one-time retry, but the caller **cancels while waiting** (during the hint delay, a queued paced retry, or subsequent bounded retry backoff), that operation leaves at least the same 60-second protective cooldown. It propagates cancellation to the caller, and later uncached operations are rejected without another CAL request. When the permitted retry actually succeeds, it does not retain this terminal cooldown. The shared protection applies to one CAL-MCP server process, not across separately running instances.
 
 If a permitted short-hint retry **fails without succeeding** (for example with a subsequent HTTP 503, redirect rejection, or terminal transport failure, or an oversized-response rejection), the original tool call reports that actual later failure; the earlier CAL 429 still activates at least 60 seconds of local suppression for **later** uncached calls. A later retry success does not activate this terminal cooldown. This distinction also applies to an interrupted retry as described above.
+
+## Local rolling transport budget (protective precaution)
+
+The ordinary real-transport `CalHttpClient()`, the MCP server, and the deliberately scoped installed-wheel live-smoke client enforce **at most eight actual CAL transport starts in any rolling 60-second period**, in addition to the minimum three seconds between starts. This deliberately stops a repeated burst *before* the tenth transport attempt where CAL returned HTTP 429 in the measured 2026-10-10 Peshitta smoke. **Eight per 60 seconds is an adapter precaution, not a demonstrated or published CAL quota.** CAL may reject even earlier requests or requests after the local window expires; the zero-429 37-token release acceptance remains unverified.
+
+The rolling admission check is atomic per client, even when the minimum interval is set to zero. Each actual transport start counts, including retries, GETs and POSTs. A bounded 60-second timestamp deque is pruned on admission. Cached results, already-coalesced in-flight waiters, invalid requests, and a transport hook that denies the attempt **do not consume a rolling slot**. No hidden retries or background CAL requests are initiated when the window fills.
+
+On exhaustion, the attempted new CAL request is **not sent**. The tool returns `local_rate_limit`, with `upstream_reached=false` when no earlier HTTP response was received within that same fetch (or `true` if an earlier retry attempt already returned a real CAL HTTP response), `source_url=null`, `status_code=null`, and a conservative number of seconds before the oldest recorded attempt expires. This differs from genuine CAL HTTP 429 (`upstream_http`) and its separate fail-closed 60-second circuit breaker. If a permitted short-hint CAL 429 retry is blocked by the local budget, that operation instead reports its **actual original CAL HTTP 429** with the truthful >=60-second local cooldown; later uncached calls remain suppressed.
+
+Direct programmatic clients supplying an explicit `CalClientConfig()` do **not** automatically inherit the rolling cap; `max_cal_attempts_per_60s=None` disables it for backward compatibility with offline/injected test transports. Real CAL clients with explicit configurations must opt into conservative spacing and a rolling cap, as shown in the example above. Do not interpret the absence of this local guard as upstream CAL permission. The limit is process-local, not shared across separate CAL-MCP instances.
+
+Because the fixed release-smoke matrix may attempt more than eight distinct uncached CAL requests within one minute, the new local limit may **block the existing release smoke even when CAL itself is available**. This must be resolved by a separately reviewed and bounded smoke orchestration strategy; it is not a release pass, and no live smoke has been rerun to claim otherwise.

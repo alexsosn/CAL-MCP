@@ -124,6 +124,7 @@ async def app_lifespan(_server: MCPServer[AppContext]) -> AsyncIterator[AppConte
                 max_retries=0,
                 cache_enabled=True,
                 min_request_interval_seconds=3.0,
+                max_cal_attempts_per_60s=8,
             ),
             before_transport_attempt=budget.before_attempt,
         )

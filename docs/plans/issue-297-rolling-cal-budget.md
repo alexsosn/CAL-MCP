@@ -1,0 +1,8 @@
+# Issue #297 — plan for local rolling admission budget
+
+Based on [research](../research/issue-297-rolling-cal-budget.md). No live CAL probing.
+
+1. **RED**: offline fake clock, scripted transport, and concurrent zero-spacing requests prove eight actual starts admitted in rolling 60s, the ninth locally denied with a new typed `local_rate_limit` (`upstream_reached=false`, no source URL/status), window expiry re-admits, cached hits and non-consuming failed hook, retry counting. Verify ordinary real client default policy and the reviewed opt-in smoke client config, leaving injected fake transports unpaced without explicit config. Existing tests pass.
+2. **GREEN**: a small `CalClientConfig.max_cal_attempts_per_60s: int|None` (default None for explicit configs; type/range validation) with default real client selecting 8. Hook invocation and window admission are serialized under the existing pacing lock; record only starts after hook success. New dedicated exception/classifier; preserve short-hint 429 cooldown semantics and existing typed HTTP errors. Existing direct-client no-config and explicit smoke config select the same 8 ceiling.
+3. Update docs with real default, direct override caveat, retry/budget math, local versus genuine CAL 429 distinction. The copyable explicit live config example should enable the rolling cap. Note the fixed 11/12-case release smoke may hit this local cap and is *not* a pass; #262/#15 remain blocked.
+4. Full exact-head frozen + latest-compatible CI, logically independent skeptical review examining concurrency, expiry, clock, already-in-flight, fake transport, hook count, smoke regression. Repair any findings and merge only after review accept. No CAL GETs.

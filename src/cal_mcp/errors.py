@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from cal_mcp.client import (
     _RETRYABLE_TRANSPORT_EXCEPTIONS,
     CalContentError,
+    CalLocalRequestBudgetError,
     CalNetworkError,
     CalRateLimitCooldownError,
     CalRequestValidationError,
@@ -40,6 +41,7 @@ class CalParseError(CalContentError):
 class PublicErrorKind(StrEnum):
     INVALID_INPUT = "invalid_input"
     NETWORK = "network"
+    LOCAL_RATE_LIMIT = "local_rate_limit"
     UPSTREAM_HTTP = "upstream_http"
     RESPONSE_TOO_LARGE = "response_too_large"
     CONTENT = "content"
@@ -113,6 +115,14 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
             operation=operation,
             upstream_reached=None,
             retryable=retryable,
+            message=_safe_message(error),
+        )
+    if isinstance(error, CalLocalRequestBudgetError):
+        return PublicToolError(
+            kind=PublicErrorKind.LOCAL_RATE_LIMIT,
+            operation=operation,
+            upstream_reached=error.upstream_reached,
+            retryable=True,
             message=_safe_message(error),
         )
     if isinstance(error, CalRateLimitCooldownError):
