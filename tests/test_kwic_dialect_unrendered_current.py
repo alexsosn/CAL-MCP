@@ -128,3 +128,14 @@ def test_unrendered_line_after_last_form_summary_is_not_assigned_a_form() -> Non
     body = body.replace("</span></div><hr>", f"{notice}</span></div><hr>")
     with pytest.raises(ConcordanceParseError):
         _parse(body)
+
+
+def test_legacy_total_cannot_silently_discard_a_real_unrenderable_notice() -> None:
+    # Skeptical review #5481348202: the legacy dialect fallback must fail closed
+    # rather than count only the linked hit and discard CAL's source diagnostic.
+    source = _reduced_current_dialect_page()
+    old = "<b>2</b> examples found for <b>mlk N</b> in dialect 71"
+    assert old in source
+    source = source.replace(old, "total examples: 1")
+    with pytest.raises(ConcordanceParseError):
+        _parse(source)
