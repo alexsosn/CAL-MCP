@@ -37,7 +37,9 @@ def request(word: int) -> CalRequest:
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("failed_retry", ["http503", "redirect302", "timeout", "oserror", "too_large"])
+@pytest.mark.parametrize(
+    "failed_retry", ["http503", "redirect302", "timeout", "oserror", "too_large"]
+)
 async def test_terminal_failure_after_short_hint_429_keeps_protective_cooldown(
     failed_retry: str,
 ) -> None:
