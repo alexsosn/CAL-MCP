@@ -46,7 +46,7 @@ def test_configuration_guide_distinguishes_real_default_from_programmatic_overri
         "Plain `CalHttpClient()` with the real HTTP transport defaults to three-second pacing."
         in guide
     )
-    assert "three-second pacing is not a guaranteed CAL-accepted rate" in guide.lower()
+    assert "three-second pacing is not a guaranteed cal-accepted rate" in guide.lower()
     assert "defaults to one-second pacing" not in guide.lower()
 
 
