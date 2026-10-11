@@ -1,0 +1,753 @@
+{
+  "candidate": "970ffa29531238b428677d6f6e0a14b974073333",
+  "wheel_sha256": "f11b2ff6106d6b2b16bc122467c225ed8566582093421255a25a8d762e56c325",
+  "started_at": "2026-10-11T20:38:13.193436+00:00",
+  "status": "passed",
+  "operations": [
+    {
+      "tool": "cal_text_page",
+      "arguments": {
+        "file_id": "62043",
+        "subtext_id": "01",
+        "page": 1
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 8642.814826957,
+      "completed_monotonic": 8644.111241762,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/get_a_chapter.php?file=62043&sub=01&page=0",
+        "retrieved_at": "2026-10-11T20:38:15.939883+00:00",
+        "operation": "page",
+        "upstream_id": "62043",
+        "subtext_id": "01",
+        "category_id": null,
+        "page": 1,
+        "original_query": null,
+        "submitted_query": null
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 0
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 8704.111887498,
+      "completed_monotonic": 8704.762804022,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=0",
+        "retrieved_at": "2026-10-11T20:39:16.672279+00:00",
+        "coordinate": "620430101",
+        "word_index": 0
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 1
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 8764.763984224,
+      "completed_monotonic": 8765.359174136,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=1",
+        "retrieved_at": "2026-10-11T20:40:17.272574+00:00",
+        "coordinate": "620430101",
+        "word_index": 1
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 2
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 8825.360351368,
+      "completed_monotonic": 8825.944655195,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=2",
+        "retrieved_at": "2026-10-11T20:41:17.858790+00:00",
+        "coordinate": "620430101",
+        "word_index": 2
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 3
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 8885.945586824,
+      "completed_monotonic": 8886.588493102,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=3",
+        "retrieved_at": "2026-10-11T20:42:18.499588+00:00",
+        "coordinate": "620430101",
+        "word_index": 3
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 4
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 8946.58870352,
+      "completed_monotonic": 8947.187957675,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=4",
+        "retrieved_at": "2026-10-11T20:43:19.104879+00:00",
+        "coordinate": "620430101",
+        "word_index": 4
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 5
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9007.188149315,
+      "completed_monotonic": 9007.816926062,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=5",
+        "retrieved_at": "2026-10-11T20:44:19.732837+00:00",
+        "coordinate": "620430101",
+        "word_index": 5
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 6
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9067.817792314,
+      "completed_monotonic": 9068.464677908,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=6",
+        "retrieved_at": "2026-10-11T20:45:20.382367+00:00",
+        "coordinate": "620430101",
+        "word_index": 6
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 7
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9128.464970235,
+      "completed_monotonic": 9129.028252907,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=7",
+        "retrieved_at": "2026-10-11T20:46:20.945556+00:00",
+        "coordinate": "620430101",
+        "word_index": 7
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 8
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9189.02845416,
+      "completed_monotonic": 9189.689024523,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=8",
+        "retrieved_at": "2026-10-11T20:47:21.610550+00:00",
+        "coordinate": "620430101",
+        "word_index": 8
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 9
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9249.689613827,
+      "completed_monotonic": 9250.321795292,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=9",
+        "retrieved_at": "2026-10-11T20:48:22.242894+00:00",
+        "coordinate": "620430101",
+        "word_index": 9
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 10
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9310.322949035,
+      "completed_monotonic": 9311.162804063,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=10",
+        "retrieved_at": "2026-10-11T20:49:23.086443+00:00",
+        "coordinate": "620430101",
+        "word_index": 10
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 11
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9371.163115192,
+      "completed_monotonic": 9371.745148774,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=11",
+        "retrieved_at": "2026-10-11T20:50:23.663816+00:00",
+        "coordinate": "620430101",
+        "word_index": 11
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 12
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9431.745536169,
+      "completed_monotonic": 9432.542951131,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=12",
+        "retrieved_at": "2026-10-11T20:51:24.465382+00:00",
+        "coordinate": "620430101",
+        "word_index": 12
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 13
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9492.543503499,
+      "completed_monotonic": 9493.409486093,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=13",
+        "retrieved_at": "2026-10-11T20:52:25.337087+00:00",
+        "coordinate": "620430101",
+        "word_index": 13
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430101",
+        "word_index": 14
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9553.409753278,
+      "completed_monotonic": 9554.478036726,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430101&word=14",
+        "retrieved_at": "2026-10-11T20:53:26.398906+00:00",
+        "coordinate": "620430101",
+        "word_index": 14
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430102",
+        "word_index": 0
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9614.478420382,
+      "completed_monotonic": 9615.185559302,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430102&word=0",
+        "retrieved_at": "2026-10-11T20:54:27.113169+00:00",
+        "coordinate": "620430102",
+        "word_index": 0
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430102",
+        "word_index": 1
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9675.186827994,
+      "completed_monotonic": 9676.111428365,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430102&word=1",
+        "retrieved_at": "2026-10-11T20:55:28.039660+00:00",
+        "coordinate": "620430102",
+        "word_index": 1
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430102",
+        "word_index": 2
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9736.112058682,
+      "completed_monotonic": 9736.746230945,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430102&word=2",
+        "retrieved_at": "2026-10-11T20:56:28.659626+00:00",
+        "coordinate": "620430102",
+        "word_index": 2
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430102",
+        "word_index": 3
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9796.747363781,
+      "completed_monotonic": 9797.393042987,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430102&word=3",
+        "retrieved_at": "2026-10-11T20:57:29.287983+00:00",
+        "coordinate": "620430102",
+        "word_index": 3
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430102",
+        "word_index": 4
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9857.393221749,
+      "completed_monotonic": 9858.181287967,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430102&word=4",
+        "retrieved_at": "2026-10-11T20:58:30.075485+00:00",
+        "coordinate": "620430102",
+        "word_index": 4
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430102",
+        "word_index": 5
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9918.181464352,
+      "completed_monotonic": 9918.747562594,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430102&word=5",
+        "retrieved_at": "2026-10-11T20:59:30.616335+00:00",
+        "coordinate": "620430102",
+        "word_index": 5
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 0
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 9978.747817043,
+      "completed_monotonic": 9979.545275182,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=0",
+        "retrieved_at": "2026-10-11T21:00:31.438886+00:00",
+        "coordinate": "620430103",
+        "word_index": 0
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 1
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10039.546260326,
+      "completed_monotonic": 10040.459799462,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=1",
+        "retrieved_at": "2026-10-11T21:01:32.350366+00:00",
+        "coordinate": "620430103",
+        "word_index": 1
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 2
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10100.460975838,
+      "completed_monotonic": 10101.089369627,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=2",
+        "retrieved_at": "2026-10-11T21:02:32.987354+00:00",
+        "coordinate": "620430103",
+        "word_index": 2
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 3
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10161.089764152,
+      "completed_monotonic": 10161.676596902,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=3",
+        "retrieved_at": "2026-10-11T21:03:33.576354+00:00",
+        "coordinate": "620430103",
+        "word_index": 3
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 4
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10221.677110564,
+      "completed_monotonic": 10222.311130606,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=4",
+        "retrieved_at": "2026-10-11T21:04:34.207880+00:00",
+        "coordinate": "620430103",
+        "word_index": 4
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 5
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10282.312037308,
+      "completed_monotonic": 10282.882622769,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=5",
+        "retrieved_at": "2026-10-11T21:05:34.779255+00:00",
+        "coordinate": "620430103",
+        "word_index": 5
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 6
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10342.882772979,
+      "completed_monotonic": 10343.486562857,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=6",
+        "retrieved_at": "2026-10-11T21:06:35.382907+00:00",
+        "coordinate": "620430103",
+        "word_index": 6
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 7
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10403.486915319,
+      "completed_monotonic": 10404.023892072,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=7",
+        "retrieved_at": "2026-10-11T21:07:35.923407+00:00",
+        "coordinate": "620430103",
+        "word_index": 7
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430103",
+        "word_index": 8
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10464.024006866,
+      "completed_monotonic": 10464.607474115,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430103&word=8",
+        "retrieved_at": "2026-10-11T21:08:36.505118+00:00",
+        "coordinate": "620430103",
+        "word_index": 8
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 0
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10524.60777255,
+      "completed_monotonic": 10525.236599431,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=0",
+        "retrieved_at": "2026-10-11T21:09:37.139399+00:00",
+        "coordinate": "620430104",
+        "word_index": 0
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 1
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10585.236922866,
+      "completed_monotonic": 10586.226510526,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=1",
+        "retrieved_at": "2026-10-11T21:10:38.129211+00:00",
+        "coordinate": "620430104",
+        "word_index": 1
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 2
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10646.22689112,
+      "completed_monotonic": 10646.921511897,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=2",
+        "retrieved_at": "2026-10-11T21:11:38.820329+00:00",
+        "coordinate": "620430104",
+        "word_index": 2
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 3
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10706.921877015,
+      "completed_monotonic": 10708.771808931,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=3",
+        "retrieved_at": "2026-10-11T21:12:40.673259+00:00",
+        "coordinate": "620430104",
+        "word_index": 3
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 4
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10768.772532998,
+      "completed_monotonic": 10769.552229477,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=4",
+        "retrieved_at": "2026-10-11T21:13:41.454082+00:00",
+        "coordinate": "620430104",
+        "word_index": 4
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 5
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10829.553481015,
+      "completed_monotonic": 10830.099220655,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=5",
+        "retrieved_at": "2026-10-11T21:14:42.001604+00:00",
+        "coordinate": "620430104",
+        "word_index": 5
+      }
+    },
+    {
+      "tool": "cal_token_analysis",
+      "arguments": {
+        "coordinate": "620430104",
+        "word_index": 6
+      },
+      "category": "ok",
+      "message": "success",
+      "started_monotonic": 10890.099712054,
+      "completed_monotonic": 10890.972157477,
+      "provenance": {
+        "source": "CAL",
+        "source_url": "https://cal.huc.edu/getlex.php?coord=620430104&word=6",
+        "retrieved_at": "2026-10-11T21:15:42.871513+00:00",
+        "coordinate": "620430104",
+        "word_index": 6
+      }
+    }
+  ],
+  "completed_token_analyses": 37,
+  "selected_token_count": 37,
+  "transport_meter": {
+    "attempts": 38,
+    "hard_cap": 38,
+    "starts_monotonic": [
+      8642.818276825,
+      8704.114829593,
+      8764.765660063,
+      8825.362203012,
+      8885.946934365,
+      8946.591432249,
+      9007.190266545,
+      9067.819824201,
+      9128.467209443,
+      9189.029816736,
+      9249.691909914,
+      9310.326159199,
+      9371.167118553,
+      9431.74771465,
+      9492.545817021,
+      9553.413099218,
+      9614.482019017,
+      9675.190277822,
+      9736.114690149,
+      9796.749554675,
+      9857.395574609,
+      9918.183733674,
+      9978.750184026,
+      10039.548261406,
+      10100.463105202,
+      10161.091376796,
+      10221.678716187,
+      10282.315224687,
+      10342.884731458,
+      10403.488501181,
+      10464.025599499,
+      10524.610786387,
+      10585.239381742,
+      10646.228507787,
+      10706.925215326,
+      10768.774523795,
+      10829.555451397,
+      10890.102223935
+    ],
+    "configuration": {
+      "max_concurrency": 1,
+      "max_retries": 0,
+      "cache_enabled": true,
+      "min_request_interval_seconds": 3.0,
+      "max_cal_attempts_per_60s": 8
+    }
+  },
+  "finished_at": "2026-10-11T21:15:43.314666+00:00",
+  "decision": "docs/plans/issue-262-rate-pacing.md#independently-reviewed-slow-acceptance-invocation-2026-10-11"
+}
