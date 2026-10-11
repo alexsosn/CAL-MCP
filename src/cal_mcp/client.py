@@ -139,6 +139,14 @@ class CalFetchResult(Generic[T]):
     cache_age_seconds: float | None = None
 
 
+def _is_finite_config_number(value: int | float) -> bool:
+    """Treat unrepresentable huge integers as invalid rather than leaking OverflowError."""
+    try:
+        return math.isfinite(value)
+    except OverflowError:
+        return False
+
+
 @dataclass(frozen=True, slots=True)
 class CalClientConfig:
     connect_timeout_seconds: float = 5.0
@@ -172,11 +180,11 @@ class CalClientConfig:
             ("total_timeout_seconds", self.total_timeout_seconds),
             ("cache_ttl_seconds", self.cache_ttl_seconds),
         ):
-            if not math.isfinite(value) or value <= 0:
+            if not _is_finite_config_number(value) or value <= 0:
                 raise ValueError(f"{name} must be finite and > 0")
 
         if (
-            not math.isfinite(self.retry_backoff_seconds)
+            not _is_finite_config_number(self.retry_backoff_seconds)
             or not 0 <= self.retry_backoff_seconds <= _MAX_RETRY_BACKOFF_SECONDS
         ):
             raise ValueError(
@@ -187,7 +195,7 @@ class CalClientConfig:
         if (
             isinstance(interval, bool)
             or not isinstance(interval, (int, float))
-            or not math.isfinite(interval)
+            or not _is_finite_config_number(interval)
             or not 0 <= interval <= _MAX_REQUEST_INTERVAL_SECONDS
         ):
             raise ValueError(
