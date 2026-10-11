@@ -74,6 +74,8 @@ Cancellation is caller-local where possible. Cancelling a follower does not canc
 
 The completed-result cache is intended only to suppress duplicate requests during a running CAL-MCP process. It is not an offline CAL store.
 
+For programmatic/offline use, the optional `CalHttpClient(clock=...)` monotonic clock injection governs **both** the transport pacing/cooldown/rolling budget **and** the completed-result cache TTL. Entries expire when the injected clock reaches their retention boundary; a still-valid cached result can be returned during a CAL rate-limit cooldown, but an expired entry must go through admission again. The normal production client uses the same default `time.monotonic` source for these policies. This is a deterministic local clock contract, not a mechanism for relaxing CAL's request budget.
+
 CAL-MCP does not provide:
 
 - disk/database persistence;

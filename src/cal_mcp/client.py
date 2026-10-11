@@ -335,6 +335,7 @@ class CalHttpClient:
         self._cache: MemoryResponseCache[Any] = MemoryResponseCache(
             max_entries=cache_entries,
             ttl_seconds=self.config.cache_ttl_seconds,
+            clock=clock,
         )
         self._inflight_guard = asyncio.Lock()
         self._inflight: dict[str, asyncio.Future[CalFetchResult[Any]]] = {}
