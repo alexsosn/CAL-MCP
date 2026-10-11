@@ -121,9 +121,7 @@ async def test_later_smoke_transport_exception_preserves_prior_drift_without_rep
 @pytest.mark.anyio
 async def test_regular_cal_result_drift_still_aggregates_later_cases() -> None:
     clock = FakeClock()
-    client = FlakyStdioClient(
-        [_result("not_found"), _result("found"), _result("not_found")]
-    )
+    client = FlakyStdioClient([_result("not_found"), _result("found"), _result("not_found")])
     outcomes = await evaluate_smoke_cases(
         client,
         _cases(),
