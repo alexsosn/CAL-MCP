@@ -1,9 +1,8 @@
 name: Live CAL drift smoke
 
 on:
+  # Manual-only until #262 demonstrates a CAL-accepted bounded live rate.
   workflow_dispatch:
-  schedule:
-    - cron: "17 6 * * 1"
 
 permissions:
   contents: read
@@ -15,7 +14,7 @@ concurrency:
 jobs:
   live-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
