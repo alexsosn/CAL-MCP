@@ -126,3 +126,45 @@ async def test_complete_registry_and_schema_valid_cal_drift_still_aggregate() ->
     )
     assert [x.category for x in actual] == ["drift", "ok"]
     assert client.calls == ["cal_gloss_search", "cal_text_concordance"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("bad_schema", [None, {"type": "not-a-valid-json-schema-type"}])
+async def test_late_broken_mcp_output_schema_aborts_without_cal_traffic(
+    bad_schema: dict[str, object] | None,
+) -> None:
+    class BrokenSchemaClient(FakeClient):
+        async def list_tools(self) -> SimpleNamespace:
+            registry = await super().list_tools()
+            registry.tools = [
+                tool.model_copy(update={"output_schema": bad_schema})
+                if tool.name == "cal_text_concordance"
+                else tool
+                for tool in registry.tools
+            ]
+            return registry
+
+    client = BrokenSchemaClient(
+        ("cal_gloss_search", "cal_text_concordance"),
+        [outcome("found"), outcome("found")],
+    )
+    delays: list[float] = []
+
+    async def sleep(delay: float) -> None:
+        delays.append(delay)
+
+    actual = await evaluate_smoke_cases(
+        client,
+        (case("first"), case("late-bad-schema", "cal_text_concordance")),
+        min_cal_case_spacing_seconds=60,
+        sleep=sleep,
+    )
+    assert [(x.case, x.category, x.message) for x in actual] == [
+        (
+            "late-bad-schema",
+            "harness",
+            "required public MCP output schema missing or invalid",
+        )
+    ]
+    assert client.calls == []
+    assert delays == []
