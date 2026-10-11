@@ -195,12 +195,9 @@ class CalClientConfig:
             )
         max_attempts = self.max_cal_attempts_per_60s
         if max_attempts is not None and (
-            type(max_attempts) is not int
-            or not 1 <= max_attempts <= _MAX_ROLLING_WINDOW_ATTEMPTS
+            type(max_attempts) is not int or not 1 <= max_attempts <= _MAX_ROLLING_WINDOW_ATTEMPTS
         ):
-            raise ValueError(
-                "max_cal_attempts_per_60s must be None or an integer between 1 and 25"
-            )
+            raise ValueError("max_cal_attempts_per_60s must be None or an integer between 1 and 25")
         if not isinstance(self.cache_enabled, bool):
             raise ValueError("cache_enabled must be a boolean")
         for name, value in (
