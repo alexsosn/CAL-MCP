@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from cal_mcp.request_policy import CacheRecord, MemoryResponseCache
 
 
@@ -92,3 +94,28 @@ def test_cache_record_is_process_memory_metadata_not_a_new_retrieval() -> None:
     assert hit is not None
     assert hit.record.retrieved_at == retrieved_at
     assert hit.cache_hit is True
+
+
+@pytest.mark.parametrize("capacity", [True, False, 1.5, -1, "2", None])
+def test_direct_cache_rejects_invalid_capacity_type_or_count(capacity: object) -> None:
+    with pytest.raises(ValueError, match="max_entries"):
+        MemoryResponseCache[str](max_entries=capacity, ttl_seconds=60)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "ttl",
+    [float("nan"), float("inf"), float("-inf"), 10**1000, 0, -1, True, False, "60", None],
+)
+def test_direct_cache_rejects_nonfinite_nonpositive_or_nonnumeric_ttl(ttl: object) -> None:
+    with pytest.raises(ValueError, match="ttl_seconds"):
+        MemoryResponseCache[str](max_entries=1, ttl_seconds=ttl)  # type: ignore[arg-type]
+
+
+def test_direct_cache_accepts_finite_fractional_ttl_with_expiry() -> None:
+    clock = FakeClock()
+    cache = MemoryResponseCache[str](max_entries=1, ttl_seconds=2.5, clock=clock)
+    cache.put("key", record("value"))
+    clock.advance(2.49)
+    assert cache.get("key") is not None
+    clock.advance(0.01)
+    assert cache.get("key") is None
