@@ -674,6 +674,10 @@ def parse_kwic_result(
                 ),
                 unrendered_hits=unrendered,
             )
+        if positioned_unrendered:
+            raise ConcordanceParseError(
+                "CAL dialect KWIC cannot assign unrendered hits without form summaries"
+            )
     elif any(_DIALECT_SUMMARY_HINT_RE.search(getattr(line, "text", "")) for line in lines):
         raise ConcordanceParseError("CAL text-scoped KWIC contains dialect form summaries")
 
