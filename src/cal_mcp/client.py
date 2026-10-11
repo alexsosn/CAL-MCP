@@ -537,6 +537,11 @@ class CalHttpClient:
                 else:
                     self._protect_failed_429_retry(rate_limit_retry_used)
                 raise
+            except CalClientError:
+                # The transport can reject a response before returning one,
+                # e.g. when a streamed CAL page exceeds the byte limit.
+                self._protect_failed_429_retry(rate_limit_retry_used)
+                raise
 
             if response.status_code == 429:
                 hint = self._retry_after_seconds(response)
