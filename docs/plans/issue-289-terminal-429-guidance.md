@@ -1,0 +1,7 @@
+# Issue #289 — test-first plan
+
+1. Commit source research and this plan *before* regression tests. Keep issue #262 open.
+2. **RED:** four fake-clock terminal CAL 429 cases with absent, short, long and malformed header. Assert first structured error says **local cooldown at least 60 or 90 seconds**, includes CAL's `Retry-After` only for present/valid hints, and retains typed `upstream_http`, `retryable=true`, `upstream_reached=true`, status 429, exactly one fake transport attempt and no extra calls. Directly constructed `CalUpstreamError(429,...)` with no client policy must not falsely advertise a cooldown. Deadline-canceled short-hint retry gets the same truthful terminal minimum.
+3. **GREEN:** optional defaulted cooldown metadata on `CalUpstreamError` and populate at both current terminal cooldown branches only. Render local policy and upstream hint as distinct, sanitized phrases in existing `message`. Do not add a public response key or change the 36-tool manifest.
+4. Full Ruff, mypy, pytest in both frozen/latest-compatible configurations. Adversarial independent review grounded in actual diff/tests, especially missing hint, long hint, short-hint deadline, error provenance, and no CAL requests. Fix any review findings before merge.
+5. Squash merge exact fully tested/reviewed head, close #289; issue #262 and release #15 remain OPEN until their different acceptance conditions are met.

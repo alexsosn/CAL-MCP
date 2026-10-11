@@ -148,4 +148,4 @@ The public MCP tools do not expose these low-level settings as arguments. Endpoi
 
 ## Shared terminal 429 cooldown
 
-After one terminal CAL HTTP 429, the client suppresses subsequent uncached calls for at least 60 seconds, or the longer validated Retry-After. Suppressed calls are typed rate-limit errors with `upstream_reached=false` and zero transport attempts. Cached results remain available.
+After one terminal CAL HTTP 429, the client suppresses subsequent uncached calls for at least 60 seconds, or the longer validated Retry-After. The *first* typed upstream HTTP 429 error reports the effective **local cooldown** separately from CAL's original `Retry-After` hint (when present); an upstream hint of one second does not override the longer local safety minimum. Suppressed later calls are typed rate-limit errors with `upstream_reached=false` and zero transport attempts. Cached results remain available.
