@@ -119,9 +119,29 @@ async def test_rejected_local_input_is_not_misreported_as_cal_transport() -> Non
     assert starts == 0
 
 
-def test_local_backpressure_is_not_mislabelled_as_harness_failure() -> None:
-    assert classify_smoke_exception(CalLocalRequestBudgetError(12)) == "upstream"
-    assert classify_smoke_exception(CalRateLimitCooldownError(60)) == "upstream"
+def test_local_backpressure_is_not_mislabelled_as_upstream_failure() -> None:
+    assert classify_smoke_exception(CalLocalRequestBudgetError(12)) == "local_rate_limit"
+    assert classify_smoke_exception(CalRateLimitCooldownError(60)) == "local_rate_limit"
+
+
+@pytest.mark.anyio
+async def test_local_budget_refusal_reports_local_category_and_zero_cal_attempts() -> None:
+    async def transport(req: CalRequest, config: CalClientConfig) -> CalResponse:
+        del req, config
+        raise AssertionError("this synthetic refusal must not contact CAL")
+
+    client = BudgetCalHttpClient(transport=transport)
+
+    async def refused(smoke_client: BudgetCalHttpClient) -> None:
+        del smoke_client
+        raise CalLocalRequestBudgetError(12)
+
+    with pytest.raises(LiveSmokeFailure) as exc:
+        await run_live_smoke(client=client, cases=(SmokeCase("refused", refused),))
+    report = exc.value.to_dict()
+    assert report["category"] == "local_rate_limit"
+    assert report["request_count"] == 0
+    assert client.request_count == 0
 
 
 @pytest.mark.anyio
