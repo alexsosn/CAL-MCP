@@ -67,7 +67,9 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
         )
 
     client = CalHttpClient(
-        config=CalClientConfig(max_retries=1, min_request_interval_seconds=0),
+        config=CalClientConfig(
+            max_retries=1, min_request_interval_seconds=1 if cancel_during_pace else 0
+        ),
         transport=transport,
         clock=clock,
         sleep=sleep,
@@ -101,3 +103,57 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
     resumed = await client.fetch(request(9), parser=lambda page: page.body, cache_namespace="token")
     assert resumed.value == b"<html>synthetic</html>"
     assert calls == [8, 9]
+
+
+@pytest.mark.anyio
+async def test_429_then_503_cancellation_during_backoff_still_preserves_429_cooldown(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = FakeClock()
+    backoff_started = asyncio.Event()
+    attempts: list[int] = []
+
+    async def sleep(delay: float) -> None:
+        assert delay == 1
+        clock.advance(delay)
+        await asyncio.sleep(0)
+
+    async def transport(req: CalRequest, config: CalClientConfig) -> CalResponse:
+        del req, config
+        attempts.append(len(attempts) + 1)
+        code = (429, 503, 200)[len(attempts) - 1]
+        return CalResponse(
+            status_code=code,
+            url="https://cal.huc.edu/getlex.php?word=8",
+            body=b"<html>synthetic</html>",
+            content_type="text/html",
+            retrieved_at=datetime(2026, 10, 11, tzinfo=UTC),
+            retry_after="1" if code == 429 else None,
+        )
+
+    async def blocked_backoff(attempt: int) -> None:
+        assert attempt == 1
+        backoff_started.set()
+        await asyncio.Event().wait()
+
+    client = CalHttpClient(
+        config=CalClientConfig(max_retries=3, min_request_interval_seconds=0),
+        transport=transport,
+        clock=clock,
+        sleep=sleep,
+    )
+    monkeypatch.setattr(client, "_backoff", blocked_backoff)
+    pending = asyncio.create_task(
+        client.fetch(request(8), parser=lambda page: page.body, cache_namespace="token")
+    )
+    await asyncio.wait_for(backoff_started.wait(), timeout=5)
+    pending.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await pending
+
+    assert attempts == [1, 2]
+    clock.advance(1.5)
+    with pytest.raises(CalRateLimitCooldownError) as suppressed:
+        await client.fetch(request(9), parser=lambda page: page.body, cache_namespace="token")
+    assert suppressed.value.remaining_seconds >= 58
+    assert attempts == [1, 2]
