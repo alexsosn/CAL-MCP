@@ -129,8 +129,13 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
         message = f"CAL returned HTTP {error.status_code}"
         if source_url is not None:
             message = f"{message} for {source_url}"
-        if error.status_code == 429 and error.retry_after_seconds is not None:
-            message = f"{message}; Retry-After {error.retry_after_seconds} seconds"
+        if error.status_code == 429:
+            if error.retry_after_seconds is not None:
+                message = f"{message}; CAL Retry-After {error.retry_after_seconds} seconds"
+            if error.cooldown_seconds is not None:
+                message = (
+                    f"{message}; local cooldown at least {error.cooldown_seconds} seconds"
+                )
         return PublicToolError(
             kind=PublicErrorKind.UPSTREAM_HTTP,
             operation=operation,
