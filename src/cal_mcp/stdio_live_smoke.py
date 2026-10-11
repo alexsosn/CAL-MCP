@@ -306,8 +306,10 @@ async def evaluate_smoke_cases(
         try:
             result = await client.call_tool(case.tool, arguments=arguments)
         except Exception:
+            # The stdio call may have reached CAL before the channel failed.
+            # Further cases cannot rescue this release gate and risk more probes.
             outcomes.append(SmokeOutcome(case.name, "harness", "MCP transport or schema error"))
-            continue
+            break
         finally:
             if calls_cal:
                 last_cal_case_finished_at = clock()
