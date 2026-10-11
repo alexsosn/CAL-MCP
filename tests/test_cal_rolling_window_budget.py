@@ -136,7 +136,10 @@ async def test_rolling_budget_serializes_concurrent_zero_interval_attempts() -> 
         transport=transport,
     )
     results = await asyncio.gather(
-        *(client.fetch(request(n), parser=lambda r: r.body, cache_namespace="concurrent") for n in range(5)),
+        *(
+            client.fetch(request(n), parser=lambda r: r.body, cache_namespace="concurrent")
+            for n in range(5)
+        ),
         return_exceptions=True,
     )
     assert starts == 2
