@@ -52,11 +52,11 @@ async def test_terminal_failure_after_short_hint_429_keeps_protective_cooldown(
                 raise TimeoutError("synthetic timeout")
             if failed_retry == "oserror":
                 raise OSError("synthetic network failure")
-        status = 429 if attempts == 1 else (
-            503 if failed_retry == "http503" and attempts == 2 else (
-                302 if failed_retry == "redirect302" and attempts == 2 else 200
-            )
-        )
+        status = 429 if attempts == 1 else 200
+        if attempts == 2 and failed_retry == "http503":
+            status = 503
+        if attempts == 2 and failed_retry == "redirect302":
+            status = 302
         return CalResponse(
             status_code=status,
             url="https://cal.huc.edu/getlex.php?word=8",
@@ -100,6 +100,8 @@ async def test_terminal_failure_after_short_hint_429_keeps_protective_cooldown(
     assert attempts == 2
 
     clock.now += 60
-    recovered = await client.fetch(request(9), parser=lambda page: page.body, cache_namespace="token")
+    recovered = await client.fetch(
+        request(9), parser=lambda page: page.body, cache_namespace="token"
+    )
     assert recovered.value == b"<html>synthetic</html>"
     assert attempts == 3
