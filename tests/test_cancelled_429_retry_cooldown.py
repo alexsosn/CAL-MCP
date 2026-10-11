@@ -33,13 +33,20 @@ def request(word: int) -> CalRequest:
 
 
 @pytest.mark.anyio
-async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown() -> None:
+@pytest.mark.parametrize("cancel_during_pace", [False, True])
+async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown(
+    cancel_during_pace: bool,
+) -> None:
     clock = FakeClock()
     retry_wait_started = asyncio.Event()
     calls: list[int] = []
 
     async def sleep(delay: float) -> None:
-        assert delay == 1
+        if cancel_during_pace and delay == 1:
+            clock.advance(delay)
+            await asyncio.sleep(0)
+            return
+        assert delay == (4 if cancel_during_pace else 1)
         retry_wait_started.set()
         # Never finish normally: only task cancellation releases this wait.
         await asyncio.Event().wait()
@@ -47,6 +54,9 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
     async def transport(req: CalRequest, config: CalClientConfig) -> CalResponse:
         del config
         calls.append(int(req.params[0][1]))
+        if cancel_during_pace and len(calls) == 1:
+            # A distinct caller has reserved the slot that follows the hint.
+            client._next_attempt_at = clock() + 5
         return CalResponse(
             status_code=429 if len(calls) == 1 else 200,
             url="https://cal.huc.edu/getlex.php?word=8",
@@ -73,7 +83,7 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
     assert calls == [8]
     # CAL already returned a 429. Cancelled work must not lift the protective
     # cooldown as soon as the otherwise-retryable one-second hint expires.
-    clock.advance(1.5)
+    clock.advance(4.5 if cancel_during_pace else 1.5)
     with pytest.raises(CalRateLimitCooldownError) as suppressed:
         await client.fetch(request(9), parser=lambda page: page.body, cache_namespace="token")
     public = classify_public_tool_error("cal_token_analysis", suppressed.value)
@@ -85,7 +95,7 @@ async def test_cancellation_during_429_retry_wait_keeps_terminal_safety_cooldown
     assert details["source_url"] is None
     assert details["retryable"] is True
     assert calls == [8]
-    assert suppressed.value.remaining_seconds >= 58
+    assert suppressed.value.remaining_seconds >= (55 if cancel_during_pace else 58)
 
     clock.advance(58.5)
     resumed = await client.fetch(request(9), parser=lambda page: page.body, cache_namespace="token")
