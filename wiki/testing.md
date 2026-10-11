@@ -157,7 +157,7 @@ At least one test should launch the actual stdio entry point once packaging exis
 Live tests detect upstream drift; they do not establish CAL scholarship. Normal pull-request
 CI stays offline. The installed-stdio smoke (issue #157, D-022) is intentionally opt-in:
 the release-tag job runs it *before* PyPI publication, and
-`.github/workflows/live-smoke.yml` runs it only on explicit dispatch or its weekly schedule.
+`.github/workflows/live-smoke.yml` runs it **only on explicit manual dispatch**. Its weekly cron is temporarily disabled while #262's real CAL HTTP 429 remains unresolved; never re-enable unattended probing until the live upstream policy and acceptance have been independently reviewed.
 
 Both workflows execute one `cal_mcp.stdio_live_smoke` suite from an installed wheel,
 not the old direct-Python-service smoke in `cal_mcp.live_smoke`. The release job
@@ -186,7 +186,7 @@ client performs sequential tool calls and never enumerates result pages,
 subcorpora, lexemes, links, or pagination. No regular `cal-mcp` launch inherits
 the opt-in smoke limit.
 
-The server additionally enforces an **8-start rolling 60-second local budget**. This can reject some of the fixed 11/12 smoke cases locally before CAL is reached; the harness must report such cases as non-OK and must not treat this as a passing release run. A future separately justified bounded scheduling design is needed before release; #262's live 37-token zero-429 gate is still unsatisfied. The absolute cap of 25 remains unchanged. No live smoke was launched by issue #297.
+The server additionally enforces an **8-start rolling 60-second local budget**. The installed-wheel smoke runner now enforces a **60-second pause between completion of one CAL-backed tool case and starting the next** (not between arbitrary SDK introspection, local conversion, missing tools, or skipped dependent cases). This allows earlier transport starts to age out of the server's rolling window without observing any private CAL state or auto-retrying a refused tool. A case performing more than eight transports inside one tool call can still fail locally; a real CAL HTTP 429 may still occur. A typed `local_rate_limit` is recognized, recorded as a nonpassing unavailable case, and halts additional smoke calls rather than being misclassified as malformed output. The absolute hard cap of 25 actual CAL attempts remains unchanged, as does the three-second per-attempt server pace. There are at most ten 60-second inter-case waits in the fixed 12-case suite; they are cancellable. Both installed-wheel smoke workflow jobs have a 30-minute outer limit for bounded waits and tool timeouts. **No real CAL requests were made by #299; this is not the still-unmet 37-token zero-429 acceptance.**
 
 The smoke driver checks `is_error`, every advertised `outputSchema`, the
 strict structured-error envelope, and the CAL source URL and timestamp on
@@ -197,7 +197,7 @@ diagnostics. The JSON report contains per-case outcomes,
 A missing or malformed server attempt report is a failing harness error, never
 an assumed zero. Any non-OK result fails the workflow and blocks publication.
 
-**Release readiness gate:** the fixed current 11-case matrix must still be
+**Release readiness gate:** the fixed current 12-case matrix (11 CAL-backed cases plus one local-only converter) must still be
 measured once against live CAL from the installed wheel and accepted within the
 25-attempt cap; offline CI alone is insufficient. Do not run the old nine-call
 service smoke alongside the new suite or automatically retry failed live smoke.
