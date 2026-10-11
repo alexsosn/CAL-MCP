@@ -78,9 +78,7 @@ async def test_late_missing_required_tool_rejects_before_any_cal_call_or_wait() 
         case("second", "cal_text_concordance"),
         case("last-missing", "cal_dictionary_collation"),
     )
-    actual = await evaluate_smoke_cases(
-        client, cases, min_cal_case_spacing_seconds=60, sleep=sleep
-    )
+    actual = await evaluate_smoke_cases(client, cases, min_cal_case_spacing_seconds=60, sleep=sleep)
     assert [(x.case, x.category, x.message) for x in actual] == [
         ("last-missing", "harness", "required public MCP tool missing")
     ]
