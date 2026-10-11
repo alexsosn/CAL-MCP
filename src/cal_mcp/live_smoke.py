@@ -3,19 +3,19 @@ from __future__ import annotations
 import asyncio
 import json
 import sys
+import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Literal, TypeVar, cast
+from typing import Literal, cast
 
 from cal_mcp.bibliography import BibliographyParseError, BibliographyService
 from cal_mcp.client import (
     CalClientConfig,
     CalContentError,
-    CalFetchResult,
     CalHttpClient,
+    CalLocalRequestBudgetError,
     CalNetworkError,
-    CalRequest,
-    CalResponse,
+    CalRateLimitCooldownError,
     CalUpstreamError,
     Transport,
 )
@@ -34,9 +34,8 @@ from cal_mcp.targum import TargumParseError, TargumService
 from cal_mcp.texts import TextParseError, TextService
 from cal_mcp.token_analysis import TokenAnalysisParseError
 
-T = TypeVar("T")
 MAX_CAL_REQUESTS = 9
-SmokeFailureCategory = Literal["drift", "upstream", "content", "harness"]
+SmokeFailureCategory = Literal["drift", "upstream", "local_rate_limit", "content", "harness"]
 SmokeOperation = Callable[["BudgetCalHttpClient"], Awaitable[None]]
 
 
@@ -95,36 +94,37 @@ class LiveSmokeReport:
 
 
 class BudgetCalHttpClient(CalHttpClient):
-    """CAL client with the stricter fixed release-smoke request policy."""
+    """Paced, transport-metered client for optional manual legacy smoke."""
 
-    def __init__(self, *, transport: Transport | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        transport: Transport | None = None,
+        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
         super().__init__(
             config=CalClientConfig(
                 max_concurrency=1,
                 max_retries=0,
                 cache_enabled=False,
+                min_request_interval_seconds=3.0,
+                max_cal_attempts_per_60s=8,
             ),
             transport=transport,
+            before_transport_attempt=self._record_attempt,
+            clock=clock,
+            sleep=sleep,
         )
         self.request_count = 0
 
-    async def fetch(
-        self,
-        request: CalRequest,
-        *,
-        parser: Callable[[CalResponse], T],
-        cache_namespace: str,
-    ) -> CalFetchResult[T]:
+    def _record_attempt(self) -> None:
+        # Count real CAL transport admission, not rejected/invalid fetches.
         if self.request_count >= MAX_CAL_REQUESTS:
             raise LiveSmokeBudgetExceeded(
                 f"CAL request budget exhausted at {MAX_CAL_REQUESTS} requests"
             )
         self.request_count += 1
-        return await super().fetch(
-            request,
-            parser=parser,
-            cache_namespace=cache_namespace,
-        )
 
 
 _PARSER_ERRORS = (
@@ -148,6 +148,8 @@ def classify_smoke_exception(exc: BaseException) -> SmokeFailureCategory:
 
     if isinstance(exc, _PARSER_ERRORS):
         return "drift"
+    if isinstance(exc, (CalLocalRequestBudgetError, CalRateLimitCooldownError)):
+        return "local_rate_limit"
     if isinstance(exc, (CalNetworkError, CalUpstreamError)):
         return "upstream"
     if isinstance(exc, CalContentError):
