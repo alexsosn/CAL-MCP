@@ -121,7 +121,7 @@ def classify_public_tool_error(operation: str, error: BaseException) -> PublicTo
         return PublicToolError(
             kind=PublicErrorKind.LOCAL_RATE_LIMIT,
             operation=operation,
-            upstream_reached=False,
+            upstream_reached=error.upstream_reached,
             retryable=True,
             message=_safe_message(error),
         )
