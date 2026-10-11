@@ -155,7 +155,13 @@ def test_stdio_cli_reports_actual_attempts(
 
     async def fake_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         assert executable == "/fixed/cal-mcp"
-        return (SmokeOutcome("synthetic", "ok", "success"),), 2
+        return (
+            tuple(
+                SmokeOutcome(case.name, "ok", "success")
+                for case in smoke.DEFAULT_SMOKE_CASES
+            ),
+            2,
+        )
 
     monkeypatch.setattr(smoke, "_run_live", fake_live)
     monkeypatch.setattr("sys.argv", ["stdio-live-smoke", "--executable", "/fixed/cal-mcp"])
