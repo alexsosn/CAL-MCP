@@ -6,6 +6,7 @@ These tests stub the complete installed-stdio runner. No CAL network or subproce
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 
 import pytest
 
@@ -126,3 +127,30 @@ def test_genuine_terminal_rate_limit_is_still_failing_and_unmasked(
     report = _invoke_cli(monkeypatch, capsys, outcomes, attempts=1)
     assert report["status"] == "failed"
     assert report["cases"][1]["category"] == "unavailable"
+
+
+@pytest.mark.parametrize("mutation", ["rename", "reorder", "wrong_tool", "wrong_arguments"])
+def test_release_gate_rejects_self_consistent_but_wrong_fixed_research_matrix(
+    mutation: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    original = tuple(smoke.DEFAULT_SMOKE_CASES)
+    assert len(original) == 12
+    modified = list(original)
+    if mutation == "rename":
+        modified[7] = replace(modified[7], name="unreviewed_research_surface")
+    elif mutation == "reorder":
+        modified[1], modified[2] = modified[2], modified[1]
+    elif mutation == "wrong_tool":
+        modified[7] = replace(modified[7], tool="cal_gloss_search")
+    else:
+        modified[2] = replace(modified[2], arguments={"query": "br", "lemma_key": "br N"})
+    monkeypatch.setattr(smoke, "DEFAULT_SMOKE_CASES", tuple(modified))
+    # Even if the executor and reporter agree on the modified case labels,
+    # that cannot satisfy the frozen installed-wheel release acceptance.
+    outcomes = _outcomes(tuple(case.name for case in modified))
+    report = _invoke_cli(monkeypatch, capsys, outcomes, attempts=11)
+    assert report["status"] == "failed"
+    assert report["category"] == "harness"
+    assert report["reason"] == "incomplete_smoke_acceptance"
