@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 
 import pytest
-from datetime import UTC, datetime, timedelta
 
 from cal_mcp.request_policy import CacheRecord, MemoryResponseCache
 
@@ -96,7 +96,6 @@ def test_cache_record_is_process_memory_metadata_not_a_new_retrieval() -> None:
     assert hit.cache_hit is True
 
 
-
 @pytest.mark.parametrize("capacity", [True, False, 1.5, -1, "2", None])
 def test_direct_cache_rejects_invalid_capacity_type_or_count(capacity: object) -> None:
     with pytest.raises(ValueError, match="max_entries"):
@@ -105,7 +104,7 @@ def test_direct_cache_rejects_invalid_capacity_type_or_count(capacity: object) -
 
 @pytest.mark.parametrize(
     "ttl",
-    [float("nan"), float("inf"), float("-inf"), 0, -1, True, False, "60", None],
+    [float("nan"), float("inf"), float("-inf"), 10**1000, 0, -1, True, False, "60", None],
 )
 def test_direct_cache_rejects_nonfinite_nonpositive_or_nonnumeric_ttl(ttl: object) -> None:
     with pytest.raises(ValueError, match="ttl_seconds"):
