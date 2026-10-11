@@ -65,6 +65,7 @@ class CalLocalRequestBudgetError(CalClientError):
 
     def __init__(self, remaining_seconds: int) -> None:
         self.remaining_seconds = remaining_seconds
+        self.upstream_reached = False
         super().__init__(
             "CAL-MCP local transport budget exhausted; "
             f"retry after at least {remaining_seconds} seconds"
@@ -526,12 +527,14 @@ class CalHttpClient:
     async def _request_with_retries(self, request: CalRequest) -> CalResponse:
         started_at = self._clock()
         rate_limit_retry_used = False
+        prior_http_response = False
         rate_limit_retry_guard: tuple[float, CalUpstreamError] | None = None
         for attempt in range(self.config.max_retries + 1):
             try:
                 response = await self._request_once(
                     request, rate_limit_retry_guard=rate_limit_retry_guard
                 )
+                prior_http_response = True
             except asyncio.CancelledError:
                 if rate_limit_retry_used:
                     # A previous CAL 429 must stay protective even if the
@@ -563,6 +566,16 @@ class CalHttpClient:
                     exc.cooldown_seconds = cooldown
                 else:
                     self._protect_failed_429_retry(rate_limit_retry_used)
+                raise
+            except CalLocalRequestBudgetError as exc:
+                if rate_limit_retry_used and rate_limit_retry_guard is not None:
+                    # A real CAL 429 was already observed in this operation.
+                    # Never advise retrying before the 60-second circuit breaker.
+                    self._set_rate_limit_cooldown(_RATE_LIMIT_COOLDOWN_SECONDS)
+                    original_429 = rate_limit_retry_guard[1]
+                    original_429.cooldown_seconds = _RATE_LIMIT_COOLDOWN_SECONDS
+                    raise original_429 from exc
+                exc.upstream_reached = prior_http_response
                 raise
             except CalClientError:
                 # The transport can reject a response before returning one,
