@@ -178,7 +178,7 @@ The `python` used above must belong to that installed-wheel environment.
 Importing the module or listing MCP tools does not make CAL requests; invoking
 the twelve representative cases does.
 
-The total ceiling is **25 actual CAL transport attempts per smoke invocation**,
+The total absolute ceiling is **25 actual CAL transport attempts per smoke invocation**,
 enforced inside the server immediately before each transport call. All tools
 share one process with **concurrency 1**, **retries 0**, and the normal bounded
 in-memory successful-response **cache enabled** (cache hits cost zero). The
@@ -186,7 +186,7 @@ client performs sequential tool calls and never enumerates result pages,
 subcorpora, lexemes, links, or pagination. No regular `cal-mcp` launch inherits
 the opt-in smoke limit.
 
-The smoke driver checks `is_error`, every advertised `outputSchema`, the
+The server additionally enforces an **8-start rolling 60-second local budget**. This can reject some of the fixed 11/12 smoke cases locally before CAL is reached; the harness must report such cases as non-OK and must not treat this as a passing release run. A future separately justified bounded scheduling design is needed before release; #262's live 37-token zero-429 gate is still unsatisfied. The absolute cap of 25 remains unchanged. No live smoke was launched by issue #297.\n\nThe smoke driver checks `is_error`, every advertised `outputSchema`, the
 strict structured-error envelope, and the CAL source URL and timestamp on
 successful CAL-backed results. It classifies each attempted case as `ok`,
 `drift`, `unavailable`, or `harness`; it does not copy upstream HTML into
