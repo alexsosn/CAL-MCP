@@ -3,10 +3,13 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import math
 import os
 import re
 import shutil
 import sys
+import time
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
@@ -20,6 +23,10 @@ from mcp import Client, StdioServerParameters
 from mcp.types import CallToolResult, Tool
 
 SmokeCategory = Literal["ok", "drift", "unavailable", "harness", "skipped_dependency"]
+
+# A completed CAL-backed operation may issue multiple bounded transport requests.
+# Leave a full rolling window between such cases until real CAL acceptance is proven.
+_LIVE_CAL_CASE_SPACING_SECONDS = 60.0
 
 _ERROR_ENVELOPE_SCHEMA: dict[str, object] = {
     "type": "object",
@@ -44,6 +51,7 @@ _ERROR_ENVELOPE_SCHEMA: dict[str, object] = {
                         "invalid_input",
                         "network",
                         "upstream_http",
+                        "local_rate_limit",
                         "response_too_large",
                         "content",
                         "parser_drift",
@@ -168,6 +176,10 @@ def evaluate_tool_result(case: SmokeCase, tool: Tool, result: CallToolResult) ->
         kind = error["kind"]
         if kind == "parser_drift":
             return SmokeOutcome(case.name, "drift", "CAL parser drift")
+        if kind == "local_rate_limit":
+            return SmokeOutcome(
+                case.name, "unavailable", "CAL-MCP local admission budget exhausted"
+            )
         if kind in {"network", "upstream_http", "content", "response_too_large"}:
             return SmokeOutcome(case.name, "unavailable", "CAL upstream unavailable or unsafe")
         return SmokeOutcome(case.name, "harness", "unclassified MCP tool failure")
@@ -246,12 +258,24 @@ def _select_one_direct_text_page(parent: dict[str, object]) -> dict[str, object]
 async def evaluate_smoke_cases(
     client: Client,
     cases: tuple[SmokeCase, ...] = DEFAULT_SMOKE_CASES,
+    *,
+    min_cal_case_spacing_seconds: float = 0.0,
+    clock: Callable[[], float] = time.monotonic,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> tuple[SmokeOutcome, ...]:
-    """Run known operations in order, collecting sanitized failures without unbounded follow-up."""
+    """Run fixed cases sequentially, with opt-in offline-testable CAL spacing."""
+    if (
+        isinstance(min_cal_case_spacing_seconds, bool)
+        or not isinstance(min_cal_case_spacing_seconds, (int, float))
+        or not math.isfinite(min_cal_case_spacing_seconds)
+        or not 0 <= min_cal_case_spacing_seconds <= _LIVE_CAL_CASE_SPACING_SECONDS
+    ):
+        raise ValueError("CAL smoke inter-case spacing must be a finite 0–60 seconds")
 
     listed = {tool.name: tool for tool in (await client.list_tools()).tools}
     outcomes: list[SmokeOutcome] = []
     successful: dict[str, dict[str, object]] = {}
+    last_cal_case_finished_at: float | None = None
     for case in cases:
         tool = listed.get(case.tool)
         if tool is None:
@@ -273,15 +297,39 @@ async def evaluate_smoke_cases(
                 outcomes.append(SmokeOutcome(case.name, "drift", "no trusted direct text selector"))
                 continue
             arguments = selected
+        calls_cal = case.tool != "cal_convert_to_code"
+        if calls_cal and last_cal_case_finished_at is not None:
+            remaining = min_cal_case_spacing_seconds - (clock() - last_cal_case_finished_at)
+            if remaining > 0:
+                # Caller cancellation propagates; no retries or deferred work.
+                await sleep(remaining)
         try:
             result = await client.call_tool(case.tool, arguments=arguments)
         except Exception:
             outcomes.append(SmokeOutcome(case.name, "harness", "MCP transport or schema error"))
             continue
+        finally:
+            if calls_cal:
+                last_cal_case_finished_at = clock()
         outcome = evaluate_tool_result(case, tool, result)
         outcomes.append(outcome)
         if outcome.category == "ok" and isinstance(result.structured_content, dict):
             successful[case.name] = result.structured_content
+        if (
+            result.is_error
+            and isinstance(result.structured_content, dict)
+            and isinstance(result.structured_content.get("error"), dict)
+            and (
+                result.structured_content["error"].get("kind") == "local_rate_limit"
+                or (
+                    result.structured_content["error"].get("kind") == "upstream_http"
+                    and result.structured_content["error"].get("status_code") == 429
+                )
+            )
+        ):
+            # Both local admission exhaustion and a real CAL 429 are terminal
+            # backpressure. Do not probe other tools in the same smoke run.
+            break
         if outcome.category == "harness" and outcome.message in {
             "unclassified MCP tool failure",
             "missing structured MCP output or schema",
@@ -321,7 +369,9 @@ async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = "25"
         env["CAL_MCP_LIVE_SMOKE_REPORT_PATH"] = str(count_file)
         async with Client(StdioServerParameters(command=executable, env=env)) as client:
-            outcomes = await evaluate_smoke_cases(client)
+            outcomes = await evaluate_smoke_cases(
+                client, min_cal_case_spacing_seconds=_LIVE_CAL_CASE_SPACING_SECONDS
+            )
         return outcomes, _read_actual_attempts(count_file)
 
 

@@ -92,7 +92,7 @@ def test_live_smoke_workflow_is_separate_and_bounded() -> None:
     workflow = LIVE_SMOKE_WORKFLOW.read_text(encoding="utf-8")
 
     assert "workflow_dispatch:" in workflow
-    assert "schedule:" in workflow
+    assert "schedule:" not in workflow
     assert "live_smoke" in workflow
     assert "pull_request:" not in workflow
 
