@@ -31,6 +31,24 @@ RELEASE_WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 RELEASE_VERIFY_SCRIPT = ROOT / "scripts" / "verify_release_artifact.py"
 
 
+class _FakeSmokeClock:
+    """Advance local fake time without delaying CI or contacting CAL."""
+
+    def __init__(self) -> None:
+        self.now = 100.0
+
+    def __call__(self) -> float:
+        return self.now
+
+    async def sleep(self, seconds: float) -> None:
+        assert seconds >= 0
+        self.now += seconds
+        await asyncio.sleep(0)
+
+    def advance(self, seconds: float) -> None:
+        self.now += seconds
+
+
 def _live_smoke_module() -> ModuleType:
     try:
         return importlib.import_module("cal_mcp.live_smoke")
@@ -180,6 +198,7 @@ def test_live_smoke_failure_classification_is_diagnostic() -> None:
 @pytest.mark.anyio
 async def test_live_smoke_client_enforces_request_budget_and_safe_config() -> None:
     module = _live_smoke_module()
+    clock = _FakeSmokeClock()
 
     async def transport(request: CalRequest, config: object) -> CalResponse:
         del request, config
@@ -191,13 +210,18 @@ async def test_live_smoke_client_enforces_request_budget_and_safe_config() -> No
             retrieved_at=datetime(2026, 9, 6, tzinfo=UTC),
         )
 
-    client = module.BudgetCalHttpClient(transport=transport)
+    client = module.BudgetCalHttpClient(transport=transport, clock=clock, sleep=clock.sleep)
     assert client.config.max_concurrency == 1
     assert client.config.max_retries == 0
     assert client.config.cache_enabled is False
+    assert client.config.min_request_interval_seconds == 3.0
+    assert client.config.max_cal_attempts_per_60s == 8
 
     try:
         for index in range(module.MAX_CAL_REQUESTS):
+            if index == 8:
+                # After eight starts at t=100..121, let the first rolling slot expire.
+                clock.advance(39)
             result = await client.fetch(
                 CalRequest(method="GET", path="test", params=(("n", str(index)),)),
                 parser=lambda response: response.body,
@@ -205,6 +229,8 @@ async def test_live_smoke_client_enforces_request_budget_and_safe_config() -> No
             )
             assert result.value == b"ok"
 
+        # Distinguish the absolute nine-attempt cap from local rolling refusal.
+        clock.advance(60)
         with pytest.raises(module.LiveSmokeBudgetExceeded):
             await client.fetch(
                 CalRequest(method="GET", path="test", params=(("n", "overflow"),)),
@@ -302,6 +328,7 @@ async def test_live_smoke_runner_preserves_process_interruptions(
 @pytest.mark.anyio
 async def test_live_smoke_budget_failure_records_nine_consumed_requests() -> None:
     module = _live_smoke_module()
+    clock = _FakeSmokeClock()
     upstream_calls = 0
 
     async def transport(request: CalRequest, config: object) -> CalResponse:
@@ -319,13 +346,17 @@ async def test_live_smoke_budget_failure_records_nine_consumed_requests() -> Non
     async def exhaust_budget(client: object) -> None:
         typed_client = client
         for index in range(module.MAX_CAL_REQUESTS + 1):
+            if index == 8:
+                clock.advance(39)
+            elif index == 9:
+                clock.advance(60)
             await typed_client.fetch(
                 CalRequest(method="GET", path="test", params=(("n", str(index)),)),
                 parser=lambda response: response.body,
                 cache_namespace="release-budget-failure-test",
             )
 
-    client = module.BudgetCalHttpClient(transport=transport)
+    client = module.BudgetCalHttpClient(transport=transport, clock=clock, sleep=clock.sleep)
     case = module.SmokeCase(name="synthetic_budget", operation=exhaust_budget)
     try:
         with pytest.raises(module.LiveSmokeFailure) as exc_info:
