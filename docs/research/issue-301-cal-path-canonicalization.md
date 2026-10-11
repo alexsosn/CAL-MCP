@@ -22,3 +22,7 @@ These are ambiguities, **not a demonstrated off-origin SSRF**. The current origi
 CAL public service adapters use named relative script endpoints and move dynamic ids, transliteration and selector values through `CalRequest.params`/`data` rather than by percent-encoded path components. Keep bare `entry.php`, leading-single-slash `/entry.php`, and multi-component `cgi-bin/getlex.php` valid; there is no reason to stop slash-separated legitimate paths. Do not change URL encoding of repeated params/form fields or networking, retries, pacing, cache, and MCP public schemas.
 
 No claim about upstream CAL quota; #262's full 37-token zero429 acceptance and #15 publishing gate remain unmet.
+
+## Skeptical follow-up: leading spaces
+
+The initial fix covered C0 controls, but an independently checked standard-library example demonstrated that `urlsplit(" entry.php").path == "entry.php"`, and `urljoin("https://cal.huc.edu/", " entry.php")` targets `/entry.php`. Plain ASCII space is not a C0 control. Four supplemental offline RED tests reproduced acceptance of leading / embedded ASCII whitespace and a nonbreaking space (CI run 38131127861: 4 failed, 2,233 passed). The raw-path guard now rejects whitespace via `str.isspace()` before URL parsing; spaces in typed query/form values remain supported. Triple-leading slashes and interior empty segments were also regression-tested.
