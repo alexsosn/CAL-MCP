@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** pre-release. The current public contract contains 36 tools, including adapter-owned deterministic input conversion and the current CAL-backed research operations documented below. A versioned package release and Agora registration are separate follow-up work.
+> **Status:** released v0.1.0. The [published tagged release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) exposes 36 public tools, including deterministic input conversion and CAL-backed research operations. Agora registration is a separate downstream integration, not required to use the standalone server.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
@@ -40,7 +40,7 @@ CAL's text-browser **show all** presentation is deliberately **not exposed** as 
 ## Choose documentation by task
 
 - [Getting started](getting-started.md) — common research workflows and how to compose tools explicitly.
-- [Installation](installation.md) — current pre-release source installation and entry points.
+- [Installation](installation.md) — pinned released package installation, source development setup and entry points.
 - [Configuration](configuration.md) — conservative request, retry, response-size, and cache policy.
 - [CAL identifiers](concepts/cal-identifiers.md) — file/subtext/category IDs, coordinates, and stability boundaries.
 - [Input and transliteration](concepts/input-and-transliteration.md) — deterministic CAL/Unicode/Hebrew/Syriac and researched dedicated-script input conversion.
@@ -50,6 +50,7 @@ CAL's text-browser **show all** presentation is deliberately **not exposed** as 
 - [Corpus-context guide](guides/corpus-context.md) — text discovery, pages, coordinates, line comments, and token analysis.
 - [Reproducible citations guide](guides/reproducible-citations.md) — recording CAL data and retrieval provenance.
 - [Standalone MCP](integrations/standalone-mcp.md) — stdio process/launch contract independent of Agora.
+- [Agora integration handoff](integrations/agora.md) — authoritative v0.1.0 upstream release identity and bounded downstream smoke.
 - [Limitations](limitations.md) — upstream dependency, boundedness, deferred surfaces, and non-capabilities.
 
 ## Tool reference
