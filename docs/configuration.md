@@ -136,6 +136,7 @@ from cal_mcp.client import CalClientConfig, CalHttpClient
 config = CalClientConfig(
     max_concurrency=1,
     max_retries=0,
+    min_request_interval_seconds=3.0,
     max_response_bytes=1024 * 1024,
     cache_enabled=False,
 )
