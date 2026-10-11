@@ -479,6 +479,16 @@ class CalHttpClient:
             raise CalRequestValidationError("CAL request method must be a string")
         if type(request.path) is not str:
             raise CalRequestValidationError("CAL request path must be a string")
+        # urlsplit strips tabs/newlines, while URL resolution can normalize
+        # backslashes and encoded delimiters differently downstream.
+        if (
+            any(ord(char) < 0x20 or ord(char) == 0x7F for char in request.path)
+            or "\\" in request.path
+            or "%" in request.path
+        ):
+            raise CalRequestValidationError(
+                "CAL request path must use unambiguous literal endpoint components"
+            )
 
         method = request.method.upper().strip()
         if method not in {"GET", "POST"}:
@@ -494,8 +504,12 @@ class CalHttpClient:
                 "query parameters must be supplied via CalRequest.params"
             )
 
+        # Exactly one optional leading slash is harmless, but multiple
+        # leading slashes and empty/dot segments can alias another URL path.
+        if request.path.startswith("//"):
+            raise CalRequestValidationError("CAL request path must stay within the CAL site")
         path = parsed.path.lstrip("/")
-        if not path or path == ".." or path.startswith("../") or "/../" in path:
+        if not path or any(segment in {"", ".", ".."} for segment in path.split("/")):
             raise CalRequestValidationError("CAL request path must stay within the CAL site")
 
         params = self._validate_request_pairs("params", request.params)
