@@ -273,14 +273,16 @@ async def evaluate_smoke_cases(
         raise ValueError("CAL smoke inter-case spacing must be a finite 0–60 seconds")
 
     listed = {tool.name: tool for tool in (await client.list_tools()).tools}
+    # The entire fixed release suite is already known. Do not spend any CAL
+    # attempts if a missing tool makes successful smoke acceptance impossible.
+    first_missing = next((case for case in cases if case.tool not in listed), None)
+    if first_missing is not None:
+        return (SmokeOutcome(first_missing.name, "harness", "required public MCP tool missing"),)
     outcomes: list[SmokeOutcome] = []
     successful: dict[str, dict[str, object]] = {}
     last_cal_case_finished_at: float | None = None
     for case in cases:
-        tool = listed.get(case.tool)
-        if tool is None:
-            outcomes.append(SmokeOutcome(case.name, "harness", "required public MCP tool missing"))
-            continue
+        tool = listed[case.tool]
         arguments = case.arguments
         if case.from_case is not None:
             parent = successful.get(case.from_case)
@@ -291,7 +293,7 @@ async def evaluate_smoke_cases(
                 continue
             if case.tool != "cal_text_page":
                 outcomes.append(SmokeOutcome(case.name, "harness", "unsupported smoke follow-up"))
-                continue
+                break
             selected = _select_one_direct_text_page(parent)
             if selected is None:
                 outcomes.append(SmokeOutcome(case.name, "drift", "no trusted direct text selector"))
@@ -332,16 +334,9 @@ async def evaluate_smoke_cases(
             # Both local admission exhaustion and a real CAL 429 are terminal
             # backpressure. Do not probe other tools in the same smoke run.
             break
-        if outcome.category == "harness" and outcome.message in {
-            "unclassified MCP tool failure",
-            "missing structured MCP output or schema",
-            "MCP output schema mismatch",
-            "malformed MCP structured error",
-            "untrusted MCP error identity or source",
-        }:
-            # A failed or unrecognized error channel may mean that the bounded server
-            # has exhausted its budget. Stop rather than repeatedly calling a broken
-            # process; ordinary schema/provenance drift can still be aggregated.
+        if outcome.category == "harness":
+            # Any defective MCP harness/schema result already fails publication.
+            # Stop independently of diagnostic wording; CAL drift remains aggregatable.
             break
     return tuple(outcomes)
 
