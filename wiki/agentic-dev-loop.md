@@ -92,6 +92,13 @@ PR body must state:
 
 Large PRs spanning independent CAL surfaces should be split unless the issue demonstrates an inseparable contract change.
 
+### Safe issue references for PRs and merge commits
+
+- **Fully completed** issue: `Fixes #N`, `Closes #N`, or `Resolves #N` is appropriate only after its explicit acceptance gates pass and issue closure is intended.
+- **Partially addressed** or blocked issue: use `Issue #N remains open` and state the precise unsatisfied acceptance gate. An ordinary `#N` link is fine; a closing-keyword directive is not.
+- Never put a closing keyword directly before a blocked issue number **even in negated wording** such as “does not close #N”; that phrase risks issue-state automation interpreting a closure reference.
+- Check the PR description, adversarial review text, and final squash/merge-commit message for inadvertent closing directives before finalizing. Do not substitute a code-review ACCEPT for an unsatisfied live release criterion.
+
 ## 7. Independent review
 
 The review agent should not assume the implementation agent's design is correct. Review from the issue and repository invariants.
@@ -122,11 +129,12 @@ The review agent should not assume the implementation agent's design is correct.
 
 After merge:
 
-1. close the issue if not auto-closed;
-2. update dependent issues only if assumptions changed;
-3. create a focused follow-up issue for discovered out-of-scope work;
-4. ensure `research.md`/decisions reflect any new durable evidence;
-5. next agent resumes from repository/issue state, not the prior conversation.
+1. close the implemented issue only if its acceptance criteria were actually satisfied;
+2. **Verify blocked issue states after merge**. Explicitly inspect every known release-blocking/partially addressed issue referenced in the PR or merge commit. If an unmet issue was closed unexpectedly, reopen it promptly and document the GitHub event evidence; never treat issue closure as evidence that the live gate passed;
+3. update dependent issues only if assumptions changed;
+4. create a focused follow-up issue for discovered out-of-scope work;
+5. ensure `research.md`/decisions reflect any new durable evidence;
+6. next agent resumes from repository/issue state, not the prior conversation.
 
 ## 9. Failure and pause states
 
