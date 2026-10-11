@@ -57,3 +57,10 @@ def test_decision_d024_states_present_real_client_default_without_rewriting_hist
     assert "transport also selects 3 seconds" in d024
     assert "transport also selects 1 second" not in d024
     assert "STILL encountered 429" in d024
+
+
+def test_documented_direct_http_example_must_opt_in_to_safe_pacing() -> None:
+    guide = (ROOT / "docs" / "configuration.md").read_text(encoding="utf-8")
+    example = guide.split("## Example", maxsplit=1)[1].split("## ", maxsplit=1)[0]
+    assert "CalHttpClient(config=config)" in example
+    assert "min_request_interval_seconds=3.0," in example
