@@ -60,11 +60,17 @@ class CalUpstreamError(CalClientError):
     """Raised for non-successful CAL HTTP responses."""
 
     def __init__(
-        self, status_code: int, url: str, *, retry_after_seconds: int | None = None
+        self,
+        status_code: int,
+        url: str,
+        *,
+        retry_after_seconds: int | None = None,
+        cooldown_seconds: int | None = None,
     ) -> None:
         self.status_code = status_code
         self.url = url
         self.retry_after_seconds = retry_after_seconds
+        self.cooldown_seconds = cooldown_seconds
         super().__init__(f"CAL returned HTTP {status_code} for {url}")
 
 
@@ -512,9 +518,9 @@ class CalHttpClient:
                 # A 429 retry can be canceled by its deadline while queued.
                 # That rejection is terminal and must also protect later calls.
                 if exc.status_code == 429:
-                    self._set_rate_limit_cooldown(
-                        max(_RATE_LIMIT_COOLDOWN_SECONDS, exc.retry_after_seconds or 0)
-                    )
+                    cooldown = max(_RATE_LIMIT_COOLDOWN_SECONDS, exc.retry_after_seconds or 0)
+                    self._set_rate_limit_cooldown(cooldown)
+                    exc.cooldown_seconds = cooldown
                 raise
 
             if response.status_code == 429:
@@ -535,8 +541,14 @@ class CalHttpClient:
                     self._set_rate_limit_cooldown(hint)
                     await self._sleep(hint)
                     continue
-                self._set_rate_limit_cooldown(max(_RATE_LIMIT_COOLDOWN_SECONDS, hint or 0))
-                raise CalUpstreamError(429, response.url, retry_after_seconds=hint)
+                cooldown = max(_RATE_LIMIT_COOLDOWN_SECONDS, hint or 0)
+                self._set_rate_limit_cooldown(cooldown)
+                raise CalUpstreamError(
+                    429,
+                    response.url,
+                    retry_after_seconds=hint,
+                    cooldown_seconds=cooldown,
+                )
             if response.status_code in _TRANSIENT_STATUS_CODES:
                 if attempt < self.config.max_retries:
                     await self._backoff(attempt)
