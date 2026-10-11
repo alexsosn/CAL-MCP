@@ -196,8 +196,10 @@ diagnostics. The JSON report contains per-case outcomes,
 `actual_cal_transport_attempts`, and `max_cal_transport_attempts`.
 A missing or malformed server attempt report is a failing harness error, never
 an assumed zero. The release runner also checks that all twelve fixed representative
-cases appear **exactly once and in their declared order**, that the fixed matrix
-still contains at least eleven CAL-backed calls and one local converter, and that
+cases appear **exactly once and in their declared order**, that their
+tool names, fixed selectors, expected statuses, and provenance/dependency
+settings match a **separately pinned v0.1 smoke identity contract**, that the fixed
+matrix still contains eleven CAL-backed calls and one local converter, and that
 the fresh server observed at least one actual CAL transport start. An empty or
 all-successful prefix, duplicated/reordered case, truncated required matrix or
 zero-attempt full result is a **failing harness condition**, not a passing smoke.
