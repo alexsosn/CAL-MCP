@@ -2,7 +2,7 @@
 
 CAL-MCP is designed to run as a normal local MCP server without Agora. The v0.1 release coordinate is `cal-mcp==0.1.0`, and the required v0.1 transport is stdio.
 
-Public package-index availability is established by the successful tagged release workflow. Before that publication step succeeds, the same server can be run from a source/development install without changing its MCP contract.
+The [v0.1.0 tagged release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) was published after the [successful release workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487), including the PyPI publication step. Source/development installs remain available, but can contain changes not included in the immutable release.
 
 ## Process contract
 
@@ -45,7 +45,7 @@ arguments: -m cal_mcp
 transport: stdio
 ```
 
-The client should launch the command in an environment where the CAL-MCP package and its dependencies are installed. A downstream integration should treat the successful publication of `cal-mcp==0.1.0` as the availability check rather than inferring publication from the repository version alone.
+The client should launch the command in an environment where CAL-MCP and its dependencies are installed. Downstream metadata should pin the published `cal-mcp==0.1.0` package, not infer a release from the version string in a source checkout.
 
 ## Proxy and certificate environments
 
@@ -122,6 +122,6 @@ When the MCP session ends, the client should close or terminate the stdio server
 
 ## Release pin and Agora status
 
-The v0.1 downstream coordinates are `cal-mcp==0.1.0`, `command: cal-mcp`, no arguments, and stdio transport. The tagged release workflow verifies the clean wheel and sdist, then downloads the exact built wheel into a fresh environment and tests representative live CAL operations through its installed stdio MCP server (at most 25 actual transport attempts). It checks MCP output schemas, structured errors, provenance and measured request counts before allowing publication. The new smoke gate must pass live acceptance for issue #157 before v0.1 can be published; repository merge alone is not evidence that PyPI publication completed.
+The v0.1 downstream coordinates are `cal-mcp==0.1.0`, `command: cal-mcp`, no arguments, and stdio transport. The tagged release workflow verifies the clean wheel and sdist, then downloads the exact built wheel into a fresh environment and tests representative live CAL operations through its installed stdio MCP server (at most 25 actual transport attempts). It checks MCP output schemas, structured errors, provenance and measured request counts before allowing publication. The fixed smoke gate has passed on the v0.1.0 release workflow, and PyPI publication succeeded. A later repository merge alone never updates this immutable release.
 
-Agora registration is a separate downstream task in issue #16. CAL-MCP does not import Agora and does not require it to operate. After publication, Agora should remain discovery/install/launch metadata around the same standalone server rather than a second CAL implementation.
+Agora registration remains a separate downstream task in [issue #16](https://github.com/alexsosn/CAL-MCP/issues/16) and [Agora#222](https://github.com/alexsosn/Agora/issues/222). CAL-MCP does not import Agora and does not require it to operate. The [versioned Agora handoff](agora.md) specifies upstream metadata and one bounded representative smoke, not an already verified Agora client installation.

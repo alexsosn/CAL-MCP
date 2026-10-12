@@ -2,7 +2,7 @@
 
 The v0.1 release coordinate is `cal-mcp==0.1.0`. The repository release workflow publishes that exact version from the `v0.1.0` tag after deterministic tests, built-artifact validation, and the bounded CAL live smoke pass.
 
-Public package-index availability should be treated as established only after the tagged release workflow's PyPI publication step succeeds. Until then, install from a repository checkout rather than assuming `cal-mcp==0.1.0` is already available on PyPI.
+The [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published. Its [tagged workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487) passed fresh wheel/sdist installation, fixed bounded CAL smoke and the PyPI publication step. The immutable release is distinct from later unreleased changes to `main`.
 
 ## Requirements
 
@@ -13,7 +13,7 @@ Importing or introspecting the server does not contact CAL. Normal automated tes
 
 ## Install the released package
 
-After v0.1.0 has been published to PyPI, install the exact release pin with:
+Install the exact published release pin with:
 
 ```bash
 python -m pip install "cal-mcp==0.1.0"
@@ -23,7 +23,7 @@ The exact package/version pair is the downstream integration coordinate for the 
 
 ## Install from a repository checkout
 
-For development, or before the tagged package has been published, install from the CAL-MCP repository root:
+For development against unreleased source changes, install from the CAL-MCP repository root:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -83,9 +83,9 @@ the parent environment. Avoid placing proxy credentials in logs or issue reports
 
 ## Release validation
 
-The v0.1 release pipeline builds one wheel and one source distribution. Before publication it validates the source archive's embedded package identity/required root metadata, then installs the exact wheel and exact source distribution independently in fresh virtual environments. Each installed artifact launches its `cal-mcp` executable over stdio and must expose the same release version and frozen 36-tool MCP surface. The release job then downloads the **exact wheel** produced by the preceding build job, installs it into a fresh environment without a source checkout, and executes the 12-case MCP stdio smoke through that installed executable. Its server enforces a hard **25-transport-attempt** cap, reports the measured number of attempts, and validates CAL provenance, output schemas, and structured error results. PyPI publication depends on that live job succeeding. The weekly/manual drift workflow uses the same suite against a wheel built from its checked-out revision. The installed-wheel release smoke and independent review for issue #157 have passed.
+The v0.1 release pipeline builds one wheel and one source distribution. Before publication it validates the source archive's embedded package identity/required root metadata, then installs the exact wheel and exact source distribution independently in fresh virtual environments. Each installed artifact launches its `cal-mcp` executable over stdio and must expose the same release version and frozen 36-tool MCP surface. The release job then downloads the **exact wheel** produced by the preceding build job, installs it into a fresh environment without a source checkout, and executes the 12-case MCP stdio smoke through that installed executable. Its server enforces a hard **25-transport-attempt** cap, reports the measured number of attempts, and validates CAL provenance, output schemas, and structured error results. PyPI publication depends on that live job succeeding. The manual-only drift workflow uses the same suite against a wheel built from its checked-out revision. The installed-wheel release smoke and independent review for issue #157 have passed.
 
-Merging the release preparation PR does not itself prove that the package is publicly available. The tagged release workflow and its PyPI publication result are the publication evidence.
+The v0.1.0 package was actually published through the linked tagged workflow. A later source merge alone never changes the already published release artifacts.
 
 ## Development checks
 
@@ -102,7 +102,7 @@ The normal suite uses reduced fixtures and mocked transports; it must not rely o
 
 ## Agora status
 
-Agora registration is a separate downstream task in issue #16. CAL-MCP remains a standalone stdio MCP server and does not import or require Agora. Once v0.1.0 publication is confirmed, Agora can pin the exact `cal-mcp==0.1.0` coordinate and `cal-mcp` executable without changing the runtime implementation.
+Agora registration remains downstream work in [issue #16](https://github.com/alexsosn/CAL-MCP/issues/16) and [Agora#222](https://github.com/alexsosn/Agora/issues/222). CAL-MCP remains a standalone stdio MCP server and does not import or require Agora. The published v0.1.0 release can be pinned as `cal-mcp==0.1.0` with executable `cal-mcp`; see the [Agora handoff](integrations/agora.md) for an explicitly unverified downstream client-launch proposal and one bounded smoke.
 
 ## Data boundary
 
