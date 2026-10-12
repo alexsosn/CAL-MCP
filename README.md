@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** active pre-release development. The current v0.1 candidate exposes 36 public tools: one deterministic local CAL-code conversion tool plus 35 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies. No versioned release has been published yet.
+> **Status:** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) and available as [`cal-mcp==0.1.0` on PyPI](https://pypi.org/project/cal-mcp/0.1.0/). The released surface exposes 36 public tools: one deterministic local CAL-code conversion tool plus 35 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -93,7 +93,7 @@ Equivalent module entry point:
 python -m cal_mcp
 ```
 
-No stable package-index/release command is documented yet; issue #15 owns the published v0.1 release gate. See [`docs/installation.md`](docs/installation.md) and [`docs/integrations/standalone-mcp.md`](docs/integrations/standalone-mcp.md).
+Install the published release with `python -m pip install "cal-mcp==0.1.0"`, then launch `cal-mcp` over stdio. See [`docs/installation.md`](docs/installation.md) and [`docs/integrations/standalone-mcp.md`](docs/integrations/standalone-mcp.md). The [publication record](docs/research/issue-15-publication.md) binds the immutable release to its validated distributions; later changes on `main` do not alter those files.
 
 ## Development checks
 
