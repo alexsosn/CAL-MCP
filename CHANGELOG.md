@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — Unreleased
+## 0.1.0 — 2026-10-12
 
 First standalone release of CAL-MCP, a read-only MCP adapter over the Comprehensive Aramaic Lexicon (CAL).
 
