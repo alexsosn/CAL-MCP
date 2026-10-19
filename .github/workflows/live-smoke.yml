@@ -1,10 +1,8 @@
 name: Live CAL drift smoke
 
 on:
-  # Manual on main; this isolated verification branch also runs once on push.
+  # Manual-only until #262 demonstrates a CAL-accepted bounded live rate.
   workflow_dispatch:
-  push:
-    branches: [smoke/2026-10-19-parser-drift]
 
 permissions:
   contents: read
