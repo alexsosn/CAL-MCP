@@ -59,6 +59,7 @@ def test_released_user_documentation_no_longer_calls_v010_prerelease() -> None:
     assert "https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0" in installation
     assert "manual-only" in installation
 
+
 def test_agora_guide_reports_merged_integration_with_client_evidence_limits() -> None:
     """Issue #16: an already merged downstream plugin must not be called hypothetical."""
     doc = AGORA_DOC.read_text(encoding="utf-8")
@@ -66,8 +67,9 @@ def test_agora_guide_reports_merged_integration_with_client_evidence_limits() ->
     assert "merged into Agora main" in doc
     assert "candidate v1.1" in doc
     assert "not yet published" in doc
-    assert "Codex" in doc and "verified" in doc
-    assert "Claude" in doc and "community" in doc
+    assert "generated **Codex** stdio path is **verified**" in doc
+    assert "generated **Claude** path" in doc
+    assert "remains **community**" in doc
     assert "36" in doc and "cal_lexicon_lookup" in doc
     assert "not yet implemented" not in doc
     assert "not yet verified as an Agora-generated" not in doc
