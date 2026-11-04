@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 0.2.0.dev0 development source
+
+- Add `cal_bibliography_recent()` for CAL's current ordered, duplicate-preserving recent bibliography listing, with one fixed bounded GET, no year filter/pagination/traversal, full existing record/link metadata and provenance. CAL owns its published years; it currently returns 2021–2025 in 2026.
+- Distinguish the evolving development-source 37-tool registry from the **immutable** v0.1.0 36-tool manifest. Future source builds use the current manifest; this change does not alter published `cal-mcp==0.1.0` distributions or tagged tests.
+- As a post-v0.1 operation, the new tool is unavailable in the v0.1.0 release until a newer package version passes separate release gates.
+
 ## 0.1.0 — 2026-10-12
 
 First standalone release of CAL-MCP, a read-only MCP adapter over the Comprehensive Aramaic Lexicon (CAL).
