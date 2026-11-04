@@ -182,8 +182,9 @@ mcp = CalMCPServer(
         "cal_bibliography_authors to discover exact author choices, then "
         "cal_bibliography_author for one selected author. Use cal_bibliography_keyword for "
         "one exact CAL text/subject bibliography tag and cal_bibliography_lemma for one exact "
-        "CAL lemma key. Use cal_bibliography_recent for the current ordered CAL recent-"
-        "bibliography snapshot, without a year selector. Use cal_dictionary_collation for CAL's stored lemma correspondences "
+        "CAL lemma key. Use cal_bibliography_recent for the current ordered CAL "
+        "recent-bibliography snapshot, without a year selector. Use "
+        "cal_dictionary_collation for CAL's stored lemma correspondences "
         "for one explicit dictionary page reference. Use cal_targum_parallel for one biblical "
         "verse across current CAL Targum readings, cal_targum_concordance for Targum-specific "
         "lemma counts; follow one returned row with cal_targum_concordance_examples using its "
@@ -782,7 +783,8 @@ async def cal_bibliography_recent(
     CAL, not the caller or local date, chooses which five years are shown. No year
     filter or pagination is available. Every source record and linked tag remains
     in CAL order, including repeated-looking records. One explicit call submits
-    at most one new logical CAL request; a completed cache hit causes no request.
+    at most one new logical CAL request; a completed cache hit performs no new
+    upstream I/O.
     """
 
     client = ctx.request_context.lifespan_context.client
