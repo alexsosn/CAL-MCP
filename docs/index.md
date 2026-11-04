@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** released v0.1.0. The [published tagged release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) contains 36 tools, including deterministic input conversion and CAL-backed research operations. Agora registration is a separate downstream integration, not required to use the standalone server.
+> **Status:** [published v0.1.0](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) contains 36 tools. Unreleased 0.2.0 development source adds a 37th tool, `cal_bibliography_recent`; this is not available with the `cal-mcp==0.1.0` pin. Agora registration is a separate downstream integration.
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
@@ -10,7 +10,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 
 **Audited against CAL's current public research surfaces: 2026-09-12.**
 
-| CAL research area | v0.1 status | CAL-MCP surface |
+| CAL research area | Status | CAL-MCP surface |
 | --- | --- | --- |
 | Deterministic supported-script / Unicode input conversion to CAL code | **Implemented as adapter-owned deterministic preprocessing** | [`cal_convert_to_code`](concepts/input-and-transliteration.md); performs no CAL request |
 | Lexicon/root/headword/full-form lookup, bounded lexicon prefix browsing, and explicit linked-citation full context | **Implemented** | [`cal_lexicon_lookup`, `cal_lexicon_citation_context`](tools/lexicon.md) plus [`cal_lexicon_browse`](tools/lexicon-browse.md); browse returns one CAL page and an explicit validated continuation instead of traversing automatically |
@@ -25,7 +25,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 | Browse one Targum source and inspect words | **Intentionally composed** | Use the ordinary [text tools](tools/texts.md), then [token analysis](tools/token-analysis.md); CAL itself links Targum sources into the general text browser. |
 | Syriac text-category discovery, grouped-text follow-up, missing-from-*A Syriac Lexicon* lists, MT/Peshitta comparison | **Implemented** | [`cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel`](tools/syriac.md) |
 | Syriac citations from texts not online | **Intentionally composed** | Use the generic [external-citation workflow](tools/external-citations.md) with the Syriac dialect rather than a duplicate Syriac-only tool. |
-| Bibliography: CAL's “five most recent years” snapshot | **Deferred from v0.1** | Tracked separately in [issue #39](https://github.com/alexsosn/CAL-MCP/issues/39); its aggregate window/size semantics require a focused research/TDD ticket. |
+| Bibliography: CAL's “five most recent years” snapshot | **Unreleased 0.2.0 development source; absent from v0.1.0** | [`cal_bibliography_recent()`](tools/bibliography.md) retrieves one CAL-ordered complete snapshot with no year selector, deduplication, or archive traversal. |
 | Legacy/static bibliography addenda and archive documents | **Reference material, not an MCP operation** | CAL-MCP does not wrap static documents merely to increase tool count. |
 
 ## Known current reachability gaps
@@ -33,7 +33,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 An **Implemented** capability above means the named research task is supported; it does not mean every follow-up link rendered by CAL is MCP-followable. The route-level audit keeps the remaining gaps explicit rather than treating a preserved URL as a supported operation:
 
 - [#109](https://github.com/alexsosn/CAL-MCP/issues/109) — Targum concordance/reflex **supporting examples** are returned as validated links but are not yet MCP-followable.
-- [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — the bibliography **recent five-years snapshot** is still missing; its focused research/TDD work is now eligible after [v0.1.0 publication](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0), but remains a separate post-release capability and is not part of the immutable v0.1.0 tool contract.
+- [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — recent-years bibliography was excluded from the immutable v0.1.0 release; its separately implemented development-source tool requires validation/review before a future release.
 
 CAL's text-browser **show all** presentation is deliberately **not exposed** as a separate MCP operation because it removes the page bound. Use bounded `cal_text_page(..., page=...)` calls and explicit returned page navigation instead.
 
