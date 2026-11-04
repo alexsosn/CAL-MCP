@@ -1,0 +1,92 @@
+name: Issue 39 one-shot validation (remove after evidence)
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  red-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install offline test dependencies
+        run: python -m pip install -e ".[dev]"
+      - name: Confirm committed pre-production tests fail on missing feature
+        shell: bash
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/cal-mcp-red" 94f43cf3b5c16f56e92683458b90bb7fb9808d25
+          cd "$RUNNER_TEMP/cal-mcp-red"
+          set +e
+          PYTHONPATH="$RUNNER_TEMP/cal-mcp-red/src" python -m pytest -q tests/test_bibliography_recent.py > "$RUNNER_TEMP/red.log" 2>&1
+          outcome="$?"
+          set -e
+          if [[ "$outcome" -eq 0 ]] || ! grep -q "cannot import name 'parse_recent_bibliography_page'" "$RUNNER_TEMP/red.log"; then
+            echo "Unexpected RED result (do not print upstream data):"
+            cat "$RUNNER_TEMP/red.log"
+            exit 1
+          fi
+          echo "RED proved: pre-production tests cannot import the new parser."
+
+  installed-wheel-smoke:
+    needs: red-evidence
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Offline lint, static typing and full test gate
+        run: |
+          python -m pip install -e ".[dev]"
+          ruff check .
+          ruff format --check .
+          mypy
+          pytest -q
+      - name: Build and install current source wheel in a fresh venv
+        shell: bash
+        run: |
+          python -m build --outdir dist
+          python -m venv "$RUNNER_TEMP/cal-mcp-issue39-venv"
+          "$RUNNER_TEMP/cal-mcp-issue39-venv/bin/python" -m pip install dist/*.whl
+      - name: One caller-triggered installed-MCP recent-bibliography live smoke
+        shell: bash
+        run: |
+          export CAL_MCP_E2E_EXECUTABLE="$RUNNER_TEMP/cal-mcp-issue39-venv/bin/cal-mcp"
+          "$RUNNER_TEMP/cal-mcp-issue39-venv/bin/python" - <<'PY'
+          import asyncio
+          import os
+          from mcp import Client, StdioServerParameters
+
+          async def main():
+              params = StdioServerParameters(command=os.environ["CAL_MCP_E2E_EXECUTABLE"])
+              async with Client(params, raise_exceptions=False) as client:
+                  names = {t.name for t in (await client.list_tools()).tools}
+                  assert len(names) == 37 and "cal_bibliography_recent" in names
+                  result = await client.call_tool("cal_bibliography_recent", {})
+                  assert not result.is_error, "CAL recent-bibliography returned a structured failure"
+                  data = result.structured_content
+                  assert isinstance(data, dict), "No structured response"
+                  assert data.get("heading") == "CAL Recent Bibliography"
+                  records = data.get("records")
+                  assert isinstance(records, list) and records
+                  assert all(isinstance(r, dict) and isinstance(r.get("citation"), str)
+                             and r["citation"] for r in records)
+                  provenance = data.get("provenance")
+                  assert isinstance(provenance, dict)
+                  assert provenance.get("source") == "CAL"
+                  assert provenance.get("source_url") == "https://cal.huc.edu/getrecentbib.php"
+                  assert provenance.get("retrieved_at")
+                  assert provenance.get("operation") == "bibliography_recent"
+                  print(f"Installed-wheel user-facing MCP smoke PASS: {len(records)} records; one tool invocation")
+
+          asyncio.run(main())
+          PY
