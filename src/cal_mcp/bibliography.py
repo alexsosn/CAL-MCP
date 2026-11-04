@@ -96,6 +96,20 @@ class BibliographyResult:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class BibliographyRecentResult:
+    heading: str
+    records: tuple[BibliographyRecord, ...]
+    provenance: BibliographyProvenance
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "heading": self.heading,
+            "records": [_record_to_dict(item) for item in self.records],
+            "provenance": _provenance_to_dict(self.provenance),
+        }
+
+
 @dataclass(slots=True)
 class _OpenOption:
     value: str
@@ -200,6 +214,7 @@ class _BibliographyHTMLParser(HTMLParser):
         self._heading_parts: list[str] | None = None
         self._card: _CardBuilder | None = None
         self._title_depth = 0
+        self.has_pagination_control = False
 
     @property
     def incomplete(self) -> bool:
@@ -212,6 +227,16 @@ class _BibliographyHTMLParser(HTMLParser):
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         attributes = dict(attrs)
+        if tag == "form":
+            self.has_pagination_control = True
+        if tag in {"a", "link"}:
+            rel = (attributes.get("rel") or "").lower().split()
+            href = attributes.get("href") or ""
+            query = parse_qs(urlsplit(href).query, keep_blank_values=True)
+            if "next" in rel or "prev" in rel or (
+                set(query) & {"page", "offset", "cursor", "start", "limit"}
+            ):
+                self.has_pagination_control = True
         if self._card is not None and tag in _LEGACY_DOCUMENT_TAGS:
             self._card.has_legacy_document = True
         if tag == "title":
@@ -439,9 +464,46 @@ def parse_bibliography_page(response: CalResponse) -> BibliographyPage:
     return BibliographyPage(heading=heading, records=tuple(parser.records))
 
 
+def parse_recent_bibliography_page(response: CalResponse) -> BibliographyPage:
+    """Read CAL's complete recent-bibliography snapshot without inferring year groups."""
+    parser = _BibliographyHTMLParser(response.url)
+    parser.feed(response.body.decode("utf-8", errors="replace"))
+    parser.close()
+
+    if parser.incomplete:
+        raise BibliographyParseError("CAL recent bibliography contains incomplete semantic markup")
+    if parser.headings != ["CAL Recent Bibliography"]:
+        raise BibliographyParseError("CAL recent bibliography lacks one recognizable heading")
+    if parser.has_pagination_control:
+        raise BibliographyParseError("CAL recent bibliography exposes unsupported pagination")
+    if _EMPTY_RESULT_RE.search(_clean_text(" ".join(parser.all_parts))) is not None:
+        raise BibliographyParseError("CAL recent bibliography has no researched empty state")
+    if not parser.records:
+        raise BibliographyParseError("CAL recent bibliography contains no recognizable records")
+    return BibliographyPage(heading=parser.headings[0], records=tuple(parser.records))
+
+
 class BibliographyService:
     def __init__(self, client: CalHttpClient) -> None:
         self._client = client
+
+    async def recent(self) -> BibliographyRecentResult:
+        result = await self._client.fetch(
+            CalRequest(method="GET", path="getrecentbib.php"),
+            parser=parse_recent_bibliography_page,
+            cache_namespace="bibliography-recent-v1",
+        )
+        return BibliographyRecentResult(
+            heading=result.value.heading,
+            records=result.value.records,
+            provenance=_make_provenance(
+                result.source_url,
+                result.retrieved_at,
+                operation="bibliography_recent",
+                original_query="",
+                submitted_query="",
+            ),
+        )
 
     async def authors(self, prefix: str) -> BibliographyAuthorOptionsResult:
         submitted = _prepare_single_line(prefix, "prefix", max_length=6)
