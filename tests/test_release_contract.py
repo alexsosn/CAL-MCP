@@ -60,7 +60,7 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
 
     assert project["name"] == "cal-mcp"
-    assert project["version"] == "0.1.0"
+    assert project["version"] == "0.2.0.dev0"
     assert project["requires-python"] == ">=3.11"
     assert project["scripts"]["cal-mcp"] == "cal_mcp.server:main"
 
@@ -138,7 +138,7 @@ def test_release_verifier_checks_tag_version_and_clean_wheel_install() -> None:
     assert "venv" in verifier
     assert "cal-mcp" in verifier
     assert "StdioServerParameters" in verifier
-    assert "V01_PUBLIC_TOOLS" in verifier
+    assert "CURRENT_PUBLIC_TOOLS" in verifier
     assert "cal_lexicon_browse" in V01_PUBLIC_TOOLS
     assert "cal_lexicon_citation_context" in V01_PUBLIC_TOOLS
     assert len(V01_PUBLIC_TOOLS) == 36
