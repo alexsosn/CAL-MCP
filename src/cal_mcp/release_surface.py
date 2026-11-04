@@ -40,3 +40,7 @@ V01_PUBLIC_TOOLS: frozenset[str] = frozenset(
         "cal_syriac_peshitta_parallel",
     }
 )
+
+# Additive development surface after the immutable v0.1.0 release.
+# The tagged v0.1.0 manifest above must never be expanded in place.
+CURRENT_PUBLIC_TOOLS: frozenset[str] = V01_PUBLIC_TOOLS | {"cal_bibliography_recent"}
