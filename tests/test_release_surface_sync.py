@@ -38,12 +38,16 @@ async def test_frozen_release_surface_matches_actual_runtime_registry(
 
     monkeypatch.setattr(socket.socket, "connect", deny_connect)
     release_surface = _load_release_surface()
+    assert len(release_surface.V01_PUBLIC_TOOLS) == 36
+    assert release_surface.CURRENT_PUBLIC_TOOLS == release_surface.V01_PUBLIC_TOOLS | {
+        "cal_bibliography_recent"
+    }
 
     server_module = importlib.import_module("cal_mcp.server")
     async with Client(server_module.mcp, raise_exceptions=True) as client:
         actual = frozenset(tool.name for tool in (await client.list_tools()).tools)
 
-    assert actual == release_surface.V01_PUBLIC_TOOLS
+    assert actual == release_surface.CURRENT_PUBLIC_TOOLS
 
 
 def test_surface_equality_rejects_equal_count_name_drift() -> None:
