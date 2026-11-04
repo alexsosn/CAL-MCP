@@ -13,7 +13,7 @@ from pathlib import Path, PurePosixPath
 
 from mcp import Client, StdioServerParameters
 
-from cal_mcp.release_surface import V01_PUBLIC_TOOLS
+from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
 
 
 def _distribution_version(wheel: Path) -> str:
@@ -136,9 +136,9 @@ async def _verify_stdio(executable: Path, expected_version: str, cwd: Path) -> N
                 f"{client.server_info.version!r} != {expected_version!r}"
             )
         tool_names = frozenset(tool.name for tool in (await client.list_tools()).tools)
-        if tool_names != V01_PUBLIC_TOOLS:
-            missing = sorted(V01_PUBLIC_TOOLS - tool_names)
-            extra = sorted(tool_names - V01_PUBLIC_TOOLS)
+        if tool_names != CURRENT_PUBLIC_TOOLS:
+            missing = sorted(CURRENT_PUBLIC_TOOLS - tool_names)
+            extra = sorted(tool_names - CURRENT_PUBLIC_TOOLS)
             raise RuntimeError(
                 f"installed MCP schema mismatch: missing={missing!r} extra={extra!r}"
             )
