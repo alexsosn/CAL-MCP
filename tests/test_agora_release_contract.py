@@ -11,10 +11,10 @@ ROOT = Path(__file__).resolve().parents[1]
 AGORA_DOC = ROOT / "docs" / "integrations" / "agora.md"
 
 
-def test_agora_handoff_matches_exact_published_package_metadata() -> None:
+def test_agora_handoff_preserves_published_pin_as_source_version_advances() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert project["project"]["name"] == "cal-mcp"
-    assert project["project"]["version"] == "0.1.0"
+    assert project["project"]["version"] == "0.2.0.dev0"
     assert project["project"]["requires-python"] == ">=3.11"
     assert project["project"]["scripts"]["cal-mcp"] == "cal_mcp.server:main"
 
