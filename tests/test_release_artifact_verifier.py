@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from cal_mcp.release_surface import V01_PUBLIC_TOOLS
+from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS, V01_PUBLIC_TOOLS
 
 ROOT = Path(__file__).resolve().parents[1]
 VERIFIER_PATH = ROOT / "scripts" / "verify_release_artifact.py"
@@ -80,7 +80,8 @@ def _write_sdist(
 def test_release_verifier_frozen_tool_surface_matches_current_public_tools() -> None:
     module = _load_verifier()
 
-    assert module.V01_PUBLIC_TOOLS is V01_PUBLIC_TOOLS
+    assert module.CURRENT_PUBLIC_TOOLS is CURRENT_PUBLIC_TOOLS
+    assert len(CURRENT_PUBLIC_TOOLS) == 37
     assert len(V01_PUBLIC_TOOLS) == 36
     assert {
         "cal_convert_to_code",
