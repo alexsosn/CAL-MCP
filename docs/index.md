@@ -25,7 +25,7 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 | Browse one Targum source and inspect words | **Intentionally composed** | Use the ordinary [text tools](tools/texts.md), then [token analysis](tools/token-analysis.md); CAL itself links Targum sources into the general text browser. |
 | Syriac text-category discovery, grouped-text follow-up, missing-from-*A Syriac Lexicon* lists, MT/Peshitta comparison | **Implemented** | [`cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel`](tools/syriac.md) |
 | Syriac citations from texts not online | **Intentionally composed** | Use the generic [external-citation workflow](tools/external-citations.md) with the Syriac dialect rather than a duplicate Syriac-only tool. |
-| Bibliography: CAL's “five most recent years” snapshot | **Unreleased 0.2.0 development source; absent from v0.1.0** | [`cal_bibliography_recent()`](tools/bibliography.md) retrieves one CAL-ordered complete snapshot with no year selector, deduplication, or archive traversal. |
+| Bibliography: CAL's “five most recent years” snapshot | **Deferred from v0.1.0; unreleased 0.2.0 development source** | [`cal_bibliography_recent()`](tools/bibliography.md) retrieves one CAL-ordered complete snapshot with no year selector, deduplication, or archive traversal. |
 | Legacy/static bibliography addenda and archive documents | **Reference material, not an MCP operation** | CAL-MCP does not wrap static documents merely to increase tool count. |
 
 ## Known current reachability gaps

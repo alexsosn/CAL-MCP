@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) as [`cal-mcp==0.1.0`](https://pypi.org/project/cal-mcp/0.1.0/), with 36 tools. The development source (0.2.0.dev0) adds a 37th tool, `cal_bibliography_recent()`, to browse CAL's recent-year bibliography. That tool is **not in the published v0.1.0 package**.
+> **Status:** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) as [`cal-mcp==0.1.0`](https://pypi.org/project/cal-mcp/0.1.0/), with 36 public tools. The development source (0.2.0.dev0) adds a 37th tool, `cal_bibliography_recent()`, to browse CAL's recent-year bibliography. That tool is **not in the published v0.1.0 package**.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 

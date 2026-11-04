@@ -21,6 +21,7 @@ _SINGLE_FETCH_DESCRIPTION_TOOLS = (
     "cal_bibliography_author",
     "cal_bibliography_keyword",
     "cal_bibliography_lemma",
+    "cal_bibliography_recent",
     "cal_targum_parallel",
     "cal_syriac_missing_words",
     "cal_syriac_peshitta_parallel",
