@@ -30,7 +30,7 @@ def _load_verifier() -> ModuleType:
 
 
 @pytest.mark.anyio
-async def test_frozen_release_surface_matches_actual_runtime_registry(
+async def test_current_release_surface_matches_actual_runtime_registry(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def deny_connect(*args: object, **kwargs: object) -> None:
@@ -64,6 +64,6 @@ def test_release_verifier_consumes_shared_manifest_without_duplicate_constants()
     release_surface = _load_release_surface()
     verifier = _load_verifier()
 
-    assert verifier.V01_PUBLIC_TOOLS is release_surface.V01_PUBLIC_TOOLS
+    assert verifier.CURRENT_PUBLIC_TOOLS is release_surface.CURRENT_PUBLIC_TOOLS
     assert not hasattr(verifier, "EXPECTED_TOOLS")
     assert not hasattr(verifier, "EXPECTED_TOOL_COUNT")
