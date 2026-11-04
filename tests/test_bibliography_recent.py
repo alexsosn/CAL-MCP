@@ -62,9 +62,7 @@ def test_recent_snapshot_preserves_order_duplicates_unicode_and_link_metadata() 
     assert len(result.records) == 3
     assert result.records[0] == result.records[1]
     assert "לשון ܣܘܪܝܝܐ" in result.records[2].citation
-    assert [link.query_kind for link in result.records[2].links] == [
-        BibliographyQueryKind.LEMMA
-    ]
+    assert [link.query_kind for link in result.records[2].links] == [BibliographyQueryKind.LEMMA]
     assert result.records[2].links[0].query_value == "ktb V"
     assert result.records[0].links[0].url == (
         "https://cal.huc.edu/getbibsigla.php?myauthor=History"
@@ -75,13 +73,9 @@ def test_recent_snapshot_preserves_order_duplicates_unicode_and_link_metadata() 
 @pytest.mark.parametrize(
     "body",
     [
-        "<html><body><h1>CAL Bibliography for TADA</h1>"
-        + RECORDS
-        + "</body></html>",
+        "<html><body><h1>CAL Bibliography for TADA</h1>" + RECORDS + "</body></html>",
         "<html><body><h1>CAL Recent Bibliography</h1>"
-        "<h1>CAL Recent Bibliography</h1>"
-        + RECORDS
-        + "</body></html>",
+        "<h1>CAL Recent Bibliography</h1>" + RECORDS + "</body></html>",
         "<html><body><h1>CAL Recent Bibliography</h1></body></html>",
         _page(records='<div class="card"><p>Unclosed citation'),
         _page(
