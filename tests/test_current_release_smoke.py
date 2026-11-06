@@ -22,9 +22,7 @@ def test_current_release_has_exactly_one_new_researched_case_after_v01() -> None
     assert len(smoke._REVIEWED_V01_SMOKE_IDENTITIES) == 12
     assert len(cases) == 13
     assert [case.name for case in cases][-1] == "recent_bibliography"
-    assert cases[-1] == smoke.SmokeCase(
-        "recent_bibliography", "cal_bibliography_recent", {}
-    )
+    assert cases[-1] == smoke.SmokeCase("recent_bibliography", "cal_bibliography_recent", {})
     assert len({case.name for case in cases}) == 13
     assert sum(case.tool != "cal_convert_to_code" for case in cases) == 12
     assert (
@@ -47,9 +45,7 @@ def test_original_v01_only_matrix_cannot_authorize_current_publication(
     cases = smoke.DEFAULT_SMOKE_CASES
     assert len(cases) == 13
     monkeypatch.setattr(smoke, "DEFAULT_SMOKE_CASES", cases[:-1])
-    historical = tuple(
-        smoke.SmokeOutcome(case.name, "ok", "success") for case in cases[:-1]
-    )
+    historical = tuple(smoke.SmokeOutcome(case.name, "ok", "success") for case in cases[:-1])
     assert not smoke._complete_release_smoke_matrix(historical, 12)
 
 
