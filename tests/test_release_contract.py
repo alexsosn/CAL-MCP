@@ -177,6 +177,7 @@ def test_current_installed_stdio_smoke_matrix_is_fixed_and_release_bounded() -> 
         "external_citations",
         "targum",
         "peshitta",
+        "recent_bibliography",
     ]
     assert DEFAULT_SMOKE_CASES[0].needs_provenance is False
     assert all(case.needs_provenance for case in DEFAULT_SMOKE_CASES[1:])
