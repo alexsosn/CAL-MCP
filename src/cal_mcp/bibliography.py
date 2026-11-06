@@ -275,10 +275,10 @@ class _BibliographyHTMLParser(HTMLParser):
         if tag == "a" and record is not None:
             if record.open_link is not None:
                 raise BibliographyParseError("CAL bibliography contains nested record links")
-            href = attributes.get("href")
-            if href is None or not href.strip():
+            link_href = attributes.get("href")
+            if link_href is None or not link_href.strip():
                 raise BibliographyParseError("CAL bibliography record link has no target")
-            record.open_link = _OpenRecordLink(href=href)
+            record.open_link = _OpenRecordLink(href=link_href)
 
     def handle_endtag(self, tag: str) -> None:
         if tag == "title":
