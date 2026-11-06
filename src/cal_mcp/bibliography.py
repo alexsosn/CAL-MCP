@@ -635,6 +635,9 @@ def _parse_bibliography_link(source_url: str, href: str, label: str) -> Bibliogr
     if query_kind is None:
         return BibliographyLink(label=label, url=resolved)
 
+    if href != href.strip() or any(ord(char) < 32 or ord(char) == 127 for char in href):
+        raise BibliographyParseError("CAL bibliography navigation link has raw whitespace")
+
     # URL joining can silently erase dot segments or an unrecognized directory.
     # A typed follow-up is supported only for CAL's observed root-level handlers.
     raw_path = urlsplit(href).path
