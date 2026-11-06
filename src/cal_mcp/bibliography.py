@@ -635,8 +635,27 @@ def _parse_bibliography_link(source_url: str, href: str, label: str) -> Bibliogr
     if query_kind is None:
         return BibliographyLink(label=label, url=resolved)
 
-    values = parse_qs(target.query, keep_blank_values=True).get("myauthor")
-    if values is None or len(values) != 1:
+    # URL joining can silently erase dot segments or an unrecognized directory.
+    # A typed follow-up is supported only for CAL's observed root-level handlers.
+    raw_path = urlsplit(href).path
+    if target.path != f"/{filename}" or raw_path not in (filename, f"/{filename}"):
+        raise BibliographyParseError("CAL bibliography navigation link has a noncanonical path")
+    if target.fragment:
+        raise BibliographyParseError("CAL bibliography navigation link has an unsupported fragment")
+
+    if re.search(r"%(?![0-9A-Fa-f]{2})", target.query):
+        raise BibliographyParseError("CAL bibliography navigation link has invalid percent encoding")
+    try:
+        params = parse_qs(
+            target.query,
+            keep_blank_values=True,
+            strict_parsing=True,
+            errors="strict",
+        )
+    except (UnicodeError, ValueError) as exc:
+        raise BibliographyParseError("CAL bibliography navigation link has invalid query encoding") from exc
+    values = params.get("myauthor")
+    if set(params) != {"myauthor"} or values is None or len(values) != 1:
         raise BibliographyParseError("CAL bibliography navigation link has invalid query semantics")
     query_value = _returned_single_line(values[0], "bibliography query value")
     return BibliographyLink(
