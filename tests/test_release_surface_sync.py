@@ -39,9 +39,10 @@ async def test_current_release_surface_matches_actual_runtime_registry(
     monkeypatch.setattr(socket.socket, "connect", deny_connect)
     release_surface = _load_release_surface()
     assert len(release_surface.V01_PUBLIC_TOOLS) == 36
-    assert release_surface.V01_PUBLIC_TOOLS | {
-        "cal_bibliography_recent"
-    } == release_surface.CURRENT_PUBLIC_TOOLS
+    assert (
+        release_surface.V01_PUBLIC_TOOLS | {"cal_bibliography_recent"}
+        == release_surface.CURRENT_PUBLIC_TOOLS
+    )
 
     server_module = importlib.import_module("cal_mcp.server")
     async with Client(server_module.mcp, raise_exceptions=True) as client:
