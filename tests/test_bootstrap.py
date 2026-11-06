@@ -12,12 +12,12 @@ from mcp import Client, StdioServerParameters
 
 from cal_mcp import __version__
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalRequest, CalResponse
-from cal_mcp.release_surface import V01_PUBLIC_TOOLS
+from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
 
 
 async def _assert_public_tools(client: Client) -> None:
     tools = {tool.name: tool for tool in (await client.list_tools()).tools}
-    assert set(tools) == V01_PUBLIC_TOOLS
+    assert set(tools) == CURRENT_PUBLIC_TOOLS
 
     conversion_schema = tools["cal_convert_to_code"].input_schema
     assert set(conversion_schema["properties"]) == {"value", "representation"}
@@ -87,6 +87,10 @@ async def _assert_public_tools(client: Client) -> None:
     assert set(bibliography_lemma_schema["properties"]) == {"lemma_key"}
     assert bibliography_lemma_schema["required"] == ["lemma_key"]
 
+    bibliography_recent_schema = tools["cal_bibliography_recent"].input_schema
+    assert bibliography_recent_schema.get("properties") == {}
+    assert bibliography_recent_schema.get("required", []) == []
+
     dictionary_collation_schema = tools["cal_dictionary_collation"].input_schema
     assert set(dictionary_collation_schema["properties"]) == {"source", "page"}
     assert dictionary_collation_schema["required"] == ["source", "page"]
@@ -155,6 +159,7 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        bibliography_recent_schema,
         dictionary_collation_schema,
         targum_parallel_schema,
         targum_concordance_schema,
@@ -196,6 +201,7 @@ async def _assert_public_tools(client: Client) -> None:
         bibliography_author_schema,
         bibliography_keyword_schema,
         bibliography_lemma_schema,
+        bibliography_recent_schema,
     ):
         for unsupported_bound in ("page", "offset", "limit"):
             assert unsupported_bound not in schema["properties"]
