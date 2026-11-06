@@ -32,3 +32,7 @@ Only links in current user-requested bibliography pages are parsed. No extra req
 - `docs/research/issue-9-bibliography.md`
 - `docs/research/issue-39-recent-bibliography.md`
 - https://cal.huc.edu/getrecentbib.php (previous bounded live acceptance for #39; no new raw fetch for this ticket)
+
+## Review-regression verification
+
+Independent parser review identified a further ambiguity in `urllib.parse.urljoin/urlsplit`: it can normalize away raw leading space or embedded newline from an `href`, while existing bibliography value handling trims a raw trailing space. These make a raw noncanonical link appear to match a canonical typed follow-up. Synthetic review-regression RED was added in commit `66f56b7544a6bb6993cf0af00c1a93d2875a9c58`; its [GitHub Actions run 42311304811](https://github.com/alexsosn/CAL-MCP/actions/runs/42311304811) reached pytest and produced six expected `DID NOT RAISE BibliographyParseError` failures (the three input variants in both targeted and recent bibliography pages), with 2,362 other tests passing. The subsequent guard rejects raw surrounding whitespace and C0/DEL controls **before** interpreting a link as a typed CAL follow-up. This remains offline; no extra CAL request was made.
