@@ -652,8 +652,10 @@ def _parse_bibliography_link(source_url: str, href: str, label: str) -> Bibliogr
             strict_parsing=True,
             errors="strict",
         )
-    except (UnicodeError, ValueError) as exc:
-        raise BibliographyParseError("CAL bibliography navigation link has invalid query encoding") from exc
+    except ValueError as exc:
+        raise BibliographyParseError(
+            "CAL bibliography navigation link has invalid query encoding"
+        ) from exc
     values = params.get("myauthor")
     if set(params) != {"myauthor"} or values is None or len(values) != 1:
         raise BibliographyParseError("CAL bibliography navigation link has invalid query semantics")
