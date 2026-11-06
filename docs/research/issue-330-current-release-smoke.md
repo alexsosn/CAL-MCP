@@ -27,3 +27,9 @@ The current 37-tool package should have a reviewed **13-case / 12 CAL-backed** r
 - `docs/research/issue-39-recent-bibliography.md`: dated one-operation clean-wheel evidence.
 
 No CAL data or HTML is needed in new test fixtures.
+
+## Test-first and independent adversarial review evidence
+
+The test-only RED commit `07108705d1d66f32cc10bdf900cc6505d95ff102` passed Ruff and mypy but failed **10 expected tests** in both offline CI environments, because the old matrix had 12 rather than 13 cases, accepted a complete report with only 11 actual CAL transport starts, and allowed blank/malformed recent-bibliography records. All other 2,369 tests passed ([CI 42312319867](https://github.com/alexsosn/CAL-MCP/actions/runs/42312319867)). After the minimal matrix and content fix, both offline CI jobs passed ([run 42312666517](https://github.com/alexsosn/CAL-MCP/actions/runs/42312666517)).
+
+A separate independent adverse-case pass found that nonempty bibliography citations alone could pass even if returned from **a different CAL bibliography surface**. The test-only review regression `2d656e6db49c02045cca62d5394d08c0cca2bc92` failed four intended cases (wrong heading, wrong source endpoint, wrong operation and missing source URL) while 2,381 other tests passed ([run 42312902566](https://github.com/alexsosn/CAL-MCP/actions/runs/42312902566)). The subsequent one-case guard requires the exact `CAL Recent Bibliography` heading, `https://cal.huc.edu/getrecentbib.php` source URL, and `bibliography_recent` operation in addition to nonempty citations. The existing shared provenance validator continues to require a real CAL origin and timezone-aware timestamp. No live CAL request was made in either RED or GREEN; the 126-record clean-wheel #39 acceptance remains the bounded live evidence.

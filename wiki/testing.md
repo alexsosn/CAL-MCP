@@ -215,7 +215,7 @@ including the new zero-argument `cal_bibliography_recent` snapshot as its final
 case. Its separately reviewed current identity contract **extends**, without
 modifying, the immutable twelve-case `_REVIEWED_V01_SMOKE_IDENTITIES`. The gate
 requires all fixed selectors, expected statuses, provenance/dependency settings,
-valid schema, and nonempty recent bibliography citations. It also requires
+valid schema, nonempty recent bibliography citations, and the exact `CAL Recent Bibliography` heading with `getrecentbib.php` provenance/operation identity. It also requires
 **at least twelve aggregate actual CAL transport starts** within the unchanged
 25-attempt hard cap. A complete success report with only 1–11 measured starts
 fails closed. This count is a **necessary plausibility floor**: a case might
