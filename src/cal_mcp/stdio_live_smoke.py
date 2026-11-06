@@ -146,6 +146,16 @@ def _has_representative_content(case_name: str, data: dict[str, object]) -> bool
         for row in rows
     ):
         return False
+    if case_name == "recent_bibliography":
+        # The release gate must not accept plausible records from another CAL page.
+        provenance = data.get("provenance")
+        if (
+            data.get("heading") != "CAL Recent Bibliography"
+            or not isinstance(provenance, dict)
+            or provenance.get("source_url") != "https://cal.huc.edu/getrecentbib.php"
+            or provenance.get("operation") != "bibliography_recent"
+        ):
+            return False
     return case_name != "text_concordance" or any(
         row.get("cal_reports_no_data") is False for row in rows
     )
