@@ -644,7 +644,9 @@ def _parse_bibliography_link(source_url: str, href: str, label: str) -> Bibliogr
         raise BibliographyParseError("CAL bibliography navigation link has an unsupported fragment")
 
     if re.search(r"%(?![0-9A-Fa-f]{2})", target.query):
-        raise BibliographyParseError("CAL bibliography navigation link has invalid percent encoding")
+        raise BibliographyParseError(
+            "CAL bibliography navigation link has invalid percent encoding"
+        )
     try:
         params = parse_qs(
             target.query,
