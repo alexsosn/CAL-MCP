@@ -176,7 +176,7 @@ python -m cal_mcp.stdio_live_smoke --executable /absolute/path/to/venv/bin/cal-m
 
 The `python` used above must belong to that installed-wheel environment.
 Importing the module or listing MCP tools does not make CAL requests; invoking
-the twelve representative cases does.
+the current thirteen representative cases does (twelve CAL-backed plus the local converter).
 
 The total absolute ceiling is **25 actual CAL transport attempts per smoke invocation**,
 enforced inside the server immediately before each transport call. All tools
@@ -186,7 +186,7 @@ client performs sequential tool calls and never enumerates result pages,
 subcorpora, lexemes, links, or pagination. No regular `cal-mcp` launch inherits
 the opt-in smoke limit.
 
-The server additionally enforces an **8-start rolling 60-second local budget**. The installed-wheel smoke runner now enforces a **60-second pause between completion of one CAL-backed tool case and starting the next** (not between arbitrary SDK introspection, local conversion, missing tools, or skipped dependent cases). This allows earlier transport starts to age out of the server's rolling window without observing any private CAL state or auto-retrying a refused tool. A case performing more than eight transports inside one tool call can still fail locally; a real CAL HTTP 429 may still occur. A typed `local_rate_limit` is recognized as a nonpassing local-admission failure with sanitized diagnostics, and **both a real CAL HTTP 429 and a locally suppressed 429 halt the entire smoke** rather than causing additional CAL tool calls after the wait. The absolute hard cap of 25 actual CAL attempts remains unchanged, as does the three-second per-attempt server pace. There are at most ten 60-second inter-case waits in the fixed 12-case suite; they are cancellable. Both installed-wheel smoke workflow jobs have a 30-minute outer limit for bounded waits and tool timeouts. **No real CAL requests were made by #299; this is not the still-unmet 37-token zero-429 acceptance.**
+The server additionally enforces an **8-start rolling 60-second local budget**. The installed-wheel smoke runner now enforces a **60-second pause between completion of one CAL-backed tool case and starting the next** (not between arbitrary SDK introspection, local conversion, missing tools, or skipped dependent cases). This allows earlier transport starts to age out of the server's rolling window without observing any private CAL state or auto-retrying a refused tool. A case performing more than eight transports inside one tool call can still fail locally; a real CAL HTTP 429 may still occur. A typed `local_rate_limit` is recognized as a nonpassing local-admission failure with sanitized diagnostics, and **both a real CAL HTTP 429 and a locally suppressed 429 halt the entire smoke** rather than causing additional CAL tool calls after the wait. The absolute hard cap of 25 actual CAL attempts remains unchanged, as does the three-second per-attempt server pace. There are at most eleven 60-second inter-case waits in the current fixed 13-case suite; they are cancellable. The published v0.1.0 release used twelve cases and at most ten waits. Both installed-wheel smoke workflow jobs have a 30-minute outer limit for bounded waits and tool timeouts. **No real CAL requests were made by #299; this is not the still-unmet 37-token zero-429 acceptance.**
 
 Before any representative call, the smoke driver preflights the whole
 fixed case list against the MCP tool registry, including each required
@@ -209,17 +209,20 @@ schema-valid CAL result drift can still be aggregated across different cases.
 The JSON report contains per-case outcomes,
 `actual_cal_transport_attempts`, and `max_cal_transport_attempts`.
 A missing or malformed server attempt report is a failing harness error, never
-an assumed zero. The release runner also checks that all twelve fixed representative
-cases appear **exactly once and in their declared order**, that their
-tool names, fixed selectors, expected statuses, and provenance/dependency
-settings match a **separately pinned v0.1 smoke identity contract**, that the fixed
-matrix still contains eleven CAL-backed calls and one local converter, and that
-the fresh server reported **at least eleven aggregate CAL transport starts**
-within the separate hard 25-attempt budget. A full all-successful matrix with only
-1–10 measured starts is internally inconsistent and therefore fails closed,
-not a valid low-load smoke pass. This count is a **necessary plausibility floor**:
-one case might issue multiple requests, so the total alone does not prove that
-each of the eleven CAL-backed cases generated an individual transport start. An empty or
+an assumed zero. The current development release runner requires **thirteen fixed
+representative cases in exact order** (twelve CAL-backed plus one local converter),
+including the new zero-argument `cal_bibliography_recent` snapshot as its final
+case. Its separately reviewed current identity contract **extends**, without
+modifying, the immutable twelve-case `_REVIEWED_V01_SMOKE_IDENTITIES`. The gate
+requires all fixed selectors, expected statuses, provenance/dependency settings,
+valid schema, nonempty recent bibliography citations, and the exact `CAL Recent Bibliography` heading with `getrecentbib.php` provenance/operation identity. It also requires
+**at least twelve aggregate actual CAL transport starts** within the unchanged
+25-attempt hard cap. A complete success report with only 1–11 measured starts
+fails closed. This count is a **necessary plausibility floor**: a case might
+issue multiple requests, so the total alone does not prove that each CAL-backed
+case generated its own transport start. The original **published** v0.1.0
+release was reviewed and run with twelve fixed cases and an eleven-start floor;
+its historical identity tuple and package remain unchanged. An empty or
 all-successful prefix, duplicated/reordered case, truncated required matrix or
 zero-attempt full result is a **failing harness condition**, not a passing smoke.
 The report retains actual case outcomes and measured attempt count; no synthetic
@@ -227,9 +230,11 @@ CAL success, missing case, or network observation is invented. A genuine 429 or
 local refusal still stops further tool calls and remains a failing upstream/local
 error rather than being retried. Any non-OK result fails the workflow and blocks publication.
 
-**Release readiness gate:** the fixed current 12-case matrix (11 CAL-backed cases plus one local-only converter) must still be
-measured once against live CAL from the installed wheel and accepted within the
-25-attempt cap; offline CI alone is insufficient. Do not run the old nine-call
+**Release readiness gate:** the fixed current 13-case matrix (12 CAL-backed cases plus one local-only converter) must be
+measured against live CAL from the **exact future tagged release wheel** and accepted
+within the unchanged 25-attempt cap; offline CI alone is insufficient. Issue #39's
+previous one-call installed-wheel snapshot smoke verified that tool in isolation,
+but does not replace the complete future-tag gate. Do not run the old nine-call
 service smoke alongside the new suite or automatically retry failed live smoke.
 The retained `cal_mcp.live_smoke` module is a separate **manual-only, legacy direct-service diagnostic**, not a release gate, and it must not be run alongside the installed-wheel suite. If explicitly executed with `python -m cal_mcp.live_smoke`, its shared HTTP client enforces at least three seconds between actual CAL transport starts and an eight-start rolling 60-second admission ceiling. An additional absolute hard cap permits at most nine actual CAL attempts in the entire legacy invocation; rejected local input and refused transport admission do not consume attempts. A real CAL HTTP 429 is reported as an `upstream` failure; adapter-local rolling-budget exhaustion or an active local 429 cooldown is separately reported as `local_rate_limit` (the current refused operation did not reach CAL). All these failures stop further probes instead of continuing after backpressure. These local precautions do not establish a CAL-authorized request rate. No periodic or release workflow runs this module.
 

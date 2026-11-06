@@ -87,6 +87,8 @@ The v0.1 release pipeline builds one wheel and one source distribution. Before p
 
 The v0.1.0 package was actually published through the linked tagged workflow. A later source merge alone never changes the already published release artifacts.
 
+The **unreleased 0.2.0 development source** uses the same exact-wheel release pipeline with a **13-case / 12-CAL-backed** smoke matrix; it adds a bounded `cal_bibliography_recent()` case to the original twelve. The new case requires CAL's nonempty structured citations and source/timestamp provenance. Publication requires at least **12 actual CAL transport starts** across the complete fixed matrix, with a hard cap of 25, no retries, sequential execution, and completion-based inter-case waits of at least 60 seconds. The original v0.1.0 12-case release checks above describe the *historical published artifact* and remain unchanged. No new package is published merely because this source release gate exists.
+
 ## Development checks
 
 Run the deterministic repository gates with:

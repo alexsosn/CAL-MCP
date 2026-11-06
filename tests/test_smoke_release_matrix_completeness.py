@@ -48,7 +48,7 @@ def test_incomplete_or_forged_smoke_matrix_fails_release_closed(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     names = tuple(item.name for item in smoke.DEFAULT_SMOKE_CASES)
-    assert len(names) == 12
+    assert len(names) == 13
     if case == "empty":
         outcomes = ()
     elif case == "prefix":
@@ -96,7 +96,7 @@ def test_release_gate_rejects_a_mutated_required_matrix(
     assert report["category"] == "harness"
 
 
-def test_full_ordered_twelve_case_positive_count_can_pass(
+def test_full_ordered_thirteen_case_positive_count_can_pass(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -104,15 +104,15 @@ def test_full_ordered_twelve_case_positive_count_can_pass(
 
     async def stub_runner(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
         assert executable == "/offline/bin/cal-mcp"
-        return outcomes, 11
+        return outcomes, 12
 
     monkeypatch.setattr(smoke, "_run_live", stub_runner)
     monkeypatch.setattr("sys.argv", ["stdio-live-smoke", "--executable", "/offline/bin/cal-mcp"])
     smoke.main()
     report = json.loads(capsys.readouterr().out)
     assert report["status"] == "passed"
-    assert report["actual_cal_transport_attempts"] == 11
-    assert len(report["cases"]) == 12
+    assert report["actual_cal_transport_attempts"] == 12
+    assert len(report["cases"]) == 13
 
 
 def test_genuine_terminal_rate_limit_is_still_failing_and_unmasked(
@@ -136,7 +136,7 @@ def test_release_gate_rejects_self_consistent_but_wrong_fixed_research_matrix(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     original = tuple(smoke.DEFAULT_SMOKE_CASES)
-    assert len(original) == 12
+    assert len(original) == 13
     modified = list(original)
     if mutation == "rename":
         modified[7] = replace(modified[7], name="unreviewed_research_surface")
@@ -150,7 +150,7 @@ def test_release_gate_rejects_self_consistent_but_wrong_fixed_research_matrix(
     # Even if the executor and reporter agree on the modified case labels,
     # that cannot satisfy the frozen installed-wheel release acceptance.
     outcomes = _outcomes(tuple(case.name for case in modified))
-    report = _invoke_cli(monkeypatch, capsys, outcomes, attempts=11)
+    report = _invoke_cli(monkeypatch, capsys, outcomes, attempts=12)
     assert report["status"] == "failed"
     assert report["category"] == "harness"
     assert report["reason"] == "incomplete_smoke_acceptance"
