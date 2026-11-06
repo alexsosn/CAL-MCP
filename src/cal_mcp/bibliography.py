@@ -233,8 +233,10 @@ class _BibliographyHTMLParser(HTMLParser):
             rel = (attributes.get("rel") or "").lower().split()
             href = attributes.get("href") or ""
             query = parse_qs(urlsplit(href).query, keep_blank_values=True)
-            if "next" in rel or "prev" in rel or (
-                set(query) & {"page", "offset", "cursor", "start", "limit"}
+            if (
+                "next" in rel
+                or "prev" in rel
+                or (set(query) & {"page", "offset", "cursor", "start", "limit"})
             ):
                 self.has_pagination_control = True
         if self._card is not None and tag in _LEGACY_DOCUMENT_TAGS:
