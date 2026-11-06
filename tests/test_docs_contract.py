@@ -8,7 +8,7 @@ from urllib.parse import unquote
 import pytest
 from mcp import Client
 
-from cal_mcp.release_surface import V01_PUBLIC_TOOLS
+from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS, V01_PUBLIC_TOOLS
 
 ROOT = Path(__file__).resolve().parents[1]
 README = ROOT / "README.md"
@@ -55,7 +55,7 @@ async def test_every_public_tool_is_covered_by_tool_docs() -> None:
     tool_docs = "\n".join(path.read_text(encoding="utf-8") for path in TOOLS_DIR.glob("*.md"))
     missing = [tool_name for tool_name in tool_names if f"`{tool_name}`" not in tool_docs]
 
-    assert frozenset(tool_names) == V01_PUBLIC_TOOLS
+    assert frozenset(tool_names) == CURRENT_PUBLIC_TOOLS
     assert missing == []
 
 

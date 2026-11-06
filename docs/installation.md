@@ -2,7 +2,7 @@
 
 The v0.1 release coordinate is `cal-mcp==0.1.0`. The repository release workflow publishes that exact version from the `v0.1.0` tag after deterministic tests, built-artifact validation, and the bounded CAL live smoke pass.
 
-The [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published. Its [tagged workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487) passed fresh wheel/sdist installation, fixed bounded CAL smoke and the PyPI publication step. The immutable release is distinct from later unreleased changes to `main`.
+The [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published. Its [tagged workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487) passed fresh wheel/sdist installation, fixed bounded CAL smoke and the PyPI publication step. The immutable release is distinct from later unreleased changes to `main`. Current development source identifies as `0.2.0.dev0` and adds `cal_bibliography_recent`; the published `cal-mcp==0.1.0` still exposes exactly 36 tools.
 
 ## Requirements
 

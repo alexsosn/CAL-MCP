@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) and available as [`cal-mcp==0.1.0` on PyPI](https://pypi.org/project/cal-mcp/0.1.0/). The released surface exposes 36 public tools: one deterministic local CAL-code conversion tool plus 35 CAL-backed tools across lexicon, English search, texts, token analysis, concordance/KWIC, bibliography, dictionary collation, external citations, Targum Studies, and Syriac Studies.
+> **Status:** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) as [`cal-mcp==0.1.0`](https://pypi.org/project/cal-mcp/0.1.0/), with 36 public tools. The development source (0.2.0.dev0) adds a 37th tool, `cal_bibliography_recent()`, to browse CAL's recent-year bibliography. That tool is **not in the published v0.1.0 package**.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -29,7 +29,7 @@ This project is not affiliated with or endorsed by the Comprehensive Aramaic Lex
 
 ## v0.1 public surface
 
-The executable tool schemas are the technical source of truth. The current v0.1 contract contains a 36-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, the typed KWIC full-context follow-up added by issue #113, the explicit text-line comments/translations follow-up added by issue #108, the explicit linked-lexicon-citation context follow-up added by issue #127, the bounded lexicon prefix browser added by issue #112, the explicit MT/Targum reflex-example follow-up added by issue #247, and the source-group Targum concordance example follow-up added by issue #246.
+The executable tool schemas are the technical source of truth. The immutable v0.1 contract contains a 36-tool surface: the issue-#12 audit's 26 CAL-backed tools, the release-blocking deterministic conversion tool added by issue #52, the specialized CAL indexed gloss-field search added by issue #107, the explicit CAL text-information metadata follow-up added by issue #106, the explicit Syriac GROUP follow-up added by issue #105, the typed KWIC full-context follow-up added by issue #113, the explicit text-line comments/translations follow-up added by issue #108, the explicit linked-lexicon-citation context follow-up added by issue #127, the bounded lexicon prefix browser added by issue #112, the explicit MT/Targum reflex-example follow-up added by issue #247, and the source-group Targum concordance example follow-up added by issue #246.
 
 | Area | Public tools |
 | --- | --- |
@@ -39,7 +39,7 @@ The executable tool schemas are the technical source of truth. The current v0.1 
 | Texts | `cal_text_catalogue`, `cal_text_search`, `cal_text_page`, `cal_text_information`, `cal_text_line_comments` |
 | Token analysis | `cal_token_analysis` |
 | Concordance/KWIC | `cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect`, `cal_kwic_full_context` |
-| Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` |
+| Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` (plus source-only unreleased `cal_bibliography_recent`) |
 | Dictionary collation | `cal_dictionary_collation` |
 | External citations | `cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations` |
 | Targum Studies | `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes` |
@@ -71,7 +71,7 @@ Normal CI is offline and uses reduced semantic fixtures. CAL-MCP does not expose
 
 See [`docs/configuration.md`](docs/configuration.md), [`docs/concepts/errors-and-upstream-drift.md`](docs/concepts/errors-and-upstream-drift.md), and [`docs/limitations.md`](docs/limitations.md).
 
-## Current pre-release installation
+## Standalone installation
 
 Requirements: Python 3.11+.
 

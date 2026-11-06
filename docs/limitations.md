@@ -61,11 +61,9 @@ CAL-MCP only exposes specialist workflows that current CAL supports faithfully. 
 
 See [Targum Studies](tools/targum.md) and [Syriac Studies](tools/syriac.md) for current specialist boundaries.
 
-## Deferred recent bibliography
+## Recent bibliography on development source
 
-CAL's Bibliographic Resources page includes a “five most recent years” snapshot in addition to the targeted author/text-subject/lemma searches already implemented by CAL-MCP.
-
-That convenience snapshot is **deferred from v0.1** to [issue #39](https://github.com/alexsosn/CAL-MCP/issues/39), where its moving year window, result size, and continuation semantics can receive a focused research/TDD review. The v0.1 bibliography tools remain the targeted workflows documented in [Bibliography](tools/bibliography.md).
+The immutable v0.1.0 release implements targeted author/text-subject/lemma bibliography queries, but not the recent-years snapshot. Unreleased 0.2.0 development source adds [`cal_bibliography_recent()`](tools/bibliography.md) for one CAL-owned ordered snapshot, with no selectable years and no computed recency boundary. CAL showed 2021–2025 in 2026. Unknown pagination or missing entries fail closed as parser drift; there is no local archive traversal.
 
 ## Static/legacy CAL documents are not wrapped automatically
 
@@ -73,9 +71,9 @@ A public CAL link does not automatically justify an MCP tool. Static bibliograph
 
 This avoids tool proliferation and accidental content redistribution.
 
-## Pre-release installation status
+## Published and development installation status
 
-The repository currently reports version `0.1.0.dev0`. No stable v0.1 package-index/release installation contract is documented yet. Issue #15 owns release packaging, clean-install validation, release notes, and low-load live drift smoke tests.
+The standalone [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published and can be installed as `cal-mcp==0.1.0`. The current development checkout identifies as `0.2.0.dev0`; unreleased features are not available through the v0.1.0 package pin. Future releases require their own bounded validation and publishing gates.
 
 See [Installation](installation.md).
 

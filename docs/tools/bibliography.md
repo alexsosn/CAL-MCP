@@ -1,6 +1,6 @@
 # CAL bibliography search
 
-CAL-MCP exposes four bounded operations over CAL's current public bibliography interfaces. Each valid explicit operation submits at most one new logical CAL request to the shared client. Author-prefix discovery and exact-author retrieval are intentionally separate calls; CAL-MCP does not choose an author, follow bibliography tags, traverse the archive, or build a local index.
+The current development source exposes five bounded bibliography operations (four in published v0.1.0). Each valid explicit operation submits at most one new logical CAL request to the shared client. Author-prefix discovery and exact-author retrieval are intentionally separate calls; CAL-MCP does not choose an author, follow bibliography tags, traverse the archive, or build a local index.
 
 ## Which tool to use
 
@@ -10,6 +10,7 @@ CAL-MCP exposes four bounded operations over CAL's current public bibliography i
 | Retrieve bibliography records for one exact CAL author value | `cal_bibliography_author(author)` |
 | Retrieve records for one exact CAL text/subject bibliography tag | `cal_bibliography_keyword(keyword)` |
 | Retrieve records for one exact CAL lemma key | `cal_bibliography_lemma(lemma_key)` |
+| Browse the ordered CAL recent-years bibliography snapshot | `cal_bibliography_recent()` |
 
 The word `keyword` follows CAL's bibliography/archive terminology. The current upstream surface is an exact text/subject tag lookup, not arbitrary full-text, fuzzy, ranked, stemmed, or substring search.
 
@@ -79,6 +80,20 @@ The result uses the common bibliography record model with `query_kind: "lemma"`.
 
 CAL echoes a lemma key containing `$` (shin) or `(` (ʿayin) with those characters backslash-escaped. For example, `(bd V` comes back as `CAL Bibliography for \(bd V`. CAL-MCP accepts exactly that escaped echo, or the unescaped key, as naming the submitted key. `query` and provenance always carry the canonical unescaped key, while `heading` preserves CAL's literal text. Any other difference between the echo and the key is `parser_drift`.
 
+## `cal_bibliography_recent`
+
+```text
+cal_bibliography_recent()
+```
+
+Retrieve CAL's current **five most recent years of bibliographic records** view. This is an aggregate snapshot, not a filtered author/tag/lemma lookup. The operation accepts **no arguments**: no year, date range, search text, page, limit or continuation token. CAL chooses the years and entries. On 2026-11-04, its current page presents **2021–2025** despite the calendar year being 2026; no locally calculated rolling year range is promised.
+
+The result contains the exact `heading: "CAL Recent Bibliography"`, `records` in CAL order, and standard `provenance`. Each record retains its citation text and links; duplicate-looking works are preserved without deduplication. CAL exposes no stable typed publication-year/group field on this page, so CAL-MCP does not invent `year`, parse incidental year tokens, or sort/group records by year. Unlike the targeted bibliography tools, this result has no `query_kind` or `query` value. In provenance, the no-input operation is `bibliography_recent` and `original_query` / `submitted_query` are empty strings.
+
+The operation issues one fixed logical GET to CAL's current snapshot. No additional bibliography, record, or archive links are followed. The shared client enforces its decoded-response cap (2 MiB by default), timeouts and conservative request policy. No explicit empty-result marker has been established for this surface: if the current page has no recognized records or gains a pagination selector, CAL-MCP returns parser drift rather than an empty or partial bibliography.
+
+This operation is added on unreleased development source for 0.2.0; it is **not available in the immutable `cal-mcp==0.1.0` release**.
+
 ## Bibliography records and links
 
 Each final bibliography result preserves CAL's ordered records. CAL currently renders every record of a result page as one `<p>` element inside a single result card, which wraps CAL's legacy result document. The earlier layout used one card per record and is still accepted. A record contains:
@@ -128,9 +143,10 @@ Each valid explicit operation submits at most one new logical CAL request to the
 - one author-prefix selector request;
 - one exact-author result request;
 - one exact text/subject-tag result request;
-- one exact lemma result request.
+- one exact lemma result request;
+- one recent-bibliography snapshot request, without any caller-controlled selectors.
 
-There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The separate CAL recent-five-years bibliography view is explicitly deferred from the v0.1 contract to issue #39, where its moving year window and result-size/continuation semantics can be researched independently.
+There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The recent-years snapshot remains excluded from the frozen v0.1.0 contract and is implemented only in the newer development source.
 
 ### Shared cache, single-flight, and retry semantics
 
@@ -164,6 +180,7 @@ Normal tests use reduced semantic excerpts rather than archived full CAL pages. 
 - contradictory no-data-plus-record markup;
 - local input bounds and lemma-key validation;
 - single-fetch request construction and provenance;
-- MCP introspection with no private CAL form parameters and no invented bibliography pagination.
+- MCP introspection with no private CAL form parameters and no invented bibliography pagination;
+- current recent-bibliography heading, ordered duplicate records, Unicode, one fixed GET, provenance, absent empty marker and unexpected pagination/drift.
 
 Normal CI performs zero CAL requests.

@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 from mcp import Client, StdioServerParameters
 
+from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
+
 
 @pytest.mark.anyio
 async def test_real_stdio_server_writes_zero_attempts_on_shutdown(tmp_path: Path) -> None:
@@ -29,7 +31,7 @@ async def test_real_stdio_server_writes_zero_attempts_on_shutdown(tmp_path: Path
         )
     ) as client:
         tools = await client.list_tools()
-        assert len(tools.tools) == 36
+        assert {tool.name for tool in tools.tools} == CURRENT_PUBLIC_TOOLS
         assert not report.exists()
 
     assert json.loads(report.read_text(encoding="utf-8")) == {
