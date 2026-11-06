@@ -61,7 +61,14 @@ def _recent_result(records: list[object]) -> str:
     )
     response = CallToolResult(
         content=[TextContent(type="text", text="")],
-        structured_content={"records": records},
+        structured_content={
+            "heading": "CAL Recent Bibliography",
+            "records": records,
+            "provenance": {
+                "source_url": "https://cal.huc.edu/getrecentbib.php",
+                "operation": "bibliography_recent",
+            },
+        },
         is_error=False,
     )
     case = smoke.SmokeCase(
