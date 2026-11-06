@@ -19,3 +19,9 @@ The page exposes ordered bibliographic paragraphs, not a typed year-group field 
 ## Residual uncertainty / verification gate
 
 The 2026-10-10 raw counts and 2026-11-04 rendered view are complementary, not proof that markup never changes. Test the reduced structural shape and fail closed on missing/incomplete cards, unexpected result heading, and an explicit pagination control. Before a new release, run one bounded installed-wheel live call of this operation to validate actual current parsing, with no automatic retries beyond the approved client policy and no traversal.
+
+## Installed-wheel one-operation acceptance — 2026-11-07 EET
+
+The opt-in [GitHub Actions run 42310066016](https://github.com/alexsosn/CAL-MCP/actions/runs/42310066016) built a source wheel from PR head `2191f10a7fbad839ea353a204971fa8bbeeed203`, installed it in a fresh Python 3.11 virtual environment, and launched its `cal-mcp` executable via stdio **outside the source checkout**. MCP listed 37 development tools and exposed the new zero-argument `cal_bibliography_recent()` operation. One caller invocation returned a structured `CAL Recent Bibliography` result with **126 nonempty citation records**, correct actual CAL origin and `/getrecentbib.php` source URL, operation identity, and timezone-aware retrieval provenance. The private shutdown transport meter reported **exactly one actual CAL start out of a hard 25-start process cap**; smoke-mode retries were disabled. This is a *single operation* acceptance, not a claim that every future CAL snapshot or all 37 tools were live-tested.
+
+The runner did not print or persist full CAL response bodies; it logged the count and validation outcome only. The temporary pull-request workflow was removed immediately after successful evidence collection to prevent future automated CAL probes. The normal offline test suite remains independent of CAL network access. No CAL 429 was observed in this one bounded invocation.
