@@ -27,10 +27,10 @@ def test_current_release_has_exactly_one_new_researched_case_after_v01() -> None
     )
     assert len({case.name for case in cases}) == 13
     assert sum(case.tool != "cal_convert_to_code" for case in cases) == 12
-    assert smoke._REVIEWED_CURRENT_SMOKE_IDENTITIES == (
+    assert (
         *smoke._REVIEWED_V01_SMOKE_IDENTITIES,
         ("recent_bibliography", "cal_bibliography_recent", (), (), True, None),
-    )
+    ) == smoke._REVIEWED_CURRENT_SMOKE_IDENTITIES
 
 
 def test_current_full_success_requires_twelve_actual_cal_starts() -> None:
