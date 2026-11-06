@@ -49,6 +49,9 @@ def _response(href: str, *, label: str = "CAL tag", recent: bool = False) -> Cal
         "/getbibsigla.php?myauthor=%FF",
         "/getbibsigla.php?myauthor=TADA&&",
         "/getbibsigla.php?myauthor=TADA&",
+        " /getbibsigla.php?myauthor=TADA",
+        "/getbibsigla.php?myauthor=TA\nDA",
+        "/getbibsigla.php?myauthor=TADA ",
     ],
 )
 @pytest.mark.parametrize("recent", [False, True])
