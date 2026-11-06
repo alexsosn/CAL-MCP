@@ -44,7 +44,6 @@ def _response(href: str, *, label: str = "CAL tag", recent: bool = False) -> Cal
         "/getbibsigla.php?myauthor=TADA&myauthor=JBA",
         "/archive/getbibsigla.php?myauthor=TADA",
         "/./getbibsigla.php?myauthor=TADA",
-        "?myauthor=TADA",
         "/getbibsigla.php?myauthor=TADA#other",
         "/getbibsigla.php?myauthor=%ZZ",
         "/getbibsigla.php?myauthor=%FF",
@@ -95,8 +94,19 @@ def test_unrelated_same_origin_link_remains_generic() -> None:
 
 
 def test_empty_cal_placeholder_still_has_no_semantics() -> None:
-    record = parse_bibliography_page(
-        _response("/getbiblemma.php?myauthor=", label="")
-    ).records[0]
+    record = parse_bibliography_page(_response("/getbiblemma.php?myauthor=", label="")).records[0]
     assert record.citation == "A bibliography citation."
     assert record.links == ()
+
+
+def test_same_page_query_alias_is_not_canonical_typed_navigation() -> None:
+    # This is a typed handler only on the targeted result endpoint; on
+    # getrecentbib.php a self-query remains an unrelated generic CAL link.
+    with pytest.raises(BibliographyParseError):
+        parse_bibliography_page(_response("?myauthor=TADA"))
+
+
+def test_recent_page_self_query_remains_generic() -> None:
+    record = parse_recent_bibliography_page(_response("?myauthor=TADA", recent=True)).records[0]
+    assert record.links[0].query_kind is None
+    assert record.links[0].url == "https://cal.huc.edu/getrecentbib.php?myauthor=TADA"
