@@ -104,7 +104,7 @@ The normal suite uses reduced fixtures and mocked transports; it must not rely o
 
 ## Agora status
 
-Agora registration remains downstream work in [issue #16](https://github.com/alexsosn/CAL-MCP/issues/16) and [Agora#222](https://github.com/alexsosn/Agora/issues/222). CAL-MCP remains a standalone stdio MCP server and does not import or require Agora. The published v0.1.0 release can be pinned as `cal-mcp==0.1.0` with executable `cal-mcp`; see the [Agora handoff](integrations/agora.md) for an explicitly unverified downstream client-launch proposal and one bounded smoke.
+CAL-MCP's [Agora registration PR #268](https://github.com/alexsosn/Agora/pull/268) **merged** into Agora main on 4 November 2026, completing upstream [issue #16](https://github.com/alexsosn/CAL-MCP/issues/16) and downstream [Agora#222](https://github.com/alexsosn/Agora/issues/222). Its registry entry is in **candidate v1.1**, **not yet published** as an Agora marketplace release. The generated **Codex** stdio launch path is **verified** by a bounded real CAL lookup and 36-tool discovery; the generated **Claude** manifest has deterministic checks only and remains **community** without a recorded live CAL lookup. CAL-MCP itself remains an independently installable local **stdio** server with the published `cal-mcp==0.1.0` pin and `cal-mcp` executable; it does not import or require Agora. See the [Agora integration handoff](integrations/agora.md) for the exact constraints, client evidence and limitations.
 
 ## Data boundary
 
