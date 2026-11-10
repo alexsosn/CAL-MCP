@@ -126,6 +126,7 @@ def _has_representative_content(case_name: str, data: dict[str, object]) -> bool
     field_by_case = {
         # CAL cly V currently has one complete record; see the checked-in HTML fixture.
         "bibliography": ("records", "citation", 1),
+        "recent_bibliography": ("records", "citation", 1),
         "gloss": ("matches", "lemma_key", 1),
         "text_concordance": ("lemmas", "lemma_key", 1),
         "dictionary": ("entries", "display_lemma", 1),
@@ -145,6 +146,16 @@ def _has_representative_content(case_name: str, data: dict[str, object]) -> bool
         for row in rows
     ):
         return False
+    if case_name == "recent_bibliography":
+        # The release gate must not accept plausible records from another CAL page.
+        provenance = data.get("provenance")
+        if (
+            data.get("heading") != "CAL Recent Bibliography"
+            or not isinstance(provenance, dict)
+            or provenance.get("source_url") != "https://cal.huc.edu/getrecentbib.php"
+            or provenance.get("operation") != "bibliography_recent"
+        ):
+            return False
     return case_name != "text_concordance" or any(
         row.get("cal_reports_no_data") is False for row in rows
     )
@@ -225,6 +236,7 @@ DEFAULT_SMOKE_CASES: tuple[SmokeCase, ...] = (
         {"book": "Gen", "chapter": 1, "verse": 1},
         ("found",),
     ),
+    SmokeCase("recent_bibliography", "cal_bibliography_recent", {}),
 )
 
 
@@ -460,6 +472,14 @@ _REVIEWED_V01_SMOKE_IDENTITIES = (
 )
 
 
+# The v0.1.0 tuple is deliberately retained unchanged: it describes the immutable
+# published release and must not be used to approve the evolved source package.
+_REVIEWED_CURRENT_SMOKE_IDENTITIES = (
+    *_REVIEWED_V01_SMOKE_IDENTITIES,
+    ("recent_bibliography", "cal_bibliography_recent", (), (), True, None),
+)
+
+
 def _smoke_case_identity(case: SmokeCase) -> tuple[object, ...]:
     return (
         case.name,
@@ -480,17 +500,17 @@ def _complete_release_smoke_matrix(
     # Prevent an accidentally deleted, duplicated, or local-only smoke matrix
     # from passing even when both expected and observed are equally truncated.
     if (
-        tuple(_smoke_case_identity(case) for case in required) != _REVIEWED_V01_SMOKE_IDENTITIES
-        or len(required) < 12
+        tuple(_smoke_case_identity(case) for case in required) != _REVIEWED_CURRENT_SMOKE_IDENTITIES
+        or len(required) < 13
         or len(set(expected)) != len(expected)
         or sum(case.tool == "cal_convert_to_code" for case in required) != 1
-        or sum(case.tool != "cal_convert_to_code" for case in required) < 11
+        or sum(case.tool != "cal_convert_to_code" for case in required) < 12
     ):
         return False
     # Every reviewed CAL-backed case needs a distinct first transport start in
     # the fresh installed server. Do not accept all-ok results with less I/O.
     min_cal_starts = sum(
-        identity[1] != "cal_convert_to_code" for identity in _REVIEWED_V01_SMOKE_IDENTITIES
+        identity[1] != "cal_convert_to_code" for identity in _REVIEWED_CURRENT_SMOKE_IDENTITIES
     )
     return (
         tuple(outcome.case for outcome in outcomes) == expected

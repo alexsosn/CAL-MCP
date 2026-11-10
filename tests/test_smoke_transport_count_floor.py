@@ -1,4 +1,4 @@
-"""Release smoke needs plausible counted CAL I/O for all 11 scholarly cases (#305).
+"""Release smoke needs plausible counted CAL I/O for all 12 scholarly cases (#305).
 
 All CLI executions stub the installed process: no live requests or subprocesses.
 """
@@ -42,25 +42,25 @@ def _run_stubbed_cli(
     return report
 
 
-@pytest.mark.parametrize("attempts", [1, 2, 8, 10])
-def test_full_report_below_eleven_live_transports_cannot_authorize_publication(
+@pytest.mark.parametrize("attempts", [1, 2, 8, 10, 11])
+def test_full_report_below_twelve_live_transports_cannot_authorize_publication(
     attempts: int,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     outcomes = _full_success()
-    assert len(outcomes) == 12
+    assert len(outcomes) == 13
     report = _run_stubbed_cli(monkeypatch, capsys, outcomes, attempts, expect_exit=True)
     assert report["status"] == "failed"
     assert report["category"] == "harness"
     assert report["reason"] == "incomplete_smoke_acceptance"
     assert report["actual_cal_transport_attempts"] == attempts
-    assert len(report["cases"]) == 12
+    assert len(report["cases"]) == 13
     assert all(case["category"] == "ok" for case in report["cases"])
 
 
-@pytest.mark.parametrize("attempts", [11, 25])
-def test_full_report_with_at_least_eleven_measured_starts_remains_eligible(
+@pytest.mark.parametrize("attempts", [12, 25])
+def test_full_report_with_at_least_twelve_measured_starts_remains_eligible(
     attempts: int,
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
@@ -68,7 +68,7 @@ def test_full_report_with_at_least_eleven_measured_starts_remains_eligible(
     report = _run_stubbed_cli(monkeypatch, capsys, _full_success(), attempts, expect_exit=False)
     assert report["status"] == "passed"
     assert report["actual_cal_transport_attempts"] == attempts
-    assert len(report["cases"]) == 12
+    assert len(report["cases"]) == 13
 
 
 def test_terminal_upstream_failure_keeps_its_original_category_below_floor(
