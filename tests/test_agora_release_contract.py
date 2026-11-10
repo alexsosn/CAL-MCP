@@ -74,3 +74,25 @@ def test_agora_guide_reports_merged_integration_with_client_evidence_limits() ->
     assert "not yet implemented" not in doc
     assert "not yet verified as an Agora-generated" not in doc
     assert "remains open until downstream" not in doc
+
+
+def test_installation_agora_status_matches_merged_candidate_registration() -> None:
+    """Issue #332: the end-user install guide cannot contradict the canonical handoff."""
+    doc = (ROOT / "docs" / "installation.md").read_text(encoding="utf-8")
+    section = doc.split("## Agora status", 1)[1].split("## Data boundary", 1)[0]
+    for expected in (
+        "https://github.com/alexsosn/Agora/pull/268",
+        "merged",
+        "candidate v1.1",
+        "not yet published",
+        "Codex",
+        "verified",
+        "Claude",
+        "community",
+        "cal-mcp==0.1.0",
+        "stdio",
+        "integrations/agora.md",
+    ):
+        assert expected in section
+    assert "registration remains downstream work" not in section
+    assert "unverified downstream client-launch proposal" not in section
