@@ -1,0 +1,41 @@
+name: One-off #345 current CAL external citation positive diagnostic
+
+on:
+  push:
+    branches: [research/external-citations-345]
+    paths: [.github/workflows/probe-external-citations-345.yml]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cal-mcp-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  source-derived-positive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build one nonpublishing candidate wheel
+        run: |
+          python -m pip install --disable-pip-version-check "build>=1.3,<2"
+          python -m build --outdir dist
+      - name: Install the exact wheel into a fresh venv
+        shell: bash
+        run: |
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          test "${#wheels[@]}" -eq 1
+          python -m venv "$RUNNER_TEMP/cal-mcp-external-345"
+          "$RUNNER_TEMP/cal-mcp-external-345/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir "${wheels[0]}"
+      - name: Probe only CAL-returned EbPar source, max two CAL starts
+        shell: bash
+        run: |
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-external-345/bin/python" -m cal_mcp.external_citations_diagnostic
