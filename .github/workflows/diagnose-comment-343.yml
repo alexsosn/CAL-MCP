@@ -35,7 +35,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/cal-comment-343"
           "$RUNNER_TEMP/cal-comment-343/bin/python" -m pip install \
             --disable-pip-version-check --no-cache-dir "${wheels[0]}"
-      - name: At most two CAL starts, 60-second gap, finite parser reasons and tags only
+      - name: At most two CAL starts, CSS class roles and nested span depth only
         shell: bash
         run: |
           cd "$RUNNER_TEMP"
