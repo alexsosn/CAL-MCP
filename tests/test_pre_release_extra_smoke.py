@@ -58,7 +58,10 @@ def test_empty_analyses_are_not_passing_token_success() -> None:
 
 def test_suite_cannot_accept_duplicate_registry_or_missing_output_schemas() -> None:
     batch = _batch()
-    listed = [SimpleNamespace(name=name, output_schema={"type": "object"}) for name in CURRENT_PUBLIC_TOOLS]
+    listed = [
+        SimpleNamespace(name=name, output_schema={"type": "object"})
+        for name in CURRENT_PUBLIC_TOOLS
+    ]
     assert batch.valid_registry(listed)
     assert not batch.valid_registry(listed[:-1])
     assert not batch.valid_registry(listed + listed[-1:])
