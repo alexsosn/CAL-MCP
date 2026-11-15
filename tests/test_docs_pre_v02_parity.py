@@ -18,7 +18,7 @@ def test_readme_published_tool_table_matches_frozen_manifest() -> None:
     readme = _doc("README.md")
     assert len(V01_PUBLIC_TOOLS) == 36
     assert len(CURRENT_PUBLIC_TOOLS) == 37
-    assert CURRENT_PUBLIC_TOOLS - V01_PUBLIC_TOOLS == {"cal_bibliography_recent"}
+    assert {"cal_bibliography_recent"} == CURRENT_PUBLIC_TOOLS - V01_PUBLIC_TOOLS
 
     # Scope this to the table, not to other documentation or references.
     table = readme.split("## v0.1 public surface", 1)[1].split("## System boundary", 1)[0]
