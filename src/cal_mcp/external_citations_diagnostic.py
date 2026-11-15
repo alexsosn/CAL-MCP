@@ -8,9 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import Callable
-from typing import Protocol
-
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalUpstreamError
 from cal_mcp.external_citations import (
     ExternalCitationResult,
@@ -23,17 +20,7 @@ _CANONICAL_URL = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
 _MAX_ATTEMPTS = 2
 
 
-class _SourceLike(Protocol):
-    abbreviation: str
-    citations_url: str
-
-
-class _SourceResultLike(Protocol):
-    dialect_id: str
-    sources: tuple[_SourceLike, ...]
-
-
-def choose_candidate(result: _SourceResultLike) -> str | None:
+def choose_candidate(result: ExternalCitationSourceResult) -> str | None:
     """Require a source-backed exact CAL navigation target; duplicates must agree."""
     if result.dialect_id != "6":
         return None
@@ -56,7 +43,7 @@ def is_positive(result: ExternalCitationResult, requested_source: str) -> bool:
     )
 
 
-async def diagnose_once(*, sleep: Callable[[float], object] = asyncio.sleep) -> dict[str, object]:
+async def diagnose_once() -> dict[str, object]:
     """At most two non-retried CAL starts, with one 60s completion-based pause."""
     attempts = 0
 
@@ -84,7 +71,7 @@ async def diagnose_once(*, sleep: Callable[[float], object] = asyncio.sleep) -> 
                     "category": "no_verified_source",
                     "actual_cal_transport_attempts": attempts,
                 }
-            await sleep(60.0)
+            await asyncio.sleep(60.0)
             result = await service.citations(chosen)
     except CalUpstreamError as exc:
         return {
