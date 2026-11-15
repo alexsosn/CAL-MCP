@@ -79,9 +79,7 @@ def test_terminal_backpressure_never_allows_further_calls() -> None:
         )
     )
     assert batch.terminal_backpressure(
-        SimpleNamespace(
-            is_error=True, structured_content={"error": {"kind": "local_rate_limit"}}
-        )
+        SimpleNamespace(is_error=True, structured_content={"error": {"kind": "local_rate_limit"}})
     )
     assert not batch.terminal_backpressure(
         SimpleNamespace(
