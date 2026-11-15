@@ -457,7 +457,9 @@ async def _run_live(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bounded manual follow-up MCP acceptance")
     parser.add_argument("--executable", help="absolute installed cal-mcp executable")
-    parser.add_argument("--remaining-only", action="store_true", help="run only #340 unattempted suffix")
+    parser.add_argument(
+        "--remaining-only", action="store_true", help="run only #340 unattempted suffix"
+    )
     args = parser.parse_args()
     executable = args.executable or shutil.which("cal-mcp")
     if not executable:
@@ -469,7 +471,11 @@ def main() -> None:
     except Exception:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
-    passed = (complete_remaining(outcomes, attempts) if args.remaining_only else complete_batch(outcomes, attempts))
+    passed = (
+        complete_remaining(outcomes, attempts)
+        if args.remaining_only
+        else complete_batch(outcomes, attempts)
+    )
     print(
         json.dumps(
             {
