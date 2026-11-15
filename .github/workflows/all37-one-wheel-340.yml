@@ -1,8 +1,11 @@
 name: One-off issue 340 all-37 same-wheel CAL MCP acceptance
 
-# Dormant until the independent workflow review changes this file to a scoped push trigger.
+# One-shot branch/path-scoped trigger after independent review #5913357175.
+# Remove this workflow from the final PR immediately after measured run completion.
 on:
-  workflow_dispatch:
+  push:
+    branches: [release/all37-acceptance-340]
+    paths: [.github/workflows/all37-one-wheel-340.yml]
 
 permissions:
   contents: read
