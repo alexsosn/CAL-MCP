@@ -15,7 +15,7 @@ python -c 'import json; from experiments.ci_texts.audit import audit_draft; p="e
 
 The JSON specimen is a short 20-token draft. Its `draft:...` lemma identifiers are **local placeholder concepts**, **not** CAL keys, attestations, morphology analyses or a dialect-certified lexicon. To use genuine CAL lemma keys later, a person must explicitly map, source-check and review each identifier and corresponding surface form.
 
-The verifier compares supplied whitespace-token surface strings to the draft; strips only a narrow set of terminal punctuation; counts a running token as known only when **all** of its annotated lemma identifiers belong to the supplied learner-known set (including clitic components); and counts distinct unknown lemma identifiers separately. It rejects missing/misaligned/ambiguous annotations and rejects any claim of CAL or human linguistic verification. It cannot validate the annotations themselves.
+The verifier compares supplied whitespace-token surface strings to the draft; strips only a narrow set of terminal punctuation; counts a running token as known only when **all** of its annotated lemma identifiers belong to the supplied learner-known set (including clitic components); and counts distinct unknown lemma identifiers separately. It rejects missing/misaligned annotations and standalone Syriac combining marks, and rejects any claim of CAL or human linguistic verification. It **does not resolve ambiguous analyses**; a manually selected lemma annotation is treated as an unverified input. It cannot validate the annotations themselves.
 
 ## Measured pilot — 2026-11-15, offline Python 3.13
 
@@ -24,7 +24,7 @@ The verifier compares supplied whitespace-token surface strings to the draft; st
 | Unreviewed specimen, as annotated | 20 | 19 | 1 | 1 | 95% | PASS (threshold 95%, max 1 new) |
 | Same text, learner **does not** know `draft:water` | 20 | 16 | 4 | 2 | 80% | FAIL |
 
-Observed focused tests: **16 passed**. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
+Observed focused tests: **19 passed**, including a Unicode combining-mark regression and a pinned audit of the committed specimen. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
 
 ## Honest next study gates
 
