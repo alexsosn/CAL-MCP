@@ -100,8 +100,7 @@ class _SummaryTagOutline(HTMLParser):
                 tokens = (dict(attrs).get("class") or "").split()
                 css_class = (
                     tokens[0]
-                    if len(tokens) == 1
-                    and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,31}", tokens[0])
+                    if len(tokens) == 1 and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,31}", tokens[0])
                     else "other"
                 )
                 if len(self.spans) < 6:
