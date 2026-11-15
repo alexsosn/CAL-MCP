@@ -328,10 +328,13 @@ def _positive_payload(step: FollowupStep, payload: dict[str, object]) -> bool:
         return isinstance(contents, dict) and bool(contents)
     if step.positive_field == "page":
         return isinstance(contents, dict) and bool(_objects(contents.get("lines")))
-    return isinstance(contents, list) and bool(contents) and all(
-        (isinstance(row, dict) and bool(row))
-        or (isinstance(row, str) and bool(row.strip()))
-        for row in contents
+    return (
+        isinstance(contents, list)
+        and bool(contents)
+        and all(
+            (isinstance(row, dict) and bool(row)) or (isinstance(row, str) and bool(row.strip()))
+            for row in contents
+        )
     )
 
 
