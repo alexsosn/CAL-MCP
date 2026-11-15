@@ -35,3 +35,7 @@ Can a learner-facing LLM create *Classical Syriac* graded microstories with a de
 - **Review:** independent adversarial pass against the issue's acceptance criteria and evidence provenance; keep the PR draft pending expert linguistic review.
 
 **Scope:** issue [#347](https://github.com/alexsosn/CAL-MCP/issues/347). No alteration to `src/cal_mcp`, release docs or MCP tool schema.
+
+## Follow-up 2026-11-16: public-web source sampling
+
+The initial no-CAL-data stage is complete. A subsequent manually selected **public CAL web** spot-check recorded several exact form/phrase parallels and their witness identities; see [source-by-source findings](issue-347-corpus-spot-check.md). This is not a CAL-MCP invocation and does not upgrade any `draft:...` key to a genuine CAL lemma. The revised immediate plan allows **bounded, explicit human-directed upstream lookups** while still forbidding automatic traversal, harvesting, background requests or presenting a sample attestation as validation of a whole generated sentence. The final linguistic-review and real learner-comprehension gates remain open.
