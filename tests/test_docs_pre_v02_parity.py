@@ -81,3 +81,13 @@ def test_release_checklist_keeps_publication_separate_from_docs_merge() -> None:
         "not a release",
     ):
         assert token.lower() in checklist.lower()
+
+
+def test_future_package_readme_does_not_repeat_stale_pypi_release_claims() -> None:
+    readme = _doc("README.md")
+    assert "No versioned release has been published yet" not in readme
+    assert "active pre-release development" not in readme
+    assert "cal-mcp==0.1.0" in readme
+    checklist = _doc("wiki/release-checklist.md")
+    assert "long description" in checklist
+    assert "METADATA" in checklist
