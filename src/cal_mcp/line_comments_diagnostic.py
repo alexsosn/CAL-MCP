@@ -77,12 +77,14 @@ _ALLOWED_SUMMARY_TAGS = frozenset(
 
 
 class _SummaryTagOutline(HTMLParser):
-    """Only whitelisted summary HTML tag names; no attrs, text or URLs in the report."""
+    """Capture bounded structural HTML roles, never lexical text or URL values."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.depth = 0
         self.tags: list[str] = []
+        self.span_stack: list[str] = []
+        self.spans: list[dict[str, object]] = []
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag == "div" and self.depth == 0:
@@ -94,9 +96,30 @@ class _SummaryTagOutline(HTMLParser):
                 self.depth += 1
             if len(self.tags) < 32:
                 self.tags.append(tag if tag in _ALLOWED_SUMMARY_TAGS else "other")
+            if tag == "span":
+                tokens = (dict(attrs).get("class") or "").split()
+                css_class = (
+                    tokens[0]
+                    if len(tokens) == 1
+                    and re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]{0,31}", tokens[0])
+                    else "other"
+                )
+                if len(self.spans) < 6:
+                    self.spans.append(
+                        {
+                            "css_class": css_class,
+                            "parent_span": self.span_stack[-1] if self.span_stack else None,
+                            "depth": len(self.span_stack),
+                        }
+                    )
+                self.span_stack.append(css_class)
 
     def handle_endtag(self, tag: str) -> None:
-        if tag == "div" and self.depth:
+        if not self.depth:
+            return
+        if tag == "span" and self.span_stack:
+            self.span_stack.pop()
+        if tag == "div":
             self.depth -= 1
 
 
@@ -169,6 +192,7 @@ def summarize_response(response: CalResponse, coordinate: str) -> dict[str, obje
         "empty_marker_count": empty_count,
         "event_signatures": signatures,
         "summary_tags": outline.tags,
+        "span_structure": outline.spans,
         "parse_status": parse_status,
         "parser_reason": parser_reason,
         "structure_error": structure_error,
