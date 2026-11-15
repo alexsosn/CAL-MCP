@@ -1489,3 +1489,28 @@ Current reduced CAL bibliography fixtures from the author, keyword and lemma res
 ## R-089 — A future 37-tool release needs a complete smoke gate (2026-11-07, #330)
 
 After #39, current 0.2.0.dev0 source advertises 37 tools and the package verifier already checks all 37 on installation. However, `stdio_live_smoke.DEFAULT_SMOKE_CASES` and its anti-vacuity floor still represented the immutable published 12-case/11-CAL-backed v0.1.0 release. A future tag could therefore pass without invoking the newly exposed recent-bibliography tool in the exact release wheel. That operation separately passed a one-call installed-wheel E2E with 126 citations and one measured CAL start ([run 42310066016](https://github.com/alexsosn/CAL-MCP/actions/runs/42310066016)). Issue #330 extends the reviewed current matrix to 13 cases/12 CAL-backed with the published original identity and 25-attempt budget intact. No CAL requests were made for research or offline tests. See `docs/research/issue-330-current-release-smoke.md` and the issue TDD plan; historic v0.1.0 release evidence is unchanged.
+
+## R-090 — Legacy citation fallback must preserve internal semicolons (2026-11-15, #336)
+
+One bounded web recheck of
+<https://cal.huc.edu/cal_entry_web.php?lemma=%29lh+N> still shows the
+`BT Yom 9b(41)` citation containing `mˀlhˀ; snynˀ lkw`, alongside its
+Syriac-script punctuation. This confirms the internal-semicolon distinction;
+it does not establish a machine contract for arbitrary CAL punctuation. No
+neighboring entries or context links were followed, and no full page is retained.
+
+R-021's current structural separator handling already preserves such punctuation
+when structural separators are present. The legacy fallback still split on a
+semicolon with whitespace on either side. The locally saved composite legacy
+fixture therefore fails the strict citation-count guard on development main.
+That fixture rearranges excerpts, uses placeholder links, and includes synthetic
+text/groupings; its metadata explicitly distinguishes it from a current CAL capture.
+
+**Implication:** for legacy markup only, require whitespace on both sides of a
+semicolon. Split reference-delimited slices before trimming, so a separator just
+before the next anchor is removed rather than glued to the prior citation text.
+Structural boundaries remain authoritative, including for whitespace-surrounded
+semicolons inside text. Legacy whitespace-surrounded in-text punctuation remains
+ambiguous; keep strict count validation instead of guessing. Public models,
+provenance and request policy do not change. See the test-first
+[issue plan](docs/plans/issue-336-legacy-citation-semicolons.md).

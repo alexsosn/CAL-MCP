@@ -158,6 +158,15 @@ Capture/recheck dates: **2026-09-04–2026-09-11** for the original set; later r
 | `entry_lemma_header_no_pos_current.html` | `GET https://cal.huc.edu/cal_entry_web.php?lemma=%24yp%232+N` (2026-10-08; #227) | verbatim current `div.lemma-header` without a POS span, plus the later `dict-refs` line that the older header scan mistook for a header |
 | `browse_crossrefs_structural.html` | reduced structural fixture from bounded current `$l` / `by` browse evidence (2026-10-03; #175) | mixed ordinary and arrow rows; preserves exact route/key/arrow shapes with synthetic gloss text; no complete CAL page |
 
+The issue-#336 `entry_alh_citation_semicolon.html` fixture is a composite legacy
+compatibility case saved locally on 2026-09-05, with its internal-semicolon example
+rechecked at `https://cal.huc.edu/cal_entry_web.php?lemma=%29lh+N` on 2026-11-15.
+Its rearranged sense groupings, counts, some text and placeholder links are
+synthetic; it is not a current full-entry capture. It tests internal punctuation,
+whitespace-surrounded separators before linked references, and a free-text
+unlinked citation. Current structural markup is covered separately by
+`entry_br_current_citations.html`; R-021 and R-090 describe the boundary.
+
 The issue-#261 synthetic regression in `tests/test_token_analysis_unclosed_dial_outline.py` injects CAL's 2026-10-10 Peshitta `sup > dial` closing-tag omission into the existing reduced current linked-token fixture; it is not a copied full token page. Unrelated unclosed inline markup and nested `<hr>` remain negative mutation cases.
 
 The reduced excerpts are maintained only as test contracts. Normal tests make zero CAL requests. The lexicon citation-context/search/text/token-analysis/concordance/bibliography/Targum/Syriac fixtures were produced from deliberately bounded form/result audits and contain only a few semantic rows, not complete result pages. If current CAL markup materially changes, update the fixture provenance and parser tests rather than silently accepting incomplete output.

@@ -85,6 +85,15 @@ The entry preserves, where present:
 
 Optional CAL sections are represented as empty lists when absent. Required entry semantics disappearing from an upstream page is treated as parser drift rather than silently returning a partial entry.
 
+Citation text preserves internal punctuation. CAL's structural citation separators
+take precedence over semicolons in the text. For older markup without those
+boundaries, only a semicolon surrounded by whitespace separates citations;
+`mˀlhˀ; snynˀ lkw` stays within one citation. That fallback cannot distinguish
+whitespace-surrounded in-text semicolons from separators, so a mismatch with CAL's
+declared citation count still produces `parser_drift`. Legacy unlinked fragments
+without a separately marked reference retain their full text with `reference`
+and `url` set to `null`.
+
 ### `ambiguous`
 
 CAL exposes more than one exact matching lemma/homograph after all bounded encoding candidates are aggregated. `entry` is `null`; `matches` contains the typed candidates.

@@ -437,7 +437,9 @@ _NUMBER_RE = re.compile(r"^(\d+)$")
 _SUBNUMBER_RE = re.compile(r"^\((\d+)\)$")
 _STEM_HEADING_RE = re.compile(r"^(?P<heading>.+?)\s+\d+\s+senses?▶$")
 _CITATION_MARKER_RE = re.compile(r"^▶\s*(?P<count>\d+)\s+citations?$", re.IGNORECASE)
-_CITATION_SEPARATOR_RE = re.compile(r"(?:\s+;\s*|\s*;\s+)")
+# Legacy separators have whitespace on both sides; preserve internal punctuation
+# such as "mˀlhˀ; snynˀ lkw". Current structural boundaries take precedence below.
+_CITATION_SEPARATOR_RE = re.compile(r"\s+;\s+")
 _SECTION_FORM = "§Form & Usage▶"
 _SECTION_DERIVATIVES = "☛Derivatives▶"
 _SECTION_NOTES = "✎Notes & Bibliography▶"
@@ -1474,7 +1476,9 @@ def _parse_citations(line: _Line, base_url: str) -> list[Citation]:
 def _split_citation_segments(value: str, *, structural_boundaries: bool = False) -> list[str]:
     if structural_boundaries or _CITATION_BOUNDARY in value:
         return [part.strip() for part in value.split(_CITATION_BOUNDARY) if part.strip()]
-    return [part.strip() for part in _CITATION_SEPARATOR_RE.split(value.strip()) if part.strip()]
+    # A slice ending just before the next reference includes the separator's right-hand
+    # space. Split before trimming so that separator does not remain in the prior text.
+    return [part.strip() for part in _CITATION_SEPARATOR_RE.split(value) if part.strip()]
 
 
 def _raw_citation(text: str) -> Citation:
