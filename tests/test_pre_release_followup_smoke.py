@@ -175,7 +175,7 @@ def test_remaining_batch_is_exact_safe_suffix_after_comment_drift() -> None:
     module = _module()
     expected = tuple(step.name for step in module.STEPS[4:])
     assert len(expected) == 17
-    assert expected[0] == "kwic_dialects"
+    assert expected[0] == "kwic_dialects_selector"
     assert expected[-1] == "syriac_group"
     assert tuple(step.name for step in module.REMAINDER_STEPS) == expected
     assert all(step.tool != "cal_text_line_comments" for step in module.REMAINDER_STEPS)
@@ -214,7 +214,7 @@ def test_remaining_only_never_calls_preceding_text_or_comment_even_on_429(
         lambda case, tool, result: SmokeOutcome(case.name, "unavailable", "CAL 429"),
     )
     outcomes = asyncio.run(module.run_cases(fake, steps=module.REMAINDER_STEPS))
-    assert tuple(outcome.case for outcome in outcomes) == ("kwic_dialects",)
+    assert tuple(outcome.case for outcome in outcomes) == ("kwic_dialects_selector",)
     assert fake.calls == ["cal_kwic_dialects"]
     assert not module.complete_remaining(outcomes, 1)
 
