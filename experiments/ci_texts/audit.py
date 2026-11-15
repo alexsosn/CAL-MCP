@@ -2,6 +2,7 @@
 
 import math
 import re
+import unicodedata
 from collections.abc import Mapping
 from typing import Any
 
@@ -37,7 +38,8 @@ def _surface_from_raw(raw: str) -> str:
     surface = raw.rstrip(_END_PUNCTUATION)
     # Classical Syriac letter blocks and optional vowels. No Roman/Hebrew text in this pilot.
     if not surface or not any(
-        0x0710 <= ord(char) <= 0x072F or 0x0860 <= ord(char) <= 0x086A
+        (0x0710 <= ord(char) <= 0x072F or 0x0860 <= ord(char) <= 0x086A)
+        and unicodedata.category(char).startswith("L")
         for char in surface
     ):
         raise DraftAuditError("each running token needs a Syriac base letter")
