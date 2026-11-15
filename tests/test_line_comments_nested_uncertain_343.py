@@ -6,7 +6,11 @@ from pathlib import Path
 import pytest
 
 from cal_mcp.client import CalResponse
-from cal_mcp.texts import TextParseError, parse_text_line_comments_page
+from cal_mcp.texts import (
+    TextParseError,
+    _line_comment_record_to_dict,
+    parse_text_line_comments_page,
+)
 
 FIXTURE = Path(__file__).parent / "fixtures" / "cal" / "text_line_comments_roman_uncertain.html"
 _COORD = "1325002"
@@ -33,6 +37,7 @@ def test_current_roman_source_nested_uncertain_preserves_source_and_translation(
     assert record.lemma_key == "mlk N"
     assert record.headword == "mlk"
     assert record.has_uncertain_reading is True
+    assert _line_comment_record_to_dict(record)["has_uncertain_reading"] is True
 
 
 @pytest.mark.parametrize(
@@ -60,3 +65,18 @@ def test_unreviewed_nested_spans_and_bare_roman_pair_fail_closed(modify) -> None
             _response(modify(FIXTURE.read_text(encoding="utf-8"))),
             requested_coordinate=_COORD,
         )
+
+
+def test_historical_hebrew_comment_has_no_uncertainty_annotation() -> None:
+    fixture = FIXTURE.parent / "text_line_comments_pj_gen8_21.html"
+    response = CalResponse(
+        status_code=200,
+        url="https://cal.huc.edu/comment.php?coord=8100110821",
+        body=fixture.read_bytes(),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 11, 15, tzinfo=UTC),
+    )
+    page = parse_text_line_comments_page(response, requested_coordinate="8100110821")
+    assert page.status.value == "found"
+    assert all(record.has_uncertain_reading is False for record in page.records)
+    assert all(_line_comment_record_to_dict(record)["has_uncertain_reading"] is False for record in page.records)
