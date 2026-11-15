@@ -45,3 +45,12 @@ If a chosen dependency selector is missing or an expected positive row disappear
 ## Release interaction
 
 Issue #338 will report first real installed-wheel fixed smoke on an earlier candidate source SHA. This research does **not** imply any of the 25 probes has run. Because #336/#337 merged after that run began, its final release-candidate evidence must be bound to a subsequent exact SHA as appropriate. Do not tag/publish until all required gates are independently reviewed.
+
+
+## Measured independent-tool batch A (2026-11-15)
+
+**PASS:** [nonpublishing installed-wheel GitHub Actions run 43734021427](https://github.com/alexsosn/CAL-MCP/actions/runs/43734021427), source/head `222d3edd32906576118a516cb0f2d8972d418ffb`, wheel `cal-mcp 0.2.0.dev0`. A fresh venv installed one built wheel; the runner ran outside the source checkout. The report recorded **13/13 `ok` cases**, **13 actual CAL transport attempts** (absolute cap 25), and `status: passed`. No HTTP 429, parser drift, schema/harness fault or unclassified errors appeared.
+
+Verified distinct tools (13): `cal_lexicon_browse`, `cal_gloss_field`, `cal_citation_text_search`, `cal_text_catalogue`, `cal_text_information`, `cal_token_analysis`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_bibliography_authors`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_syriac_texts`, `cal_syriac_missing_words`.
+
+Together with the earlier [13-case representative release smoke](https://github.com/alexsosn/CAL-MCP/actions/runs/43724124834) (12 distinct tools; 14 actual starts), this measures **25 distinct tools** across two source-bound nonpublishing runs. The 12 dependent follow-ups listed below still require their own pass before claiming all 37. These two existing successful runs have *different source SHAs*; they do not by themselves certify a future exact tagged release candidate. No CAL lexical/text content is copied into the report.
