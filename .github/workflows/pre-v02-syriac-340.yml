@@ -34,7 +34,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/cal-mcp-syriac-340"
           "$RUNNER_TEMP/cal-mcp-syriac-340/bin/python" -m pip install \
             --disable-pip-version-check --no-cache-dir "${wheels[0]}"
-      - name: Exactly two source-derived Syriac MCP steps, max two CAL starts
+      - name: Two source-derived Syriac steps, exactly two starts to PASS, server ceiling 25
         shell: bash
         run: |
           cd "$RUNNER_TEMP"
