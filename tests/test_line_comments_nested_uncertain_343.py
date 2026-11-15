@@ -85,8 +85,6 @@ def test_historical_hebrew_comment_has_no_uncertainty_annotation() -> None:
     page = parse_text_line_comments_page(response, requested_coordinate="8100110821")
     assert page.status.value == "found"
     assert all(record.has_uncertain_reading is False for record in page.records)
-    flags = [
-        _line_comment_record_to_dict(record)["has_uncertain_reading"]
-        for record in page.records
-    ]
+    serialized = [_line_comment_record_to_dict(record) for record in page.records]
+    flags = [record["has_uncertain_reading"] for record in serialized]
     assert flags == [False] * len(page.records)
