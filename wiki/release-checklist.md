@@ -26,6 +26,7 @@ The actual [.github/workflows/release.yml](https://github.com/alexsosn/CAL-MCP/b
 
 - [ ] Create a signed-off, exact-commit `v0.2.0` tag only when ready to run the publication pipeline. Verify tag/version match.
 - [ ] Let the release job build **one wheel and one sdist**, run frozen CI, validate both freshly installed artifacts and the installed stdio executable/tool schema.
+- [ ] **All-feature acceptance gate ([#340](https://github.com/alexsosn/CAL-MCP/issues/340)):** the 13-case release smoke exercises only 12 of **all 37** current tool identities. The remaining **25** have no individual live release probe. Require separately reviewed, measured installed-wheel CAL-backed checks for the 25 before claiming end-to-end all-feature readiness. Keep per-batch transport budgets and 429 stop policy. A passing 13-case suite alone does not discharge #340.
 - [ ] Let its separate live job install the **same built wheel** and run the **13-case** current-source MCP smoke: **12** CAL-backed cases, including `cal_bibliography_recent`; at least **12 actual CAL transport starts**, never more than **25**; no automatic retries, concurrency 1, at least 60 seconds completion-based inter-case spacing, stop on failures/HTTP 429. The full live gate is *not* a routine PR CI action.
 - [ ] Investigate any `parser_drift`, content, upstream/network, runtime, or missing-tool error. No passing partial matrix, retry storm, unmeasured CAL traffic or silently skipped scenario qualifies for publication. Correct errors in a reviewed change before a new attempt.
 
