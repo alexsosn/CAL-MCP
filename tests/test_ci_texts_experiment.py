@@ -114,6 +114,7 @@ def test_committed_unreviewed_specimen_has_reproducible_coverage():
     assert result["passes_lexical_budget"] is True
     assert result["linguistically_verified"] is False
 
+
 @pytest.mark.parametrize("ending", ["܂", "܃"])
 def test_common_cal_syriac_terminal_punctuation_is_accepted(ending):
     data = draft()
