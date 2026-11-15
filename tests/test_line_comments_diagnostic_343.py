@@ -7,8 +7,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-from cal_mcp.client import CalResponse
 from scripts.diagnose_cal_comment_343 import select_comment_coordinate, summarize_response
+
+from cal_mcp.client import CalResponse
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cal"
 
