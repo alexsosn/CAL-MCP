@@ -56,7 +56,7 @@ Use the smallest concordance scope you know:
 - `cal_kwic_dialects` — discover current dialect-level counts for one lemma;
 - `cal_kwic_dialect` — retrieve one selected dialect's KWIC hits.
 
-Returned lemma/text/dialect identifiers should come from CAL-MCP results where possible. Detailed context remains a separate text-page operation rather than a hidden fetch.
+Returned lemma/text/dialect identifiers should come from CAL-MCP results where possible. For detailed context, pass the exact typed selectors from a returned `KwicHit` to a separate `cal_kwic_full_context` call. Ordinary text-page retrieval may also be useful when the hit exposes compatible text coordinates; neither step happens automatically.
 
 See [Concordance and KWIC](tools/concordance.md).
 
@@ -68,7 +68,13 @@ Choose the workflow that matches the identifier you have:
 - search one exact CAL text/subject tag with `cal_bibliography_keyword`;
 - search one exact CAL lemma key with `cal_bibliography_lemma`.
 
-CAL's separate recent-years bibliography snapshot is not part of the v0.1 tool contract; it is deferred to issue #39.
+The published `cal-mcp==0.1.0` includes the four targeted bibliography operations above. **Unreleased** development source `0.2.0.dev0` also provides CAL's ordered, bounded recent-bibliography snapshot:
+
+```text
+cal_bibliography_recent()
+```
+
+It has no arguments or year selector and preserves CAL's citations and source provenance in its reported order. This operation was completed after v0.1.0; it cannot be called from an installation pinned to `cal-mcp==0.1.0`.
 
 See [Bibliography](tools/bibliography.md).
 
@@ -97,7 +103,7 @@ cal_targum_hebrew_lemmas(initial="mem", targum="onqelos")
 cal_targum_hebrew_reflexes(targum="onqelos", mt_lemma_id="1751")
 ```
 
-Use a returned opaque `mt_lemma_id`; do not infer its meaning. Single-source Targum chapter reading composes through the ordinary text tools instead of a duplicate browser.
+Use a returned opaque `mt_lemma_id`; do not infer its meaning. For explicit examples, call `cal_targum_concordance_examples(lemma_key, text_ids)` with the text selectors from a returned concordance source group, or `cal_targum_reflex_examples(targum, mt_lemma_id, lemma_key)` with the selected Hebrew/reflex identifiers. Both follow-up tools are available in **published v0.1.0**, and neither prefetches examples. Single-source Targum chapter reading composes through the ordinary text tools instead of a duplicate browser.
 
 See [Targum Studies](tools/targum.md).
 
@@ -106,6 +112,7 @@ See [Targum Studies](tools/targum.md).
 CAL-MCP exposes:
 
 - `cal_syriac_texts` for one current Syriac text category;
+- `cal_syriac_group` to follow one explicitly returned grouped-text `group_id`;
 - `cal_syriac_missing_words` for CAL's curated comparison against *A Syriac Lexicon*;
 - `cal_syriac_peshitta_parallel` for one MT/Peshitta verse.
 
