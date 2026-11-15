@@ -35,8 +35,9 @@ jobs:
           python -m venv "$RUNNER_TEMP/cal-comment-343"
           "$RUNNER_TEMP/cal-comment-343/bin/python" -m pip install \
             --disable-pip-version-check --no-cache-dir "${wheels[0]}"
-      - name: At most two CAL starts, CSS class roles and nested span depth only
+      - name: Verify fixed Tel Dan parser in installed wheel with exact two-request evidence
         shell: bash
         run: |
           cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/cal-comment-343/bin/python" -m cal_mcp.line_comments_diagnostic
+          "$RUNNER_TEMP/cal-comment-343/bin/python" -m cal_mcp.line_comments_diagnostic | \
+            "$RUNNER_TEMP/cal-comment-343/bin/python" -c 'import json,sys; r=json.load(sys.stdin); s=r.get("structure", {}); assert r.get("status")=="measured" and r.get("actual_cal_transport_attempts")==2 and s.get("parse_status")=="found" and s.get("title_matches") is True and s.get("summary_cards")==1 and s.get("record_count",0)>=1; print(json.dumps(r,sort_keys=True))'
