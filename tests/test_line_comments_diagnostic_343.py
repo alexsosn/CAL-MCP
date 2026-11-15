@@ -120,9 +120,7 @@ def test_summary_outline_is_bounded_to_tag_names_not_cal_text() -> None:
     assert "p" in report["summary_tags"]
     assert "span" in report["summary_tags"]
     assert len(report["summary_tags"]) <= 32
-    assert all(
-        tag in {"div", "p", "span", "br", "a", "b", "i", "em", "strong", "table",
-                "tr", "td", "th", "ul", "li", "other"}
-        for tag in report["summary_tags"]
-    )
+    block_tags = {"div", "p", "table", "tr", "td", "th", "ul", "li"}
+    inline_tags = {"span", "br", "a", "b", "i", "em", "strong"}
+    assert set(report["summary_tags"]) <= block_tags | inline_tags | {"other"}
     assert "ܡܐ" not in json.dumps(report, ensure_ascii=False)
