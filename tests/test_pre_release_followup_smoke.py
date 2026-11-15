@@ -276,6 +276,7 @@ def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_sour
     module = _module()
     step = module.STEP_BY_NAME["external_citations"]
     canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
+
     def args_for(sources: list[dict[str, str]], dialect_id: str = "6"):
         return module.select_arguments(
             step, {"external_sources": {"dialect_id": dialect_id, "sources": sources}}
@@ -285,10 +286,12 @@ def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_sour
         "source_abbrev": "EbPar"
     }
     # The current CAL source-list has two independently described rows sharing EbPar.
-    assert args_for([
-        {"abbreviation": "EbPar", "citations_url": canonical},
-        {"abbreviation": "EbPar", "citations_url": canonical},
-    ]) == {"source_abbrev": "EbPar"}
+    assert args_for(
+        [
+            {"abbreviation": "EbPar", "citations_url": canonical},
+            {"abbreviation": "EbPar", "citations_url": canonical},
+        ]
+    ) == {"source_abbrev": "EbPar"}
     historical_url = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"
     assert args_for([{"abbreviation": "1CorH", "citations_url": historical_url}]) is None
     assert args_for([{"abbreviation": "EbPar", "citations_url": canonical}], dialect_id="7") is None
@@ -302,7 +305,12 @@ def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_sour
         "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar#fragment",
     ):
         assert args_for([{"abbreviation": "EbPar", "citations_url": invalid}]) is None
-        assert args_for([
-            {"abbreviation": "EbPar", "citations_url": canonical},
-            {"abbreviation": "EbPar", "citations_url": invalid},
-        ]) is None
+        assert (
+            args_for(
+                [
+                    {"abbreviation": "EbPar", "citations_url": canonical},
+                    {"abbreviation": "EbPar", "citations_url": invalid},
+                ]
+            )
+            is None
+        )
