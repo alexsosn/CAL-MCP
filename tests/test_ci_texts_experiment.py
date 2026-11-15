@@ -113,3 +113,20 @@ def test_committed_unreviewed_specimen_has_reproducible_coverage():
     assert result["new_lemma_keys"] == ["draft:big"]
     assert result["passes_lexical_budget"] is True
     assert result["linguistically_verified"] is False
+
+@pytest.mark.parametrize("ending", ["܂", "܃"])
+def test_common_cal_syriac_terminal_punctuation_is_accepted(ending):
+    data = draft()
+    data["text"] = "ܓܒܪܐ" + ending
+    data["tokens"] = [{"surface": "ܓܒܪܐ", "lemma_keys": ["draft:man"]}]
+    data["minimum_coverage"] = 1.0
+    assert audit_draft(data)["passes_lexical_budget"] is True
+
+
+@pytest.mark.parametrize("text", ["ܓܒܪܐ܂ܚܙܐ", "܂ܓܒܪܐ", "ܓܒܪܐ܃ܚܙܐ"])
+def test_syriac_punctuation_inside_surface_is_rejected(text):
+    data = draft()
+    data["text"] = text
+    data["tokens"] = [{"surface": text, "lemma_keys": ["draft:man"]}]
+    with pytest.raises(DraftAuditError):
+        audit_draft(data)
