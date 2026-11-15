@@ -56,10 +56,25 @@ _COORD_RE = re.compile(r"[0-9A-Za-z]{1,64}\Z")
 
 
 
-_ALLOWED_SUMMARY_TAGS = frozenset({
-    "div", "p", "span", "br", "a", "b", "i", "em", "strong", "table",
-    "tr", "td", "th", "ul", "li",
-})
+_ALLOWED_SUMMARY_TAGS = frozenset(
+    {
+        "div",
+        "p",
+        "span",
+        "br",
+        "a",
+        "b",
+        "i",
+        "em",
+        "strong",
+        "table",
+        "tr",
+        "td",
+        "th",
+        "ul",
+        "li",
+    }
+)
 
 
 class _SummaryTagOutline(HTMLParser):
