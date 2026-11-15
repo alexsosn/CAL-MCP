@@ -54,3 +54,19 @@ Issue #338 will report first real installed-wheel fixed smoke on an earlier cand
 Verified distinct tools (13): `cal_lexicon_browse`, `cal_gloss_field`, `cal_citation_text_search`, `cal_text_catalogue`, `cal_text_information`, `cal_token_analysis`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_bibliography_authors`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_syriac_texts`, `cal_syriac_missing_words`.
 
 Together with the earlier [13-case representative release smoke](https://github.com/alexsosn/CAL-MCP/actions/runs/43724124834) (12 distinct tools; 14 actual starts), this measures **25 distinct tools** across two source-bound nonpublishing runs. The 12 dependent follow-ups listed below still require their own pass before claiming all 37. These two existing successful runs have *different source SHAs*; they do not by themselves certify a future exact tagged release candidate. No CAL lexical/text content is copied into the report.
+
+
+## Measured dependent-tool batch B — STOPPED on parser drift (2026-11-15)
+
+[Nonpublishing installed-wheel run #43735329113](https://github.com/alexsosn/CAL-MCP/actions/runs/43735329113), exact source SHA `5c5033ce0229044423ea053ba71b8f55eadfd104`, installed wheel `cal-mcp 0.2.0.dev0`. The runner passed all-37 schema preflight in normal tests and obeyed 60-second completion-based pacing, server hard 25-transport-attempt budget, zero retry and single concurrency.
+
+The actual report is **FAILED**, with **5/25** measured CAL transport starts:
+- `cal_lexicon_lookup` — `ok`
+- `cal_lexicon_citation_context` — `ok` (first new dependent tool verified)
+- `cal_text_page` — `ok`
+- `cal_text_line_comments` — **`drift`**, sanitized `CAL parser drift`; execution stopped immediately
+- The other 17 planned steps were **NOT RUN**, not implicitly successful
+
+The failing comment coordinate was selected from the preceding live `cal_text_page(file_id="13250",page=1)` result; the precise CAL document shape was not captured, so no parser-cause attribution is justified yet. The parser strictly validates an exact title, one summary card, and either a unique empty marker or fully typed comment records. Historical Tel Dan page fixtures expose a comment link, but line-comment positive fixture comes from PJ Gen8:21, so those cannot settle whether this is current Tel Dan-specific CAL drift or a request/selector mismatch. Focused investigation is tracked in [#343](https://github.com/alexsosn/CAL-MCP/issues/343).
+
+**Release decision: BLOCKED.** After successful original release smoke (12 distinct tools) + independent batch A (13 tools) + this positive citation context follow-up (1 additional tool), **26/37 distinct public tool identities** have currently passed *a* real installed-wheel positive case across different source SHAs; 1 failed (`cal_text_line_comments`), 10 are not yet live-verified. Success across source SHAs does not constitute a final exact-tagged v0.2.0 acceptance. Do not repeat the failing route without the focused #343 research/TDD and controlled diagnostic.
