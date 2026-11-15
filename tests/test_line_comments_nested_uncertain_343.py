@@ -7,8 +7,8 @@ import pytest
 
 from cal_mcp.client import CalResponse
 from cal_mcp.texts import (
-    TextParseError,
     _line_comment_record_to_dict,
+    TextParseError,
     parse_text_line_comments_page,
 )
 
@@ -79,4 +79,5 @@ def test_historical_hebrew_comment_has_no_uncertainty_annotation() -> None:
     page = parse_text_line_comments_page(response, requested_coordinate="8100110821")
     assert page.status.value == "found"
     assert all(record.has_uncertain_reading is False for record in page.records)
-    assert all(_line_comment_record_to_dict(record)["has_uncertain_reading"] is False for record in page.records)
+    flags = [_line_comment_record_to_dict(record)["has_uncertain_reading"] for record in page.records]
+    assert flags == [False] * len(page.records)
