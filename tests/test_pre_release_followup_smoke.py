@@ -270,3 +270,38 @@ def test_comment_followup_requires_actual_canonical_cal_link_and_identity() -> N
         "https://cal.huc.edu/comment.php?coord=1325002#fragment",
     ):
         assert args_for(invalid) is None
+
+
+def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_source() -> None:
+    module = _module()
+    step = module.STEP_BY_NAME["external_citations"]
+    canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
+    def args_for(sources: list[dict[str, str]], dialect_id: str = "6"):
+        return module.select_arguments(
+            step, {"external_sources": {"dialect_id": dialect_id, "sources": sources}}
+        )
+
+    assert args_for([{"abbreviation": "EbPar", "citations_url": canonical}]) == {
+        "source_abbrev": "EbPar"
+    }
+    # The current CAL source-list has two independently described rows sharing EbPar.
+    assert args_for([
+        {"abbreviation": "EbPar", "citations_url": canonical},
+        {"abbreviation": "EbPar", "citations_url": canonical},
+    ]) == {"source_abbrev": "EbPar"}
+    assert args_for([{"abbreviation": "1CorH", "citations_url": "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"}]) is None
+    assert args_for([{"abbreviation": "EbPar", "citations_url": canonical}], dialect_id="7") is None
+    for invalid in (
+        "",
+        "http://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar",
+        "https://example.org/displaycits.abbrev.php?abbrev=EbPar",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar&extra=1",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar&abbrev=1CorH",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar#fragment",
+    ):
+        assert args_for([{"abbreviation": "EbPar", "citations_url": invalid}]) is None
+        assert args_for([
+            {"abbreviation": "EbPar", "citations_url": canonical},
+            {"abbreviation": "EbPar", "citations_url": invalid},
+        ]) is None
