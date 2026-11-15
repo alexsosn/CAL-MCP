@@ -124,3 +124,49 @@ def test_summary_outline_is_bounded_to_tag_names_not_cal_text() -> None:
     inline_tags = {"span", "br", "a", "b", "i", "em", "strong"}
     assert set(report["summary_tags"]) <= block_tags | inline_tags | {"other"}
     assert "ܡܐ" not in json.dumps(report, ensure_ascii=False)
+
+
+def test_span_structure_records_nesting_and_css_roles_without_any_text() -> None:
+    coordinate = "1325002"
+    body = (
+        "<html><head><title>CAL: citations and comments for 1325002</title></head>"
+        '<body><div class="summary-card"><p>'
+        '<span class="heb"><span class="syr">SECRET-SYRIAC</span></span>'
+        '<span class="rom">SECRET-TRANSLATION</span>'
+        "</p></div></body></html>"
+    )
+    response = CalResponse(
+        status_code=200,
+        url=f"https://cal.huc.edu/comment.php?coord={coordinate}",
+        body=body.encode("utf-8"),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 11, 15, tzinfo=UTC),
+    )
+    report = summarize_response(response, coordinate)
+    assert report["span_structure"] == [
+        {"css_class": "heb", "parent_span": None, "depth": 0},
+        {"css_class": "syr", "parent_span": "heb", "depth": 1},
+        {"css_class": "rom", "parent_span": None, "depth": 0},
+    ]
+    assert "SECRET" not in json.dumps(report)
+
+
+def test_span_class_tokens_are_ascii_and_length_bounded() -> None:
+    coordinate = "1325002"
+    body = (
+        "<html><head><title>CAL: citations and comments for 1325002</title></head>"
+        '<body><div class="summary-card"><p>'
+        '<span class="ܥܒܪܝ">PRIVATE</span>'
+        '<span class="AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA">PRIVATE</span>'
+        "</p></div></body></html>"
+    )
+    response = CalResponse(
+        status_code=200,
+        url=f"https://cal.huc.edu/comment.php?coord={coordinate}",
+        body=body.encode("utf-8"),
+        content_type="text/html; charset=UTF-8",
+        retrieved_at=datetime(2026, 11, 15, tzinfo=UTC),
+    )
+    report = summarize_response(response, coordinate)
+    assert [span["css_class"] for span in report["span_structure"]] == ["other", "other"]
+    assert "PRIVATE" not in json.dumps(report)
