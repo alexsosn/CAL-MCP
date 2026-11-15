@@ -77,9 +77,7 @@ def test_comment_selector_uses_only_exact_cal_returned_canonical_link() -> None:
 
 
 def test_selector_never_falls_back_to_a_line_without_a_comment_url() -> None:
-    page = SimpleNamespace(
-        lines=[SimpleNamespace(coordinate="1325001", comment_url=None)]
-    )
+    page = SimpleNamespace(lines=[SimpleNamespace(coordinate="1325001", comment_url=None)])
     assert select_comment_coordinate(page) is None
 
 
@@ -91,7 +89,5 @@ def test_selector_rejects_external_or_modified_comment_urls() -> None:
         "https://cal.huc.edu/comment.php?coord=1325002#frag",
         "https://cal.huc.edu/comment.php?coord=1325003",
     ):
-        page = SimpleNamespace(
-            lines=[SimpleNamespace(coordinate="1325002", comment_url=url)]
-        )
+        page = SimpleNamespace(lines=[SimpleNamespace(coordinate="1325002", comment_url=url)])
         assert select_comment_coordinate(page) is None
