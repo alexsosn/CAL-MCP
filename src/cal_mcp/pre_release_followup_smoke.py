@@ -333,10 +333,19 @@ def select_arguments(
             if key == "6":
                 return {"dialect_id": key}
     elif step.name == "external_citations":
-        for row in _objects(parent.get("sources")):
-            value = _text(row.get("abbreviation"))
-            if value == "1CorH":
-                return {"source_abbrev": value}
+        # Source membership alone does not establish a positive citation result.
+        # Current CAL returned an explicit empty state for 1CorH (issue #345);
+        # this exact EbPar navigation yielded 26 rows in the bounded live probe.
+        if parent.get("dialect_id") != "6":
+            return None
+        matches = [
+            row
+            for row in _objects(parent.get("sources"))
+            if row.get("abbreviation") == "EbPar"
+        ]
+        canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
+        if matches and all(row.get("citations_url") == canonical for row in matches):
+            return {"source_abbrev": "EbPar"}
     elif step.name == "syriac_group":
         for row in _objects(parent.get("items")):
             key = _positive_decimal(row.get("upstream_id"))
