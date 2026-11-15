@@ -55,7 +55,7 @@ Each valid explicit operation submits at most one new logical CAL request to the
 
 ### Concrete example
 
-Current CAL discovery includes the dialect choice `{"dialect_id": "6", "label": "Syriac"}`. Calling `cal_external_citation_sources("6")` returns, among many current Syriac choices, the source abbreviation `1CorH` for the Harklean version of 1 Corinthians. A separate `cal_external_citations("1CorH")` call returns ordered lexical citations including a record whose rendered `reference` is `1CorH 12:28`.
+Current CAL discovery includes the dialect choice `{"dialect_id": "6", "label": "Syriac"}`. Calling `cal_external_citation_sources("6")` returns, among many current Syriac choices, the source abbreviation `1CorH` for the Harklean version of 1 Corinthians. The September 2026 fixture for `cal_external_citations("1CorH")` included a citation rendered as `1CorH 12:28`. That fixture is historical: CAL's current citation count for `1CorH` was **not independently established** by the November smoke checks. Source-list membership alone does not guarantee a nonempty current result. On **15 November 2026**, a separate source-derived request for `EbPar` (two listed editions sharing one abbreviation) produced **26** ordered lexical citations in the CAL service. This is a dated example, not a promised fixed count: first discover the source with `cal_external_citation_sources("6")`, then explicitly call `cal_external_citations("EbPar")`.
 
 `1CorH 12:28` is CAL's external-source reference, **not an online CAL passage coordinate**. It must not be treated as a `file_id`/subtext/page location or passed to `cal_text_page`. Following the citation's returned CAL lemma with `cal_lexicon_lookup` is another explicit caller action.
 

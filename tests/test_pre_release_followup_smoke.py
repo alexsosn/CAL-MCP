@@ -175,7 +175,7 @@ def test_remaining_batch_is_exact_safe_suffix_after_comment_drift() -> None:
     module = _module()
     expected = tuple(step.name for step in module.STEPS[4:])
     assert len(expected) == 17
-    assert expected[0] == "kwic_dialects"
+    assert expected[0] == "kwic_dialects_selector"
     assert expected[-1] == "syriac_group"
     assert tuple(step.name for step in module.REMAINDER_STEPS) == expected
     assert all(step.tool != "cal_text_line_comments" for step in module.REMAINDER_STEPS)
@@ -214,7 +214,7 @@ def test_remaining_only_never_calls_preceding_text_or_comment_even_on_429(
         lambda case, tool, result: SmokeOutcome(case.name, "unavailable", "CAL 429"),
     )
     outcomes = asyncio.run(module.run_cases(fake, steps=module.REMAINDER_STEPS))
-    assert tuple(outcome.case for outcome in outcomes) == ("kwic_dialects",)
+    assert tuple(outcome.case for outcome in outcomes) == ("kwic_dialects_selector",)
     assert fake.calls == ["cal_kwic_dialects"]
     assert not module.complete_remaining(outcomes, 1)
 
@@ -270,3 +270,95 @@ def test_comment_followup_requires_actual_canonical_cal_link_and_identity() -> N
         "https://cal.huc.edu/comment.php?coord=1325002#fragment",
     ):
         assert args_for(invalid) is None
+
+
+def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_source() -> None:
+    module = _module()
+    step = module.STEP_BY_NAME["external_citation_records"]
+    canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
+
+    def args_for(sources: list[dict[str, str]], dialect_id: str = "6"):
+        return module.select_arguments(
+            step, {"external_sources": {"dialect_id": dialect_id, "sources": sources}}
+        )
+
+    assert args_for([{"abbreviation": "EbPar", "citations_url": canonical}]) == {
+        "source_abbrev": "EbPar"
+    }
+    # The current CAL source-list has two independently described rows sharing EbPar.
+    assert args_for(
+        [
+            {"abbreviation": "EbPar", "citations_url": canonical},
+            {"abbreviation": "EbPar", "citations_url": canonical},
+        ]
+    ) == {"source_abbrev": "EbPar"}
+    historical_url = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"
+    assert args_for([{"abbreviation": "1CorH", "citations_url": historical_url}]) is None
+    assert args_for([{"abbreviation": "EbPar", "citations_url": canonical}], dialect_id="7") is None
+    for invalid in (
+        "",
+        "http://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar",
+        "https://example.org/displaycits.abbrev.php?abbrev=EbPar",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar&extra=1",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar&abbrev=1CorH",
+        "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar#fragment",
+    ):
+        assert args_for([{"abbreviation": "EbPar", "citations_url": invalid}]) is None
+        assert (
+            args_for(
+                [
+                    {"abbreviation": "EbPar", "citations_url": canonical},
+                    {"abbreviation": "EbPar", "citations_url": invalid},
+                ]
+            )
+            is None
+        )
+
+
+def test_external_only_requires_full_three_step_mcp_chain_and_three_real_starts() -> None:
+    module = _module()
+    assert tuple(step.name for step in module.EXTERNAL_STEPS) == (
+        "external_dialects",
+        "external_sources",
+        "external_citation_records",
+    )
+    assert module.EXTERNAL_STEPS[0].parent is None
+    assert module.EXTERNAL_STEPS[1].parent == "external_dialects"
+    assert module.EXTERNAL_STEPS[2].parent == "external_sources"
+    passed = tuple(SmokeOutcome(step.name, "ok", "success") for step in module.EXTERNAL_STEPS)
+    assert module.complete_external(passed, 3)
+    assert not module.complete_external(passed, 2)
+    assert not module.complete_external(passed, 4)
+    assert not module.complete_external(passed[:-1], 3)
+    assert not module.complete_batch(passed, 3)
+    failed = passed[:-1] + (SmokeOutcome("external_citation_records", "drift", "empty"),)
+    assert not module.complete_external(failed, 3)
+
+
+def test_dependent_smoke_case_names_never_shadow_base_case_identity() -> None:
+    module = _module()
+    from cal_mcp.pre_release_smoke import BATCH_CASES
+
+    base_names = {case.name for case in DEFAULT_SMOKE_CASES}
+    extra_names = {case.name for case in BATCH_CASES}
+    dependent_names = {step.name for step in module.STEPS}
+    assert not base_names & dependent_names
+    assert not extra_names & dependent_names
+    assert not base_names & extra_names
+    assert module.STEP_BY_NAME["kwic_dialect"].parent == "kwic_dialects_selector"
+    assert module.STEP_BY_NAME["targum_examples"].parent == "targum_concordance_followup"
+
+
+def test_external_citation_records_are_validated_by_their_own_content_schema() -> None:
+    module = _module()
+    step = module.STEP_BY_NAME["external_citation_records"]
+    assert step.tool == "cal_external_citations"
+    positive = {"source_abbrev": "EbPar", "total": 26, "citations": [{"reference": "sample"}]}
+    assert module._positive_payload(step, positive)
+    tool = SimpleNamespace(name=step.tool, output_schema={"type": "object"})
+    result = SimpleNamespace(is_error=False, structured_content=positive)
+    case = module.SmokeCase(
+        step.name, step.tool, {"source_abbrev": "EbPar"}, needs_provenance=False
+    )
+    assert module.evaluate_tool_result(case, tool, result).category == "ok"

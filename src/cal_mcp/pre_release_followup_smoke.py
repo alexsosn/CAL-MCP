@@ -73,7 +73,7 @@ STEPS: tuple[FollowupStep, ...] = (
         expected_statuses=("found", "no_citations"),
     ),
     FollowupStep(
-        "kwic_dialects",
+        "kwic_dialects_selector",
         "cal_kwic_dialects",
         {"lemma_key": ")ryk#2 A"},
         positive_field="dialects",
@@ -81,7 +81,7 @@ STEPS: tuple[FollowupStep, ...] = (
     FollowupStep(
         "kwic_dialect",
         "cal_kwic_dialect",
-        parent="kwic_dialects",
+        parent="kwic_dialects_selector",
         positive_field="hits",
     ),
     FollowupStep(
@@ -116,7 +116,7 @@ STEPS: tuple[FollowupStep, ...] = (
         positive_field="records",
     ),
     FollowupStep(
-        "targum_concordance",
+        "targum_concordance_followup",
         "cal_targum_concordance",
         {"lemma_key": "klb N"},
         positive_field="rows",
@@ -124,7 +124,7 @@ STEPS: tuple[FollowupStep, ...] = (
     FollowupStep(
         "targum_examples",
         "cal_targum_concordance_examples",
-        parent="targum_concordance",
+        parent="targum_concordance_followup",
         positive_field="hits",
     ),
     FollowupStep(
@@ -158,7 +158,7 @@ STEPS: tuple[FollowupStep, ...] = (
         positive_field="sources",
     ),
     FollowupStep(
-        "external_citations",
+        "external_citation_records",
         "cal_external_citations",
         parent="external_sources",
         positive_field="citations",
@@ -181,22 +181,23 @@ STEP_BY_NAME = {step.name: step for step in STEPS}
 # This is an evidence-gathering subset and can never certify the original full batch.
 REMAINDER_STEPS: tuple[FollowupStep, ...] = STEPS[4:]
 SYRIAC_STEPS: tuple[FollowupStep, ...] = STEPS[-2:]
+EXTERNAL_STEPS: tuple[FollowupStep, ...] = STEPS[-5:-2]
 _REVIEWED_REMAINDER_NAMES = (
-    "kwic_dialects",
+    "kwic_dialects_selector",
     "kwic_dialect",
     "kwic_hits",
     "kwic_context",
     "authors",
     "bibliography_author",
     "bibliography_keyword",
-    "targum_concordance",
+    "targum_concordance_followup",
     "targum_examples",
     "hebrew_lemmas",
     "targum_reflex",
     "targum_reflex_examples",
     "external_dialects",
     "external_sources",
-    "external_citations",
+    "external_citation_records",
     "syriac_category",
     "syriac_group",
 )
@@ -332,11 +333,18 @@ def select_arguments(
             key = _positive_decimal(row.get("dialect_id"))
             if key == "6":
                 return {"dialect_id": key}
-    elif step.name == "external_citations":
-        for row in _objects(parent.get("sources")):
-            value = _text(row.get("abbreviation"))
-            if value == "1CorH":
-                return {"source_abbrev": value}
+    elif step.name == "external_citation_records":
+        # Source membership alone does not establish a positive citation result.
+        # Current CAL returned an explicit empty state for 1CorH (issue #345);
+        # this exact EbPar navigation yielded 26 rows in the bounded live probe.
+        if parent.get("dialect_id") != "6":
+            return None
+        matches = [
+            row for row in _objects(parent.get("sources")) if row.get("abbreviation") == "EbPar"
+        ]
+        canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
+        if matches and all(row.get("citations_url") == canonical for row in matches):
+            return {"source_abbrev": "EbPar"}
     elif step.name == "syriac_group":
         for row in _objects(parent.get("items")):
             key = _positive_decimal(row.get("upstream_id"))
@@ -404,6 +412,21 @@ def complete_syriac(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool:
         and all(outcome.category == "ok" for outcome in outcomes)
         and type(attempts) is int
         and attempts == 2
+    )
+
+
+def complete_external(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool:
+    """Require all three dependent current external-citation MCP calls."""
+    names = tuple(step.name for step in EXTERNAL_STEPS)
+    return (
+        names == ("external_dialects", "external_sources", "external_citation_records")
+        and EXTERNAL_STEPS[0].parent is None
+        and EXTERNAL_STEPS[1].parent == "external_dialects"
+        and EXTERNAL_STEPS[2].parent == "external_sources"
+        and tuple(outcome.case for outcome in outcomes) == names
+        and all(outcome.category == "ok" for outcome in outcomes)
+        and type(attempts) is int
+        and attempts == 3
     )
 
 
@@ -479,8 +502,9 @@ def main() -> None:
     mode.add_argument(
         "--remaining-only", action="store_true", help="run only #340 unattempted suffix"
     )
+    mode.add_argument("--syriac-only", action="store_true", help="run only the two Syriac steps")
     mode.add_argument(
-        "--syriac-only", action="store_true", help="run only the final two unattempted steps"
+        "--external-only", action="store_true", help="run only the three external citation steps"
     )
     args = parser.parse_args()
     executable = args.executable or shutil.which("cal-mcp")
@@ -488,14 +512,22 @@ def main() -> None:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1)
     selected_steps = (
-        SYRIAC_STEPS if args.syriac_only else REMAINDER_STEPS if args.remaining_only else STEPS
+        EXTERNAL_STEPS
+        if args.external_only
+        else SYRIAC_STEPS
+        if args.syriac_only
+        else REMAINDER_STEPS
+        if args.remaining_only
+        else STEPS
     )
     try:
         outcomes, attempts = asyncio.run(_run_live(executable, steps=selected_steps))
     except Exception:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
-    if args.syriac_only:
+    if args.external_only:
+        passed = complete_external(outcomes, attempts)
+    elif args.syriac_only:
         passed = complete_syriac(outcomes, attempts)
     elif args.remaining_only:
         passed = complete_remaining(outcomes, attempts)
@@ -506,14 +538,18 @@ def main() -> None:
             {
                 "status": "passed" if passed else "failed",
                 "batch": (
-                    "syriac_2"
+                    "external_3"
+                    if args.external_only
+                    else "syriac_2"
                     if args.syriac_only
                     else "remaining_17"
                     if args.remaining_only
                     else "full_21"
                 ),
                 "actual_cal_transport_attempts": attempts,
-                "max_cal_transport_attempts": 2 if args.syriac_only else _MAX_ATTEMPTS,
+                "max_cal_transport_attempts": (
+                    3 if args.external_only else 2 if args.syriac_only else _MAX_ATTEMPTS
+                ),
                 "cases": [asdict(outcome) for outcome in outcomes],
             },
             sort_keys=True,
