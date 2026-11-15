@@ -52,6 +52,12 @@ def test_current_roman_source_nested_uncertain_preserves_source_and_translation(
         ),
         lambda s: s.replace('<span class="uncertain">b</span>', "b", 1),
         lambda s: s.replace(
+            '<span class="uncertain">b</span>', '<span class="uncertain"></span>', 1
+        ),
+        lambda s: s.replace(
+            '<span class="uncertain">b</span>', '<span class="uncertain">  </span>', 1
+        ),
+        lambda s: s.replace(
             '<span class="uncertain">b</span>',
             '<span class="uncertain"><span class="uncertain">b</span></span>',
             1,
