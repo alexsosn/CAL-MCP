@@ -68,7 +68,7 @@ def test_public_integration_docs_distinguish_merged_agora_from_unpublished_marke
 
 def test_release_checklist_keeps_publication_separate_from_docs_merge() -> None:
     checklist = _doc("wiki/release-checklist.md")
-    assert "wiki/release-checklist.md" in _doc("wiki/README.md")
+    assert "(release-checklist.md)" in _doc("wiki/README.md")
     for token in (
         "0.2.0.dev0",
         "v0.2.0",
