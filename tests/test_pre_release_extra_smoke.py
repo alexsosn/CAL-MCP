@@ -1,5 +1,6 @@
 """Offline adversarial checks for the additional installed-wheel CAL acceptance batch."""
 
+import asyncio
 import importlib
 from types import SimpleNamespace
 
@@ -87,3 +88,65 @@ def test_terminal_backpressure_never_allows_further_calls() -> None:
             structured_content={"error": {"kind": "upstream_http", "status_code": 503}},
         )
     )
+
+
+class _FakeMcpClient:
+    def __init__(self, result, *, missing_tool: str | None = None) -> None:
+        self.result = result
+        self.missing_tool = missing_tool
+        self.calls: list[str] = []
+
+    async def list_tools(self):
+        return SimpleNamespace(
+            tools=[
+                SimpleNamespace(name=name, output_schema={"type": "object"})
+                for name in CURRENT_PUBLIC_TOOLS
+                if name != self.missing_tool
+            ]
+        )
+
+    async def call_tool(self, name: str, arguments: dict[str, object]):
+        self.calls.append(name)
+        return self.result
+
+
+def test_incomplete_registry_preflight_never_calls_cal() -> None:
+    batch = _batch()
+    fake = _FakeMcpClient(None, missing_tool="cal_syriac_group")
+    outcomes = asyncio.run(batch.run_cases(fake))
+    assert len(outcomes) == 1
+    assert outcomes[0].category == "harness"
+    assert fake.calls == []
+
+
+def test_rate_limit_429_stops_after_first_live_case(monkeypatch) -> None:
+    batch = _batch()
+    fake = _FakeMcpClient(
+        SimpleNamespace(
+            is_error=True,
+            structured_content={"error": {"kind": "upstream_http", "status_code": 429}},
+        )
+    )
+    monkeypatch.setattr(
+        batch,
+        "evaluate_tool_result",
+        lambda case, tool, result: SmokeOutcome(case.name, "unavailable", "backpressure"),
+    )
+    outcomes = asyncio.run(batch.run_cases(fake))
+    assert len(outcomes) == 1
+    assert outcomes[0].category == "unavailable"
+    assert fake.calls == ["cal_lexicon_browse"]
+
+
+def test_vacuous_success_stops_without_more_cal_calls(monkeypatch) -> None:
+    batch = _batch()
+    fake = _FakeMcpClient(SimpleNamespace(is_error=False, structured_content={"rows": []}))
+    monkeypatch.setattr(
+        batch,
+        "evaluate_tool_result",
+        lambda case, tool, result: SmokeOutcome(case.name, "ok", "success"),
+    )
+    outcomes = asyncio.run(batch.run_cases(fake))
+    assert len(outcomes) == 1
+    assert outcomes[0].category == "drift"
+    assert fake.calls == ["cal_lexicon_browse"]
