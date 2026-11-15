@@ -339,9 +339,7 @@ def select_arguments(
         if parent.get("dialect_id") != "6":
             return None
         matches = [
-            row
-            for row in _objects(parent.get("sources"))
-            if row.get("abbreviation") == "EbPar"
+            row for row in _objects(parent.get("sources")) if row.get("abbreviation") == "EbPar"
         ]
         canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
         if matches and all(row.get("citations_url") == canonical for row in matches):
