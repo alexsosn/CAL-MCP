@@ -24,3 +24,20 @@ The report does not disclose which exact CAL line coordinate was used or the sou
 Run **one explicit diagnostic** only after #340's currently running remainder smoke completes. Use an installed wheel and existing bounded `CalHttpClient` (max concurrency 1, retries 0, cache off, <=2 actual transport starts, 60 seconds after parent completion). Select the exact line from the current one-page `cal_text_page` result **only if a canonical CAL comment_url is present**. Fetch one `comment.php?coord=...` page in memory; output only the selected coordinate, HTTP status, expected-title boolean, summary-card count, comment-record-builder count, empty-marker boolean, and a preapproved parser exception category; never print/archive CAL lexical text or raw HTML.
 
 If CAL HTTP 429, halt with an unavailable classification, no further queries. A trustworthy structural observation and minimal sanitized fixture must precede any parser change (RED) and new narrow live check. Until then #343 and #340 block all-37 release acceptance.
+
+
+## First structural diagnostic, 2026-11-15 — reproducible CAL mismatch, not yet a parser fix
+
+[GitHub Actions run 43740174887](https://github.com/alexsosn/CAL-MCP/actions/runs/43740174887), source SHA `24e029eb83eca70c9de3e99fc3e80ad1cf6c94e5`, installed fresh `cal-mcp 0.2.0.dev0` wheel; **exactly 2 actual CAL starts**, one current `cal_text_page(file_id=13250)` then one canonical returned comment selector, spaced by at least 60 seconds, no retries or other CAL requests. Sanitized structural report:
+
+```json
+{"coordinate":"1325002","http_status":200,"content_type_is_html":true,
+ "response_size_bytes":2383,"title_count":1,"title_matches":true,
+ "summary_cards":1,"record_count":0,"empty_marker_count":0,
+ "event_signatures":[],"parse_status":"drift",
+ "parser_reason":"unrecognized_structure","structure_error":"unrecognized_markup"}
+```
+
+The selector is **not fabricated**: a current Tel Dan page returned the matching canonical `comment.php?coord=1325002` link. CAL responded 200 with exact correct title and a unique summary card. No recognized paragraph records or exact explicit-empty marker were obtained before the parser failed. Because the diagnostic's allowlist did **not** include every `_LineCommentsHTMLParser` low-level exception, `unrecognized_markup` alone is insufficient to identify the change; preserve strict parse rejection. No raw CAL HTML or lexical content was logged. An ordinary web retrieval of this same URL could not access its contents, so do not treat a third-party cached page as current evidence.
+
+**Next narrow diagnostic:** first expand the parser-reason allowlist from the actual eight source `TextParseError` branches and record sanitized markup hierarchy (`tag`, allowlisted `class` flags, attribute names) of the summary region, without content. RED tests and bounded exact-candidate live rerun are required before changing the parser. Avoid any parallel CAL job.
