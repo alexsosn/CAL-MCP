@@ -20,6 +20,7 @@ from tempfile import TemporaryDirectory
 from typing import cast
 
 from mcp import Client, StdioServerParameters
+from mcp.types import CallToolResult
 
 from cal_mcp.pre_release_smoke import terminal_backpressure, valid_registry
 from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
@@ -430,6 +431,31 @@ def complete_external(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool
     )
 
 
+def safe_failure_reason(outcome: SmokeOutcome, result: CallToolResult) -> SmokeOutcome:
+    """Expose only allowlisted MCP error codes after centralized envelope validation.
+
+    No server-supplied message, source URL, HTML or original exception can appear.
+    This only refines presentation; category and stop-on-error policy are unchanged.
+    """
+    if outcome.category != "unavailable" or not result.is_error:
+        return outcome
+    payload = result.structured_content
+    if not isinstance(payload, dict):
+        return outcome
+    error = payload.get("error")
+    if not isinstance(error, dict):
+        return outcome
+    kind = error.get("kind")
+    if kind not in {"network", "upstream_http", "content", "response_too_large"}:
+        return outcome
+    message = f"CAL {kind}"
+    if kind == "upstream_http":
+        status = error.get("status_code")
+        if type(status) is int and 100 <= status <= 599:
+            message += f" HTTP {status}"
+    return SmokeOutcome(outcome.case, outcome.category, message)
+
+
 async def run_cases(
     client: Client,
     *,
@@ -469,7 +495,9 @@ async def run_cases(
             break
         finally:
             last_cal_finished = clock()
-        outcome = evaluate_tool_result(case, tools[step.tool], result)
+        outcome = safe_failure_reason(
+            evaluate_tool_result(case, tools[step.tool], result), result
+        )
         if outcome.category == "ok":
             payload = result.structured_content
             if not isinstance(payload, dict) or not _positive_payload(step, payload):
