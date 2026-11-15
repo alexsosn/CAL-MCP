@@ -24,7 +24,7 @@ The verifier compares supplied whitespace-token surface strings to the draft; st
 | Unreviewed specimen, as annotated | 20 | 19 | 1 | 1 | 95% | PASS (threshold 95%, max 1 new) |
 | Same text, learner **does not** know `draft:water` | 20 | 16 | 4 | 2 | 80% | FAIL |
 
-Original focused tests: **19 passed**, including a Unicode combining-mark regression and a pinned audit of the committed specimen. Additional tests exercise ordinary CAL Syriac token-final `܂` and `܃` while rejecting both internally. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
+Focused tests: **24 passed** in the successful 2026-11-16 [CI run](https://github.com/alexsosn/CAL-MCP/actions/runs/43772177700), including a Unicode combining-mark regression and a pinned audit of the committed specimen. Additional tests exercise ordinary CAL Syriac token-final `܂` and `܃` while rejecting both internally. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
 
 ## Targeted CAL corpus spot-check — 2026-11-16
 
