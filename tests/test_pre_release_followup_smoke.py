@@ -334,3 +334,27 @@ def test_external_only_requires_full_three_step_mcp_chain_and_three_real_starts(
     assert not module.complete_batch(passed, 3)
     failed = passed[:-1] + (SmokeOutcome("external_citations", "drift", "empty"),)
     assert not module.complete_external(failed, 3)
+
+
+def test_dependent_smoke_case_names_never_shadow_base_case_identity() -> None:
+    module = _module()
+    from cal_mcp.pre_release_smoke import BATCH_CASES
+
+    base_names = {case.name for case in DEFAULT_SMOKE_CASES}
+    extra_names = {case.name for case in BATCH_CASES}
+    dependent_names = {step.name for step in module.STEPS}
+    assert not base_names & dependent_names
+    assert not extra_names & dependent_names
+    assert not base_names & extra_names
+
+
+def test_external_citation_records_are_validated_by_their_own_content_schema() -> None:
+    module = _module()
+    step = module.STEP_BY_NAME["external_citation_records"]
+    assert step.tool == "cal_external_citations"
+    positive = {"source_abbrev": "EbPar", "total": 26, "citations": [{"reference": "sample"}]}
+    assert module._positive_payload(step, positive)
+    tool = SimpleNamespace(name=step.tool, output_schema={"type": "object"})
+    result = SimpleNamespace(is_error=False, structured_content=positive)
+    case = module.SmokeCase(step.name, step.tool, {"source_abbrev": "EbPar"}, needs_provenance=False)
+    assert module.evaluate_tool_result(case, tool, result).category == "ok"
