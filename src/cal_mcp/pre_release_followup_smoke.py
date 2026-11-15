@@ -463,9 +463,7 @@ async def _run_live(
     with TemporaryDirectory(prefix="cal-mcp-followup-smoke-") as directory:
         count_path = Path(directory) / "attempts.json"
         env = dict(os.environ)
-        env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = str(
-            2 if steps == SYRIAC_STEPS else _MAX_ATTEMPTS
-        )
+        env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = str(2 if steps == SYRIAC_STEPS else _MAX_ATTEMPTS)
         env["CAL_MCP_LIVE_SMOKE_REPORT_PATH"] = str(count_path)
         async with Client(StdioServerParameters(command=executable, env=env)) as client:
             results = await run_cases(client, steps=steps)
