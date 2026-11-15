@@ -28,3 +28,10 @@ def test_pre_release_audit_names_every_unverified_live_tool() -> None:
     assert "not 37/37" in text.lower()
     for name in sorted(missing):
         assert f"`{name}`" in text
+
+
+def test_release_checklist_blocks_false_all_features_smoke_claim() -> None:
+    checklist = (ROOT / "wiki/release-checklist.md").read_text(encoding="utf-8")
+    assert "#340" in checklist
+    assert "25" in checklist
+    assert "all 37" in checklist
