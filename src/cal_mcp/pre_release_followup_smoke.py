@@ -70,7 +70,7 @@ STEPS: tuple[FollowupStep, ...] = (
         "cal_text_line_comments",
         parent="text_page",
         positive_field="records",
-        expected_statuses=("found", "no_citations"),
+        expected_statuses=("found",),
     ),
     FollowupStep(
         "kwic_dialects_selector",
@@ -354,8 +354,8 @@ def select_arguments(
 
 
 def _positive_payload(step: FollowupStep, payload: dict[str, object]) -> bool:
-    if step.name == "text_comments" and payload.get("status") == "no_citations":
-        return payload.get("records") == []
+    if step.name == "text_comments" and payload.get("status") != "found":
+        return False
     contents = payload.get(step.positive_field)
     if step.positive_field == "entry":
         return isinstance(contents, dict) and bool(contents)
