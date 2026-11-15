@@ -158,7 +158,7 @@ STEPS: tuple[FollowupStep, ...] = (
         positive_field="sources",
     ),
     FollowupStep(
-        "external_citations",
+        "external_citation_records",
         "cal_external_citations",
         parent="external_sources",
         positive_field="citations",
@@ -197,7 +197,7 @@ _REVIEWED_REMAINDER_NAMES = (
     "targum_reflex_examples",
     "external_dialects",
     "external_sources",
-    "external_citations",
+    "external_citation_records",
     "syriac_category",
     "syriac_group",
 )
@@ -333,7 +333,7 @@ def select_arguments(
             key = _positive_decimal(row.get("dialect_id"))
             if key == "6":
                 return {"dialect_id": key}
-    elif step.name == "external_citations":
+    elif step.name == "external_citation_records":
         # Source membership alone does not establish a positive citation result.
         # Current CAL returned an explicit empty state for 1CorH (issue #345);
         # this exact EbPar navigation yielded 26 rows in the bounded live probe.
@@ -419,7 +419,7 @@ def complete_external(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool
     """Require all three dependent current external-citation MCP calls."""
     names = tuple(step.name for step in EXTERNAL_STEPS)
     return (
-        names == ("external_dialects", "external_sources", "external_citations")
+        names == ("external_dialects", "external_sources", "external_citation_records")
         and EXTERNAL_STEPS[0].parent is None
         and EXTERNAL_STEPS[1].parent == "external_dialects"
         and EXTERNAL_STEPS[2].parent == "external_sources"
