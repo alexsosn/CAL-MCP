@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalUpstreamError
 from cal_mcp.external_citations import (
     ExternalCitationResult,
