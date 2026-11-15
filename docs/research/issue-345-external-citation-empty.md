@@ -17,3 +17,10 @@ On a fresh wheel and with explicit nonpublishing, one process makes max 2 CAL tr
 ## Evidence caveats
 
 These runs demonstrate behavior at particular source SHAs, not final all-37 exact-release-wheel acceptance. v0.2.0 must remain untagged/unpublished until an end-to-end installed-wheel check verifies all 37 tool contracts on one candidate. Do not automatically retry 429 or parse failures.
+
+
+## Live result: CAL-derived EbPar is positive (2026-11-15)
+
+[One-off GitHub Actions run #43744820854](https://github.com/alexsosn/CAL-MCP/actions/runs/43744820854), tested exact source SHA `5936ddc5486f830b6feef13d56a2f947f7d78f4b` via fresh installed development wheel. One live `cal_external_citation_sources("6")` response included the candidate `EbPar` with matching canonical same-origin citation URL; a second, independently paced `cal_external_citations("EbPar")` returned **26** typed citation records. Sanitized report: `{"status":"positive","source_abbrev":"EbPar","total_citations":26,"actual_cal_transport_attempts":2,"max_cal_transport_attempts":2}`. No retries, no lexical text or full CAL HTML in logs. This resolves the positive fixture candidate, but **does not** prove all MCP calls until the separate stdio MCP path is re-tested.
+
+The previously returned `1CorH` empty response is not a CAL parser regression: the current parser requires CAL's explicit no-citations marker for an empty successful result and validates source identity. The release acceptance should no longer choose a nonempty historical fixture as its positive live exemplar. Use the exact currently discovered `EbPar` link, reject any contradictory duplicate, and require nonempty citation records in the stdio tool result.
