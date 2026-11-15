@@ -2,6 +2,7 @@
 
 ## Unreleased — 0.2.0.dev0 development source
 
+- Accept the current CAL Tel Dan line-comments record's narrowly evidenced romanized source with one nested `span.uncertain`, preserve reading order and expose `has_uncertain_reading` per record; reject other nested markup and keep canonical CAL identity checks (#343). The live installed-wheel parser check passed on current CAL with two actual starts; full all-tool release acceptance remains pending.
 - Reconcile pre-v0.2 README and researcher documentation with the frozen 36-tool v0.1.0 manifest, the unreleased 37th recent-bibliography tool, implemented Targum example follow-ups, and merged-but-unpublished Agora registry candidate; add a maintainer release checklist and offline documentation parity regressions (#334). No tagged 0.2.0 package is published by this documentation change.
 - Extend the reviewed **future** installed-wheel release smoke from 12 to 13 fixed cases by including `cal_bibliography_recent()`, with a stricter 12-actual-CAL-transport minimum and nonempty citation validation. Preserve the frozen v0.1.0 twelve-case reference, 25-attempt cap and zero-retry policy; no full live suite in normal CI (#330).
 - Fail closed on noncanonical bibliography typed follow-up links (extra/duplicate query fields, aliases, fragments or invalid percent/UTF-8 query decoding and raw whitespace/control normalization), preserving exact CAL link values and the existing public record model (#328).
