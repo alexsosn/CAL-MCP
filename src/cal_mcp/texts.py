@@ -243,6 +243,7 @@ class TextLineCommentRecord:
     part_of_speech: str | None
     gloss: str | None
     entry_url: str
+    has_uncertain_reading: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -359,6 +360,7 @@ class _LineCommentRecordBuilder:
         self.reference_parts: list[str] = []
         self.reference_count = 0
         self.spans: list[tuple[str, list[str]]] = []
+        self.uncertain_wrapper_seen = False
         self.br_count = 0
         self.before_entry_parts: list[str] = []
         self.links: list[tuple[str, list[str]]] = []
@@ -379,6 +381,7 @@ class _LineCommentsHTMLParser(HTMLParser):
         self._title_parts: list[str] | None = None
         self._record: _LineCommentRecordBuilder | None = None
         self._span_parts: list[str] | None = None
+        self._nested_uncertain = False
         self._anchor_href: str | None = None
         self._anchor_parts: list[str] | None = None
         self._in_reference = False
@@ -422,9 +425,23 @@ class _LineCommentsHTMLParser(HTMLParser):
             return
 
         if tag == "span":
-            if self._span_parts is not None or self._anchor_parts is not None:
-                raise TextParseError("CAL line-comments record has malformed span nesting")
             span_class = attr_map.get("class") or ""
+            if self._span_parts is not None:
+                # Current CAL romanized source spans may mark exactly one uncertain
+                # reading inline. Flatten only this measured, first-span wrapper.
+                if (
+                    span_class == "uncertain"
+                    and not self._nested_uncertain
+                    and not self._record.uncertain_wrapper_seen
+                    and len(self._record.spans) == 1
+                    and self._record.spans[0][0] == "rom"
+                ):
+                    self._nested_uncertain = True
+                    self._record.uncertain_wrapper_seen = True
+                    return
+                raise TextParseError("CAL line-comments record has malformed span nesting")
+            if self._anchor_parts is not None:
+                raise TextParseError("CAL line-comments record has malformed span nesting")
             parts: list[str] = []
             self._record.spans.append((span_class, parts))
             self._record.events.append(f"span:{span_class}")
@@ -481,7 +498,10 @@ class _LineCommentsHTMLParser(HTMLParser):
             self._in_reference = False
             return
         if tag == "span" and self._span_parts is not None:
-            self._span_parts = None
+            if self._nested_uncertain:
+                self._nested_uncertain = False
+            else:
+                self._span_parts = None
             return
         if tag == "a" and self._anchor_parts is not None:
             self._anchor_href = None
@@ -503,6 +523,7 @@ class _LineCommentsHTMLParser(HTMLParser):
             or self._summary_depth
             or self._ignored_depth
             or self._span_parts is not None
+            or self._nested_uncertain
             or self._anchor_parts is not None
             or self._in_reference
             or self._in_gloss
@@ -580,7 +601,11 @@ def _parse_line_comment_record(
 ) -> TextLineCommentRecord:
     if builder.reference_count != 1:
         raise TextParseError("CAL line-comments record lacks one unique reference")
-    if [span_class for span_class, _parts in builder.spans] != ["heb", "rom"]:
+    classes = [span_class for span_class, _parts in builder.spans]
+    if not (
+        (classes == ["heb", "rom"] and not builder.uncertain_wrapper_seen)
+        or (classes == ["rom", "rom"] and builder.uncertain_wrapper_seen)
+    ):
         raise TextParseError("CAL line-comments record citation spans changed unexpectedly")
     if builder.br_count != 1:
         raise TextParseError("CAL line-comments record lacks one citation/entry break")
@@ -589,7 +614,7 @@ def _parse_line_comment_record(
     if builder.gloss_count > 1:
         raise TextParseError("CAL line-comments record repeats gloss markup")
 
-    expected_events = ["reference", "span:heb", "span:rom", "br", "anchor"]
+    expected_events = ["reference", f"span:{classes[0]}", f"span:{classes[1]}", "br", "anchor"]
     if builder.gloss_count:
         expected_events.append("gloss")
     if builder.events != expected_events:
@@ -620,6 +645,7 @@ def _parse_line_comment_record(
         part_of_speech=_optional_clean_text("".join(builder.pos_parts)),
         gloss=_optional_clean_text("".join(builder.gloss_parts)),
         entry_url=entry_url,
+        has_uncertain_reading=builder.uncertain_wrapper_seen,
     )
 
 
@@ -2655,6 +2681,7 @@ def _line_comment_record_to_dict(record: TextLineCommentRecord) -> dict[str, obj
         "part_of_speech": record.part_of_speech,
         "gloss": record.gloss,
         "entry_url": record.entry_url,
+        "has_uncertain_reading": record.has_uncertain_reading,
     }
 
 
