@@ -259,13 +259,15 @@ def select_arguments(
     elif step.name == "text_comments":
         page = parent.get("page")
         if isinstance(page, dict):
-            lines = _objects(page.get("lines"))
-            # Prefer a CAL-rendered comment link; fall back to a valid returned
-            # line and accept only CAL's explicit no-citations status.
-            lines.sort(key=lambda line: not bool(line.get("comment_url")))
-            for line in lines:
+            for line in _objects(page.get("lines")):
                 coordinate = _text(line.get("coordinate"))
-                if coordinate is not None and coordinate.isalnum():
+                if (
+                    coordinate is not None
+                    and 1 <= len(coordinate) <= 64
+                    and coordinate.isalnum()
+                    and line.get("comment_url")
+                    == f"https://cal.huc.edu/comment.php?coord={coordinate}"
+                ):
                     return {"coordinate": coordinate}
     elif step.name == "kwic_dialect":
         for row in _objects(parent.get("dialects")):
