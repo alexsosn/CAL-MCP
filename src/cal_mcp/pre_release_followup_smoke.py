@@ -177,6 +177,28 @@ STEPS: tuple[FollowupStep, ...] = (
     ),
 )
 STEP_BY_NAME = {step.name: step for step in STEPS}
+# Safe continuation after the recorded Tel Dan comment parser drift in #343.
+# This is an evidence-gathering subset and can never certify the original full batch.
+REMAINDER_STEPS: tuple[FollowupStep, ...] = STEPS[4:]
+_REVIEWED_REMAINDER_NAMES = (
+    "kwic_dialects",
+    "kwic_dialect",
+    "kwic_hits",
+    "kwic_context",
+    "authors",
+    "bibliography_author",
+    "bibliography_keyword",
+    "targum_concordance",
+    "targum_examples",
+    "hebrew_lemmas",
+    "targum_reflex",
+    "targum_reflex_examples",
+    "external_dialects",
+    "external_sources",
+    "external_citations",
+    "syriac_category",
+    "syriac_group",
+)
 TARGET_TOOLS = frozenset(
     {
         "cal_lexicon_citation_context",
@@ -352,9 +374,25 @@ def complete_batch(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool:
     )
 
 
+def complete_remaining(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool:
+    """Require the entire reviewed 17-step subset; never waive the failed comment probe."""
+    names = tuple(step.name for step in REMAINDER_STEPS)
+    return (
+        names == _REVIEWED_REMAINDER_NAMES
+        and len(set(names)) == 17
+        and REMAINDER_STEPS[0].parent is None
+        and all(step.tool not in {"cal_text_line_comments"} for step in REMAINDER_STEPS)
+        and tuple(outcome.case for outcome in outcomes) == names
+        and all(outcome.category == "ok" for outcome in outcomes)
+        and type(attempts) is int
+        and 17 <= attempts <= _MAX_ATTEMPTS
+    )
+
+
 async def run_cases(
     client: Client,
     *,
+    steps: tuple[FollowupStep, ...] = STEPS,
     clock: Callable[[], float] = time.monotonic,
     sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
 ) -> tuple[SmokeOutcome, ...]:
@@ -368,7 +406,7 @@ async def run_cases(
     passed: dict[str, dict[str, object]] = {}
     outcomes: list[SmokeOutcome] = []
     last_cal_finished: float | None = None
-    for step in STEPS:
+    for step in steps:
         arguments = select_arguments(step, passed)
         if arguments is None:
             outcomes.append(SmokeOutcome(step.name, "drift", "missing trusted CAL selector"))
@@ -403,35 +441,40 @@ async def run_cases(
     return tuple(outcomes)
 
 
-async def _run_live(executable: str) -> tuple[tuple[SmokeOutcome, ...], int]:
+async def _run_live(
+    executable: str, *, steps: tuple[FollowupStep, ...] = STEPS
+) -> tuple[tuple[SmokeOutcome, ...], int]:
     with TemporaryDirectory(prefix="cal-mcp-followup-smoke-") as directory:
         count_path = Path(directory) / "attempts.json"
         env = dict(os.environ)
         env["CAL_MCP_LIVE_SMOKE_MAX_ATTEMPTS"] = str(_MAX_ATTEMPTS)
         env["CAL_MCP_LIVE_SMOKE_REPORT_PATH"] = str(count_path)
         async with Client(StdioServerParameters(command=executable, env=env)) as client:
-            results = await run_cases(client)
+            results = await run_cases(client, steps=steps)
         return results, _read_actual_attempts(count_path)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bounded manual follow-up MCP acceptance")
     parser.add_argument("--executable", help="absolute installed cal-mcp executable")
+    parser.add_argument("--remaining-only", action="store_true", help="run only #340 unattempted suffix")
     args = parser.parse_args()
     executable = args.executable or shutil.which("cal-mcp")
     if not executable:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1)
+    selected_steps = REMAINDER_STEPS if args.remaining_only else STEPS
     try:
-        outcomes, attempts = asyncio.run(_run_live(executable))
+        outcomes, attempts = asyncio.run(_run_live(executable, steps=selected_steps))
     except Exception:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
-    passed = complete_batch(outcomes, attempts)
+    passed = (complete_remaining(outcomes, attempts) if args.remaining_only else complete_batch(outcomes, attempts))
     print(
         json.dumps(
             {
                 "status": "passed" if passed else "failed",
+                "batch": "remaining_17" if args.remaining_only else "full_21",
                 "actual_cal_transport_attempts": attempts,
                 "max_cal_transport_attempts": _MAX_ATTEMPTS,
                 "cases": [asdict(outcome) for outcome in outcomes],
