@@ -123,6 +123,8 @@ One explicit call submits at most one new logical CAL request. A completed cache
 
 The result contains `status: "found" | "no_citations"`, the requested coordinate, ordered `records`, and provenance. Each found record preserves CAL's rendered reference, optional source citation text, optional translation/comment text, the opaque returned `lemma_key`, rendered headword, optional part of speech, optional gloss, and validated same-origin entry URL.
 
+Each record also exposes `has_uncertain_reading: boolean`. This flag is `true` only for the evidence-backed CAL structure where a romanized source span contains one inline `<span class="uncertain">` wrapper; the source text is flattened in original reading order while the flag preserves that CAL marked part of the reading uncertain. The flag is `false` for the historical Hebrew-plus-Romanized structure. The record does not provide character offsets for the marked segment; consult the CAL source page when the precise span of uncertainty is necessary. Other nested spans remain parser errors.
+
 CAL's exact `NO CITATIONS FOR THIS LINE ARE CURRENTLY BEING USED` state maps to `no_citations` with an empty record list. It does **not** map to `not_found`: current CAL returns the same state for a deliberately invalid coordinate, so this endpoint alone cannot prove whether the line exists.
 
 Malformed response identity, contradictory empty-state/content combinations, structurally incomplete records, foreign or malformed entry links, repeated/empty lemma selectors, and unrecognized successful markup fail closed as parser drift. `cal_text_page` does not prefetch comments for any line.
