@@ -362,3 +362,16 @@ def test_external_citation_records_are_validated_by_their_own_content_schema() -
         step.name, step.tool, {"source_abbrev": "EbPar"}, needs_provenance=False
     )
     assert module.evaluate_tool_result(case, tool, result).category == "ok"
+
+
+def test_final_full_smoke_requires_positive_tel_dan_comments_not_empty_state() -> None:
+    module = _module()
+    step = module.STEP_BY_NAME["text_comments"]
+    assert step.tool == "cal_text_line_comments"
+    assert step.expected_statuses == ("found",)
+    assert not module._positive_payload(step, {"status": "no_citations", "records": []})
+    assert not module._positive_payload(step, {"status": "found", "records": []})
+    assert module._positive_payload(
+        step,
+        {"status": "found", "records": [{"reference": "Synthetic Tel Dan 1"}]},
+    )
