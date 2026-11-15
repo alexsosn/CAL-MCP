@@ -11,6 +11,11 @@
 - `README.md` v0.1 tool table omits `cal_targum_reflex_examples`, though code and detailed tool docs include it.
 - `.github/workflows/release.yml` uses tagged `v*` push, frozen build/test, wheel+sdist validation, exact installed wheel's live smoke, PyPI trusted publisher, then GitHub release. `docs/plans/issue-330-current-release-smoke.md` requires a current 13-case matrix, 12 CAL-backed cases and >=12 actual CAL starts, <=25 total, no retries. A PR merge is **not** a publication.
 
+
+## Independent release-metadata cross-check (2026-11-15)
+
+The [PyPI cal-mcp 0.1.0 project page](https://pypi.org/project/cal-mcp/0.1.0/) currently embeds the **historical source README** in its wheel/sdist long description. It still says “active pre-release development” and “No versioned release has been published yet”, even though PyPI itself lists 0.1.0 files and verified trusted publishing. This discrepancy is immutable in the published v0.1.0 distribution; it must be checked and corrected at the **next** versioned build by validating the rendered long description/installed wheel METADATA before publishing. The updated repository README is the source for future artifact metadata. No retroactive artifact replacement is planned.
+
 ## Scope and risks
 
 Fix documentation truthfulness and researcher navigation; preserve the old published v0.1.0 surface and its actual release URLs and pins. Do **not** revise executable schemas, bundled CAL data, HTTP budgets, old release assets, dependencies, tags, or Agora registry. Avoid misleading users into treating `0.2.0.dev0` or a merged marketplace candidate as installed public releases. Add only bounded deterministic documentation tests and a release-maintainer checklist; no live CAL calls.
