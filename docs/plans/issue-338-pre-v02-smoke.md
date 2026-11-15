@@ -2,7 +2,7 @@
 
 ## Gate A: deterministic coverage evidence (test-only RED first)
 
-- Add a no-network regression proving the 13-case live release runner does not imply coverage of the full 37-tool manifest; compute actual distinct covered and uncovered tool names from `DEFAULT_SMOKE_CASES` and `CURRENT_PUBLIC_TOOLS`, with 24 explicitly accounted for by identity.
+- Add a no-network regression proving the 13-case live release runner does not imply coverage of the full 37-tool manifest; compute actual distinct covered and uncovered tool names from `DEFAULT_SMOKE_CASES` and `CURRENT_PUBLIC_TOOLS`, with 25 explicitly accounted for by identity.
 - Assert that any all-feature status requires a per-tool outcome for every current manifest tool, not only 13 results. Fail if case names are duplicated or a missing/unattempted tool is called passing.
 - Add an issue-scoped coverage report `docs/research/issue-338-coverage.md` with exact source SHA, fixed cases and uncovered names, clearly distinguishing offline test coverage from live.
 - Verify RED in both CI dependency matrices before implementation; do not add live network in test suite.
