@@ -1,6 +1,8 @@
 """Offline, adversarial contract for bounded dependent CAL MCP smoke."""
 
+import asyncio
 import importlib
+from types import SimpleNamespace
 
 from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
 from cal_mcp.stdio_live_smoke import DEFAULT_SMOKE_CASES, SmokeOutcome
@@ -122,3 +124,48 @@ def test_invalid_targum_lemma_and_syrian_group_are_not_guessed() -> None:
         )
         is None
     )
+
+
+class _FakeClient:
+    def __init__(self, result, *, missing_tool: str | None = None) -> None:
+        self.result = result
+        self.missing_tool = missing_tool
+        self.calls: list[str] = []
+
+    async def list_tools(self):
+        return SimpleNamespace(
+            tools=[
+                SimpleNamespace(name=name, output_schema={"type": "object"})
+                for name in CURRENT_PUBLIC_TOOLS
+                if name != self.missing_tool
+            ]
+        )
+
+    async def call_tool(self, name: str, arguments: dict[str, object]):
+        self.calls.append(name)
+        return self.result
+
+
+def test_dependency_batch_rejects_broken_registry_before_cal() -> None:
+    module = _module()
+    fake = _FakeClient(None, missing_tool="cal_bibliography_keyword")
+    outcomes = asyncio.run(module.run_cases(fake))
+    assert len(outcomes) == 1
+    assert outcomes[0].category == "harness"
+    assert fake.calls == []
+
+
+def test_dependency_batch_does_not_guess_a_missing_citation_handle(monkeypatch) -> None:
+    module = _module()
+    fake = _FakeClient(
+        SimpleNamespace(is_error=False, structured_content={"entry": {"senses": []}})
+    )
+    monkeypatch.setattr(
+        module,
+        "evaluate_tool_result",
+        lambda case, tool, result: SmokeOutcome(case.name, "ok", "success"),
+    )
+    outcomes = asyncio.run(module.run_cases(fake))
+    assert [outcome.case for outcome in outcomes] == ["lexicon", "lexicon_context"]
+    assert [outcome.category for outcome in outcomes] == ["ok", "drift"]
+    assert fake.calls == ["cal_lexicon_lookup"]
