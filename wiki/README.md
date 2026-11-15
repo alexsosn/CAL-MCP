@@ -8,10 +8,11 @@ This directory is version-controlled maintainer documentation for humans and cod
 2. [`../plan.md`](../plan.md) — staged implementation and dependency graph.
 3. [`architecture.md`](architecture.md) — system boundaries, components, models, and request flows.
 4. [`testing.md`](testing.md) — TDD, fixture, parser-contract, MCP-contract, and live-smoke policy.
-5. [`documentation.md`](documentation.md) — user/maintainer documentation architecture and update rules.
-6. [`decisions.md`](decisions.md) — durable project decisions.
-7. [`backlog.md`](backlog.md) — issue map, dependencies, and release gates.
-8. [`agentic-dev-loop.md`](agentic-dev-loop.md) — issue-to-merge automated workflow.
+5. [`release-checklist.md`](release-checklist.md) — pre-tag documentation, CI, installed-wheel smoke, publication verification and handoff.
+6. [`documentation.md`](documentation.md) — user/maintainer documentation architecture and update rules.
+7. [`decisions.md`](decisions.md) — durable project decisions.
+8. [`backlog.md`](backlog.md) — issue map, dependencies, and release gates.
+9. [`agentic-dev-loop.md`](agentic-dev-loop.md) — issue-to-merge automated workflow.
 
 ## Source-of-truth boundaries
 
