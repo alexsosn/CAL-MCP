@@ -180,6 +180,7 @@ STEP_BY_NAME = {step.name: step for step in STEPS}
 # Safe continuation after the recorded Tel Dan comment parser drift in #343.
 # This is an evidence-gathering subset and can never certify the original full batch.
 REMAINDER_STEPS: tuple[FollowupStep, ...] = STEPS[4:]
+SYRIAC_STEPS: tuple[FollowupStep, ...] = STEPS[-2:]
 _REVIEWED_REMAINDER_NAMES = (
     "kwic_dialects",
     "kwic_dialect",
@@ -389,6 +390,21 @@ def complete_remaining(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> boo
     )
 
 
+def complete_syriac(outcomes: tuple[SmokeOutcome, ...], attempts: int) -> bool:
+    """Prove the final previously unattempted CAL group path, without hiding other failures."""
+    names = tuple(step.name for step in SYRIAC_STEPS)
+    return (
+        names == ("syriac_category", "syriac_group")
+        and SYRIAC_STEPS[0].parent is None
+        and SYRIAC_STEPS[1].parent == "syriac_category"
+        and SYRIAC_STEPS[1].tool == "cal_syriac_group"
+        and tuple(outcome.case for outcome in outcomes) == names
+        and all(outcome.category == "ok" for outcome in outcomes)
+        and type(attempts) is int
+        and attempts == 2
+    )
+
+
 async def run_cases(
     client: Client,
     *,
@@ -457,30 +473,43 @@ async def _run_live(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Bounded manual follow-up MCP acceptance")
     parser.add_argument("--executable", help="absolute installed cal-mcp executable")
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument(
         "--remaining-only", action="store_true", help="run only #340 unattempted suffix"
+    )
+    mode.add_argument(
+        "--syriac-only", action="store_true", help="run only the final two unattempted steps"
     )
     args = parser.parse_args()
     executable = args.executable or shutil.which("cal-mcp")
     if not executable:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1)
-    selected_steps = REMAINDER_STEPS if args.remaining_only else STEPS
+    selected_steps = (
+        SYRIAC_STEPS if args.syriac_only else REMAINDER_STEPS if args.remaining_only else STEPS
+    )
     try:
         outcomes, attempts = asyncio.run(_run_live(executable, steps=selected_steps))
     except Exception:
         print(json.dumps({"status": "failed", "category": "harness"}), file=sys.stderr)
         raise SystemExit(1) from None
-    passed = (
-        complete_remaining(outcomes, attempts)
-        if args.remaining_only
-        else complete_batch(outcomes, attempts)
-    )
+    if args.syriac_only:
+        passed = complete_syriac(outcomes, attempts)
+    elif args.remaining_only:
+        passed = complete_remaining(outcomes, attempts)
+    else:
+        passed = complete_batch(outcomes, attempts)
     print(
         json.dumps(
             {
                 "status": "passed" if passed else "failed",
-                "batch": "remaining_17" if args.remaining_only else "full_21",
+                "batch": (
+                    "syriac_2"
+                    if args.syriac_only
+                    else "remaining_17"
+                    if args.remaining_only
+                    else "full_21"
+                ),
                 "actual_cal_transport_attempts": attempts,
                 "max_cal_transport_attempts": _MAX_ATTEMPTS,
                 "cases": [asdict(outcome) for outcome in outcomes],
