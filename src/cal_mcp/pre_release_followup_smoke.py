@@ -502,9 +502,7 @@ def main() -> None:
     mode.add_argument(
         "--remaining-only", action="store_true", help="run only #340 unattempted suffix"
     )
-    mode.add_argument(
-        "--syriac-only", action="store_true", help="run only the two Syriac steps"
-    )
+    mode.add_argument("--syriac-only", action="store_true", help="run only the two Syriac steps")
     mode.add_argument(
         "--external-only", action="store_true", help="run only the three external citation steps"
     )
