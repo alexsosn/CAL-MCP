@@ -238,3 +238,28 @@ def test_syrian_only_acceptance_cannot_hide_non_attempted_group() -> None:
     failed = passing[:-1] + (SmokeOutcome("syriac_group", "drift", "bad group"),)
     assert not module.complete_syriac(failed, 2)
     assert not module.complete_remaining(passing, 2)
+
+
+def test_comment_followup_requires_actual_canonical_cal_link_and_identity() -> None:
+    module = _module()
+    step = module.STEP_BY_NAME["text_comments"]
+    coordinate = "1325002"
+    canonical = "https://cal.huc.edu/comment.php?coord=1325002"
+    def args_for(link: str | None) -> dict[str, object] | None:
+        parent = {"text_page": {"page": {"lines": [
+            {"coordinate": coordinate, "comment_url": link},
+        ]}}}
+        return module.select_arguments(step, parent)
+
+    assert args_for(canonical) == {"coordinate": coordinate}
+    for invalid in (
+        None,
+        "",
+        "https://example.org/comment.php?coord=1325002",
+        "http://cal.huc.edu/comment.php?coord=1325002",
+        "https://cal.huc.edu/comment.php?coord=1325003",
+        "https://cal.huc.edu/comment.php?coord=1325002&coord=1325003",
+        "https://cal.huc.edu/comment.php?coord=1325002&extra=1",
+        "https://cal.huc.edu/comment.php?coord=1325002#fragment",
+    ):
+        assert args_for(invalid) is None
