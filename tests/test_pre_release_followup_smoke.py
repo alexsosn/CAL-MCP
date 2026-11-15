@@ -314,3 +314,23 @@ def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_sour
             )
             is None
         )
+
+
+def test_external_only_requires_full_three_step_mcp_chain_and_three_real_starts() -> None:
+    module = _module()
+    assert tuple(step.name for step in module.EXTERNAL_STEPS) == (
+        "external_dialects",
+        "external_sources",
+        "external_citations",
+    )
+    assert module.EXTERNAL_STEPS[0].parent is None
+    assert module.EXTERNAL_STEPS[1].parent == "external_dialects"
+    assert module.EXTERNAL_STEPS[2].parent == "external_sources"
+    passed = tuple(SmokeOutcome(step.name, "ok", "success") for step in module.EXTERNAL_STEPS)
+    assert module.complete_external(passed, 3)
+    assert not module.complete_external(passed, 2)
+    assert not module.complete_external(passed, 4)
+    assert not module.complete_external(passed[:-1], 3)
+    assert not module.complete_batch(passed, 3)
+    failed = passed[:-1] + (SmokeOutcome("external_citations", "drift", "empty"),)
+    assert not module.complete_external(failed, 3)
