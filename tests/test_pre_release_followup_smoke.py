@@ -169,3 +169,29 @@ def test_dependency_batch_does_not_guess_a_missing_citation_handle(monkeypatch) 
     assert [outcome.case for outcome in outcomes] == ["lexicon", "lexicon_context"]
     assert [outcome.category for outcome in outcomes] == ["ok", "drift"]
     assert fake.calls == ["cal_lexicon_lookup"]
+
+
+def test_remaining_batch_is_exact_safe_suffix_after_comment_drift() -> None:
+    module = _module()
+    expected = tuple(step.name for step in module.STEPS[4:])
+    assert len(expected) == 17
+    assert expected[0] == "kwic_dialects"
+    assert expected[-1] == "syriac_group"
+    assert tuple(step.name for step in module.REMAINDER_STEPS) == expected
+    assert all(step.tool != "cal_text_line_comments" for step in module.REMAINDER_STEPS)
+    assert all(step.tool not in {"cal_lexicon_lookup", "cal_text_page"} for step in module.REMAINDER_STEPS)
+    assert module.REMAINDER_STEPS[0].parent is None
+
+
+def test_remaining_batch_cannot_vacuously_pass_or_hide_unattempted_tools() -> None:
+    module = _module()
+    passed = tuple(SmokeOutcome(step.name, "ok", "success") for step in module.REMAINDER_STEPS)
+    assert module.complete_remaining(passed, 17)
+    assert module.complete_remaining(passed, 25)
+    assert not module.complete_remaining(passed, 16)
+    assert not module.complete_remaining(passed, 26)
+    assert not module.complete_remaining(passed[:-1], 17)
+    assert not module.complete_remaining(passed + passed[-1:], 18)
+    wrong = passed[:-1] + (SmokeOutcome(passed[-1].case, "drift", "changed CAL"),)
+    assert not module.complete_remaining(wrong, 17)
+    assert not module.complete_batch(passed, 17)
