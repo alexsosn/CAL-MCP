@@ -217,3 +217,26 @@ def test_remaining_only_never_calls_preceding_text_or_comment_even_on_429(
     assert tuple(outcome.case for outcome in outcomes) == ("kwic_dialects",)
     assert fake.calls == ["cal_kwic_dialects"]
     assert not module.complete_remaining(outcomes, 1)
+
+
+def test_syrian_only_is_exactly_the_unattempted_final_two_steps() -> None:
+    module = _module()
+    assert len(module.SYRIAC_STEPS) == 2
+    assert tuple(step.name for step in module.SYRIAC_STEPS) == (
+        "syriac_category", "syriac_group"
+    )
+    assert module.SYRIAC_STEPS[0].parent is None
+    assert module.SYRIAC_STEPS[1].parent == "syriac_category"
+    assert module.SYRIAC_STEPS[1].tool == "cal_syriac_group"
+
+
+def test_syrian_only_acceptance_cannot_hide_non_attempted_group() -> None:
+    module = _module()
+    passing = tuple(SmokeOutcome(step.name, "ok", "success") for step in module.SYRIAC_STEPS)
+    assert module.complete_syriac(passing, 2)
+    assert not module.complete_syriac(passing, 1)
+    assert not module.complete_syriac(passing, 3)
+    assert not module.complete_syriac(passing[:-1], 2)
+    failed = passing[:-1] + (SmokeOutcome("syriac_group", "drift", "bad group"),)
+    assert not module.complete_syriac(failed, 2)
+    assert not module.complete_remaining(passing, 2)
