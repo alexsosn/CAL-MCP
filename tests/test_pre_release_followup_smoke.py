@@ -30,9 +30,7 @@ def test_followup_batch_covers_every_remaining_public_tool_exactly_once() -> Non
     module = _module()
     from cal_mcp.pre_release_smoke import BATCH_CASES
 
-    previously = {case.tool for case in DEFAULT_SMOKE_CASES} | {
-        case.tool for case in BATCH_CASES
-    }
+    previously = {case.tool for case in DEFAULT_SMOKE_CASES} | {case.tool for case in BATCH_CASES}
     assert CURRENT_PUBLIC_TOOLS - previously == _EXPECTED_NEW_TOOLS
     assert len(module.STEPS) == 21
     assert len({step.name for step in module.STEPS}) == 21
@@ -54,23 +52,32 @@ def test_typed_selectors_come_from_returned_payload_not_an_arbitrary_url() -> No
     module = _module()
     args = module.select_arguments(
         module.STEP_BY_NAME["kwic_context"],
-        {"kwic_hits": {"hits": [{
-            "file_id": "13250",
-            "target_coordinate": "132501001",
-            "charset": "R",
-            "subtext_id": None,
-            "full_context_url": "https://evil.example/forged",
-        }]}},
+        {
+            "kwic_hits": {
+                "hits": [
+                    {
+                        "file_id": "13250",
+                        "target_coordinate": "132501001",
+                        "charset": "R",
+                        "subtext_id": None,
+                        "full_context_url": "https://evil.example/forged",
+                    }
+                ]
+            }
+        },
     )
     assert args == {
         "file_id": "13250",
         "target_coordinate": "132501001",
         "charset": "R",
     }
-    assert module.select_arguments(
-        module.STEP_BY_NAME["kwic_context"],
-        {"kwic_hits": {"hits": [{"full_context_url": "https://evil.example"}]}},
-    ) is None
+    assert (
+        module.select_arguments(
+            module.STEP_BY_NAME["kwic_context"],
+            {"kwic_hits": {"hits": [{"full_context_url": "https://evil.example"}]}},
+        )
+        is None
+    )
 
 
 def test_selected_author_comes_from_cal_candidates() -> None:
@@ -101,11 +108,17 @@ def test_frozen_21_step_acceptance_cannot_pass_on_skips_or_partial_io() -> None:
 
 def test_invalid_targum_lemma_and_syrian_group_are_not_guessed() -> None:
     module = _module()
-    assert module.select_arguments(
-        module.STEP_BY_NAME["targum_reflex"],
-        {"hebrew_lemmas": {"candidates": [{"mt_lemma_id": "0001"}]}},
-    ) is None
-    assert module.select_arguments(
-        module.STEP_BY_NAME["syriac_group"],
-        {"syriac_category": {"items": [{"upstream_id": "60420", "navigation_kind": "text"}]}},
-    ) is None
+    assert (
+        module.select_arguments(
+            module.STEP_BY_NAME["targum_reflex"],
+            {"hebrew_lemmas": {"candidates": [{"mt_lemma_id": "0001"}]}},
+        )
+        is None
+    )
+    assert (
+        module.select_arguments(
+            module.STEP_BY_NAME["syriac_group"],
+            {"syriac_category": {"items": [{"upstream_id": "60420", "navigation_kind": "text"}]}},
+        )
+        is None
+    )
