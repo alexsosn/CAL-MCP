@@ -361,6 +361,7 @@ class _LineCommentRecordBuilder:
         self.reference_count = 0
         self.spans: list[tuple[str, list[str]]] = []
         self.uncertain_wrapper_seen = False
+        self.uncertain_parts: list[str] = []
         self.br_count = 0
         self.before_entry_parts: list[str] = []
         self.links: list[tuple[str, list[str]]] = []
@@ -540,6 +541,8 @@ class _LineCommentsHTMLParser(HTMLParser):
         if record is None:
             return
         record.all_parts.append(data)
+        if self._nested_uncertain:
+            record.uncertain_parts.append(data)
         if self._anchor_parts is not None:
             self._anchor_parts.append(data)
         elif self._span_parts is not None:
@@ -607,6 +610,10 @@ def _parse_line_comment_record(
         or (classes == ["rom", "rom"] and builder.uncertain_wrapper_seen)
     ):
         raise TextParseError("CAL line-comments record citation spans changed unexpectedly")
+    if builder.uncertain_wrapper_seen and not _optional_clean_text(
+        "".join(builder.uncertain_parts)
+    ):
+        raise TextParseError("CAL line-comments uncertain wrapper has no semantic text")
     if builder.br_count != 1:
         raise TextParseError("CAL line-comments record lacks one citation/entry break")
     if len(builder.links) != 1:
