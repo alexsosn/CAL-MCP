@@ -1,0 +1,144 @@
+{
+  "dialect": "Classical Syriac",
+  "text": "ܓܒܪܐ ܚܙܐ ܒܝܬܐ܀\nܒܒܝܬܐ ܐܝܬ ܡܝܐ܀\nܓܒܪܐ ܥܠ ܠܒܝܬܐ܀\nܓܒܪܐ ܚܙܐ ܡܝܐ܀\nܓܒܪܐ ܐܝܬ ܠܗ ܡܝܐ܀\nܓܒܪܐ ܚܙܐ ܒܝܬܐ ܪܒܐ܀",
+  "known_lemma_keys": [
+    "draft:man",
+    "draft:see",
+    "draft:house",
+    "draft:in",
+    "draft:exist",
+    "draft:water",
+    "draft:enter",
+    "draft:to",
+    "draft:he"
+  ],
+  "tokens": [
+    {
+      "surface": "ܓܒܪܐ",
+      "lemma_keys": [
+        "draft:man"
+      ]
+    },
+    {
+      "surface": "ܚܙܐ",
+      "lemma_keys": [
+        "draft:see"
+      ]
+    },
+    {
+      "surface": "ܒܝܬܐ",
+      "lemma_keys": [
+        "draft:house"
+      ]
+    },
+    {
+      "surface": "ܒܒܝܬܐ",
+      "lemma_keys": [
+        "draft:in",
+        "draft:house"
+      ]
+    },
+    {
+      "surface": "ܐܝܬ",
+      "lemma_keys": [
+        "draft:exist"
+      ]
+    },
+    {
+      "surface": "ܡܝܐ",
+      "lemma_keys": [
+        "draft:water"
+      ]
+    },
+    {
+      "surface": "ܓܒܪܐ",
+      "lemma_keys": [
+        "draft:man"
+      ]
+    },
+    {
+      "surface": "ܥܠ",
+      "lemma_keys": [
+        "draft:enter"
+      ]
+    },
+    {
+      "surface": "ܠܒܝܬܐ",
+      "lemma_keys": [
+        "draft:to",
+        "draft:house"
+      ]
+    },
+    {
+      "surface": "ܓܒܪܐ",
+      "lemma_keys": [
+        "draft:man"
+      ]
+    },
+    {
+      "surface": "ܚܙܐ",
+      "lemma_keys": [
+        "draft:see"
+      ]
+    },
+    {
+      "surface": "ܡܝܐ",
+      "lemma_keys": [
+        "draft:water"
+      ]
+    },
+    {
+      "surface": "ܓܒܪܐ",
+      "lemma_keys": [
+        "draft:man"
+      ]
+    },
+    {
+      "surface": "ܐܝܬ",
+      "lemma_keys": [
+        "draft:exist"
+      ]
+    },
+    {
+      "surface": "ܠܗ",
+      "lemma_keys": [
+        "draft:to",
+        "draft:he"
+      ]
+    },
+    {
+      "surface": "ܡܝܐ",
+      "lemma_keys": [
+        "draft:water"
+      ]
+    },
+    {
+      "surface": "ܓܒܪܐ",
+      "lemma_keys": [
+        "draft:man"
+      ]
+    },
+    {
+      "surface": "ܚܙܐ",
+      "lemma_keys": [
+        "draft:see"
+      ]
+    },
+    {
+      "surface": "ܒܝܬܐ",
+      "lemma_keys": [
+        "draft:house"
+      ]
+    },
+    {
+      "surface": "ܪܒܐ",
+      "lemma_keys": [
+        "draft:big"
+      ]
+    }
+  ],
+  "minimum_coverage": 0.95,
+  "max_new_lemmas": 1,
+  "evidence_status": "unverified",
+  "linguistic_review": "pending"
+}
