@@ -70,6 +70,16 @@ def test_clitic_with_one_unknown_lemma_counts_whole_running_token_as_unknown():
         lambda x: x["tokens"][0].update(lemma_keys=[]),
         lambda x: x.update(text=""),
         lambda x: x.update(text="hello ܚܙܐ"),
+        # U+0711 is a combining superscript alaph; not a standalone base letter.
+        lambda x: x.update(
+            text="ܑ",
+            tokens=[{"surface": "ܑ", "lemma_keys": ["gbr N"]}],
+        ),
+        # U+0701 is Syriac punctuation, not a valid letter inside a surface token.
+        lambda x: x.update(
+            text="ܓܒܪܐ܁ܚܙܐ",
+            tokens=[{"surface": "ܓܒܪܐ܁ܚܙܐ", "lemma_keys": ["gbr N"]}],
+        ),
         lambda x: x.update(dialect="Biblical Aramaic"),
         lambda x: x.update(minimum_coverage=1.1),
         lambda x: x.update(max_new_lemmas=True),
