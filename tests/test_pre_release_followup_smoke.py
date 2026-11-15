@@ -356,5 +356,7 @@ def test_external_citation_records_are_validated_by_their_own_content_schema() -
     assert module._positive_payload(step, positive)
     tool = SimpleNamespace(name=step.tool, output_schema={"type": "object"})
     result = SimpleNamespace(is_error=False, structured_content=positive)
-    case = module.SmokeCase(step.name, step.tool, {"source_abbrev": "EbPar"}, needs_provenance=False)
+    case = module.SmokeCase(
+        step.name, step.tool, {"source_abbrev": "EbPar"}, needs_provenance=False
+    )
     assert module.evaluate_tool_result(case, tool, result).category == "ok"
