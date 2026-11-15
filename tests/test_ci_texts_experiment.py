@@ -16,14 +16,14 @@ def draft():
     return {
         "dialect": "Classical Syriac",
         "text": "ܓܒܪܐ ܚܙܐ ܒܝܬܐ܀ ܓܒܪܐ ܚܙܐ ܡܝܐ܀",
-        "known_lemma_keys": ["gbr N", "xzy V", "byt N"],
+        "known_lemma_keys": ["draft:man", "draft:see", "draft:house"],
         "tokens": [
-            {"surface": "ܓܒܪܐ", "lemma_keys": ["gbr N"]},
-            {"surface": "ܚܙܐ", "lemma_keys": ["xzy V"]},
-            {"surface": "ܒܝܬܐ", "lemma_keys": ["byt N"]},
-            {"surface": "ܓܒܪܐ", "lemma_keys": ["gbr N"]},
-            {"surface": "ܚܙܐ", "lemma_keys": ["xzy V"]},
-            {"surface": "ܡܝܐ", "lemma_keys": ["my N"]},
+            {"surface": "ܓܒܪܐ", "lemma_keys": ["draft:man"]},
+            {"surface": "ܚܙܐ", "lemma_keys": ["draft:see"]},
+            {"surface": "ܒܝܬܐ", "lemma_keys": ["draft:house"]},
+            {"surface": "ܓܒܪܐ", "lemma_keys": ["draft:man"]},
+            {"surface": "ܚܙܐ", "lemma_keys": ["draft:see"]},
+            {"surface": "ܡܝܐ", "lemma_keys": ["draft:water"]},
         ],
         "minimum_coverage": 0.8,
         "max_new_lemmas": 1,
@@ -38,7 +38,7 @@ def test_counts_running_tokens_and_unique_novel_lemmas():
     assert result["known_tokens"] == 5
     assert result["unknown_tokens"] == 1
     assert result["coverage"] == pytest.approx(5 / 6)
-    assert result["new_lemma_keys"] == ["my N"]
+    assert result["new_lemma_keys"] == ["draft:water"]
     assert result["passes_lexical_budget"] is True
     assert result["linguistically_verified"] is False
 
@@ -46,19 +46,19 @@ def test_counts_running_tokens_and_unique_novel_lemmas():
 def test_repeat_of_unfamiliar_token_reduces_coverage_without_inflating_new_lemmas():
     data = draft()
     data["text"] += " ܡܝܐ܀"
-    data["tokens"].append({"surface": "ܡܝܐ", "lemma_keys": ["my N"]})
+    data["tokens"].append({"surface": "ܡܝܐ", "lemma_keys": ["draft:water"]})
     data["minimum_coverage"] = 0.75
     result = audit_draft(data)
     assert result["running_tokens"] == 7
     assert result["unknown_tokens"] == 2
-    assert result["new_lemma_keys"] == ["my N"]
+    assert result["new_lemma_keys"] == ["draft:water"]
     assert result["passes_lexical_budget"] is False
 
 
 def test_clitic_with_one_unknown_lemma_counts_whole_running_token_as_unknown():
     data = draft()
     data["text"] = "ܒܒܝܬܐ"
-    data["tokens"] = [{"surface": "ܒܒܝܬܐ", "lemma_keys": ["b_ p", "byt N"]}]
+    data["tokens"] = [{"surface": "ܒܒܝܬܐ", "lemma_keys": ["draft:in", "draft:house"]}]
     data["minimum_coverage"] = 0.0
     assert audit_draft(data)["unknown_tokens"] == 1
 
@@ -74,20 +74,20 @@ def test_clitic_with_one_unknown_lemma_counts_whole_running_token_as_unknown():
         # U+0711 is a combining superscript alaph; not a standalone base letter.
         lambda x: x.update(
             text="ܑ",
-            tokens=[{"surface": "ܑ", "lemma_keys": ["gbr N"]}],
+            tokens=[{"surface": "ܑ", "lemma_keys": ["draft:man"]}],
         ),
         # U+0701 is Syriac punctuation, not a valid letter inside a surface token.
         lambda x: x.update(
             text="ܓܒܪܐ܁ܚܙܐ",
-            tokens=[{"surface": "ܓܒܪܐ܁ܚܙܐ", "lemma_keys": ["gbr N"]}],
+            tokens=[{"surface": "ܓܒܪܐ܁ܚܙܐ", "lemma_keys": ["draft:man"]}],
         ),
         lambda x: x.update(dialect="Biblical Aramaic"),
         lambda x: x.update(minimum_coverage=1.1),
         lambda x: x.update(max_new_lemmas=True),
         lambda x: x.update(evidence_status="CAL-verified"),
         lambda x: x.update(linguistic_review="approved"),
-        lambda x: x.update(known_lemma_keys=["gbr N", "gbr N"]),
-        lambda x: x["tokens"][0].update(lemma_keys=["gbr N", "gbr N"]),
+        lambda x: x.update(known_lemma_keys=["draft:man", "draft:man"]),
+        lambda x: x["tokens"][0].update(lemma_keys=["draft:man", "draft:man"]),
     ],
 )
 def test_invalid_or_overclaimed_annotations_fail_closed(change):
