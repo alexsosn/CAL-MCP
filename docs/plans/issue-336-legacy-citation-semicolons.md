@@ -36,3 +36,16 @@ links were followed. All regression tests are offline. Runtime request count,
 timeouts/retries/cache/pacing and result provenance remain unchanged. Retain only
 minimal fixture fragments; CAL content rights remain upstream. No architecture
 decision is needed for this internal parser correction.
+
+## Validation record
+
+- Test-only commit `24ddae3`: expanded focused run had eight intended failures
+  (citation-count mismatches) and twelve passing controls on unchanged production code.
+- With both fallback changes, the focused run passes all twenty cases.
+- Full offline local validation: Ruff lint and format pass (559 Python files),
+  mypy passes (28 source files), and pytest passes all 2,409 tests.
+- The first full run had 2,408 passes and one stdio version mismatch caused by
+  selecting a different installation from the shell path. Refreshing this checkout's
+  editable install to `0.2.0.dev0` and putting `.venv/bin` first resolved it; no
+  product/test workaround was introduced.
+- Review state: implementation ready for PR review; no merge or release performed.
