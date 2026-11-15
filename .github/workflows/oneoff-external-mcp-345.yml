@@ -34,7 +34,7 @@ jobs:
           python -m venv "$RUNNER_TEMP/cal-external-mcp-345"
           "$RUNNER_TEMP/cal-external-mcp-345/bin/python" -m pip install \
             --disable-pip-version-check --no-cache-dir "${wheels[0]}"
-      - name: Strict three-CAL-start dialects to sources to citations MCP acceptance
+      - name: Verify deconflicted external citation record MCP acceptance with 3 starts
         shell: bash
         run: |
           cd "$RUNNER_TEMP"
