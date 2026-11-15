@@ -34,8 +34,8 @@ jobs:
           python -m venv "$RUNNER_TEMP/cal-mcp-external-345"
           "$RUNNER_TEMP/cal-mcp-external-345/bin/python" -m pip install \
             --disable-pip-version-check --no-cache-dir "${wheels[0]}"
-      - name: Probe only CAL-returned EbPar source, max two CAL starts
+      - name: Compare dialect-first CAL service order, max three paced CAL starts
         shell: bash
         run: |
           cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/cal-mcp-external-345/bin/python" -m cal_mcp.external_citations_diagnostic
+          "$RUNNER_TEMP/cal-mcp-external-345/bin/python" -m cal_mcp.external_citations_diagnostic --with-dialects
