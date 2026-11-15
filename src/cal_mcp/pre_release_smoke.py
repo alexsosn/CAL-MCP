@@ -50,9 +50,7 @@ BATCH_CASES: tuple[SmokeCase, ...] = (
         {"coordinate": "7102601002203", "word_index": 0},
         expected_statuses=("found",),
     ),
-    SmokeCase(
-        "kwic_texts", "cal_kwic_texts", {"lemma_key": "mlk N", "text_ids": ["13250"]}
-    ),
+    SmokeCase("kwic_texts", "cal_kwic_texts", {"lemma_key": "mlk N", "text_ids": ["13250"]}),
     SmokeCase("kwic_dialects", "cal_kwic_dialects", {"lemma_key": "mlk N"}),
     SmokeCase("bibliography_authors", "cal_bibliography_authors", {"prefix": "Kau"}),
     SmokeCase("targum_concordance", "cal_targum_concordance", {"lemma_key": "klb N"}),
@@ -121,8 +119,7 @@ def valid_content(case: SmokeCase, payload: dict[str, object]) -> bool:
                 return False
         elif isinstance(item, dict):
             if not any(
-                (isinstance(value, str) and value.strip())
-                or (type(value) is int and value >= 0)
+                (isinstance(value, str) and value.strip()) or (type(value) is int and value >= 0)
                 for value in item.values()
             ):
                 return False
