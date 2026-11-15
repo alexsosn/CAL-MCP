@@ -375,3 +375,67 @@ def test_final_full_smoke_requires_positive_tel_dan_comments_not_empty_state() -
         step,
         {"status": "found", "records": [{"reference": "Synthetic Tel Dan 1"}]},
     )
+
+
+def test_unavailable_result_uses_bounded_error_kind_without_upstream_content() -> None:
+    module = _module()
+    original = SmokeOutcome("lexicon", "unavailable", "CAL upstream unavailable or unsafe")
+    for kind, code, expected in (
+        ("upstream_http", 429, "CAL upstream_http HTTP 429"),
+        ("upstream_http", 503, "CAL upstream_http HTTP 503"),
+        ("network", None, "CAL network"),
+        ("content", None, "CAL content"),
+        ("response_too_large", None, "CAL response_too_large"),
+    ):
+        result = SimpleNamespace(
+            is_error=True,
+            structured_content={
+                "error": {
+                    "kind": kind,
+                    "status_code": code,
+                    "source_url": "https://cal.huc.edu/private-token",
+                    "message": "NEVER LEAK UPSTREAM BODY OR URL",
+                }
+            },
+        )
+        outcome = module.safe_failure_reason(original, result)
+        assert outcome.category == "unavailable"
+        assert outcome.message == expected
+        assert "NEVER LEAK" not in outcome.message
+        assert "private-token" not in outcome.message
+
+
+def test_unavailable_reason_rejects_untrusted_kind_and_invalid_http_codes() -> None:
+    module = _module()
+    original = SmokeOutcome("lexicon", "unavailable", "CAL upstream unavailable or unsafe")
+    for kind, code in (
+        ("ATTACK_PRIVATE_SECRET", 429),
+        ("upstream_http", True),
+        ("upstream_http", "429"),
+        ("upstream_http", 700),
+        ("upstream_http", -1),
+    ):
+        result = SimpleNamespace(
+            is_error=True,
+            structured_content={"error": {"kind": kind, "status_code": code}},
+        )
+        changed = module.safe_failure_reason(original, result)
+        assert changed.category == "unavailable"
+        assert "ATTACK" not in changed.message
+        assert "HTTP 700" not in changed.message
+        assert changed.message in {"CAL upstream_http", original.message}
+
+
+def test_safe_failure_reason_never_changes_terminal_429_or_success() -> None:
+    module = _module()
+    error = SimpleNamespace(
+        is_error=True,
+        structured_content={"error": {"kind": "upstream_http", "status_code": 429}},
+    )
+    result = module.safe_failure_reason(
+        SmokeOutcome("lexicon", "unavailable", "CAL upstream unavailable or unsafe"), error
+    )
+    assert result.message == "CAL upstream_http HTTP 429"
+    assert module.terminal_backpressure(error)
+    passed = SmokeOutcome("lexicon", "ok", "success")
+    assert module.safe_failure_reason(passed, error) == passed
