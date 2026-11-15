@@ -48,12 +48,14 @@ def test_identical_duplicate_abbrev_rows_remain_a_single_valid_target() -> None:
 
 def test_only_real_positive_citation_count_is_acceptance() -> None:
     module = _module()
+
     def response(total: int, hits: int, source: str = "EbPar"):
         return SimpleNamespace(
             source_abbrev=source,
             total=total,
             citations=tuple(SimpleNamespace(reference="synthetic") for _ in range(hits)),
         )
+
     assert module.is_positive(response(1, 1), "EbPar")
     assert not module.is_positive(response(0, 0), "EbPar")
     assert not module.is_positive(response(2, 1), "EbPar")
