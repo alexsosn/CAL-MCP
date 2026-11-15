@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from html.parser import HTMLParser
 from urllib.parse import urlsplit
 
 from cal_mcp.client import (
@@ -41,9 +42,48 @@ _KNOWN_ERRORS = {
     "CAL line-comments record semantic field order changed unexpectedly": "record_order",
     "CAL line-comments record lexical-entry phrase changed unexpectedly": "record_phrase",
     "CAL line-comments record has unexpected trailing semantic content": "record_trailing",
+    "CAL line-comments page has malformed nested title markup": "nested_title",
+    "CAL line-comments page has nested summary cards": "nested_summary",
+    "CAL line-comments summary contains nested records": "nested_records",
+    "CAL line-comments record has malformed span nesting": "nested_span",
+    "CAL line-comments record has nested lexical links": "nested_link",
+    "CAL line-comments record has nested gloss markup": "nested_gloss",
+    "CAL line-comments record closes with unfinished semantic markup": "unfinished_record",
+    "CAL line-comments page ends with unfinished semantic markup": "unfinished_page",
 }
 _ALLOWED_EVENTS = {"reference", "span:heb", "span:rom", "br", "anchor", "gloss"}
 _COORD_RE = re.compile(r"[0-9A-Za-z]{1,64}\Z")
+
+
+
+_ALLOWED_SUMMARY_TAGS = frozenset({
+    "div", "p", "span", "br", "a", "b", "i", "em", "strong", "table",
+    "tr", "td", "th", "ul", "li",
+})
+
+
+class _SummaryTagOutline(HTMLParser):
+    """Only whitelisted summary HTML tag names; no attrs, text or URLs in the report."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.depth = 0
+        self.tags: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag == "div" and self.depth == 0:
+            if "summary-card" in (dict(attrs).get("class") or "").split():
+                self.depth = 1
+            return
+        if self.depth:
+            if tag == "div":
+                self.depth += 1
+            if len(self.tags) < 32:
+                self.tags.append(tag if tag in _ALLOWED_SUMMARY_TAGS else "other")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag == "div" and self.depth:
+            self.depth -= 1
 
 
 def select_comment_coordinate(page: object) -> str | None:
@@ -79,6 +119,9 @@ def summarize_response(response: CalResponse, coordinate: str) -> dict[str, obje
     except TextParseError as exc:
         structure_error = _KNOWN_ERRORS.get(str(exc), "unrecognized_markup")
 
+    outline = _SummaryTagOutline()
+    outline.feed(response.body.decode("utf-8", errors="replace"))
+    outline.close()
     empty_count = sum(
         _clean_text("".join(record.all_parts)) == _LINE_COMMENTS_EMPTY_MARKER
         for record in parser.records
@@ -111,6 +154,7 @@ def summarize_response(response: CalResponse, coordinate: str) -> dict[str, obje
         "record_count": len(parser.records),
         "empty_marker_count": empty_count,
         "event_signatures": signatures,
+        "summary_tags": outline.tags,
         "parse_status": parse_status,
         "parser_reason": parser_reason,
         "structure_error": structure_error,
