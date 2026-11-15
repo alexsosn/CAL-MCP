@@ -274,7 +274,7 @@ def test_comment_followup_requires_actual_canonical_cal_link_and_identity() -> N
 
 def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_source() -> None:
     module = _module()
-    step = module.STEP_BY_NAME["external_citations"]
+    step = module.STEP_BY_NAME["external_citation_records"]
     canonical = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
 
     def args_for(sources: list[dict[str, str]], dialect_id: str = "6"):
@@ -321,7 +321,7 @@ def test_external_only_requires_full_three_step_mcp_chain_and_three_real_starts(
     assert tuple(step.name for step in module.EXTERNAL_STEPS) == (
         "external_dialects",
         "external_sources",
-        "external_citations",
+        "external_citation_records",
     )
     assert module.EXTERNAL_STEPS[0].parent is None
     assert module.EXTERNAL_STEPS[1].parent == "external_dialects"
@@ -332,7 +332,7 @@ def test_external_only_requires_full_three_step_mcp_chain_and_three_real_starts(
     assert not module.complete_external(passed, 4)
     assert not module.complete_external(passed[:-1], 3)
     assert not module.complete_batch(passed, 3)
-    failed = passed[:-1] + (SmokeOutcome("external_citations", "drift", "empty"),)
+    failed = passed[:-1] + (SmokeOutcome("external_citation_records", "drift", "empty"),)
     assert not module.complete_external(failed, 3)
 
 
