@@ -20,8 +20,9 @@ _GOOD_URL = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
 
 def test_choose_candidate_from_returned_current_sources_only() -> None:
     module = _module()
-    assert module.choose_candidate(_result(("1CorH", "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"), ("EbPar", _GOOD_URL))) == "EbPar"
-    assert module.choose_candidate(_result(("1CorH", "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"))) is None
+    historical = ("1CorH", "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH")
+    assert module.choose_candidate(_result(historical, ("EbPar", _GOOD_URL))) == "EbPar"
+    assert module.choose_candidate(_result(historical)) is None
     assert module.choose_candidate(_result(("EbPar", _GOOD_URL), dialect="8")) is None
 
 
