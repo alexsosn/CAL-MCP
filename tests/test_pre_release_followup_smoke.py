@@ -222,9 +222,7 @@ def test_remaining_only_never_calls_preceding_text_or_comment_even_on_429(
 def test_syrian_only_is_exactly_the_unattempted_final_two_steps() -> None:
     module = _module()
     assert len(module.SYRIAC_STEPS) == 2
-    assert tuple(step.name for step in module.SYRIAC_STEPS) == (
-        "syriac_category", "syriac_group"
-    )
+    assert tuple(step.name for step in module.SYRIAC_STEPS) == ("syriac_category", "syriac_group")
     assert module.SYRIAC_STEPS[0].parent is None
     assert module.SYRIAC_STEPS[1].parent == "syriac_category"
     assert module.SYRIAC_STEPS[1].tool == "cal_syriac_group"
