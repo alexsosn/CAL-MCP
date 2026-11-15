@@ -61,3 +61,22 @@ def test_only_real_positive_citation_count_is_acceptance() -> None:
     assert not module.is_positive(response(2, 1), "EbPar")
     assert not module.is_positive(response(1, 1, "JS"), "EbPar")
     assert not module.is_positive(response(0, 1), "EbPar")
+
+
+def test_three_request_mode_requires_actual_syrian_dialect_identity() -> None:
+    module = _module()
+
+    def response(*items: tuple[str, str]):
+        return SimpleNamespace(
+            dialects=tuple(
+                SimpleNamespace(dialect_id=identity, label=label)
+                for identity, label in items
+            )
+        )
+
+    assert module.choose_syriac_dialect(response(("6", "Syriac"))) == "6"
+    assert module.choose_syriac_dialect(response(("4", "Mandaic"), ("6", "Syriac"))) == "6"
+    assert module.choose_syriac_dialect(response(("6", "Other"))) is None
+    assert module.choose_syriac_dialect(response(("6", "Syriac"), ("6", "Syriac"))) is None
+    assert module.choose_syriac_dialect(response(("06", "Syriac"))) is None
+    assert module.choose_syriac_dialect(response()) is None
