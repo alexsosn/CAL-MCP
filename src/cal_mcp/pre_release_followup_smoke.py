@@ -73,7 +73,7 @@ STEPS: tuple[FollowupStep, ...] = (
         expected_statuses=("found", "no_citations"),
     ),
     FollowupStep(
-        "kwic_dialects",
+        "kwic_dialects_selector",
         "cal_kwic_dialects",
         {"lemma_key": ")ryk#2 A"},
         positive_field="dialects",
@@ -81,7 +81,7 @@ STEPS: tuple[FollowupStep, ...] = (
     FollowupStep(
         "kwic_dialect",
         "cal_kwic_dialect",
-        parent="kwic_dialects",
+        parent="kwic_dialects_selector",
         positive_field="hits",
     ),
     FollowupStep(
@@ -116,7 +116,7 @@ STEPS: tuple[FollowupStep, ...] = (
         positive_field="records",
     ),
     FollowupStep(
-        "targum_concordance",
+        "targum_concordance_followup",
         "cal_targum_concordance",
         {"lemma_key": "klb N"},
         positive_field="rows",
@@ -124,7 +124,7 @@ STEPS: tuple[FollowupStep, ...] = (
     FollowupStep(
         "targum_examples",
         "cal_targum_concordance_examples",
-        parent="targum_concordance",
+        parent="targum_concordance_followup",
         positive_field="hits",
     ),
     FollowupStep(
@@ -183,14 +183,14 @@ REMAINDER_STEPS: tuple[FollowupStep, ...] = STEPS[4:]
 SYRIAC_STEPS: tuple[FollowupStep, ...] = STEPS[-2:]
 EXTERNAL_STEPS: tuple[FollowupStep, ...] = STEPS[-5:-2]
 _REVIEWED_REMAINDER_NAMES = (
-    "kwic_dialects",
+    "kwic_dialects_selector",
     "kwic_dialect",
     "kwic_hits",
     "kwic_context",
     "authors",
     "bibliography_author",
     "bibliography_keyword",
-    "targum_concordance",
+    "targum_concordance_followup",
     "targum_examples",
     "hebrew_lemmas",
     "targum_reflex",
