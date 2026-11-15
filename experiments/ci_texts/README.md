@@ -1,6 +1,6 @@
 # Experimental Classical Syriac CI text audit — issue #347
 
-**Status:** research prototype; **not** a shipped CAL-MCP feature. The candidate text is original LLM-authored draft material, **not** taken from CAL and **not linguistically reviewed**. No CAL query was run to attest its forms or confirm the proposed lemma identities.
+**Status:** research prototype; **not** a shipped CAL-MCP feature. The candidate text is original LLM-authored draft material, **not** taken from CAL and **not linguistically reviewed**. No CAL-MCP query was run. A subsequent **targeted CAL website** spot-check found a few short attested parallels but did not confirm the candidate's morphological annotations or the correctness of the full text.
 
 See [research, assumptions and TDD plan](../../docs/research/issue-347-comprehensible-input.md).
 
@@ -24,7 +24,13 @@ The verifier compares supplied whitespace-token surface strings to the draft; st
 | Unreviewed specimen, as annotated | 20 | 19 | 1 | 1 | 95% | PASS (threshold 95%, max 1 new) |
 | Same text, learner **does not** know `draft:water` | 20 | 16 | 4 | 2 | 80% | FAIL |
 
-Observed focused tests: **19 passed**, including a Unicode combining-mark regression and a pinned audit of the committed specimen. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
+Original focused tests: **19 passed**, including a Unicode combining-mark regression and a pinned audit of the committed specimen. Additional tests exercise ordinary CAL Syriac token-final `܂` and `܃` while rejecting both internally. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
+
+## Targeted CAL corpus spot-check — 2026-11-16
+
+A manually selected set of short form/construction observations is recorded in [the dated research note](../../docs/research/issue-347-corpus-spot-check.md), with public CAL URLs and verse/line coordinates. In particular, `ܥܠ ܠܒܝܬܐ` is observed in **Old Syriac Luke Sinaitic**, while `ܚܙܐ` (with conjunctive prefix) and `ܐܝܬ ܠܗ` have separate **Peshitta** evidence. These witnesses are not treated as interchangeable. No generic automatic morphology checker is implied, and the placeholders remain unverified.
+
+This spot-check also exposed a real orthographic edge case: common CAL Syriac corpus text uses terminal `܂` and `܃`; the separate test-first fix adds support for them in the offline auditor without accepting punctuation inside a token.
 
 ## Honest next study gates
 
@@ -33,4 +39,4 @@ Observed focused tests: **19 passed**, including a Unicode combining-mark regres
 3. Compare an unconstrained LLM candidate to a constrained candidate under blind expert error annotation; measure how many human interventions are required.
 4. Only after expert acceptance, test with real learners using comprehension questions and reading time, not a numeric coverage threshold alone.
 
-**CAL access:** zero upstream requests; no hidden traversal, local corpus, included CAL content or added MCP API. The specimen belongs to the experiment only and must not be promoted to official CAL data.
+**CAL access:** zero CAL-MCP requests and zero new requests in experimental code. A few CAL public-text pages were inspected manually through a web browser for the spot-check; no hidden traversal, local corpus, included CAL text or added MCP API. The specimen belongs to the experiment only and must not be promoted to official CAL data.
