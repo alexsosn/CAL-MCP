@@ -37,3 +37,14 @@ RED before implementation: add tests that (1) the 17-case identities equal the e
 ### Independent review finding: reject empty Tel Dan comments
 
 Adversarial workflow review of PR #349 found that the 21-step dependent smoke had accepted `cal_text_line_comments` as `ok` for `status: no_citations` with an empty `records` list. Such a response is a legitimate CAL empty state but fails the user-facing **positive** parser/feature acceptance condition. This is now an explicit RED/GREEN gate: `text_comments` must have `status: found` and at least one semantic record. Initial RED [CI #43762197173](https://github.com/alexsosn/CAL-MCP/actions/runs/43762197173) failed the new assertion while **2459 earlier tests passed** in both dependency matrices. It is safe for the underlying public CAL tool to return a genuine `no_citations` state in ordinary use; only the release smoke's success criterion is strengthened. Both matrices must be green before triggering live traffic.
+
+
+## Follow-up from first-request unavailability in full all-37 run (2026-11-16)
+
+The first exact-wheel all-37 attempt [#43771931989](https://github.com/alexsosn/CAL-MCP/actions/runs/43771931989) passed wheel installation and offline 37/47 discovery, but stopped after **one** CAL request classified generically as `unavailable`. The existing `evaluate_tool_result` intentionally groups `network`, `upstream_http`, `content`, and `response_too_large` into `CAL upstream unavailable or unsafe`. Since its log cannot distinguish 429 from network failure, **do not rerun or guess**.
+
+**Research-plan-TDD gate for minimal safe diagnostic adjustment:**
+1. Add RED unit tests on the existing dependent installed-wheel smoke runner that exercise a previously schema/identity-validated `SmokeOutcome(category="unavailable")` with structured error envelopes of kind `upstream_http` (429, 503), `network`, `content`, `response_too_large`. Require only these static kind codes and a validated three-digit HTTP status, never raw `message` or `source_url`, and no exception if absent fields or wrong types. Reject any kind not in the allowlist.
+2. Implement a tiny pure formatter used **only after** `evaluate_tool_result` verifies MCP schema + source identity. The outcome category and early stop semantics remain unchanged; no raw CAL data should escape.
+3. Paired pinned/latest-compatible CI must show RED then green, including Ruff/format/mypy and all existing cases. Independent adversarial reviewer checks that untrusted string inputs cannot be printed and that 429 still immediately stops further CAL operations.
+4. Re-assess existing observation and CAL budget with no new traffic until validated diagnostic evidence. A further controlled single-wheel run, if justified, requires a distinct reviewed one-off trigger and must never overlap any CAL job; no automatic retry. Keep #340 and release blocked until measured 37/37 PASS on one final wheel.
