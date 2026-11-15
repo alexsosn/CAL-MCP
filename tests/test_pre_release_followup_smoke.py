@@ -245,10 +245,17 @@ def test_comment_followup_requires_actual_canonical_cal_link_and_identity() -> N
     step = module.STEP_BY_NAME["text_comments"]
     coordinate = "1325002"
     canonical = "https://cal.huc.edu/comment.php?coord=1325002"
+
     def args_for(link: str | None) -> dict[str, object] | None:
-        parent = {"text_page": {"page": {"lines": [
-            {"coordinate": coordinate, "comment_url": link},
-        ]}}}
+        parent = {
+            "text_page": {
+                "page": {
+                    "lines": [
+                        {"coordinate": coordinate, "comment_url": link},
+                    ]
+                }
+            }
+        }
         return module.select_arguments(step, parent)
 
     assert args_for(canonical) == {"coordinate": coordinate}
