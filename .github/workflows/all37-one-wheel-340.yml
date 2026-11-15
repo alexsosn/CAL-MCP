@@ -1,0 +1,102 @@
+name: One-off issue 340 all-37 same-wheel CAL MCP acceptance
+
+# Dormant until the independent workflow review changes this file to a scoped push trigger.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cal-mcp-live-smoke
+  cancel-in-progress: false
+
+jobs:
+  all37-one-wheel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build one nonpublishing wheel from the exact checked-out SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD
+          python -m pip install --disable-pip-version-check "build>=1.3,<2"
+          python -m build --outdir dist
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          test "${#wheels[@]}" -eq 1
+          sha256sum "${wheels[0]}"
+      - name: Install exact wheel outside checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          wheels=(dist/*.whl)
+          test "${#wheels[@]}" -eq 1
+          python -m venv "$RUNNER_TEMP/cal-all37-340"
+          "$RUNNER_TEMP/cal-all37-340/bin/python" -m pip install \
+            --disable-pip-version-check --no-cache-dir "${wheels[0]}"
+          "$RUNNER_TEMP/cal-all37-340/bin/python" -m pip check
+          "$RUNNER_TEMP/cal-all37-340/bin/cal-mcp" --version
+      - name: Offline exact 37-tool and 47-distinct-case coverage gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-all37-340/bin/python" - <<'PY'
+          from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
+          from cal_mcp.stdio_live_smoke import DEFAULT_SMOKE_CASES
+          from cal_mcp.pre_release_smoke import BATCH_CASES
+          from cal_mcp.pre_release_followup_smoke import STEPS
+
+          base = {case.tool for case in DEFAULT_SMOKE_CASES}
+          extra = {case.tool for case in BATCH_CASES}
+          dependent = {step.tool for step in STEPS}
+          names = (
+              [case.name for case in DEFAULT_SMOKE_CASES]
+              + [case.name for case in BATCH_CASES]
+              + [step.name for step in STEPS]
+          )
+          assert len(CURRENT_PUBLIC_TOOLS) == 37
+          assert (len(DEFAULT_SMOKE_CASES), len(BATCH_CASES), len(STEPS)) == (13, 13, 21)
+          assert len(names) == len(set(names)) == 47
+          assert base | extra | dependent == CURRENT_PUBLIC_TOOLS
+          assert sum(case.tool != "cal_convert_to_code" for case in DEFAULT_SMOKE_CASES) == 12
+          print("Offline registry PASS: 37 tools, 47 distinct scenarios, 46 CAL-backed calls")
+          PY
+      - name: Full dependent 21-tool-route installed-wheel CAL MCP smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-all37-340/bin/python" -m cal_mcp.pre_release_followup_smoke \
+            --executable "$RUNNER_TEMP/cal-all37-340/bin/cal-mcp"
+      - name: Full independent 13-tool installed-wheel CAL MCP smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 60
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-all37-340/bin/python" -m cal_mcp.pre_release_smoke \
+            --executable "$RUNNER_TEMP/cal-all37-340/bin/cal-mcp"
+      - name: Full 13-case release smoke with 12 CAL-backed calls
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 60
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-all37-340/bin/python" -m cal_mcp.stdio_live_smoke \
+            --executable "$RUNNER_TEMP/cal-all37-340/bin/cal-mcp"
+      - name: Preserve nonpublishing wheel digest and exact bytes for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: issue-340-nonpublishing-wheel
+          path: dist/*.whl
+          if-no-files-found: warn
+          retention-days: 3
