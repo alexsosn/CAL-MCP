@@ -48,3 +48,18 @@ The selector is **not fabricated**: a current Tel Dan page returned the matching
 [Run #43741590108](https://github.com/alexsosn/CAL-MCP/actions/runs/43741590108), installed-wheel source SHA `6a6dd39e78196a9f2170e1b28db43949a939d6e1`, **2/2 CAL starts**, 60-second gap, HTTP 200, valid exact title and unique summary-card, coordinate `1325002`, 2383 bytes. The expanded error allowlist identified **`nested_span`** for both first-pass HTML parsing and the strict public parser. The tag-only summary prefix (text omitted) was `["p","i","span","span","span","br","a","i","b","other"]`. This is concrete evidence for a nested `<span>` inside a CAL citation paragraph, but **not evidence that arbitrary nested spans are safe**, nor which span class is an allowed script wrapper.
 
 Before fixing, run one more tiny structural diagnostic after a RED offline test: capture at most six **CSS-class tokens** of the first summary-card paragraph spans (ASCII identifier-class names only, 32 characters max per token, otherwise `other`), and for each record one nontext nesting depth and parent span class. This can reveal whether the new nested span is a known harmless `syr` or `heb` wrapper. No literal CAL texts/HTML or link URLs may appear. The targeted fixture must model only the observed approved structure; any unrecognized nesting still raises `TextParseError`. The third diagnostic must remain <=2 sequential CAL starts and not overlap a live job.
+
+
+## Third diagnostic: exact safe CSS nesting (2026-11-15)
+
+[One-off run #43742235591](https://github.com/alexsosn/CAL-MCP/actions/runs/43742235591), installed-wheel source SHA `05fb8d2e212377fa0907090095564e71f08ce8d4`; CAL 2/2 actual transport starts and at least 60 seconds between them, HTTP 200, canonical `comment.php?coord=1325002`, title and single summary valid. The first record's **span-only** structure, with no text content or URLs, was:
+
+```json
+[{"css_class":"rom","depth":0,"parent_span":null},
+ {"css_class":"uncertain","depth":1,"parent_span":"rom"},
+ {"css_class":"rom","depth":0,"parent_span":null}]
+```
+
+The current parser accepts two top-level citation spans `heb` + `rom` and rejects any nested span. A current **romanized source span** contains an `uncertain` inline wrapper and is followed by a second `rom` span (translation). This is sufficient evidence for a narrowly guarded addition; no other script or class nesting has been demonstrated.
+
+**Exact TDD acceptance contract:** a citation record may have the historical `heb,rom` span pair, *or* `rom,rom` **only if the first top-level `rom` span contains exactly one immediate child `span.uncertain`**. Flatten the child's text into the source span in display order without introducing a third semantic citation span. Preserve all existing validation of unique reference, break, CAL lexical link and entry phrase, status, source URL, and provenance. Reject wrappers with any other class, wrappers under `heb` or the second `rom` span, duplicated or nested wrappers, or unclosed markup. Use one minimal synthetic structural fixture, add failing parser and adversarial tests first (RED), then minimal implementation. Run both CI matrices and one **bounded** installed-wheel `cal_text_line_comments` live retest selected from a current one-page Tel Dan response, with 60-second gap and no retries. Independent skeptical review is mandatory before merging. Do not generalize to arbitrary nested spans.
