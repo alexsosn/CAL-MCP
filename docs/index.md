@@ -2,7 +2,7 @@
 
 CAL-MCP is a read-only MCP adapter for the [Comprehensive Aramaic Lexicon](https://cal.huc.edu/). It sends bounded, user-initiated requests to CAL and returns structured CAL results with adapter provenance. It does not bundle, mirror, or reinterpret the CAL database.
 
-> **Status:** released v0.1.0. The [published tagged release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) contains 36 tools. Unreleased 0.2.0 development source adds a 37th tool, `cal_bibliography_recent`; this is not available with the `cal-mcp==0.1.0` pin. Agora registration is a separate downstream integration.
+> **Status:** released v0.1.0. The [published tagged release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) contains 36 tools. Unreleased 0.2.0 development source adds a 37th tool, `cal_bibliography_recent`; this is not available with the `cal-mcp==0.1.0` pin. Agora registry registration has **merged**, but the Agora **candidate v1.1** marketplace release is **not yet published**; see [Agora handoff](integrations/agora.md).
 
 Start with [Getting started](getting-started.md). For local setup, see [Installation](installation.md) and [Standalone MCP](integrations/standalone-mcp.md).
 
@@ -21,19 +21,18 @@ Start with [Getting started](getting-started.md). For local setup, see [Installa
 | Bibliography by author, text/subject tag, or lemma | **Implemented** | [`cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma`](tools/bibliography.md) |
 | Dictionary spelling collation | **Implemented** | [`cal_dictionary_collation`](tools/dictionary-collation.md) |
 | Citations from sources not available as full online CAL texts | **Implemented** | [`cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations`](tools/external-citations.md) |
-| Targum parallel verse, Targum concordance, and MT-Hebrew reflex study | **Implemented** | [`cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`](tools/targum.md) |
+| Targum parallel verse, Targum concordance, and MT-Hebrew reflex study | **Implemented** | [`cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`, `cal_targum_reflex_examples`](tools/targum.md) |
 | Browse one Targum source and inspect words | **Intentionally composed** | Use the ordinary [text tools](tools/texts.md), then [token analysis](tools/token-analysis.md); CAL itself links Targum sources into the general text browser. |
 | Syriac text-category discovery, grouped-text follow-up, missing-from-*A Syriac Lexicon* lists, MT/Peshitta comparison | **Implemented** | [`cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel`](tools/syriac.md) |
 | Syriac citations from texts not online | **Intentionally composed** | Use the generic [external-citation workflow](tools/external-citations.md) with the Syriac dialect rather than a duplicate Syriac-only tool. |
 | Bibliography: CAL's “five most recent years” snapshot | **Deferred from v0.1.0; unreleased 0.2.0 development source** | [`cal_bibliography_recent()`](tools/bibliography.md) retrieves one CAL-ordered complete snapshot with no year selector, deduplication, or archive traversal. |
 | Legacy/static bibliography addenda and archive documents | **Reference material, not an MCP operation** | CAL-MCP does not wrap static documents merely to increase tool count. |
 
-## Known current reachability gaps
+## Release boundaries and deliberate limitations
 
-An **Implemented** capability above means the named research task is supported; it does not mean every follow-up link rendered by CAL is MCP-followable. The route-level audit keeps the remaining gaps explicit rather than treating a preserved URL as a supported operation:
+The Targum concordance and Hebrew-reflex example follow-ups are already implemented and included in **published v0.1.0**, using `cal_targum_concordance_examples` and `cal_targum_reflex_examples`. Their selectors must come from a previous explicit CAL-backed call; examples are never prefetched.
 
-- [#109](https://github.com/alexsosn/CAL-MCP/issues/109) — Targum concordance/reflex **supporting examples** are returned as validated links but are not yet MCP-followable.
-- [#39](https://github.com/alexsosn/CAL-MCP/issues/39) — recent-years bibliography was excluded from the immutable v0.1.0 release; its separately implemented development-source tool requires validation/review before a future release.
+Completed [#39](https://github.com/alexsosn/CAL-MCP/issues/39) added `cal_bibliography_recent()` to **unreleased 0.2.0.dev0** source. The reviewed implementation does **not** make the tool available in pinned v0.1.0 installs. A future tag still requires a complete installed-wheel live release gate and actual PyPI/GitHub publication. Other CAL URLs are not automatically MCP-followable merely because they are preserved as provenance.
 
 CAL's text-browser **show all** presentation is deliberately **not exposed** as a separate MCP operation because it removes the page bound. Use bounded `cal_text_page(..., page=...)` calls and explicit returned page navigation instead.
 
