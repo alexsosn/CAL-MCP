@@ -346,6 +346,8 @@ def test_dependent_smoke_case_names_never_shadow_base_case_identity() -> None:
     assert not base_names & dependent_names
     assert not extra_names & dependent_names
     assert not base_names & extra_names
+    assert module.STEP_BY_NAME["kwic_dialect"].parent == "kwic_dialects_selector"
+    assert module.STEP_BY_NAME["targum_examples"].parent == "targum_concordance_followup"
 
 
 def test_external_citation_records_are_validated_by_their_own_content_schema() -> None:
