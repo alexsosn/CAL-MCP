@@ -179,7 +179,8 @@ def test_remaining_batch_is_exact_safe_suffix_after_comment_drift() -> None:
     assert expected[-1] == "syriac_group"
     assert tuple(step.name for step in module.REMAINDER_STEPS) == expected
     assert all(step.tool != "cal_text_line_comments" for step in module.REMAINDER_STEPS)
-    assert all(step.tool not in {"cal_lexicon_lookup", "cal_text_page"} for step in module.REMAINDER_STEPS)
+    preceding_tools = {"cal_lexicon_lookup", "cal_text_page"}
+    assert all(step.tool not in preceding_tools for step in module.REMAINDER_STEPS)
     assert module.REMAINDER_STEPS[0].parent is None
 
 
