@@ -102,6 +102,7 @@ def test_new_lemma_budget_is_independent_of_running_token_coverage():
     data["max_new_lemmas"] = 0
     assert audit_draft(data)["passes_lexical_budget"] is False
 
+
 def test_committed_unreviewed_specimen_has_reproducible_coverage():
     path = Path(__file__).resolve().parents[1] / "experiments/ci_texts/specimen_unreviewed.json"
     data = json.loads(path.read_text(encoding="utf-8"))
