@@ -55,7 +55,6 @@ _ALLOWED_EVENTS = {"reference", "span:heb", "span:rom", "br", "anchor", "gloss"}
 _COORD_RE = re.compile(r"[0-9A-Za-z]{1,64}\Z")
 
 
-
 _ALLOWED_SUMMARY_TAGS = frozenset(
     {
         "div",
