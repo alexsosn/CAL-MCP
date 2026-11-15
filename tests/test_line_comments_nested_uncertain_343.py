@@ -32,6 +32,7 @@ def test_current_roman_source_nested_uncertain_preserves_source_and_translation(
     assert record.translation == "synthetic translation"
     assert record.lemma_key == "mlk N"
     assert record.headword == "mlk"
+    assert record.has_uncertain_reading is True
 
 
 @pytest.mark.parametrize(
