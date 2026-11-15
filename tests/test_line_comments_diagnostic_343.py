@@ -90,3 +90,39 @@ def test_selector_rejects_external_or_modified_comment_urls() -> None:
     ):
         page = SimpleNamespace(lines=[SimpleNamespace(coordinate="1325002", comment_url=url)])
         assert select_comment_coordinate(page) is None
+
+
+def test_unsafe_nested_comment_markup_gets_finite_diagnostic_reason() -> None:
+    raw = _response("text_line_comments_pj_gen8_21.html", "8100110821")
+    altered = CalResponse(
+        status_code=200,
+        url=raw.url,
+        body=raw.body.replace(
+            b'<div class="summary-card">',
+            b'<div class="summary-card"><p><p>',
+            1,
+        ),
+        content_type=raw.content_type,
+        retrieved_at=raw.retrieved_at,
+    )
+    report = summarize_response(altered, "8100110821")
+    assert report["parse_status"] == "drift"
+    assert report["structure_error"] == "nested_records"
+    assert report["parser_reason"] == "nested_records"
+
+
+def test_summary_outline_is_bounded_to_tag_names_not_cal_text() -> None:
+    report = summarize_response(
+        _response("text_line_comments_pj_gen8_21.html", "8100110821"),
+        "8100110821",
+    )
+    assert isinstance(report["summary_tags"], list)
+    assert "p" in report["summary_tags"]
+    assert "span" in report["summary_tags"]
+    assert len(report["summary_tags"]) <= 32
+    assert all(
+        tag in {"div", "p", "span", "br", "a", "b", "i", "em", "strong", "table",
+                "tr", "td", "th", "ul", "li", "other"}
+        for tag in report["summary_tags"]
+    )
+    assert "ܡܐ" not in json.dumps(report, ensure_ascii=False)
