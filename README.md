@@ -42,8 +42,10 @@ The executable tool schemas are the technical source of truth. The immutable v0.
 | Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` (plus source-only unreleased `cal_bibliography_recent`) |
 | Dictionary collation | `cal_dictionary_collation` |
 | External citations | `cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations` |
-| Targum Studies | `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes` |
+| Targum Studies | `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`, `cal_targum_reflex_examples` |
 | Syriac Studies | `cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel` |
+
+Both Targum example follow-up tools above are part of the **published v0.1.0** set. The additional `cal_bibliography_recent()` operation belongs only to the **unreleased 0.2.0.dev0** source until a separately validated version is tagged and published.
 
 See the [dated capability matrix](docs/index.md#public-capability-matrix) for which current CAL functions are implemented directly, intentionally composed from these tools, or explicitly deferred.
 
@@ -57,11 +59,11 @@ flowchart LR
     CAL -->|upstream responses| M
     M -->|typed CAL results + adapter provenance| C
 
-    A[Agora] -. optional future discovery / install / launch .-> M
+    A[Agora registry candidate v1.1] -. optional client install / launch .-> M
     M -. no corpus mirror .-> X[(No local CAL database)]
 ```
 
-CAL-MCP is independently runnable. Agora integration is downstream packaging/marketplace metadata and is not part of the runtime dependency chain.
+CAL-MCP is independently runnable. Agora registration **merged** into the downstream registry in November 2026. Its **candidate v1.1** marketplace release is **not yet published**. Agora is optional and is not a CAL-MCP runtime dependency. The generated Codex stdio launch has bounded real-CAL verification; the generated Claude manifest has deterministic checks only and remains community-status. See the [Agora integration handoff](docs/integrations/agora.md).
 
 ## Request and data policy
 
@@ -115,6 +117,7 @@ See [`AGENTS.md`](AGENTS.md) and [`wiki/agentic-dev-loop.md`](wiki/agentic-dev-l
 - [`wiki/README.md`](wiki/README.md) — maintainer documentation index.
 - [`wiki/architecture.md`](wiki/architecture.md) — actual system/component/request architecture.
 - [`wiki/testing.md`](wiki/testing.md) — TDD, fixtures, CI, and live-smoke policy.
+- [`wiki/release-checklist.md`](wiki/release-checklist.md) — pre-v0.2 documentation, artifact and publication handoff gates.
 - [`wiki/documentation.md`](wiki/documentation.md) — user/maintainer documentation ownership and executable docs contract.
 - [`wiki/decisions.md`](wiki/decisions.md) — durable architecture decisions.
 - [`wiki/backlog.md`](wiki/backlog.md) — issue/release map.
