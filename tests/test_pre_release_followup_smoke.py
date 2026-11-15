@@ -289,7 +289,8 @@ def test_live_external_citations_selector_only_uses_verified_nonempty_ebpar_sour
         {"abbreviation": "EbPar", "citations_url": canonical},
         {"abbreviation": "EbPar", "citations_url": canonical},
     ]) == {"source_abbrev": "EbPar"}
-    assert args_for([{"abbreviation": "1CorH", "citations_url": "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"}]) is None
+    historical_url = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=1CorH"
+    assert args_for([{"abbreviation": "1CorH", "citations_url": historical_url}]) is None
     assert args_for([{"abbreviation": "EbPar", "citations_url": canonical}], dialect_id="7") is None
     for invalid in (
         "",
