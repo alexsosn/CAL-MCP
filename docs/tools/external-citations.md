@@ -55,7 +55,7 @@ Each valid explicit operation submits at most one new logical CAL request to the
 
 ### Concrete example
 
-Current CAL discovery includes the dialect choice `{"dialect_id": "6", "label": "Syriac"}`. Calling `cal_external_citation_sources("6")` returns, among many current Syriac choices, the source abbreviation `1CorH` for the Harklean version of 1 Corinthians. A separate `cal_external_citations("1CorH")` call returns ordered lexical citations including a record whose rendered `reference` is `1CorH 12:28`.
+Current CAL discovery includes the dialect choice `{"dialect_id": "6", "label": "Syriac"}`. Calling `cal_external_citation_sources("6")` returns, among many current Syriac choices, the source abbreviation `1CorH` for the Harklean version of 1 Corinthians. The historical September 2026 fixture for `cal_external_citations("1CorH")` included a citation rendered as `1CorH 12:28`, but the bounded live check on **15 November 2026** returned CAL’s explicit **no citations currently stored** state, so the current tool correctly returned an empty `citations` list. CAL source-list membership does not guarantee a nonempty result at a later date.
 
 `1CorH 12:28` is CAL's external-source reference, **not an online CAL passage coordinate**. It must not be treated as a `file_id`/subtext/page location or passed to `cal_text_page`. Following the citation's returned CAL lemma with `cal_lexicon_lookup` is another explicit caller action.
 
