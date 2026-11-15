@@ -69,8 +69,7 @@ def test_three_request_mode_requires_actual_syrian_dialect_identity() -> None:
     def response(*items: tuple[str, str]):
         return SimpleNamespace(
             dialects=tuple(
-                SimpleNamespace(dialect_id=identity, label=label)
-                for identity, label in items
+                SimpleNamespace(dialect_id=identity, label=label) for identity, label in items
             )
         )
 
