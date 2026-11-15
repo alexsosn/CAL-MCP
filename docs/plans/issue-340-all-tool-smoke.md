@@ -32,3 +32,8 @@ RED before implementation: add tests that (1) the 17-case identities equal the e
 7. Mandatory independent adversarial review of workflow safety and final results, then mark #340 complete only after **all 37** actual user-facing tool identities pass on the same candidate wheel. No PyPI, GitHub tag, release, or publisher actions in this workflow.
 
 **Release remains blocked** if the end-to-end workflow is not a complete green. The source candidate still has a development version `0.2.0.dev0`; subsequent preparation of a stable v0.2.0 release artifact and tag needs its own final release checks.
+
+
+### Independent review finding: reject empty Tel Dan comments
+
+Adversarial workflow review of PR #349 found that the 21-step dependent smoke had accepted `cal_text_line_comments` as `ok` for `status: no_citations` with an empty `records` list. Such a response is a legitimate CAL empty state but fails the user-facing **positive** parser/feature acceptance condition. This is now an explicit RED/GREEN gate: `text_comments` must have `status: found` and at least one semantic record. Initial RED [CI #43762197173](https://github.com/alexsosn/CAL-MCP/actions/runs/43762197173) failed the new assertion while **2459 earlier tests passed** in both dependency matrices. It is safe for the underlying public CAL tool to return a genuine `no_citations` state in ordinary use; only the release smoke's success criterion is strengthened. Both matrices must be green before triggering live traffic.
