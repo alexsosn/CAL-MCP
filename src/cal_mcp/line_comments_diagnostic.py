@@ -9,7 +9,6 @@ from __future__ import annotations
 import asyncio
 import json
 import re
-import sys
 from urllib.parse import urlsplit
 
 from cal_mcp.client import (
@@ -20,10 +19,10 @@ from cal_mcp.client import (
     CalUpstreamError,
 )
 from cal_mcp.texts import (
+    _LINE_COMMENTS_EMPTY_MARKER,
     TextParseError,
     TextService,
     _clean_text,
-    _LINE_COMMENTS_EMPTY_MARKER,
     _LineCommentsHTMLParser,
     parse_text_line_comments_page,
 )
