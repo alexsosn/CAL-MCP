@@ -1,0 +1,88 @@
+"""Offline test-first contract for issue #347's *experimental* CI audit."""
+
+import copy
+
+import pytest
+
+from experiments.ci_texts.audit import DraftAuditError, audit_draft
+
+
+def draft():
+    return {
+        "dialect": "Classical Syriac",
+        "text": "ܓܒܪܐ ܚܙܐ ܒܝܬܐ܀ ܓܒܪܐ ܚܙܐ ܡܝܐ܀",
+        "known_lemma_keys": ["gbr N", "xzy V", "byt N"],
+        "tokens": [
+            {"surface": "ܓܒܪܐ", "lemma_keys": ["gbr N"]},
+            {"surface": "ܚܙܐ", "lemma_keys": ["xzy V"]},
+            {"surface": "ܒܝܬܐ", "lemma_keys": ["byt N"]},
+            {"surface": "ܓܒܪܐ", "lemma_keys": ["gbr N"]},
+            {"surface": "ܚܙܐ", "lemma_keys": ["xzy V"]},
+            {"surface": "ܡܝܐ", "lemma_keys": ["my N"]},
+        ],
+        "minimum_coverage": 0.8,
+        "max_new_lemmas": 1,
+        "evidence_status": "unverified",
+        "linguistic_review": "pending",
+    }
+
+
+def test_counts_running_tokens_and_unique_novel_lemmas():
+    result = audit_draft(draft())
+    assert result["running_tokens"] == 6
+    assert result["known_tokens"] == 5
+    assert result["unknown_tokens"] == 1
+    assert result["coverage"] == pytest.approx(5 / 6)
+    assert result["new_lemma_keys"] == ["my N"]
+    assert result["passes_lexical_budget"] is True
+    assert result["linguistically_verified"] is False
+
+
+def test_repeat_of_unfamiliar_token_reduces_coverage_without_inflating_new_lemmas():
+    data = draft()
+    data["text"] += " ܡܝܐ܀"
+    data["tokens"].append({"surface": "ܡܝܐ", "lemma_keys": ["my N"]})
+    data["minimum_coverage"] = 0.75
+    result = audit_draft(data)
+    assert result["running_tokens"] == 7
+    assert result["unknown_tokens"] == 2
+    assert result["new_lemma_keys"] == ["my N"]
+    assert result["passes_lexical_budget"] is False
+
+
+def test_clitic_with_one_unknown_lemma_counts_whole_running_token_as_unknown():
+    data = draft()
+    data["text"] = "ܒܒܝܬܐ"
+    data["tokens"] = [{"surface": "ܒܒܝܬܐ", "lemma_keys": ["b_ p", "byt N"]}]
+    data["minimum_coverage"] = 0.0
+    assert audit_draft(data)["unknown_tokens"] == 1
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda x: x["tokens"].pop(),
+        lambda x: x["tokens"][0].update(surface="ܚܙܐ"),
+        lambda x: x["tokens"][0].update(lemma_keys=[]),
+        lambda x: x.update(text=""),
+        lambda x: x.update(text="hello ܚܙܐ"),
+        lambda x: x.update(dialect="Biblical Aramaic"),
+        lambda x: x.update(minimum_coverage=1.1),
+        lambda x: x.update(max_new_lemmas=True),
+        lambda x: x.update(evidence_status="CAL-verified"),
+        lambda x: x.update(linguistic_review="approved"),
+        lambda x: x.update(known_lemma_keys=["gbr N", "gbr N"]),
+        lambda x: x["tokens"][0].update(lemma_keys=["gbr N", "gbr N"]),
+    ],
+)
+def test_invalid_or_overclaimed_annotations_fail_closed(change):
+    data = copy.deepcopy(draft())
+    change(data)
+    with pytest.raises(DraftAuditError):
+        audit_draft(data)
+
+
+def test_new_lemma_budget_is_independent_of_running_token_coverage():
+    data = draft()
+    data["max_new_lemmas"] = 0
+    assert audit_draft(data)["passes_lexical_budget"] is False
