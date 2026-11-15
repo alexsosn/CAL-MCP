@@ -1,6 +1,6 @@
 # Limitations
 
-CAL-MCP is a thin live adapter, not a local replacement for the Comprehensive Aramaic Lexicon. These boundaries are part of the v0.1 contract.
+CAL-MCP is a thin live adapter, not a local replacement for the Comprehensive Aramaic Lexicon. These boundaries apply to published v0.1.0 and current unreleased 0.2.0.dev0 source, except where a newer development-only feature is explicitly identified.
 
 ## CAL is a live upstream dependency
 
@@ -79,7 +79,7 @@ See [Installation](installation.md).
 
 ## Agora is not part of the runtime
 
-CAL-MCP currently runs standalone over stdio. Agora registration is deferred to issue #16 and, when added, should only provide downstream discovery/install/launch metadata around the released standalone package.
+CAL-MCP runs independently over local stdio. Agora registration **merged** in November 2026 through [Agora PR #268](https://github.com/alexsosn/Agora/pull/268), completing issue #16. Its registry entry is part of an Agora **candidate v1.1** marketplace release, **not yet published**; it is not required to run CAL-MCP. The generated Codex launch has bounded real CAL verification, whereas the generated Claude manifest has deterministic checks only and remains community-status. Registration does not turn CAL-MCP into a hosted service or upgrade the published `cal-mcp==0.1.0` package.
 
 See [Standalone MCP](integrations/standalone-mcp.md).
 
