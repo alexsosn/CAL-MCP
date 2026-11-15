@@ -6,11 +6,13 @@ Importing the module has no network side effects.
 
 from __future__ import annotations
 
+import argparse
 import asyncio
 import json
 
 from cal_mcp.client import CalClientConfig, CalHttpClient, CalUpstreamError
 from cal_mcp.external_citations import (
+    ExternalCitationDialectResult,
     ExternalCitationResult,
     ExternalCitationService,
     ExternalCitationSourceResult,
@@ -19,6 +21,14 @@ from cal_mcp.external_citations import (
 _CANDIDATE = "EbPar"
 _CANONICAL_URL = "https://cal.huc.edu/displaycits.abbrev.php?abbrev=EbPar"
 _MAX_ATTEMPTS = 2
+
+
+def choose_syriac_dialect(result: ExternalCitationDialectResult) -> str | None:
+    """Only accept one distinct current CAL Syriac selector with the correct label."""
+    selected = [item for item in result.dialects if item.dialect_id == "6"]
+    if len(selected) == 1 and selected[0].label == "Syriac":
+        return "6"
+    return None
 
 
 def choose_candidate(result: ExternalCitationSourceResult) -> str | None:
@@ -44,13 +54,14 @@ def is_positive(result: ExternalCitationResult, requested_source: str) -> bool:
     )
 
 
-async def diagnose_once() -> dict[str, object]:
-    """At most two non-retried CAL starts, with one 60s completion-based pause."""
+async def diagnose_once(*, include_dialects: bool = False) -> dict[str, object]:
+    """Opt-in two/three non-retried CAL starts, >=60s completion-based spacing."""
     attempts = 0
+    budget = 3 if include_dialects else 2
 
     def before_attempt() -> None:
         nonlocal attempts
-        if attempts >= _MAX_ATTEMPTS:
+        if attempts >= budget:
             raise RuntimeError("issue 345 diagnostic exceeded approved transport starts")
         attempts += 1
 
@@ -64,7 +75,19 @@ async def diagnose_once() -> dict[str, object]:
     try:
         async with CalHttpClient(config=config, before_transport_attempt=before_attempt) as http:
             service = ExternalCitationService(http)
-            sources: ExternalCitationSourceResult = await service.sources("6")
+            if include_dialects:
+                discovered = await service.dialects()
+                dialect_id = choose_syriac_dialect(discovered)
+                if dialect_id is None:
+                    return {
+                        "status": "blocked",
+                        "category": "no_verified_dialect",
+                        "actual_cal_transport_attempts": attempts,
+                    }
+                await asyncio.sleep(60.0)
+            else:
+                dialect_id = "6"
+            sources: ExternalCitationSourceResult = await service.sources(dialect_id)
             chosen = choose_candidate(sources)
             if chosen is None:
                 return {
@@ -93,12 +116,16 @@ async def diagnose_once() -> dict[str, object]:
         "source_abbrev": chosen,
         "total_citations": result.total,
         "actual_cal_transport_attempts": attempts,
-        "max_cal_transport_attempts": _MAX_ATTEMPTS,
+        "max_cal_transport_attempts": budget,
+        "included_dialects": include_dialects,
     }
 
 
 def main() -> None:
-    report = asyncio.run(diagnose_once())
+    parser = argparse.ArgumentParser(description="Bounded external citation CAL diagnostic")
+    parser.add_argument("--with-dialects", action="store_true")
+    args = parser.parse_args()
+    report = asyncio.run(diagnose_once(include_dialects=args.with_dialects))
     print(json.dumps(report, sort_keys=True))
     if report["status"] != "positive":
         raise SystemExit(1)
