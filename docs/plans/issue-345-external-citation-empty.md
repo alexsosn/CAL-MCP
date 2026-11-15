@@ -6,3 +6,12 @@
 4. Preserve full source `citations` only inside process memory and print at most exact source code, status (positive/empty), count and sanitized exception category. No raw CAL page, citation, lemma, translation, bibliography data.
 5. If positive, add a positive-case CAL-MCP follow-up smoke using a reviewed same-origin typed selector derived from fresh source list. Run offline CI and one installed-wheel MCP smoke with attempt ceiling. If empty, record actual legitimate result and stop; do not fabricate pass.
 6. Independent adverse review on the real code and measured data, then merge only with exact-head CI green. Keep v0.2.0 blocked by #340 until all-37 exact-candidate E2E gate is passed. Remove one-off workflows before merging.
+
+
+## Completion evidence and scope correction
+
+- Initial original issue assumption (`1CorH` current no-citations) was unsupported. Both alleged empty responses were actually incorrectly validated under the frozen `external_citations` dialects case ID. Current `1CorH` citation count is unknown.
+- RED [CI #43760033363](https://github.com/alexsosn/CAL-MCP/actions/runs/43760033363) caught the collision; further checks found `kwic_dialects` and `targum_concordance` also shared case IDs across smoke matrices. All three *internal* dependent IDs are now unique. The external positive requirement was **not weakened**.
+- Two source-only paced probes independently returned 26 CAL-derived `EbPar` citations; no change was required in `ExternalCitationService`.
+- Rebuilt-wheel [stdio MCP #43760566728](https://github.com/alexsosn/CAL-MCP/actions/runs/43760566728) passed the full 3-call dependent external path with exactly three actual CAL starts and a required nonempty `citations` array. Disposable workflows and source diagnostic are removed before merge.
+- Continue independent exact-head adversarial review + pinned/latest CI gates, merge PR #346, then the all-37 exact-candidate validation in #340. No release tag or PyPI publishing action in this ticket.
