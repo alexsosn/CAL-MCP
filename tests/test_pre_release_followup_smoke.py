@@ -196,3 +196,24 @@ def test_remaining_batch_cannot_vacuously_pass_or_hide_unattempted_tools() -> No
     wrong = passed[:-1] + (SmokeOutcome(passed[-1].case, "drift", "changed CAL"),)
     assert not module.complete_remaining(wrong, 17)
     assert not module.complete_batch(passed, 17)
+
+
+def test_remaining_only_never_calls_preceding_text_or_comment_even_on_429(
+    monkeypatch,
+) -> None:
+    module = _module()
+    fake = _FakeClient(
+        SimpleNamespace(
+            is_error=True,
+            structured_content={"error": {"kind": "upstream_http", "status_code": 429}},
+        )
+    )
+    monkeypatch.setattr(
+        module,
+        "evaluate_tool_result",
+        lambda case, tool, result: SmokeOutcome(case.name, "unavailable", "CAL 429"),
+    )
+    outcomes = asyncio.run(module.run_cases(fake, steps=module.REMAINDER_STEPS))
+    assert tuple(outcome.case for outcome in outcomes) == ("kwic_dialects",)
+    assert fake.calls == ["cal_kwic_dialects"]
+    assert not module.complete_remaining(outcomes, 1)
