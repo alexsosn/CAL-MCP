@@ -321,9 +321,8 @@ def select_arguments(
 
 
 def _positive_payload(step: FollowupStep, payload: dict[str, object]) -> bool:
-    if step.name == "text_comments":
-        if payload.get("status") == "no_citations":
-            return payload.get("records") == []
+    if step.name == "text_comments" and payload.get("status") == "no_citations":
+        return payload.get("records") == []
     contents = payload.get(step.positive_field)
     if step.positive_field == "entry":
         return isinstance(contents, dict) and bool(contents)
