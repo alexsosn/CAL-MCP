@@ -84,10 +84,7 @@ def summarize_response(response: CalResponse, coordinate: str) -> dict[str, obje
         for record in parser.records
     )
     signatures = [
-        [
-            event if event in _ALLOWED_EVENTS else "other"
-            for event in record.events[:12]
-        ]
+        [event if event in _ALLOWED_EVENTS else "other" for event in record.events[:12]]
         for record in parser.records[:3]
     ]
     try:
@@ -109,9 +106,7 @@ def summarize_response(response: CalResponse, coordinate: str) -> dict[str, obje
         ),
         "response_size_bytes": len(response.body),
         "title_count": len(parser.titles),
-        "title_matches": parser.titles == [
-            f"CAL: citations and comments for {coordinate}"
-        ],
+        "title_matches": parser.titles == [f"CAL: citations and comments for {coordinate}"],
         "summary_cards": parser.summary_count,
         "record_count": len(parser.records),
         "empty_marker_count": empty_count,
