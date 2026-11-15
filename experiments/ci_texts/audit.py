@@ -44,8 +44,7 @@ def _surface_from_raw(raw: str) -> str:
     ):
         raise DraftAuditError("each running token needs a Syriac base letter")
     if any(
-        not (0x0710 <= ord(char) <= 0x074F or 0x0860 <= ord(char) <= 0x086F)
-        for char in surface
+        not (0x0710 <= ord(char) <= 0x074F or 0x0860 <= ord(char) <= 0x086F) for char in surface
     ):
         raise DraftAuditError("unexpected script or punctuation inside running token")
     return surface
@@ -63,11 +62,7 @@ def audit_draft(draft: Mapping[str, Any]) -> dict[str, Any]:
     if not isinstance(text, str) or not text.strip():
         raise DraftAuditError("a nonempty Syriac draft is required")
     minimum = draft["minimum_coverage"]
-    if (
-        type(minimum) not in (int, float)
-        or not math.isfinite(minimum)
-        or not 0 <= minimum <= 1
-    ):
+    if type(minimum) not in (int, float) or not math.isfinite(minimum) or not 0 <= minimum <= 1:
         raise DraftAuditError("minimum_coverage must be a finite fraction in [0, 1]")
     maximum = draft["max_new_lemmas"]
     if type(maximum) is not int or maximum < 0:
