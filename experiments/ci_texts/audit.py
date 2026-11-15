@@ -11,7 +11,7 @@ class DraftAuditError(ValueError):
     """A pilot annotation is malformed or overclaims evidence."""
 
 
-_END_PUNCTUATION = ".,!?;:܀"
+_END_PUNCTUATION = ".,!?;:܀܂܃"
 _DRAFT_KEYS = {
     "dialect",
     "text",
