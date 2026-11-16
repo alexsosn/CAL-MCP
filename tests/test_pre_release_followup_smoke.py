@@ -439,3 +439,16 @@ def test_safe_failure_reason_never_changes_terminal_429_or_success() -> None:
     assert module.terminal_backpressure(error)
     passed = SmokeOutcome("lexicon", "ok", "success")
     assert module.safe_failure_reason(passed, error) == passed
+
+
+def test_unavailable_reason_ignores_unhashable_json_error_kinds() -> None:
+    """A malformed CAL/MCP error must never crash the no-retry smoke executor."""
+    module = _module()
+    original = SmokeOutcome("lexicon", "unavailable", "CAL upstream unavailable or unsafe")
+    for kind in ([], ["upstream_http"], {"kind": "upstream_http"}, None, 429):
+        result = SimpleNamespace(
+            is_error=True,
+            structured_content={"error": {"kind": kind, "status_code": 429}},
+        )
+        changed = module.safe_failure_reason(original, result)
+        assert changed == original
