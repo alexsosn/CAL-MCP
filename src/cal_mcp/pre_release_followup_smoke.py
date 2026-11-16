@@ -495,9 +495,7 @@ async def run_cases(
             break
         finally:
             last_cal_finished = clock()
-        outcome = safe_failure_reason(
-            evaluate_tool_result(case, tools[step.tool], result), result
-        )
+        outcome = safe_failure_reason(evaluate_tool_result(case, tools[step.tool], result), result)
         if outcome.category == "ok":
             payload = result.structured_content
             if not isinstance(payload, dict) or not _positive_payload(step, payload):
