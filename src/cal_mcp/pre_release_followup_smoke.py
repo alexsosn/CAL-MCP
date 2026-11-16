@@ -446,7 +446,7 @@ def safe_failure_reason(outcome: SmokeOutcome, result: CallToolResult) -> SmokeO
     if not isinstance(error, dict):
         return outcome
     kind = error.get("kind")
-    if kind not in {"network", "upstream_http", "content", "response_too_large"}:
+    if type(kind) is not str or kind not in {"network", "upstream_http", "content", "response_too_large"}:
         return outcome
     message = f"CAL {kind}"
     if kind == "upstream_http":
