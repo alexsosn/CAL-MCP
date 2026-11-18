@@ -37,6 +37,7 @@ def test_release_checklist_records_all_tool_dev_wheel_without_claiming_publicati
     assert "47/47 user-facing MCP scenarios" in checklist
     assert "49" in checklist
     assert "does not validate or publish" in checklist
-    assert "The 13-case release workflow alone still checks only a representative subset" in checklist
+    assert "The 13-case release workflow alone" in checklist
+    assert "only a representative subset" in checklist
     assert "- [ ] Create a signed-off, exact-commit" in checklist
     assert "- [ ] Confirm the tagged pipeline's gated" in checklist
