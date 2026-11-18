@@ -159,7 +159,7 @@ def test_latest_compatible_python314_verifies_installed_wheel_and_sdist_stdio() 
     assert "matrix:" in latest
     assert 'python: ["3.11", "3.14"]' in latest
     assert "python-version: ${{ matrix.python }}" in latest
-    assert "python -m pip install -e \".[dev]\"" in latest
+    assert 'python -m pip install -e ".[dev]"' in latest
     assert "python -m pip check" in latest
     assert "ruff check ." in latest
     assert "mypy" in latest
