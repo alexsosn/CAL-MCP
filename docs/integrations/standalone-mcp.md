@@ -1,5 +1,7 @@
 # Standalone MCP
 
+**Version status:** The **v0.2.0 release candidate (not yet published)** contains 37 tools and retains local stdio transport. Until the tagged publication and PyPI verification succeed, the documented `cal-mcp==0.1.0` pin remains the published install.
+
 CAL-MCP is designed to run as a normal local MCP server without Agora. The v0.1 release coordinate is `cal-mcp==0.1.0`, and the required v0.1 transport is stdio.
 
 The [v0.1.0 tagged release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) was published after the [successful release workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487), including the PyPI publication step. Source/development installs remain available, but can contain changes not included in the immutable release.

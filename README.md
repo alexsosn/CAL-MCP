@@ -2,7 +2,7 @@
 
 An independent, read-only Model Context Protocol (MCP) adapter for the [Comprehensive Aramaic Lexicon (CAL)](https://cal.huc.edu/).
 
-> **Status:** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) as [`cal-mcp==0.1.0`](https://pypi.org/project/cal-mcp/0.1.0/), with 36 public tools. The development source (0.2.0.dev0) adds a 37th tool, `cal_bibliography_recent()`, to browse CAL's recent-year bibliography. That tool is **not in the published v0.1.0 package**.
+> **Release status (18 November 2026):** [v0.1.0 is published](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) as [`cal-mcp==0.1.0`](https://pypi.org/project/cal-mcp/0.1.0/) with 36 tools. The **v0.2.0 release candidate (not yet published)** contains 37 tools, including `cal_bibliography_recent()`. Continue using the published 0.1.0 pin until PyPI confirms v0.2.0. The new bibliography operation is absent from 0.1.0.
 
 **User documentation:** start at [`docs/index.md`](docs/index.md) for the dated capability matrix, getting started, tool reference, workflows, provenance/error semantics, and limitations.
 
@@ -39,13 +39,13 @@ The executable tool schemas are the technical source of truth. The immutable v0.
 | Texts | `cal_text_catalogue`, `cal_text_search`, `cal_text_page`, `cal_text_information`, `cal_text_line_comments` |
 | Token analysis | `cal_token_analysis` |
 | Concordance/KWIC | `cal_text_concordance`, `cal_kwic_texts`, `cal_kwic_dialects`, `cal_kwic_dialect`, `cal_kwic_full_context` |
-| Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` (plus source-only unreleased `cal_bibliography_recent`) |
+| Bibliography | `cal_bibliography_authors`, `cal_bibliography_author`, `cal_bibliography_keyword`, `cal_bibliography_lemma` (plus unpublished v0.2.0 candidate `cal_bibliography_recent`) |
 | Dictionary collation | `cal_dictionary_collation` |
 | External citations | `cal_external_citation_dialects`, `cal_external_citation_sources`, `cal_external_citations` |
 | Targum Studies | `cal_targum_parallel`, `cal_targum_concordance`, `cal_targum_concordance_examples`, `cal_targum_hebrew_lemmas`, `cal_targum_hebrew_reflexes`, `cal_targum_reflex_examples` |
 | Syriac Studies | `cal_syriac_texts`, `cal_syriac_group`, `cal_syriac_missing_words`, `cal_syriac_peshitta_parallel` |
 
-Both Targum example follow-up tools above are part of the **published v0.1.0** set. The additional `cal_bibliography_recent()` operation belongs only to the **unreleased 0.2.0.dev0** source until a separately validated version is tagged and published.
+Both Targum example follow-up tools above are part of the **published v0.1.0** set. The additional `cal_bibliography_recent()` operation belongs only to the **unreleased 0.2.0** source until a separately validated version is tagged and published.
 
 See the [dated capability matrix](docs/index.md#public-capability-matrix) for which current CAL functions are implemented directly, intentionally composed from these tools, or explicitly deferred.
 
