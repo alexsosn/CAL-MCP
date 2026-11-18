@@ -17,7 +17,7 @@ def _read(path: str) -> str:
 def test_user_facing_versioned_tool_counts_match_both_manifests() -> None:
     assert len(V01_PUBLIC_TOOLS) == 36
     assert len(CURRENT_PUBLIC_TOOLS) == 37
-    assert CURRENT_PUBLIC_TOOLS - V01_PUBLIC_TOOLS == {"cal_bibliography_recent"}
+    assert {"cal_bibliography_recent"} == CURRENT_PUBLIC_TOOLS - V01_PUBLIC_TOOLS
 
     for path in (
         "README.md",
