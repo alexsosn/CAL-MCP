@@ -54,3 +54,35 @@ for #356; a green installed-offline CI run alone does not establish it.
 Do not mark #356 fully complete without recording that gate and any separate
 Python 3.15 observation. This is independent of the blocked v0.2.0 tag/publish
 handoff tracked in #353. No tags or PyPI publishing in this branch.
+
+
+## Observed implementation/CI result (2026-11-18)
+
+The workflow change landed in the PR branch and the first complete, exact-head
+GitHub Actions run passed at commit
+`dc6b6eb929ae8b638b4a5752cad99fd0136387bb`:
+https://github.com/alexsosn/CAL-MCP/actions/runs/44394364828
+
+- Python 3.11 frozen: 2,468 pytest tests passed.
+- Python 3.11 latest-compatible: 2,468 pytest tests passed.
+- Python 3.14 latest-compatible: 2,468 pytest tests passed.
+- The Python 3.14 job built one `cal_mcp-0.2.0-py3-none-any.whl`
+  and one `cal_mcp-0.2.0.tar.gz`.
+- Its clean wheel **and** sdist installs both succeeded; the existing verifier
+  reported `verified cal-mcp 0.2.0 wheel/sdist and installed stdio MCP surface`.
+  That verifier starts the installed server via the MCP SDK and checks the exact
+  `CURRENT_PUBLIC_TOOLS` set (37 names) plus server identity/version.
+- Observed unpinned Python 3.14 resolution included `mcp==2.3.0`,
+  `httpx2==2.16.2`, and `jsonschema==4.26.0`.
+- Ruff lint, format and strict mypy passed in all three jobs. No CAL operation
+  or PyPI publication was attempted.
+
+The initial test-only CI head `d24e6da` stopped at Ruff format *before*
+pytest; do not cite it as a pytest RED run. The contract assertion was checked
+against the prechange workflow and failed on its missing matrix/installed test
+steps. Final revision fixed style and passed the full GitHub CI gate.
+
+**Remaining:** a bounded real CAL source-attributed operation from an installed
+Python 3.14 client, and a separate Python 3.15 probe. Issue #356 stays open
+until those acceptance items are evidenced. A source-wheel CI run is not a
+public PyPI `cal-mcp==0.2.0` publication; issue #353 remains blocked on tagging.
