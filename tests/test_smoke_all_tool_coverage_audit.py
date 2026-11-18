@@ -30,8 +30,14 @@ def test_pre_release_audit_names_every_unverified_live_tool() -> None:
         assert f"`{name}`" in text
 
 
-def test_release_checklist_blocks_false_all_features_smoke_claim() -> None:
+def test_release_checklist_records_all_tool_dev_wheel_without_claiming_publication() -> None:
     checklist = (ROOT / "wiki/release-checklist.md").read_text(encoding="utf-8")
     assert "#340" in checklist
-    assert "25" in checklist
-    assert "all 37" in checklist
+    assert "37/37 public tools" in checklist
+    assert "47/47 user-facing MCP scenarios" in checklist
+    assert "49" in checklist
+    assert "does not validate or publish" in checklist
+    assert "The 13-case release workflow alone" in checklist
+    assert "only a representative subset" in checklist
+    assert "- [ ] Create a signed-off, exact-commit" in checklist
+    assert "- [ ] Confirm the tagged pipeline's gated" in checklist
