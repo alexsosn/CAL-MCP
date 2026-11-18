@@ -1,8 +1,8 @@
 # Limitations
 
-**Version status:** The **v0.2.0 release candidate (not yet published)** has 37 public tools. Only historical `cal-mcp==0.1.0` with 36 tools is confirmed published until the tagged pipeline completes.
+**Version guide:** The historical `cal-mcp==0.1.0` distribution has 36 tools; **v0.2.0** adds a 37th. The full-surface **release candidate** gate must pass before version publication, which should be verified via [PyPI](https://pypi.org/project/cal-mcp/).
 
-CAL-MCP is a thin live adapter, not a local replacement for the Comprehensive Aramaic Lexicon. These boundaries apply to published v0.1.0 and current unpublished v0.2.0 release candidate, except where a newer development-only feature is explicitly identified.
+CAL-MCP is a thin live adapter, not a local replacement for the Comprehensive Aramaic Lexicon. These boundaries apply to published v0.1.0 and v0.2.0 code, except where a newer development-only feature is explicitly identified.
 
 ## CAL is a live upstream dependency
 
@@ -65,7 +65,7 @@ See [Targum Studies](tools/targum.md) and [Syriac Studies](tools/syriac.md) for 
 
 ## Recent bibliography on development source
 
-The immutable v0.1.0 release implements targeted author/text-subject/lemma bibliography queries, but not the recent-years snapshot. Unpublished v0.2.0 release candidate adds [`cal_bibliography_recent()`](tools/bibliography.md) for one CAL-owned ordered snapshot, with no selectable years and no computed recency boundary. CAL showed 2021–2025 in 2026. Unknown pagination or missing entries fail closed as parser drift; there is no local archive traversal.
+The immutable v0.1.0 release implements targeted author/text-subject/lemma bibliography queries, but not the recent-years snapshot. v0.2.0 adds [`cal_bibliography_recent()`](tools/bibliography.md) for one CAL-owned ordered snapshot, with no selectable years and no computed recency boundary. CAL showed 2021–2025 in 2026. Unknown pagination or missing entries fail closed as parser drift; there is no local archive traversal.
 
 ## Static/legacy CAL documents are not wrapped automatically
 
@@ -75,7 +75,7 @@ This avoids tool proliferation and accidental content redistribution.
 
 ## Published and development installation status
 
-The standalone [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published and can be installed as `cal-mcp==0.1.0`. The current release candidate identifies as `0.2.0`; unreleased features are not available through the v0.1.0 package pin. Future releases require their own bounded validation and publishing gates.
+The standalone [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published and can be installed as `cal-mcp==0.1.0`. The v0.2.0 code identifies as `0.2.0` and its new features are absent from the immutable v0.1.0 package. Published availability must be checked rather than inferred from source metadata. Future releases require their own bounded validation and publishing gates.
 
 See [Installation](installation.md).
 

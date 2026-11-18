@@ -1,6 +1,6 @@
 # CAL bibliography search
 
-The **v0.2.0 release candidate (not yet published)** exposes five bounded bibliography operations (four in published v0.1.0). Each valid explicit operation submits at most one new logical CAL request to the shared client. Author-prefix discovery and exact-author retrieval are intentionally separate calls; CAL-MCP does not choose an author, follow bibliography tags, traverse the archive, or build a local index.
+The **v0.2.0** tool set exposes five bounded bibliography operations (four in v0.1.0). The complete v0.2.0 **release candidate** has passed a nonpublishing installed-wheel smoke; verify actual package availability on [PyPI](https://pypi.org/project/cal-mcp/) before installing. Each valid explicit operation submits at most one new logical CAL request to the shared client. Author-prefix discovery and exact-author retrieval are intentionally separate calls; CAL-MCP does not choose an author, follow bibliography tags, traverse the archive, or build a local index.
 
 ## Which tool to use
 
@@ -92,7 +92,7 @@ The result contains the exact `heading: "CAL Recent Bibliography"`, `records` in
 
 The operation issues one fixed logical GET to CAL's current snapshot. No additional bibliography, record, or archive links are followed. The shared client enforces its decoded-response cap (2 MiB by default), timeouts and conservative request policy. No explicit empty-result marker has been established for this surface: if the current page has no recognized records or gains a pagination selector, CAL-MCP returns parser drift rather than an empty or partial bibliography.
 
-This operation belongs to the unpublished v0.2.0 release candidate; it is **not available in the immutable `cal-mcp==0.1.0` release**.
+This operation belongs to the v0.2.0 tool set; it is **not available in the immutable `cal-mcp==0.1.0` release**.
 
 ## Bibliography records and links
 
@@ -146,7 +146,7 @@ Each valid explicit operation submits at most one new logical CAL request to the
 - one exact lemma result request;
 - one recent-bibliography snapshot request, without any caller-controlled selectors.
 
-There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The recent-years snapshot remains excluded from the frozen v0.1.0 contract and is implemented in the v0.2.0 release candidate (not yet published).
+There is no archive crawl, tag expansion, prefetch, background indexing, or local bibliography mirror. The recent-years snapshot remains excluded from the frozen v0.1.0 contract and is implemented in the v0.2.0 tool set (the release candidate was independently smoke-tested).
 
 ### Shared cache, single-flight, and retry semantics
 
