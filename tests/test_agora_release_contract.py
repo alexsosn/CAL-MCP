@@ -14,7 +14,7 @@ AGORA_DOC = ROOT / "docs" / "integrations" / "agora.md"
 def test_agora_handoff_preserves_published_pin_as_source_version_advances() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     assert project["project"]["name"] == "cal-mcp"
-    assert project["project"]["version"] == "0.2.0.dev0"
+    assert project["project"]["version"] == "0.2.0"
     assert project["project"]["requires-python"] == ">=3.11"
     assert project["project"]["scripts"]["cal-mcp"] == "cal_mcp.server:main"
 
@@ -53,7 +53,8 @@ def test_agora_handoff_one_call_smoke_is_existing_fixed_release_case() -> None:
 def test_released_user_documentation_no_longer_calls_v010_prerelease() -> None:
     index = (ROOT / "docs" / "index.md").read_text(encoding="utf-8")
     installation = (ROOT / "docs" / "installation.md").read_text(encoding="utf-8")
-    assert "**Status:** released v0.1.0" in index
+    assert "v0.1.0 release" in index
+    assert "release candidate" in index.lower()
     assert "pre-release" not in index.lower()
     assert "https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0" in index
     assert "https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0" in installation

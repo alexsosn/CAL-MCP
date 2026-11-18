@@ -65,7 +65,7 @@ jobs:
     concurrency:
       group: cal-mcp-live-smoke
       cancel-in-progress: false
-    timeout-minutes: 30
+    timeout-minutes: 90
     permissions:
       contents: read
     steps:
@@ -86,9 +86,52 @@ jobs:
           python -m venv "$RUNNER_TEMP/cal-mcp-smoke-venv"
           "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m pip install \
             --disable-pip-version-check --no-cache-dir "${wheels[0]}"
-      - name: Validate installed-wheel MCP tools and actual CAL transport count
+      - name: Full 37-tool offline installed-wheel registry and 47-case gate
         shell: bash
         run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" - <<'PY'
+          from cal_mcp.release_surface import CURRENT_PUBLIC_TOOLS
+          from cal_mcp.stdio_live_smoke import DEFAULT_SMOKE_CASES
+          from cal_mcp.pre_release_smoke import BATCH_CASES
+          from cal_mcp.pre_release_followup_smoke import STEPS
+
+          base = {case.tool for case in DEFAULT_SMOKE_CASES}
+          extra = {case.tool for case in BATCH_CASES}
+          dependent = {step.tool for step in STEPS}
+          names = (
+              [case.name for case in DEFAULT_SMOKE_CASES]
+              + [case.name for case in BATCH_CASES]
+              + [step.name for step in STEPS]
+          )
+          assert len(CURRENT_PUBLIC_TOOLS) == 37
+          assert (len(DEFAULT_SMOKE_CASES), len(BATCH_CASES), len(STEPS)) == (13, 13, 21)
+          assert len(names) == len(set(names)) == 47
+          assert base | extra | dependent == CURRENT_PUBLIC_TOOLS
+          assert sum(case.tool != "cal_convert_to_code" for case in DEFAULT_SMOKE_CASES) == 12
+          print("Full 37-tool preflight PASS: 47 cases; 46 CAL-backed tool invocations")
+          PY
+      - name: Full 37-tool dependent installed-wheel MCP smoke (21 scenarios)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m cal_mcp.pre_release_followup_smoke \
+            --executable "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/cal-mcp"
+      - name: Full 37-tool independent installed-wheel MCP smoke (13 scenarios)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 60
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m cal_mcp.pre_release_smoke \
+            --executable "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/cal-mcp"
+      - name: Full 37-tool representative release smoke (13 scenarios)
+        shell: bash
+        run: |
+          set -euo pipefail
+          sleep 60
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/python" -m cal_mcp.stdio_live_smoke \
             --executable "$RUNNER_TEMP/cal-mcp-smoke-venv/bin/cal-mcp"

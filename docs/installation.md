@@ -1,8 +1,10 @@
 # Installation
 
+**Version guide:** Published [`cal-mcp==0.1.0`](https://pypi.org/project/cal-mcp/0.1.0/) has 36 public tools; **v0.2.0** has 37 and adds the recent-bibliography tool. The **release candidate** runs all 37 through the tagged distribution gate. Verify [PyPI](https://pypi.org/project/cal-mcp/) before installing a version. A repository source checkout can be installed for development regardless of whether that version has been published.
+
 The v0.1 release coordinate is `cal-mcp==0.1.0`. The repository release workflow publishes that exact version from the `v0.1.0` tag after deterministic tests, built-artifact validation, and the bounded CAL live smoke pass.
 
-The [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published. Its [tagged workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487) passed fresh wheel/sdist installation, fixed bounded CAL smoke and the PyPI publication step. The immutable release is distinct from later unreleased changes to `main`. Current development source identifies as `0.2.0.dev0` and adds `cal_bibliography_recent`; the published `cal-mcp==0.1.0` still exposes exactly 36 tools.
+The [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is published. Its [tagged workflow](https://github.com/alexsosn/CAL-MCP/actions/runs/38178217487) passed fresh wheel/sdist installation, fixed bounded CAL smoke and the PyPI publication step. The immutable release is distinct from later unreleased changes to `main`. The v0.2.0 code adds `cal_bibliography_recent`; the published `cal-mcp==0.1.0` still exposes exactly 36 tools.
 
 ## Requirements
 
@@ -87,7 +89,7 @@ The v0.1 release pipeline builds one wheel and one source distribution. Before p
 
 The v0.1.0 package was actually published through the linked tagged workflow. A later source merge alone never changes the already published release artifacts.
 
-The **unreleased 0.2.0 development source** uses the same exact-wheel release pipeline with a **13-case / 12-CAL-backed** smoke matrix; it adds a bounded `cal_bibliography_recent()` case to the original twelve. The new case requires CAL's nonempty structured citations and source/timestamp provenance. Publication requires at least **12 actual CAL transport starts** across the complete fixed matrix, with a hard cap of 25, no retries, sequential execution, and completion-based inter-case waits of at least 60 seconds. The original v0.1.0 12-case release checks above describe the *historical published artifact* and remain unchanged. No new package is published merely because this source release gate exists.
+The **v0.2.0 release pipeline** upgrades the tag-triggered exact-wheel publication gate to **all 37 tools across 47 scenarios**: 21 dependent, 13 independent and 13 representative cases run sequentially on the same installed wheel. Each runner enforces its separate 25-CAL-attempt ceiling, no retries, and at least 60 seconds between CAL operations; the release job waits another minute between suites. The nonpublishing development-wheel full smoke passed with **49 measured CAL HTTP attempts** (22+13+14), distinct from the **46 CAL-backed tool invocations**. The historical v0.1.0 release behavior above remains unchanged. A successful tagged pipeline and PyPI/GitHub verification establish actual publication; source metadata by itself does not.
 
 ## Development checks
 

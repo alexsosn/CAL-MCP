@@ -35,7 +35,8 @@ def test_public_index_recognizes_completed_followups_and_unreleased_snapshot() -
     assert "cal_targum_reflex_examples" in section
     assert "published v0.1.0" in section
     assert "completed" in section and "#39" in section
-    assert "unreleased 0.2.0.dev0" in section
+    assert "v0.2.0" in section
+    assert "release candidate" in section
     assert "cal_bibliography_recent" in section
 
     # Do not resurrect historical resolved routes as outstanding reachability gaps.

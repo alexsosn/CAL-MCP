@@ -1,5 +1,7 @@
 # Getting started
 
+**Version guide:** The v0.1.0 tool set has 36 operations; v0.2.0 adds a 37th. The full 37-tool **release candidate** has passed nonpublishing smoke, but check [PyPI](https://pypi.org/project/cal-mcp/) for actual published versions. For source-based development, follow the reviewed installation instructions.
+
 CAL-MCP works best when each tool call corresponds to one explicit research step. Start with the narrowest operation that answers the immediate question, then pass CAL-returned identifiers into a second tool only when you actually need the next layer of context.
 
 For setup, see [Installation](installation.md). For identifier semantics, see [CAL identifiers](concepts/cal-identifiers.md).
@@ -68,7 +70,7 @@ Choose the workflow that matches the identifier you have:
 - search one exact CAL text/subject tag with `cal_bibliography_keyword`;
 - search one exact CAL lemma key with `cal_bibliography_lemma`.
 
-The published `cal-mcp==0.1.0` includes the four targeted bibliography operations above. **Unreleased** development source `0.2.0.dev0` also provides CAL's ordered, bounded recent-bibliography snapshot:
+The published `cal-mcp==0.1.0` includes the four targeted bibliography operations above. **v0.2.0** source, validated through the release candidate gate, also provides CAL's ordered, bounded recent-bibliography snapshot:
 
 ```text
 cal_bibliography_recent()

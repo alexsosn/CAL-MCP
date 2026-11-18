@@ -60,7 +60,7 @@ def test_v01_release_metadata_and_artifacts_are_declared() -> None:
     project = tomllib.loads(PYPROJECT.read_text(encoding="utf-8"))["project"]
 
     assert project["name"] == "cal-mcp"
-    assert project["version"] == "0.2.0.dev0"
+    assert project["version"] == "0.2.0"
     assert project["requires-python"] == ">=3.11"
     assert project["scripts"]["cal-mcp"] == "cal_mcp.server:main"
 

@@ -24,8 +24,9 @@ def test_readme_published_tool_table_matches_frozen_manifest() -> None:
     table = readme.split("## v0.1 public surface", 1)[1].split("## System boundary", 1)[0]
     missing = sorted(name for name in V01_PUBLIC_TOOLS if f"`{name}`" not in table)
     assert missing == []
-    assert "unreleased" in readme.lower()
-    assert "0.2.0.dev0" in readme
+    assert "release candidate" in readme.lower()
+    assert "0.2.0" in readme
+    assert "0.2.0.dev0" not in readme
 
 
 def test_docs_index_advertises_published_targum_example_followups() -> None:
@@ -35,13 +36,14 @@ def test_docs_index_advertises_published_targum_example_followups() -> None:
     assert "not yet MCP-followable" not in index
     assert "[#109]" not in index
     assert "`cal_bibliography_recent()`" in index
-    assert "unreleased" in index.lower()
+    assert "release candidate" in index.lower()
 
 
 def test_getting_started_distinguishes_new_bibliography_from_published_v01() -> None:
     guide = _doc("docs/getting-started.md")
     assert "cal_bibliography_recent()" in guide
-    assert "0.2.0.dev0" in guide
+    assert "0.2.0" in guide
+    assert "0.2.0.dev0" not in guide
     assert "cal-mcp==0.1.0" in guide
     assert "deferred to issue #39" not in guide
     assert "cal_targum_concordance_examples" in guide
@@ -61,7 +63,10 @@ def test_public_integration_docs_distinguish_merged_agora_from_unpublished_marke
         assert "agora" in content, path
         assert "merged" in content, path
         assert "candidate v1.1" in content, path
-        assert "not yet published" in content or "not published" in content, path
+        if path == "docs/index.md":
+            assert "marketplace release is separate" in content, path
+        else:
+            assert "not yet published" in content or "not published" in content, path
         assert "deferred to issue #16" not in content, path
         assert "optional future discovery" not in content, path
 
@@ -70,10 +75,10 @@ def test_release_checklist_keeps_publication_separate_from_docs_merge() -> None:
     checklist = _doc("wiki/release-checklist.md")
     assert "(release-checklist.md)" in _doc("wiki/README.md")
     for token in (
-        "0.2.0.dev0",
+        "0.2.0",
         "v0.2.0",
         "cal_bibliography_recent",
-        "13-case",
+        "47 scenarios",
         "25",
         "PyPI",
         "GitHub Release",

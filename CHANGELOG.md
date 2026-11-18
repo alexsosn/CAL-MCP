@@ -1,14 +1,16 @@
 # Changelog
 
-## Unreleased — 0.2.0.dev0 development source
+## 0.2.0 — release candidate validation and publication notes
 
-- Accept the current CAL Tel Dan line-comments record's narrowly evidenced romanized source with one nested `span.uncertain`, preserve reading order and expose `has_uncertain_reading` per record; reject other nested markup and keep canonical CAL identity checks (#343). The live installed-wheel parser check passed on current CAL with two actual starts; full all-tool release acceptance remains pending.
-- Reconcile pre-v0.2 README and researcher documentation with the frozen 36-tool v0.1.0 manifest, the unreleased 37th recent-bibliography tool, implemented Targum example follow-ups, and merged-but-unpublished Agora registry candidate; add a maintainer release checklist and offline documentation parity regressions (#334). No tagged 0.2.0 package is published by this documentation change.
+- Accept the current CAL Tel Dan line-comments record's narrowly evidenced romanized source with one nested `span.uncertain`, preserve reading order and expose `has_uncertain_reading` per record; reject other nested markup and keep canonical CAL identity checks (#343). The live installed-wheel parser check passed on current CAL with two actual starts; full all-tool development-wheel acceptance passed, while stable tagged-wheel acceptance remains pending.
+- Reconcile pre-v0.2 README and researcher documentation with the frozen 36-tool v0.1.0 manifest, the v0.2.0 recent-bibliography tool, implemented Targum example follow-ups, and merged-but-unpublished Agora registry candidate; add a maintainer release checklist and offline documentation parity regressions (#334). Documentation commits alone do not publish distributions; only the tagged release workflow can do that.
 - Extend the reviewed **future** installed-wheel release smoke from 12 to 13 fixed cases by including `cal_bibliography_recent()`, with a stricter 12-actual-CAL-transport minimum and nonempty citation validation. Preserve the frozen v0.1.0 twelve-case reference, 25-attempt cap and zero-retry policy; no full live suite in normal CI (#330).
 - Fail closed on noncanonical bibliography typed follow-up links (extra/duplicate query fields, aliases, fragments or invalid percent/UTF-8 query decoding and raw whitespace/control normalization), preserving exact CAL link values and the existing public record model (#328).
 - Add `cal_bibliography_recent()` for CAL's current ordered, duplicate-preserving recent bibliography listing, with one fixed bounded GET, no year filter/pagination/traversal, full existing record/link metadata and provenance. CAL owns its published years; it currently returns 2021–2025 in 2026.
 - Distinguish the evolving development-source 37-tool registry from the **immutable** v0.1.0 36-tool manifest. Future source builds use the current manifest; this change does not alter published `cal-mcp==0.1.0` distributions or tagged tests.
 - As a post-v0.1 operation, the new tool is unavailable in the v0.1.0 release until a newer package version passes separate release gates.
+
+- The nonpublishing installed-wheel full-surface smoke passed **37/37 tools** in **47/47 scenarios** on one development wheel, with **49 actual CAL HTTP attempts** in three serial admission-limited batches. The eventual stable tagged wheel must pass its own full gate before publication (#340, #351).
 
 ## 0.1.0 — 2026-10-12
 
