@@ -60,7 +60,7 @@ def test_tag_uses_three_fixed_wheel_suites_but_manual_smoke_stays_one() -> None:
     )
     assert job.count("-m cal_mcp.stdio_live_smoke") == 1
     assert all(job.count(f"-m {suite}") == 1 for suite in suites)
-    assert job.index(suites[0]) < job.index(suites[1]) < job.index(suites[2])
+    assert job.index(f"-m {suites[0]}") < job.index(f"-m {suites[1]}") < job.index(f"-m {suites[2]}")
     assert job.count("sleep 60") >= 2
     assert "actions/checkout@" not in job
     assert all(suite not in weekly for suite in suites[:-1])
