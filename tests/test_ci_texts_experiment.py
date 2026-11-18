@@ -131,3 +131,26 @@ def test_syriac_punctuation_inside_surface_is_rejected(text):
     data["tokens"] = [{"surface": text, "lemma_keys": ["draft:man"]}]
     with pytest.raises(DraftAuditError):
         audit_draft(data)
+
+
+def test_repeated_known_surface_reports_low_diversity_without_changing_coverage():
+    data = draft()
+    data["text"] = " ".join(["ܓܒܪܐ܀"] * 5)
+    data["tokens"] = [{"surface": "ܓܒܪܐ", "lemma_keys": ["draft:man"]} for _ in range(5)]
+    data["minimum_coverage"] = 1.0
+    data["max_new_lemmas"] = 0
+    result = audit_draft(data)
+    assert result["coverage"] == 1.0
+    assert result["passes_lexical_budget"] is True
+    assert result["unique_surface_forms"] == 1
+    assert result["surface_type_token_ratio"] == pytest.approx(0.2)
+    assert result["linguistically_verified"] is False
+
+
+def test_unreviewed_specimen_reports_10_unique_of_20_running_surface_forms():
+    path = Path(__file__).resolve().parents[1] / "experiments/ci_texts/specimen_unreviewed.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    result = audit_draft(data)
+    assert result["running_tokens"] == 20
+    assert result["unique_surface_forms"] == 10
+    assert result["surface_type_token_ratio"] == pytest.approx(0.5)
