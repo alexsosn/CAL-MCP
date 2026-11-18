@@ -110,3 +110,25 @@ The latest main after #341/#344/#346 is `61038b7988e23df120a9ea8c168f142f30b35b6
 **Live outcome: FAIL CLOSED on first dependent case.** The first real CAL-backed tool `cal_lexicon_lookup` (`lexicon` smoke case) returned `category: unavailable` with sanitizer text `CAL upstream unavailable or unsafe`. The runner measured **exactly 1/25 actual CAL transport attempts**, then stopped; the other 20 dependent cases and subsequent 13+13 batches were **NOT RUN**. The generic sanitized text is intentionally identical for `network`, `upstream_http`, `content`, or `response_too_large` structured error kinds. Consequently **the specific upstream failure code, any HTTP 429 / 403 / 5xx status, and whether CAL was reached are unknown from this sanitized log**. Do not infer a parser regression, upstream downtime, or permission violation from the generic result. The CI-only paired matrices passed on its source SHA; this run does not certify all 37 live operations.
 
 **Release decision: BLOCKED** under the no-retry, bounded-CAL policy. No second CAL request was issued. Do not rerun this exact suite merely because the first failure was generic: first improve strictly bounded diagnostic categorization using the existing *already validated* MCP error envelope, with offline RED/GREEN tests and independent review. This can expose only an allowlisted kind and 3-digit status code, **never** CAL HTML, source text, response message, or arbitrary URLs. Then assess whether a further single controlled live run is justified; stop on HTTP 429. The one-off branch trigger must be removed after this measured run, and the final PR kept draft/blocking until a complete green.
+
+
+## Final single-wheel 37-tool acceptance — PASS, exact measured evidence (2026-11-16–17 UTC)
+
+**Run:** [nonpublishing installed-wheel GitHub Actions #43978495435](https://github.com/alexsosn/CAL-MCP/actions/runs/43978495435), exact source SHA `8e7b1aa79404af2dfd30ac295504e26ed62a3436`. A single `cal-mcp 0.2.0.dev0` wheel was built and installed into a fresh virtual environment outside the source checkout. Its recorded SHA256 was `91ca4867ecfc074d59f5f4fa3e34db96cd966e6060663684a35b04332a91663f` (`cal_mcp-0.2.0.dev0-py3-none-any.whl`).
+
+**Static installed-artifact preflight:** `37` distinct current public tool IDs, `47` uniquely named cases in the frozen release suite (13), independent suite (13) and dependent suite (21), exactly covering all 37 tool IDs. **46 CAL-backed MCP case invocations** are expected, plus the local-only converter.
+
+**Actual live results from the SAME wheel, sequentially with at least 60 seconds between batches, no retry or publication:**
+
+| Batch | Cases | Measured real CAL transport starts | Per-process ceiling | Result |
+| --- | ---: | ---: | ---: | --- |
+| Full dependent, including Tel Dan comments and nonempty EbPar citations | 21/21 | **22** | 25 | PASS |
+| Independent tool routes | 13/13 | **13** | 25 | PASS |
+| Frozen expanded release smoke | 13/13 | **14** | 25 | PASS |
+| **Total** | **47/47** | **49** | **three independent 25-start ceilings** | **PASS** |
+
+The difference between **46 CAL-backed tool calls** and **49 actual transport starts** is real: some single MCP calls legitimately issue more than one CAL request. Never present the 46-case count as a measured HTTP count, an aggregate 46-attempt cap, or a fixed maximum. All 49 actual starts were within the reviewed **25-per-server** admission ceilings, with sequential request pacing and immediate stop-on-failure behavior; no 429, parser drift, missing routes, skipped dependencies, or schema errors occurred. The tagless run creates neither a GitHub Release nor a PyPI package.
+
+On the same source head, paired CI [run #43978509089](https://github.com/alexsosn/CAL-MCP/actions/runs/43978509089) passed Ruff lint/format, strict mypy and **2464 pytest tests** each in pinned deterministic and latest-compatible dependency configurations.
+
+**Review status:** this evidence fulfills issue #340's *one exact development-wheel, all 37 tools* acceptance goal and supports progressing to release preparation. A later docs-only commit must not be described as the already-tested SHA. The stable **v0.2.0** release still requires an independently reviewed version/metadata/doc adjustment, exact tagged distribution verification, the configured publishing pipeline and **post-PyPI installed-package smoke**. As of this record, only **v0.1.0** has been published; source version remains `0.2.0.dev0`.
