@@ -41,10 +41,12 @@ def test_documentation_names_stable_unpublished_candidate_and_historical_pin() -
         assert "0.1.0" in content, path
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
-    assert "not yet published" not in readme.lower()
+    assert "v0.2.0 release candidate (not yet published)" not in readme.lower()
+    assert "continue using the published 0.1.0 pin until" not in readme.lower()
     assert "pypi.org/project/cal-mcp/" in readme
     assert "36" in readme and "37" in readme
-    assert "not yet published" not in installation.lower()
+    assert "v0.2.0 release candidate (not yet published)" not in installation.lower()
+    assert "current confirmed pypi package pin remains" not in installation.lower()
     assert 'pip install "cal-mcp==0.1.0"' in installation
     assert 'pip install "cal-mcp==0.2.0"' not in installation
 
