@@ -15,6 +15,7 @@ RELEASE_WORKFLOW = ROOT / ".github/workflows/release.yml"
 def test_stable_candidate_version_without_mutating_historical_v01_contract() -> None:
     project = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
     assert project["name"] == "cal-mcp"
+    assert project["readme"] == "README.md"
     assert project["version"] == "0.2.0"
     assert len(V01_PUBLIC_TOOLS) == 36
     assert len(CURRENT_PUBLIC_TOOLS) == 37
@@ -40,8 +41,10 @@ def test_documentation_names_stable_unpublished_candidate_and_historical_pin() -
         assert "0.1.0" in content, path
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     installation = (ROOT / "docs/installation.md").read_text(encoding="utf-8")
-    assert "not yet published" in readme.lower()
-    assert "not yet published" in installation.lower()
+    assert "not yet published" not in readme.lower()
+    assert "pypi.org/project/cal-mcp/" in readme
+    assert "36" in readme and "37" in readme
+    assert "not yet published" not in installation.lower()
     assert 'pip install "cal-mcp==0.1.0"' in installation
     assert 'pip install "cal-mcp==0.2.0"' not in installation
 
@@ -57,9 +60,11 @@ def test_release_tag_pipeline_checks_full_37_47_same_artifact_before_pypi() -> N
     assert "cal_mcp.pre_release_followup_smoke" in workflow
     assert "cal_mcp.pre_release_smoke" in workflow
     assert "cal_mcp.stdio_live_smoke" in workflow
-    assert workflow.index("-m cal_mcp.pre_release_followup_smoke") < workflow.index(
-        "-m cal_mcp.pre_release_smoke"
-    ) < workflow.index("-m cal_mcp.stdio_live_smoke")
+    assert (
+        workflow.index("-m cal_mcp.pre_release_followup_smoke")
+        < workflow.index("-m cal_mcp.pre_release_smoke")
+        < workflow.index("-m cal_mcp.stdio_live_smoke")
+    )
     assert workflow.count("sleep 60") >= 2
     assert "name: publish-pypi" not in workflow
     assert "  publish-pypi:\n    needs:\n      - build-and-test\n      - live-smoke" in workflow
