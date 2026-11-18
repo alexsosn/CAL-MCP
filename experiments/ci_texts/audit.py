@@ -92,12 +92,15 @@ def audit_draft(draft: Mapping[str, Any]) -> dict[str, Any]:
                 novel.append(key)
 
     total = len(surfaces)
+    unique_surface_forms = len(set(surfaces))
     coverage = (total - unknown) / total
     return {
         "running_tokens": total,
         "known_tokens": total - unknown,
         "unknown_tokens": unknown,
         "coverage": coverage,
+        "unique_surface_forms": unique_surface_forms,
+        "surface_type_token_ratio": unique_surface_forms / total,
         "new_lemma_keys": novel,
         "passes_lexical_budget": coverage >= minimum and len(novel) <= maximum,
         "linguistically_verified": False,
