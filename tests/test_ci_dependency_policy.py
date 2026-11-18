@@ -148,3 +148,28 @@ def test_testing_guide_documents_reviewable_constraint_refresh() -> None:
     assert "pip freeze --all" in guide
     assert "verify_ci_environment.py" in guide
     assert "review" in guide.casefold()
+
+
+def test_latest_compatible_python314_verifies_installed_wheel_and_sdist_stdio() -> None:
+    """Real Python 3.14 support requires more than requires-python metadata."""
+    workflow = CI_WORKFLOW.read_text(encoding="utf-8")
+    latest = workflow.split("latest-compatible:", 1)[1]
+
+    assert "matrix:" in latest
+    assert 'python: ["3.11", "3.14"]' in latest
+    assert "python-version: ${{ matrix.python }}" in latest
+    assert "python -m pip install -e \".[dev]\"" in latest
+    assert "python -m pip check" in latest
+    assert "ruff check ." in latest
+    assert "mypy" in latest
+    assert "pytest" in latest
+
+    # Existing release verifier creates isolated installations from BOTH
+    # distributions and uses an actual stdio MCP client to list exact tools.
+    assert "if: matrix.python == '3.14'" in latest
+    assert "python -m build --outdir dist" in latest
+    assert "python scripts/verify_release_artifact.py dist" in latest
+    assert "constraints/ci-py311.txt" not in latest
+    assert "constraints/build-py311.txt" not in latest
+    assert "continue-on-error:" not in latest
+    assert "cal_mcp.stdio_live_smoke" not in latest
