@@ -19,7 +19,7 @@ def test_stable_candidate_version_without_mutating_historical_v01_contract() -> 
     assert len(V01_PUBLIC_TOOLS) == 36
     assert len(CURRENT_PUBLIC_TOOLS) == 37
     assert V01_PUBLIC_TOOLS <= CURRENT_PUBLIC_TOOLS
-    assert CURRENT_PUBLIC_TOOLS - V01_PUBLIC_TOOLS == {"cal_bibliography_recent"}
+    assert {"cal_bibliography_recent"} == CURRENT_PUBLIC_TOOLS - V01_PUBLIC_TOOLS
 
 
 def test_documentation_names_stable_unpublished_candidate_and_historical_pin() -> None:
