@@ -19,10 +19,12 @@ The verifier compares supplied whitespace-token surface strings to the draft; st
 
 ## Measured pilot — 2026-11-15, offline Python 3.13
 
-| Scenario | Running tokens | Known tokens | Unknown tokens | New lemma IDs | Coverage | Lexical gate |
-| --- | ---: | ---: | ---: | ---: | ---: | --- |
-| Unreviewed specimen, as annotated | 20 | 19 | 1 | 1 | 95% | PASS (threshold 95%, max 1 new) |
-| Same text, learner **does not** know `draft:water` | 20 | 16 | 4 | 2 | 80% | FAIL |
+| Scenario | Running tokens | Known tokens | Unknown tokens | Distinct surface forms | Surface type/token ratio | New lemma IDs | Coverage | Lexical gate |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| Unreviewed specimen, as annotated | 20 | 19 | 1 | 10 | 0.50 | 1 | 95% | PASS (threshold 95%, max 1 new) |
+| Same text, learner **does not** know `draft:water` | 20 | 16 | 4 | 10 | 0.50 | 2 | 80% | FAIL |
+
+The experimental report also gives `unique_surface_forms` and `surface_type_token_ratio` for the **same terminal-punctuation-trimmed orthographic tokens** used in the coverage count. The original specimen has **10/20 = 0.50** type/token ratio, despite its 95% author-annotated known-token score; a text repeating one known form five times would have 100% known coverage but a 1/5 = 0.20 ratio. These descriptive numbers are sensitive to text length, morphology, spelling and clitic segmentation and **do not** measure narrative quality, CAL attestation or pedagogical success. No lexical-budget decision depends on them.
 
 Focused tests: **24 passed** in the successful 2026-11-16 [CI run](https://github.com/alexsosn/CAL-MCP/actions/runs/43772177700), including a Unicode combining-mark regression and a pinned audit of the committed specimen. Additional tests exercise ordinary CAL Syriac token-final `܂` and `܃` while rejecting both internally. This verifies elementary accounting and fail-closed structure validation for the offline experiment. It does **not** establish that the Syriac passage is grammatical, that learners know the declared vocabulary, that any draft identifier is a CAL lemma, or that 95% produces comprehension. The candidate is highly repetitive and is not yet a pedagogically acceptable graded reader.
 
