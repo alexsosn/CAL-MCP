@@ -87,7 +87,8 @@ def test_latest_compatible_ci_is_explicitly_unconstrained() -> None:
     assert marker in workflow
     latest = workflow.split(marker, 1)[1]
 
-    assert 'python-version: "3.11"' in latest
+    assert 'python: ["3.11", "3.14"]' in latest
+    assert "python-version: ${{ matrix.python }}" in latest
     assert 'python -m pip install -e ".[dev]"' in latest
     assert "constraints/ci-py311.txt" not in latest
     assert "constraints/build-py311.txt" not in latest
