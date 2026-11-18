@@ -1,5 +1,7 @@
 # AGENTS.md
 
+> **Product-goal gate:** Before selecting a task or expanding the backlog, read [PRODUCT_GOALS.md](PRODUCT_GOALS.md). Prioritize its researcher journeys and minimum usable release; require concrete evidence for infrastructure work. Keep all mandatory source, security, licensing, TDD and independent-review checks below.
+
 This repository is designed for an automated, issue-driven development loop. This file is the mandatory entry point for coding agents.
 
 ## Read first
