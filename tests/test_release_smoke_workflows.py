@@ -58,7 +58,7 @@ def test_tag_uses_three_fixed_wheel_suites_but_manual_smoke_stays_one() -> None:
         "cal_mcp.pre_release_smoke",
         "cal_mcp.stdio_live_smoke",
     )
-    assert release.count("cal_mcp.stdio_live_smoke") == 1
+    assert job.count("-m cal_mcp.stdio_live_smoke") == 1
     assert all(job.count(f"-m {suite}") == 1 for suite in suites)
     assert job.index(suites[0]) < job.index(suites[1]) < job.index(suites[2])
     assert job.count("sleep 60") >= 2
