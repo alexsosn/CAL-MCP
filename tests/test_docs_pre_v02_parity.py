@@ -63,7 +63,10 @@ def test_public_integration_docs_distinguish_merged_agora_from_unpublished_marke
         assert "agora" in content, path
         assert "merged" in content, path
         assert "candidate v1.1" in content, path
-        assert "not yet published" in content or "not published" in content, path
+        if path == "docs/index.md":
+            assert "marketplace release is separate" in content, path
+        else:
+            assert "not yet published" in content or "not published" in content, path
         assert "deferred to issue #16" not in content, path
         assert "optional future discovery" not in content, path
 
