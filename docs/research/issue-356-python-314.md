@@ -86,3 +86,39 @@ steps. Final revision fixed style and passed the full GitHub CI gate.
 Python 3.14 client, and a separate Python 3.15 probe. Issue #356 stays open
 until those acceptance items are evidenced. A source-wheel CI run is not a
 public PyPI `cal-mcp==0.2.0` publication; issue #353 remains blocked on tagging.
+
+
+## Final acceptance evidence (2026-11-25)
+
+The exact merged source `c9b01aa0bd2fb508110499af241fd483231f16e4`
+passed all three normal CI jobs in [run 44396089460](https://github.com/alexsosn/CAL-MCP/actions/runs/44396089460).
+A separate one-shot, nonpublishing [run 45516445118](https://github.com/alexsosn/CAL-MCP/actions/runs/45516445118)
+checked out that exact source and completed successfully on its first attempt.
+Its probe workflow is preserved in commit
+[`e34f6b5`](https://github.com/alexsosn/CAL-MCP/blob/e34f6b5455037469b1f36316d1cdb54e2cb20d56/.github/workflows/probe-python-356.yml)
+and was removed from the temporary branch after completion.
+
+- [Python 3.14.10 live job](https://github.com/alexsosn/CAL-MCP/actions/runs/45516445118/job/138876988994):
+  clean wheel install, pip check, exact 37-tool stdio discovery and server
+  version 0.2.0; one `cal_bibliography_lemma` call for `cly V` passed the
+  existing MCP output-schema, content and provenance checks. The measured
+  transport count was exactly 1 (no retry). It returned one record; the
+  reported source was
+  https://cal.huc.edu/getbiblemma.php?myauthor=cly+V
+  and retrieval timestamp `2026-11-25T00:14:24.403886+00:00`.
+  The probe checked the query, operation, endpoint and timestamp against
+  the actual call. No bibliography content is redistributed here.
+- [Python 3.15.2 offline job](https://github.com/alexsosn/CAL-MCP/actions/runs/45516445118/job/138876988486):
+  wheel/sdist build, pip check, independent clean wheel and sdist installs,
+  server identity/version and exact 37-tool stdio discovery passed using the
+  existing artifact verifier. No CAL call or full pytest suite was run on 3.15.
+- Both probe environments resolved `mcp==2.3.0`, `httpx2==2.16.2` and
+  `jsonschema==4.26.0`.
+
+This completes the scoped compatibility acceptance for issue #356: 3.14 is
+covered by normal CI and a bounded live installed-client operation; 3.15
+has an additional successful offline installation/discovery observation only.
+It does not establish full 3.15 runtime compatibility, every CAL operation on
+3.14, or a published v0.2.0 artifact. The tagged-wheel publication gate in
+issue #353 remains separate and unchanged. No further CAL traffic or
+permanent probe workflow is needed for this issue.
