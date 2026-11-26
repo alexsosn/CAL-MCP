@@ -13,6 +13,14 @@ The [v0.1.0 release](https://github.com/alexsosn/CAL-MCP/releases/tag/v0.1.0) is
 
 Importing or introspecting the server does not contact CAL. Normal automated tests are offline.
 
+For the unreleased v0.2.0 source, normal CI covers Python 3.11 and 3.14.
+A clean installed wheel on Python 3.14.10 also passed a real, bounded CAL
+bibliography lookup over MCP stdio. Python 3.15.2 passed a separate offline
+wheel/sdist installation and tool-discovery probe; the full test suite and
+live CAL operations were not tested on 3.15. See the
+[compatibility evidence](research/issue-356-python-314.md#final-acceptance-evidence-2026-11-25).
+These results concern the candidate source, not a published v0.2.0 package.
+
 ## Install the released package
 
 Install the exact published release pin with:
